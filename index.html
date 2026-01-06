@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>受注フォーム</title>
+    <style>
+        body { font-family: sans-serif; padding: 20px; background-color: #f8f9fa; color: #333; }
+        .card { background: white; padding: 15px; border-radius: 8px; margin-bottom: 15px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        h3 { margin-top: 0; font-size: 16px; border-bottom: 2px solid #00B900; padding-bottom: 5px; }
+        label { font-weight: bold; display: block; margin-top: 10px; font-size: 14px; }
+        input, textarea { width: 100%; padding: 10px; margin: 5px 0 10px; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box; }
+        .item-row { border-left: 4px solid #00B900; position: relative; }
+        .remove-btn { color: #dc3545; font-size: 12px; cursor: pointer; text-align: right; font-weight: bold; }
+        button { width: 100%; padding: 12px; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; transition: 0.3s; }
+        .add-btn { background-color: #6c757d; color: white; margin-bottom: 15px; }
+        .add-btn:hover { background-color: #5a6268; }
+        .submit-btn { background-color: #00B900; color: white; font-size: 18px; margin-top: 10px; }
+        .submit-btn:hover { background-color: #009900; }
+    </style>
+</head>
+<body>
+
+    <div class="card">
+        <h3>発注者情報</h3>
+        <label>屋号</label>
+        <input type="text" id="storeName" placeholder="例：〇〇商店" required>
+        <label>メールアドレス</label>
+        <input type="email" id="email" placeholder="example@mail.com" required>
+        <label>備考・コメント</label>
+        <textarea id="comments" rows="3" placeholder="納期希望など"></textarea>
+    </div>
+
+    <div id="itemContainer">
+        <div class="card item-row">
+            <h3>アイテム 1</h3>
+            <input type="text" name="maker" placeholder="メーカー" required>
+            <input type="text" name="partNo" placeholder="品番" required>
+            <input type="number" name="quantity" placeholder="数量" required>
+        </div>
+    </div>
+
+    <button type="button" class="add-btn" onclick="addItem()">＋ アイテムを追加する</button>
+    <button type="button" class="submit-btn" onclick="sendOrder()">注文を送信する</button>
+
+    <script>
+        let itemCount = 1;
+
+        // 項目を追加する機能
+        function addItem() {
+            itemCount++;
+            const container = document.getElementById('itemContainer');
+            const html = `
+                <div class="card item-row">
+                    <div class="remove-btn" onclick="this.parentElement.remove()">✕ 削除</div>
+                    <h3>アイテム</h3>
+                    <input type="text" name="maker" placeholder="メーカー" required>
+                    <input type="text" name="partNo" placeholder="品番" required>
+                    <input type="number" name="quantity" placeholder="数量" required>
+                </div>`;
+            container.insertAdjacentHTML('beforeend', html);
+        }
+
+        // データをGASに送る機能
+        async function sendOrder() {
+            const btn = document.querySelector('.submit-btn');
+            btn.disabled = true;
+            btn.innerText = "送信中...";
+
+            const payload = {
+                storeName: document.getElementById('storeName').value,
+                email: document.getElementById('email').value,
+                comments: document.getElementById('comments').value,
+                items: []
+            };
+
+            const makers = document.getElementsByName('maker');
+            const partNos = document.getElementsByName('partNo');
+            const quantities = document.getElementsByName('quantity');
+
+            for (let i = 0; i < makers.length; i++) {
+                payload.items.push({
+                    maker: makers[i].value,
+                    partNo: partNos[i].value,
+                    quantity: quantities[i].value
+                });
+            }
+
+            // 【重要】ここに作成したGASのURLを貼り付けてください
+            const gasUrl = "https://script.google.com/macros/s/AKfycbzuj73DoyDKos9wPFNgtwqeKsHnzq3EKPYvgQN79KnWEtk4phCJ0Qwi3LTaLvFRastT/exec";
+
+            try {
+                await fetch(gasUrl, {
+                    method: "POST",
+                    body: JSON.stringify(payload)
+                });
+                alert("注文が正常に送信されました！");
+                location.reload(); // 送信後に画面をリセット
+            } catch (e) {
+                alert("エラーが発生しました。URLの設定などを確認してください。");
+                btn.disabled = false;
+                btn.innerText = "注文を送信する";
+            }
+        }
+    </script>
+</body>
+</html>
