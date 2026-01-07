@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>受注システム v2 テスト版</title>
+    <title>受注システム v2 商品追加版</title>
     <style>
         body { font-family: sans-serif; padding: 20px; background-color: #f4f4f4; color: #333; }
         .container { max-width: 500px; margin: 0 auto; background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
@@ -14,24 +14,19 @@
         select:focus, input:focus { border-color: #28a745; outline: none; }
         hr { border: none; border-top: 1px solid #eee; margin: 25px 0; }
         
-        /* 商品カードのスタイル */
         .item-card { background: #fdfdfd; padding: 15px; border: 1px solid #e0e0e0; border-radius: 8px; margin-bottom: 15px; position: relative; }
         .item-title { font-size: 14px; color: #28a745; font-weight: bold; margin-bottom: 10px; display: flex; justify-content: space-between; }
-        .remove-btn { background: #ff4d4d; color: white; border: none; border-radius: 4px; padding: 2px 8px; cursor: pointer; font-size: 12px; }
+        .remove-btn { background: #ff4d4d; color: white; border: none; border-radius: 4px; padding: 5px 10px; cursor: pointer; font-size: 12px; }
         
-        /* ボタン類 */
-        .add-btn { background: #007bff; color: white; border: none; padding: 10px; border-radius: 6px; cursor: pointer; width: 100%; font-size: 14px; margin-bottom: 20px; font-weight: bold; }
-        .add-btn:hover { background: #0056b3; }
-        button#sendBtn { width: 100%; padding: 15px; background: #28a745; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 18px; font-weight: bold; transition: 0.3s; }
-        button#sendBtn:hover { background: #218838; }
-        button:disabled { background: #ccc; cursor: not-allowed; }
+        .add-btn { background: #007bff; color: white; border: none; padding: 12px; border-radius: 6px; cursor: pointer; width: 100%; font-size: 16px; margin-bottom: 20px; font-weight: bold; }
+        button#sendBtn { width: 100%; padding: 15px; background: #28a745; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 18px; font-weight: bold; }
         .loading { display: none; text-align: center; margin-top: 15px; font-weight: bold; color: #666; }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <h2>注文フォーム (v2テスト)</h2>
+    <h2>注文フォーム (商品追加版)</h2>
     
     <div class="input-group">
         <label>店名</label>
@@ -40,15 +35,16 @@
 
     <div class="input-group">
         <label>メールアドレス</label>
-        <input type="email" id="email" placeholder="注文控えを送付します">
+        <input type="email" id="email" placeholder="注文控え用">
     </div>
 
     <hr>
     <h3>注文内容</h3>
     
-    <div id="itemContainer"></div>
+    <div id="itemContainer">
+        </div>
 
-    <button type="button" class="add-btn" onclick="addItem()">＋ 商品を追加する</button>
+    <button type="button" id="addItemBtn" class="add-btn">＋ 商品を追加する</button>
 
     <div class="input-group">
         <label>画像添付（任意・1枚）</label>
@@ -57,11 +53,11 @@
 
     <div class="input-group">
         <label>備考</label>
-        <textarea id="comments" rows="3" placeholder="ご要望があればご記入ください"></textarea>
+        <textarea id="comments" rows="3"></textarea>
     </div>
 
-    <button id="sendBtn" onclick="sendOrder()">注文を送信する</button>
-    <div id="loadingMsg" class="loading">送信中...<br>画像がある場合は少し時間がかかります</div>
+    <button id="sendBtn">注文を送信する</button>
+    <div id="loadingMsg" class="loading">送信中...</div>
 </div>
 
 <script>
@@ -79,7 +75,7 @@
 
     let itemCount = 0;
 
-    // 商品追加ボタンを押したときの処理
+    // 商品追加関数
     function addItem() {
         itemCount++;
         const container = document.getElementById('itemContainer');
@@ -87,6 +83,9 @@
         card.className = 'item-card';
         card.id = 'itemCard_' + itemCount;
         
+        // カテゴリーの選択肢を作成
+        const catOptions = Object.keys(makerData).map(cat => `<option value="${cat}">${cat}</option>`).join('');
+
         card.innerHTML = `
             <div class="item-title">
                 商品 #${itemCount}
@@ -94,35 +93,5 @@
             </div>
             <div class="input-group">
                 <label>カテゴリー</label>
-                <select class="category-select" onchange="updateMakerOptions(this)">
-                    <option value="">▼ 選択してください</option>
-                    ${Object.keys(makerData).map(cat => `<option value="${cat}">${cat}</option>`).join('')}
-                </select>
-            </div>
-            <div class="input-group">
-                <label>メーカー</label>
-                <select class="maker-select">
-                    <option value="">先にカテゴリーを選んでください</option>
-                </select>
-            </div>
-            <div class="input-group">
-                <label>品番</label>
-                <input type="text" class="partNo-input" placeholder="品番を入力">
-            </div>
-            <div class="input-group">
-                <label>数量</label>
-                <input type="number" class="quantity-input" value="1" min="1">
-            </div>
-        `;
-        container.appendChild(card);
-    }
-
-    function removeItem(id) {
-        const card = document.getElementById('itemCard_' + id);
-        card.remove();
-    }
-
-    // カテゴリー選択時に、そのカード内のメーカーリストだけを更新する
-    function updateMakerOptions(catSelect) {
-        const cat = catSelect.value;
-        const makerSelect = catSelect.closest('.item-card').querySelector('.maker-select');
+                <select class="category-select">
+                    <option value="">▼
