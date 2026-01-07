@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>受注システム v2 テスト版</title>
+    <style>
+        body { font-family: sans-serif; padding: 20px; background-color: #f4f4f4; }
+        .container { max-width: 500px; margin: 0 auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+        .input-group { margin-bottom: 15px; }
+        label { display: block; font-weight: bold; margin-bottom: 5px; }
+        select, input, textarea { width: 100%; padding: 8px; box-sizing: border-box; border: 1px solid #ccc; border-radius: 4px; }
+        button { width: 100%; padding: 10px; background: #28a745; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 16px; }
+        button:hover { background: #218838; }
+        .loading { display: none; color: #666; text-align: center; margin-top: 10px; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>注文フォーム (v2版テスト)</h2>
+    
+    <div class="input-group">
+        <label>店名</label>
+        <input type="text" id="storeName" placeholder="例：フラワーショップ名古屋">
+    </div>
+
+    <div class="input-group">
+        <label>メールアドレス</label>
+        <input type="email" id="email" placeholder="例：example@mail.com">
+    </div>
+
+    <hr>
+    <h3>注文内容</h3>
+    
+    <div class="input-group">
+        <label>カテゴリー</label>
+        <select id="category" onchange="updateMakerList()">
+            <option value="">カテゴリーを選択してください</option>
+            <option value="base">ベース</option>
+            <option value="dry">ドライ、プリザ</option>
+            <option value="artificial">アーティフィシャル</option>
+            <option value="zakka">雑貨</option>
+            <option value="trading">商社</option>
+            <option value="supplies">消耗品</option>
+            <option value="other">その他</option>
+        </select>
+    </div>
+
+    <div class="input-group">
+        <label>メーカー名</label>
+        <select id="maker">
+            <option value="">先にカテゴリーを選んでください</option>
+        </select>
+    </div>
+
+    <div class="input-group">
+        <label>品番 / 数量</label>
+        <input type="text" id="partNo" placeholder="品番を入力">
+        <input type="number" id="quantity" value="1" min="1" style="margin-top:5px;">
+    </div>
+
+    <div class="input-group">
+        <label>画像添付（任意）</label>
+        <input type="file" id="imageFile" accept="image/*">
+    </div>
+
+    <div class="input-group">
+        <label>備考</label>
+        <textarea id="comments" rows="3"></textarea>
+    </div>
+
+    <button id="sendBtn" onclick="sendOrder()">注文を送信する</button>
+    <div id="loadingMsg" class="loading">送信中...（数秒かかります）</div>
+</div>
+
+<script>
+    // ★ここに先ほど発行した新GASのURLを貼り付けてください
+    const gasUrl = "https://script.google.com/macros/s/AKfycbyyHeQ_1rAf0VikkmQvWzEiuG0JS2JsadFcBVp1uPbtl0SvzTUwQkg1jnxc14UIhBg/exec";
+
+    // メーカーデータ（ここを130社分に増やせます）
+    const makerData = {
+        "base": ["東京堂", "クレイ", "松村工芸（ベース）"],
+        "dry": ["大地農園", "大信貿易", "モノ・インターナショナル"],
+        "artificial": ["アスカ商会", "ポピー", "ビバ工芸"],
+        "zakka": ["カルチベーター", "友膳", "スパイス"],
+        "trading": ["カメヤマ", "東京リボン"],
+        "supplies": ["青山リボン", "ニチバン"],
+        "other": ["その他（備考に記入）"]
+    };
+
+    function updateMakerList() {
+        const cat = document.getElementById('category').value;
+        const makerSelect = document.getElementById('maker');
+        makerSelect.innerHTML = '<option value="">メーカーを選択してください</option>';
+        if (cat && makerData[cat]) {
+            makerData[cat].forEach(m => {
+                const opt = document.createElement('option');
+                opt.value = m;
+                opt.textContent = m;
+                makerSelect.appendChild(opt);
+            });
+        }
+    }
+
+    // 画像を文字データ(Base64)に変換する関数
+    const toBase64 = file => new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.readAsDataURL(file);
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = error => reject(error);
+    });
+
+    async function sendOrder() {
+        const btn = document.getElementById('sendBtn');
+        const loading = document.getElementById('loadingMsg');
+        btn.disabled = true;
+        loading.style.display = 'block';
+
+        const fileInput = document.getElementById('imageFile');
+        let imageData = null;
+
+        // 画像があればデータ化する
+        if (fileInput.files.length > 0) {
+            const file = fileInput.files[0];
+            const base64 = await toBase64(file);
+            imageData = {
+                data: base64.split(',')[1],
+                type: file.type
+            };
+        }
+
+        const payload = {
+            storeName: document.getElementById('storeName').value,
+            email: document.getElementById('email').value,
+            items: [{
+                maker: document.getElementById('maker').value,
+                partNo: document.getElementById('partNo').value,
+                quantity: document.getElementById('quantity').value
+            }],
+            comments: document.getElementById('comments').value,
+            imageFile: imageData
+        };
+
+        try {
+            const response = await fetch(gasUrl, {
+                method: 'POST',
+                body: JSON.stringify(payload)
+            });
+            const result = await response.json();
+            if (result.status === 'success') {
+                alert('注文が完了しました！画像も送信されました。');
+                location.reload();
+            } else {
+                alert('エラー: ' + result.message);
+            }
+        } catch (e) {
+            alert('送信に失敗しました。');
+        } finally {
+            btn.disabled = false;
+            loading.style.display = 'none';
+        }
+    }
+</script>
+</body>
+</html>
