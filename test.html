@@ -13,8 +13,17 @@
         select, input, textarea { width: 100%; padding: 12px; box-sizing: border-box; border: 1px solid #ddd; border-radius: 6px; font-size: 16px; }
         select:focus, input:focus { border-color: #28a745; outline: none; }
         hr { border: none; border-top: 1px solid #eee; margin: 25px 0; }
-        button { width: 100%; padding: 15px; background: #28a745; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 18px; font-weight: bold; transition: 0.3s; }
-        button:hover { background: #218838; }
+        
+        /* 商品カードのスタイル */
+        .item-card { background: #fdfdfd; padding: 15px; border: 1px solid #e0e0e0; border-radius: 8px; margin-bottom: 15px; position: relative; }
+        .item-title { font-size: 14px; color: #28a745; font-weight: bold; margin-bottom: 10px; display: flex; justify-content: space-between; }
+        .remove-btn { background: #ff4d4d; color: white; border: none; border-radius: 4px; padding: 2px 8px; cursor: pointer; font-size: 12px; }
+        
+        /* ボタン類 */
+        .add-btn { background: #007bff; color: white; border: none; padding: 10px; border-radius: 6px; cursor: pointer; width: 100%; font-size: 14px; margin-bottom: 20px; font-weight: bold; }
+        .add-btn:hover { background: #0056b3; }
+        button#sendBtn { width: 100%; padding: 15px; background: #28a745; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 18px; font-weight: bold; transition: 0.3s; }
+        button#sendBtn:hover { background: #218838; }
         button:disabled { background: #ccc; cursor: not-allowed; }
         .loading { display: none; text-align: center; margin-top: 15px; font-weight: bold; color: #666; }
     </style>
@@ -37,36 +46,9 @@
     <hr>
     <h3>注文内容</h3>
     
-    <div class="input-group">
-        <label>1. カテゴリーを選択</label>
-        <select id="category" onchange="updateMakerList()">
-            <option value="">▼ 選択してください</option>
-            <option value="base">ベース</option>
-            <option value="dry">ドライ、プリザ</option>
-            <option value="artificial">アーティフィシャル</option>
-            <option value="zakka">雑貨</option>
-            <option value="trading">商社</option>
-            <option value="supplies">消耗品</option>
-            <option value="other">その他</option>
-        </select>
-    </div>
+    <div id="itemContainer"></div>
 
-    <div class="input-group">
-        <label>2. メーカー名を選択</label>
-        <select id="maker">
-            <option value="">先にカテゴリーを選んでください</option>
-        </select>
-    </div>
-
-    <div class="input-group">
-        <label>品番</label>
-        <input type="text" id="partNo" placeholder="品番を入力">
-    </div>
-
-    <div class="input-group">
-        <label>数量</label>
-        <input type="number" id="quantity" value="1" min="1">
-    </div>
+    <button type="button" class="add-btn" onclick="addItem()">＋ 商品を追加する</button>
 
     <div class="input-group">
         <label>画像添付（任意・1枚）</label>
@@ -83,10 +65,8 @@
 </div>
 
 <script>
-    // ★新しいGASのURLに書き換えてください
     const gasUrl = "https://script.google.com/macros/s/AKfycbzvkCCRQKe_dSZRGTjwvY58YdEVmijSLhGNoOMSW9vxe5P8L1GmAetiKpZeJlM4zsh3/exec";
 
-    // メーカーリスト（ここを自由に増やしてください）
     const makerData = {
         "base": ["flonet", "リード商事", "ラライワント", "彩か","グリーンポット","トーク","ミュールミル","クレイ","ボブクラフト","WASARA","フラワーベース","花Links","丸又平野陶器店","ヤマテー","FARM","ホワイエ","丸滉製陶","大口産業","カルナック","大同クラフト","プラスガーデン","田中陶器","友膳","デルキ","エルコミューン","エイチツーオー","村田屋産業","yard","ワンダーゾーン"],
         "dry": ["大地農園", "アペル", "モノ・インターナショナル", "フロールエバー","東花","ヴェルデ","東方貿易","コアトレーディング","ドリームファームスズカ"],
@@ -97,81 +77,52 @@
         "other": ["その他（詳細は備考へ）"]
     };
 
-    function updateMakerList() {
-        const cat = document.getElementById('category').value;
-        const makerSelect = document.getElementById('maker');
-        makerSelect.innerHTML = '<option value="">メーカーを選択してください</option>';
-        if (cat && makerData[cat]) {
-            makerData[cat].forEach(m => {
-                const opt = document.createElement('option');
-                opt.value = m;
-                opt.textContent = m;
-                makerSelect.appendChild(opt);
-            });
-        }
-    }
+    let itemCount = 0;
 
-    const toBase64 = file => new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.readAsDataURL(file);
-        reader.onload = () => resolve(reader.result);
-        reader.onerror = error => reject(error);
-    });
-
-    async function sendOrder() {
-        const btn = document.getElementById('sendBtn');
-        const loading = document.getElementById('loadingMsg');
+    // 商品追加ボタンを押したときの処理
+    function addItem() {
+        itemCount++;
+        const container = document.getElementById('itemContainer');
+        const card = document.createElement('div');
+        card.className = 'item-card';
+        card.id = 'itemCard_' + itemCount;
         
-        if (!document.getElementById('storeName').value || !document.getElementById('maker').value) {
-            alert('店名とメーカー名は必須です');
-            return;
-        }
-
-        btn.disabled = true;
-        loading.style.display = 'block';
-
-        let imageData = null;
-        const fileInput = document.getElementById('imageFile');
-        if (fileInput.files.length > 0) {
-            const file = fileInput.files[0];
-            const base64 = await toBase64(file);
-            imageData = {
-                data: base64.split(',')[1],
-                type: file.type
-            };
-        }
-
-        const payload = {
-            storeName: document.getElementById('storeName').value,
-            email: document.getElementById('email').value,
-            items: [{
-                maker: document.getElementById('maker').value,
-                partNo: document.getElementById('partNo').value,
-                quantity: document.getElementById('quantity').value
-            }],
-            comments: document.getElementById('comments').value,
-            imageFile: imageData
-        };
-
-        try {
-            const response = await fetch(gasUrl, {
-                method: 'POST',
-                body: JSON.stringify(payload)
-            });
-            const result = await response.json();
-            if (result.status === 'success') {
-                alert('注文が完了しました！');
-                location.reload();
-            } else {
-                alert('エラーが発生しました: ' + result.message);
-            }
-        } catch (e) {
-            alert('送信に失敗しました。ネットワーク状況を確認してください。');
-        } finally {
-            btn.disabled = false;
-            loading.style.display = 'none';
-        }
+        card.innerHTML = `
+            <div class="item-title">
+                商品 #${itemCount}
+                ${itemCount > 1 ? `<button type="button" class="remove-btn" onclick="removeItem(${itemCount})">削除</button>` : ''}
+            </div>
+            <div class="input-group">
+                <label>カテゴリー</label>
+                <select class="category-select" onchange="updateMakerOptions(this)">
+                    <option value="">▼ 選択してください</option>
+                    ${Object.keys(makerData).map(cat => `<option value="${cat}">${cat}</option>`).join('')}
+                </select>
+            </div>
+            <div class="input-group">
+                <label>メーカー</label>
+                <select class="maker-select">
+                    <option value="">先にカテゴリーを選んでください</option>
+                </select>
+            </div>
+            <div class="input-group">
+                <label>品番</label>
+                <input type="text" class="partNo-input" placeholder="品番を入力">
+            </div>
+            <div class="input-group">
+                <label>数量</label>
+                <input type="number" class="quantity-input" value="1" min="1">
+            </div>
+        `;
+        container.appendChild(card);
     }
-</script>
-</body>
-</html>
+
+    function removeItem(id) {
+        const card = document.getElementById('itemCard_' + id);
+        card.remove();
+    }
+
+    // カテゴリー選択時に、そのカード内のメーカーリストだけを更新する
+    function updateMakerOptions(catSelect) {
+        const cat = catSelect.value;
+        const makerSelect = catSelect.closest('.item-card').querySelector('.maker-select');
