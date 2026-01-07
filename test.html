@@ -5,38 +5,42 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>受注システム v2 テスト版</title>
     <style>
-        body { font-family: sans-serif; padding: 20px; background-color: #f4f4f4; }
-        .container { max-width: 500px; margin: 0 auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
-        .input-group { margin-bottom: 15px; }
-        label { display: block; font-weight: bold; margin-bottom: 5px; }
-        select, input, textarea { width: 100%; padding: 8px; box-sizing: border-box; border: 1px solid #ccc; border-radius: 4px; }
-        button { width: 100%; padding: 10px; background: #28a745; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 16px; }
+        body { font-family: sans-serif; padding: 20px; background-color: #f4f4f4; color: #333; }
+        .container { max-width: 500px; margin: 0 auto; background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
+        h2 { text-align: center; color: #2c3e50; border-bottom: 2px solid #28a745; padding-bottom: 10px; }
+        .input-group { margin-bottom: 20px; }
+        label { display: block; font-weight: bold; margin-bottom: 8px; font-size: 14px; }
+        select, input, textarea { width: 100%; padding: 12px; box-sizing: border-box; border: 1px solid #ddd; border-radius: 6px; font-size: 16px; }
+        select:focus, input:focus { border-color: #28a745; outline: none; }
+        hr { border: none; border-top: 1px solid #eee; margin: 25px 0; }
+        button { width: 100%; padding: 15px; background: #28a745; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 18px; font-weight: bold; transition: 0.3s; }
         button:hover { background: #218838; }
-        .loading { display: none; color: #666; text-align: center; margin-top: 10px; }
+        button:disabled { background: #ccc; cursor: not-allowed; }
+        .loading { display: none; text-align: center; margin-top: 15px; font-weight: bold; color: #666; }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <h2>注文フォーム (v2版テスト)</h2>
+    <h2>注文フォーム (v2テスト)</h2>
     
     <div class="input-group">
         <label>店名</label>
-        <input type="text" id="storeName" placeholder="例：フラワーショップ名古屋">
+        <input type="text" id="storeName" placeholder="例：フラワーショップ名古屋" required>
     </div>
 
     <div class="input-group">
         <label>メールアドレス</label>
-        <input type="email" id="email" placeholder="例：example@mail.com">
+        <input type="email" id="email" placeholder="注文控えを送付します">
     </div>
 
     <hr>
     <h3>注文内容</h3>
     
     <div class="input-group">
-        <label>カテゴリー</label>
+        <label>1. カテゴリーを選択</label>
         <select id="category" onchange="updateMakerList()">
-            <option value="">カテゴリーを選択してください</option>
+            <option value="">▼ 選択してください</option>
             <option value="base">ベース</option>
             <option value="dry">ドライ、プリザ</option>
             <option value="artificial">アーティフィシャル</option>
@@ -48,45 +52,49 @@
     </div>
 
     <div class="input-group">
-        <label>メーカー名</label>
+        <label>2. メーカー名を選択</label>
         <select id="maker">
             <option value="">先にカテゴリーを選んでください</option>
         </select>
     </div>
 
     <div class="input-group">
-        <label>品番 / 数量</label>
+        <label>品番</label>
         <input type="text" id="partNo" placeholder="品番を入力">
-        <input type="number" id="quantity" value="1" min="1" style="margin-top:5px;">
     </div>
 
     <div class="input-group">
-        <label>画像添付（任意）</label>
+        <label>数量</label>
+        <input type="number" id="quantity" value="1" min="1">
+    </div>
+
+    <div class="input-group">
+        <label>画像添付（任意・1枚）</label>
         <input type="file" id="imageFile" accept="image/*">
     </div>
 
     <div class="input-group">
         <label>備考</label>
-        <textarea id="comments" rows="3"></textarea>
+        <textarea id="comments" rows="3" placeholder="ご要望があればご記入ください"></textarea>
     </div>
 
     <button id="sendBtn" onclick="sendOrder()">注文を送信する</button>
-    <div id="loadingMsg" class="loading">送信中...（数秒かかります）</div>
+    <div id="loadingMsg" class="loading">送信中...<br>画像がある場合は少し時間がかかります</div>
 </div>
 
 <script>
-    // ★ここに先ほど発行した新GASのURLを貼り付けてください
+    // ★新しいGASのURLに書き換えてください
     const gasUrl = "https://script.google.com/macros/s/AKfycbxNL7cW0C3JJeFwvmYPD1B9C22e-ca59NJ5iGmUgpC46aCklpuXy_3pJKofPpPLKztK/exec";
 
-    // メーカーデータ（ここを130社分に増やせます）
+    // メーカーリスト（ここを自由に増やしてください）
     const makerData = {
-        "base": ["東京堂", "クレイ", "松村工芸（ベース）"],
-        "dry": ["大地農園", "大信貿易", "モノ・インターナショナル"],
-        "artificial": ["アスカ商会", "ポピー", "ビバ工芸"],
-        "zakka": ["カルチベーター", "友膳", "スパイス"],
-        "trading": ["カメヤマ", "東京リボン"],
-        "supplies": ["青山リボン", "ニチバン"],
-        "other": ["その他（備考に記入）"]
+        "base": ["flonet", "リード商事", "ラライワント", "彩か","グリーンポット","トーク","ミュールミル","クレイ","ボブクラフト","WASARA","フラワーベース","花Links","丸又平野陶器店","ヤマテー","FARM","ホワイエ","丸滉製陶","大口産業","カルナック","大同クラフト","プラスガーデン","田中陶器","友膳","デルキ","エルコミューン","エイチツーオー","村田屋産業","yard","ワンダーゾーン"],
+        "dry": ["大地農園", "アペル", "モノ・インターナショナル", "フロールエバー","東花","ヴェルデ","東方貿易","コアトレーディング","ドリームファームスズカ"],
+        "artificial": ["アスカ商会", "パレ", "横浜ディスプレイミュージアム"],
+        "zakka": ["アムールデフルール", "東京かんかん", "カメヤマキャンドル", "コベントガーデン","丸和貿易","花の園くぼた","SRサービス（デコジャリ）","グローバルアロー","三和トレーディング","大仙","アンコーポレーション","外山刃物","ダルトン","ポッシュリビング","ネイチャーデザインズ","志成販売","クレエ","マグネット","坂源","キャビノチェ","大鉄","ウォルナット","TOSSDICE","Lib curate"],
+        "trading": ["松村工芸", "東京堂", "シモジマ","和光化学",],
+        "supplies": ["パレス化学", "東京リボン", "青山リボン","朝日ワイヤー","インターリンク","アズワン（試験管）","星野","Q-FLA","クリザール","アイハラ貿易（ポリラフィア)","スミザーズオアシス","段ボール","エコゼリー"],
+        "other": ["その他（詳細は備考へ）"]
     };
 
     function updateMakerList() {
@@ -103,7 +111,6 @@
         }
     }
 
-    // 画像を文字データ(Base64)に変換する関数
     const toBase64 = file => new Promise((resolve, reject) => {
         const reader = new FileReader();
         reader.readAsDataURL(file);
@@ -114,13 +121,17 @@
     async function sendOrder() {
         const btn = document.getElementById('sendBtn');
         const loading = document.getElementById('loadingMsg');
+        
+        if (!document.getElementById('storeName').value || !document.getElementById('maker').value) {
+            alert('店名とメーカー名は必須です');
+            return;
+        }
+
         btn.disabled = true;
         loading.style.display = 'block';
 
-        const fileInput = document.getElementById('imageFile');
         let imageData = null;
-
-        // 画像があればデータ化する
+        const fileInput = document.getElementById('imageFile');
         if (fileInput.files.length > 0) {
             const file = fileInput.files[0];
             const base64 = await toBase64(file);
@@ -149,13 +160,13 @@
             });
             const result = await response.json();
             if (result.status === 'success') {
-                alert('注文が完了しました！画像も送信されました。');
+                alert('注文が完了しました！');
                 location.reload();
             } else {
-                alert('エラー: ' + result.message);
+                alert('エラーが発生しました: ' + result.message);
             }
         } catch (e) {
-            alert('送信に失敗しました。');
+            alert('送信に失敗しました。ネットワーク状況を確認してください。');
         } finally {
             btn.disabled = false;
             loading.style.display = 'none';
