@@ -20,7 +20,6 @@
         #sendBtn { width: 100%; padding: 15px; background: #28a745; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 18px; font-weight: bold; }
         .loading { display: none; text-align: center; margin-top: 10px; font-weight: bold; }
         .save-info { font-size: 11px; color: #666; margin-top: 5px; }
-        /* ユーザー名表示用 */
         #userInfo { font-size: 12px; color: #28a745; text-align: right; margin-bottom: 10px; font-weight: bold; }
     </style>
 </head>
@@ -91,6 +90,7 @@
 </div>
 
 <script>
+    // ★GASを新しくデプロイしたら、下のURLを新しいものに張り替えてください
     const gasUrl = "https://script.google.com/macros/s/AKfycbzvkCCRQKe_dSZRGTjwvY58YdEVmijSLhGNoOMSW9vxe5P8L1GmAetiKpZeJlM4zsh3/exec";
 
     const makerData = {
@@ -103,11 +103,10 @@
         "other": ["その他（詳細は備考へ）"]
     };
 
-    // LIFFの初期化
     async function initLiff() {
         try {
-            // ★ここに既存チャネルで発行したLIFF IDを貼り付けてください
-            await liff.init({ liffId: "https://liff.line.me/2008835052-zCjbE0pV" }); 
+            // ★liffIdはURLではなく、ID（200...）の部分だけを入れるのが正解です
+            await liff.init({ liffId: "2008835052-zCjbE0pV" }); 
             
             if (!liff.isLoggedIn()) {
                 liff.login();
@@ -121,7 +120,7 @@
     }
 
     window.onload = function() {
-        initLiff(); // LIFF開始
+        initLiff();
         const savedStoreName = localStorage.getItem('storeName');
         const savedEmail = localStorage.getItem('email');
         if (savedStoreName) document.getElementById('storeName').value = savedStoreName;
@@ -208,8 +207,8 @@
             });
             const res = await response.json();
             if (res.status === 'success') { 
-                alert('注文完了！'); 
-                liff.closeWindow(); // 送信完了後にLINE画面を閉じる
+                alert('注文完了！控えメールを送信しました。'); 
+                liff.closeWindow(); 
             }
         } catch (e) {
             alert('送信に失敗しました。');
