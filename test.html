@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>名古屋花き商事本部受注アプリ</title>
+    <script charset="utf-8" src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
     <style>
         body { font-family: sans-serif; padding: 15px; background-color: #f4f4f4; }
         .container { max-width: 500px; margin: 0 auto; background: white; padding: 20px; border-radius: 12px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
@@ -11,24 +12,24 @@
         .input-group { margin-bottom: 15px; }
         label { display: block; font-weight: bold; margin-bottom: 5px; font-size: 14px; }
         select, input, textarea { width: 100%; padding: 10px; box-sizing: border-box; border: 1px solid #ddd; border-radius: 6px; font-size: 16px; }
-        
-        /* 商品カード */
         .item-card { background: #fdfdfd; padding: 15px; border: 1px solid #e0e0e0; border-radius: 8px; margin-bottom: 15px; position: relative; }
         .item-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; border-bottom: 1px solid #eee; padding-bottom: 5px; }
         .item-label { font-weight: bold; color: #28a745; }
-        
         .remove-btn { background: #ff4d4d; color: white; border: none; padding: 4px 10px; border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: bold; }
         .add-btn { background: #007bff; color: white; border: none; padding: 12px; border-radius: 6px; cursor: pointer; width: 100%; font-weight: bold; margin-bottom: 20px; }
         #sendBtn { width: 100%; padding: 15px; background: #28a745; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 18px; font-weight: bold; }
         .loading { display: none; text-align: center; margin-top: 10px; font-weight: bold; }
-        
         .save-info { font-size: 11px; color: #666; margin-top: 5px; }
+        /* ユーザー名表示用 */
+        #userInfo { font-size: 12px; color: #28a745; text-align: right; margin-bottom: 10px; font-weight: bold; }
     </style>
 </head>
 <body>
 
 <div class="container">
     <h2>名古屋花き商事本部注文フォーム</h2>
+    <div id="userInfo"></div>
+
     <div class="input-group">
         <label>店名</label>
         <input type="text" id="storeName" placeholder="必須入力">
@@ -92,7 +93,6 @@
 <script>
     const gasUrl = "https://script.google.com/macros/s/AKfycbzvkCCRQKe_dSZRGTjwvY58YdEVmijSLhGNoOMSW9vxe5P8L1GmAetiKpZeJlM4zsh3/exec";
 
-    // --- メーカーリスト（構文エラーを修正しました） ---
     const makerData = {
         "base": ["flonet", "クレイ","ヤマテー","ホワイエ","ミュールミル","カルナック","FARM", "ワンダーゾーン", "ラライワント", "グリーンポット", "トーク", "ボブクラフト", "友膳", "デルキ", "エルコミューン", "フラワーベース", "花Links", "丸又平野陶器店", "丸滉製陶", "大口産業", "プラスガーデン", "田中陶器", "エイチツーオー", "村田屋産業", "yard", "リード商事", "大同クラフト", "WASARA"],
         "dry": ["大地農園","フロールエバー", "コアトレーディング","アモローサ", "モノ・インターナショナル", "東花","ヴェルデ","東方貿易","ドリームファームスズカ"],
@@ -103,7 +103,25 @@
         "other": ["その他（詳細は備考へ）"]
     };
 
+    // LIFFの初期化
+    async function initLiff() {
+        try {
+            // ★ここに既存チャネルで発行したLIFF IDを貼り付けてください
+            await liff.init({ liffId: "https://liff.line.me/2008835052-zCjbE0pV" }); 
+            
+            if (!liff.isLoggedIn()) {
+                liff.login();
+            } else {
+                const profile = await liff.getProfile();
+                document.getElementById('userInfo').textContent = "ユーザー: " + profile.displayName;
+            }
+        } catch (error) {
+            console.error("LIFFの初期化に失敗", error);
+        }
+    }
+
     window.onload = function() {
+        initLiff(); // LIFF開始
         const savedStoreName = localStorage.getItem('storeName');
         const savedEmail = localStorage.getItem('email');
         if (savedStoreName) document.getElementById('storeName').value = savedStoreName;
@@ -161,7 +179,7 @@
             }
         });
 
-        if (items.length === 0) { alert('メーカーを少なくとも1つ選択してください'); return; }
+        if (items.length === 0) { alert('メーカーを選択してください'); return; }
 
         localStorage.setItem('storeName', storeName);
         localStorage.setItem('email', email);
@@ -190,8 +208,8 @@
             });
             const res = await response.json();
             if (res.status === 'success') { 
-                alert('注文完了！店名情報は保存されました。'); 
-                location.reload(); 
+                alert('注文完了！'); 
+                liff.closeWindow(); // 送信完了後にLINE画面を閉じる
             }
         } catch (e) {
             alert('送信に失敗しました。');
