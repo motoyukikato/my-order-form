@@ -95,8 +95,8 @@
 </div>
 
 <script>
-    // ★GASを新しくデプロイしたら、下のURLを最新のものに差し替えてください
-    const gasUrl = "https://script.google.com/macros/s/AKfycbxBtzC29jtAbgdCcNgu4nxcIksczo3R_7XjRQVmcJ0k6gtpHPB6W_MGRZJyNycHN9ZQ/exec";
+    // ★重要：GASをデプロイし直したら、以下のURLを必ず最新のものに差し替えてください
+    const gasUrl = "https://script.google.com/macros/s/AKfycbxOlS7Tj1XgxgEIwah_nT0wUtFKkeDv4nQvxNssBMtyyuNr7wz0l6q1BB0xJXmNm8dn/exec";
 
     const makerData = {
         "base": ["flonet", "クレイ","ヤマテー","ホワイエ","ミュールミル","カルナック","FARM", "ワンダーゾーン", "ラライワント", "グリーンポット", "トーク", "ボブクラフト", "友膳", "デルキ", "エルコミューン", "フラワーベース", "花Links", "丸又平野陶器店", "丸滉製陶", "大口産業", "プラスガーデン", "田中陶器", "エイチツーオー", "村田屋産業", "yard", "リード商事", "大同クラフト", "WASARA"],
@@ -189,7 +189,7 @@
         btn.disabled = true;
         document.getElementById('loadingMsg').style.display = 'block';
 
-        // --- 画像1の取得処理 ---
+        // --- 画像1の処理 ---
         let imageData1 = null;
         const fileInput1 = document.getElementById('imageFile1');
         if (fileInput1.files.length > 0) {
@@ -198,7 +198,7 @@
             imageData1 = { data: base64_1.split(',')[1], type: file1.type };
         }
 
-        // --- 画像2の取得処理 ---
+        // --- 画像2の処理 ---
         let imageData2 = null;
         const fileInput2 = document.getElementById('imageFile2');
         if (fileInput2.files.length > 0) {
