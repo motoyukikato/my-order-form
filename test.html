@@ -77,9 +77,14 @@
     <button type="button" class="add-btn" onclick="addNewItem()">＋ 商品を追加する</button>
 
     <div class="input-group">
-        <label>画像添付※写メで注文はこちらへ</label>
-        <input type="file" id="imageFile" accept="image/*">
+        <label>画像添付1（写メ注文など）</label>
+        <input type="file" id="imageFile1" accept="image/*">
     </div>
+    <div class="input-group">
+        <label>画像添付2</label>
+        <input type="file" id="imageFile2" accept="image/*">
+    </div>
+
     <div class="input-group">
         <label>備考</label>
         <textarea id="comments" rows="3"></textarea>
@@ -90,7 +95,7 @@
 </div>
 
 <script>
-    // ★GASを新しくデプロイしたら、下のURLを新しいものに張り替えてください
+    // ★GASを新しくデプロイしたら、下のURLを最新のものに差し替えてください
     const gasUrl = "https://script.google.com/macros/s/AKfycbyclRe8jp0xQXCN2ocZFd_gzJLIoKOHWf_ekJU3dcZ3C3vyOMELhUVvIovl3xoa50fb/exec";
 
     const makerData = {
@@ -105,9 +110,7 @@
 
     async function initLiff() {
         try {
-            // ★liffIdはURLではなく、ID（200...）の部分だけを入れるのが正解です
             await liff.init({ liffId: "2008835052-zCjbE0pV" }); 
-            
             if (!liff.isLoggedIn()) {
                 liff.login();
             } else {
@@ -186,12 +189,22 @@
         btn.disabled = true;
         document.getElementById('loadingMsg').style.display = 'block';
 
-        let imageData = null;
-        const fileInput = document.getElementById('imageFile');
-        if (fileInput.files.length > 0) {
-            const file = fileInput.files[0];
-            const base64 = await toBase64(file);
-            imageData = { data: base64.split(',')[1], type: file.type };
+        // --- 画像1の取得処理 ---
+        let imageData1 = null;
+        const fileInput1 = document.getElementById('imageFile1');
+        if (fileInput1.files.length > 0) {
+            const file1 = fileInput1.files[0];
+            const base64_1 = await toBase64(file1);
+            imageData1 = { data: base64_1.split(',')[1], type: file1.type };
+        }
+
+        // --- 画像2の取得処理 ---
+        let imageData2 = null;
+        const fileInput2 = document.getElementById('imageFile2');
+        if (fileInput2.files.length > 0) {
+            const file2 = fileInput2.files[0];
+            const base64_2 = await toBase64(file2);
+            imageData2 = { data: base64_2.split(',')[1], type: file2.type };
         }
 
         try {
@@ -202,7 +215,8 @@
                     email: email,
                     items: items,
                     comments: document.getElementById('comments').value,
-                    imageFile: imageData
+                    imageFile1: imageData1,
+                    imageFile2: imageData2
                 })
             });
             const res = await response.json();
