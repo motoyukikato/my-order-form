@@ -68,21 +68,25 @@
         }
         initLiff();
 
-        // 2. バーコードスキャン機能
-        async function scanBarcode() {
-            if (!liff.isInClient()) {
-                alert("LINEアプリ内で実行してください");
-                return;
-            }
-            try {
-                const result = await liff.scanCodeV2();
-                document.getElementById('janCode').value = result.value;
-                document.getElementById('itemName').value = "読み取り商品 (" + result.value + ")";
-            } catch (err) {
-                console.error(err);
-                alert("スキャンがキャンセルされたか、失敗しました");
-            }
-        }
+        // バーコードスキャン機能（安定版への書き換え）
+async function scanBarcode() {
+    if (!liff.isInClient()) {
+        alert("LINEアプリ内で実行してください");
+        return;
+    }
+    // スキャン権限があるか確認し、スキャンを実行
+    if (liff.scanCode) {
+        liff.scanCode().then(result => {
+            document.getElementById('janCode').value = result.value;
+            document.getElementById('itemName').value = "読み取り商品 (" + result.value + ")";
+        }).catch(err => {
+            console.error(err);
+            alert("スキャンに失敗しました: " + err.message);
+        });
+    } else {
+        alert("このLINEバージョンではスキャン機能がサポートされていません");
+    }
+}
 
         // 3. 注文リスト（カート）に追加
         function addToCart() {
@@ -160,3 +164,4 @@
     </script>
 </body>
 </html>
+
