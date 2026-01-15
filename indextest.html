@@ -1,42 +1,44 @@
 <!DOCTYPE html>
-<html>
+<html lang="ja">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>内蔵スキャナー受注アプリ</title>
     <script src="https://cdn.jsdelivr.net/npm/@ericblade/quagga2/dist/quagga.min.js"></script>
-   <style>
+    <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+    <style>
         body { font-family: sans-serif; padding: 15px; background: #f4f4f4; color: #333; }
         .card { background: white; padding: 15px; border-radius: 12px; margin-bottom: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
         h2 { text-align: center; color: #00B900; }
         
-        /* 入力項目とボタンのデザイン */
         input, button { width: 100%; padding: 14px; margin: 8px 0; border-radius: 8px; border: 1px solid #ddd; box-sizing: border-box; font-size: 16px; }
         button { background: #00B900; color: white; border: none; font-weight: bold; cursor: pointer; }
-        button:active { opacity: 0.8; } /* 押した時に少し色が変わる */
+        button:active { opacity: 0.8; }
 
-        /* ★カメラ表示エリアを大きく、スマホにフィットさせる設定 */
+        /* スキャナーエリア */
         #interactive.viewport { 
             width: 100%; 
-            height: 350px; /* 高さを250pxから350pxにアップ */
+            height: 300px; 
             overflow: hidden; 
             position: relative; 
             background: #000; 
             display: none; 
             border-radius: 12px; 
-            border: 3px solid #00B900; /* 読み取り中と分かりやすく枠を付ける */
+            border: 3px solid #00B900;
         }
-        
-        /* 映像を枠いっぱいに広げる設定 */
         #interactive.viewport video, #interactive.viewport canvas { 
             width: 100%; 
             height: 100%; 
-            object-fit: cover; /* 隙間なく映像を広げる */
+            object-fit: cover; 
         }
+        /* スキャン中に出る赤い線（中央ガイド） */
+        .drawingBuffer { position: absolute; top: 0; left: 0; }
     </style>
 </head>
 <body>
+
     <h2>内蔵スキャナー受注</h2>
+
     <div class="card">
         <div id="interactive" class="viewport"></div>
         <button id="scanBtn" onclick="startScanner()" style="background:#555;">📷 カメラを起動する</button>
@@ -47,58 +49,83 @@
         <button onclick="addToCart()" style="background:#007bff;">＋ リストに追加</button>
     </div>
 
-    <div id="orderList">
+    <div id="orderList" class="card">
         <h3>注文リスト</h3>
-        <div id="items"></div>
+        <div id="items" style="margin-bottom:10px;"></div>
         <button onclick="sendOrder()">注文を確定する</button>
     </div>
 
-    <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
 <script>
-    // 1. LIFF ID を設定 (あなたのID)
+    // --- 1. LIFF初期化 ---
     async function initLiff() {
         try {
             await liff.init({ liffId: "2008900667-HkwbRxSb" }); 
             if (!liff.isLoggedIn()) { liff.login(); }
         } catch (err) {
-            alert("LIFF初期化エラー: " + err);
+            console.error("LIFF初期化エラー", err);
         }
     }
     initLiff();
 
-    // 2. カメラ起動
+    // --- 2. スキャナー制御 ---
+    let isScanning = false; // 二重読み取り防止フラグ
+
     function startScanner() {
+        if (isScanning) return; // すでに起動中なら何もしない
+
         const viewport = document.getElementById('interactive');
         viewport.style.display = 'block';
+        
         Quagga.init({
             inputStream: {
                 name: "Live",
                 type: "LiveStream",
                 target: viewport,
                 constraints: {
-                    facingMode: "environment"
+                    facingMode: "environment",
+                    aspectRatio: { min: 1, max: 2 }
                 },
             },
-            decoder: { readers: ["ean_reader"] }
+            decoder: { 
+                readers: ["ean_reader"], // JANコード(EAN)に限定
+                multiple: false // 複数を同時に読み取らない設定
+            }
         }, function(err) {
             if (err) { alert("カメラ起動失敗: " + err); return; }
             Quagga.start();
         });
+
+        // 読み取り成功時の処理
         Quagga.onDetected(function(result) {
-            document.getElementById('janCode').value = result.codeResult.code;
-            document.getElementById('itemName').value = "スキャン商品(" + result.codeResult.code + ")";
+            if (isScanning) return; // すでに読み取り済みなら無視
+            
+            const code = result.codeResult.code;
+            
+            // 読み取り成功確定
+            isScanning = true; 
+            
+            // 画面に値をセット
+            document.getElementById('janCode').value = code;
+            document.getElementById('itemName').value = "スキャン商品(" + code + ")";
+            
+            // 停止処理
             Quagga.stop();
             viewport.style.display = 'none';
+            
+            // 1.5秒後にスキャンフラグをリセット（次のスキャンを可能にする）
+            setTimeout(() => { isScanning = false; }, 1500);
         });
     }
 
+    // --- 3. カート・注文処理 ---
     let cart = [];
+
     function addToCart() {
         const jan = document.getElementById('janCode').value;
         const name = document.getElementById('itemName').value;
         const qty = document.getElementById('quantity').value;
 
-        if (!name) { alert("商品名を入力してください"); return; }
+        if (!name || !jan) { alert("商品を入力してください"); return; }
 
         cart.push({ jan, name, qty });
         renderCart();
@@ -111,14 +138,19 @@
 
     function renderCart() {
         const div = document.getElementById('items');
-        div.innerHTML = cart.map(i => `
-            <div style="border-bottom:1px solid #ddd; padding:5px;">
-                ${i.name} x ${i.qty}個
+        div.innerHTML = cart.map((i, index) => `
+            <div style="border-bottom:1px solid #ddd; padding:8px; display:flex; justify-content:space-between;">
+                <span>${i.name} x ${i.qty}</span>
+                <span style="color:red;" onclick="removeItem(${index})">✕</span>
             </div>
         `).join('');
     }
 
-    // 3. 送信処理（ここを修正しました）
+    function removeItem(index) {
+        cart.splice(index, 1);
+        renderCart();
+    }
+
     async function sendOrder() {
         if (cart.length === 0) {
             alert("リストに商品がありません");
@@ -127,30 +159,28 @@
 
         try {
             const profile = await liff.getProfile();
-            // あなたのGAS URL
             const gasUrl = "https://script.google.com/macros/s/AKfycbyRsSAmqoM5YFmgfQ82TLWake1K5u78UiO7ap5iY9pvJkFpQVhIEVIB-BGIJEVgLDuJww/exec";
             
-            // 送信内容の整理
             const orderData = {
                 userName: profile.displayName,
                 itemName: cart.map(i => `${i.name}(${i.jan})`).join(", "),
                 quantity: cart.reduce((sum, i) => sum + parseInt(i.qty), 0)
             };
 
-            // GASへ送信
-            const response = await fetch(gasUrl, {
+            await fetch(gasUrl, {
                 method: "POST",
-                mode: "no-cors", // 重要：セキュリティによるエラーを防ぐ
+                mode: "no-cors",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify(orderData)
             });
 
-            // 成功メッセージ
             alert("注文を受け付けました！");
-            liff.closeWindow(); // 画面を閉じる
+            liff.closeWindow();
 
         } catch (error) {
             alert("送信に失敗しました: " + error.message);
         }
     }
 </script>
+</body>
+</html>
