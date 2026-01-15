@@ -10,27 +10,11 @@
         body { font-family: sans-serif; padding: 15px; background: #f4f4f4; color: #333; }
         .card { background: white; padding: 15px; border-radius: 12px; margin-bottom: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
         h2 { text-align: center; color: #00B900; }
-        
         input, button { width: 100%; padding: 14px; margin: 8px 0; border-radius: 8px; border: 1px solid #ddd; box-sizing: border-box; font-size: 16px; }
         button { background: #00B900; color: white; border: none; font-weight: bold; cursor: pointer; transition: 0.3s; }
         button:disabled { background: #ccc !important; cursor: not-allowed; }
-
-        /* スキャナーエリア */
-        #interactive.viewport { 
-            width: 100%; 
-            height: 300px; 
-            overflow: hidden; 
-            position: relative; 
-            background: #000; 
-            display: none; 
-            border-radius: 12px; 
-            border: 3px solid #00B900;
-        }
-        #interactive.viewport video, #interactive.viewport canvas { 
-            width: 100%; 
-            height: 100%; 
-            object-fit: cover; 
-        }
+        #interactive.viewport { width: 100%; height: 300px; overflow: hidden; position: relative; background: #000; display: none; border-radius: 12px; border: 3px solid #00B900; }
+        #interactive.viewport video, #interactive.viewport canvas { width: 100%; height: 100%; object-fit: cover; }
     </style>
 </head>
 <body>
@@ -54,65 +38,46 @@
     </div>
 
 <script>
-    // --- 1. LIFF初期化 ---
     async function initLiff() {
         try {
             await liff.init({ liffId: "2008900667-HkwbRxSb" }); 
             if (!liff.isLoggedIn()) { liff.login(); }
-        } catch (err) {
-            console.error("LIFF初期化エラー", err);
-        }
+        } catch (err) { console.error("LIFF初期化エラー", err); }
     }
     initLiff();
 
-    // --- 2. スキャナー制御（二重読み取り防止済み） ---
     let isScanning = false; 
-
     function startScanner() {
         if (isScanning) return; 
         const viewport = document.getElementById('interactive');
         viewport.style.display = 'block';
-        
         Quagga.init({
-            inputStream: {
-                name: "Live",
-                type: "LiveStream",
-                target: viewport,
-                constraints: { facingMode: "environment" },
-            },
+            inputStream: { name: "Live", type: "LiveStream", target: viewport, constraints: { facingMode: "environment" } },
             decoder: { readers: ["ean_reader"], multiple: false }
         }, function(err) {
             if (err) { alert("カメラ起動失敗: " + err); return; }
             Quagga.start();
         });
-
         Quagga.onDetected(function(result) {
             if (isScanning) return; 
             isScanning = true; 
-            
             const code = result.codeResult.code;
             document.getElementById('janCode').value = code;
             document.getElementById('itemName').value = "スキャン商品(" + code + ")";
-            
             Quagga.stop();
             viewport.style.display = 'none';
             setTimeout(() => { isScanning = false; }, 1500);
         });
     }
 
-    // --- 3. カート処理 ---
     let cart = [];
-
     function addToCart() {
         const jan = document.getElementById('janCode').value;
         const name = document.getElementById('itemName').value;
         const qty = document.getElementById('quantity').value;
-
         if (!name || !jan) { alert("商品を入力してください"); return; }
-
         cart.push({ jan, name, qty });
         renderCart();
-
         document.getElementById('janCode').value = "";
         document.getElementById('itemName').value = "";
         document.getElementById('quantity').value = "1";
@@ -133,30 +98,22 @@
         renderCart();
     }
 
-    // --- 4. 注文送信（連打防止・スムーズ化） ---
     async function sendOrder() {
-        if (cart.length === 0) {
-            alert("リストに商品がありません");
-            return;
-        }
-
+        if (cart.length === 0) { alert("リストに商品がありません"); return; }
         const submitBtn = document.getElementById('submitBtn');
-        
-        // 【重要】ボタンを無効化して連打を防ぐ
         submitBtn.disabled = true;
-        submitBtn.innerText = "送信中... しばらくお待ちください";
+        submitBtn.innerText = "送信中...";
 
         try {
             const profile = await liff.getProfile();
+            // ↓ ここにご自身のGASウェブアプリURLを貼り付けてください
             const gasUrl = "https://script.google.com/macros/s/AKfycbwFD5c7hGNjHwusJrfWh8x6d5wz7l7rREWIN4j9Ey8EOj05mqnPlv3qp1HaHa-Cygx21A/exec";
             
             const orderData = {
                 userName: profile.displayName,
-                itemName: cart.map(i => `${i.name}(${i.jan})`).join(", "),
-                quantity: cart.reduce((sum, i) => sum + parseInt(i.qty), 0)
+                orders: cart // カートの中身（配列）をそのまま送る
             };
 
-            // GASへ送信
             await fetch(gasUrl, {
                 method: "POST",
                 mode: "no-cors",
@@ -164,19 +121,6 @@
                 body: JSON.stringify(orderData)
             });
 
-            // 成功メッセージを表示してから閉じる
             alert("注文を受け付けました！");
             liff.closeWindow();
-
-        } catch (error) {
-            alert("送信に失敗しました: " + error.message);
-            // 失敗した場合はボタンを元に戻す
-            submitBtn.disabled = false;
-            submitBtn.innerText = "注文を確定する";
-        }
-    }
-</script>
-</body>
-</html>
-
-
+        } catch (
