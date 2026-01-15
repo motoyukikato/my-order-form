@@ -12,8 +12,8 @@
         h2 { text-align: center; color: #00B900; }
         
         input, button { width: 100%; padding: 14px; margin: 8px 0; border-radius: 8px; border: 1px solid #ddd; box-sizing: border-box; font-size: 16px; }
-        button { background: #00B900; color: white; border: none; font-weight: bold; cursor: pointer; }
-        button:active { opacity: 0.8; }
+        button { background: #00B900; color: white; border: none; font-weight: bold; cursor: pointer; transition: 0.3s; }
+        button:disabled { background: #ccc !important; cursor: not-allowed; }
 
         /* スキャナーエリア */
         #interactive.viewport { 
@@ -31,8 +31,6 @@
             height: 100%; 
             object-fit: cover; 
         }
-        /* スキャン中に出る赤い線（中央ガイド） */
-        .drawingBuffer { position: absolute; top: 0; left: 0; }
     </style>
 </head>
 <body>
@@ -52,7 +50,7 @@
     <div id="orderList" class="card">
         <h3>注文リスト</h3>
         <div id="items" style="margin-bottom:10px;"></div>
-        <button onclick="sendOrder()">注文を確定する</button>
+        <button id="submitBtn" onclick="sendOrder()">注文を確定する</button>
     </div>
 
 <script>
@@ -67,12 +65,11 @@
     }
     initLiff();
 
-    // --- 2. スキャナー制御 ---
-    let isScanning = false; // 二重読み取り防止フラグ
+    // --- 2. スキャナー制御（二重読み取り防止済み） ---
+    let isScanning = false; 
 
     function startScanner() {
-        if (isScanning) return; // すでに起動中なら何もしない
-
+        if (isScanning) return; 
         const viewport = document.getElementById('interactive');
         viewport.style.display = 'block';
         
@@ -81,43 +78,29 @@
                 name: "Live",
                 type: "LiveStream",
                 target: viewport,
-                constraints: {
-                    facingMode: "environment",
-                    aspectRatio: { min: 1, max: 2 }
-                },
+                constraints: { facingMode: "environment" },
             },
-            decoder: { 
-                readers: ["ean_reader"], // JANコード(EAN)に限定
-                multiple: false // 複数を同時に読み取らない設定
-            }
+            decoder: { readers: ["ean_reader"], multiple: false }
         }, function(err) {
             if (err) { alert("カメラ起動失敗: " + err); return; }
             Quagga.start();
         });
 
-        // 読み取り成功時の処理
         Quagga.onDetected(function(result) {
-            if (isScanning) return; // すでに読み取り済みなら無視
-            
-            const code = result.codeResult.code;
-            
-            // 読み取り成功確定
+            if (isScanning) return; 
             isScanning = true; 
             
-            // 画面に値をセット
+            const code = result.codeResult.code;
             document.getElementById('janCode').value = code;
             document.getElementById('itemName').value = "スキャン商品(" + code + ")";
             
-            // 停止処理
             Quagga.stop();
             viewport.style.display = 'none';
-            
-            // 1.5秒後にスキャンフラグをリセット（次のスキャンを可能にする）
             setTimeout(() => { isScanning = false; }, 1500);
         });
     }
 
-    // --- 3. カート・注文処理 ---
+    // --- 3. カート処理 ---
     let cart = [];
 
     function addToCart() {
@@ -130,7 +113,6 @@
         cart.push({ jan, name, qty });
         renderCart();
 
-        // 入力をリセット
         document.getElementById('janCode').value = "";
         document.getElementById('itemName').value = "";
         document.getElementById('quantity').value = "1";
@@ -141,7 +123,7 @@
         div.innerHTML = cart.map((i, index) => `
             <div style="border-bottom:1px solid #ddd; padding:8px; display:flex; justify-content:space-between;">
                 <span>${i.name} x ${i.qty}</span>
-                <span style="color:red;" onclick="removeItem(${index})">✕</span>
+                <span style="color:red;" onclick="removeItem(${index})">✕ 削除</span>
             </div>
         `).join('');
     }
@@ -151,11 +133,18 @@
         renderCart();
     }
 
+    // --- 4. 注文送信（連打防止・スムーズ化） ---
     async function sendOrder() {
         if (cart.length === 0) {
             alert("リストに商品がありません");
             return;
         }
+
+        const submitBtn = document.getElementById('submitBtn');
+        
+        // 【重要】ボタンを無効化して連打を防ぐ
+        submitBtn.disabled = true;
+        submitBtn.innerText = "送信中... しばらくお待ちください";
 
         try {
             const profile = await liff.getProfile();
@@ -167,6 +156,7 @@
                 quantity: cart.reduce((sum, i) => sum + parseInt(i.qty), 0)
             };
 
+            // GASへ送信
             await fetch(gasUrl, {
                 method: "POST",
                 mode: "no-cors",
@@ -174,11 +164,15 @@
                 body: JSON.stringify(orderData)
             });
 
+            // 成功メッセージを表示してから閉じる
             alert("注文を受け付けました！");
             liff.closeWindow();
 
         } catch (error) {
             alert("送信に失敗しました: " + error.message);
+            // 失敗した場合はボタンを元に戻す
+            submitBtn.disabled = false;
+            submitBtn.innerText = "注文を確定する";
         }
     }
 </script>
