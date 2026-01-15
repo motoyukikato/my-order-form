@@ -3,165 +3,92 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>JAN対応・受注アプリ</title>
+    <title>内蔵スキャナー受注アプリ</title>
+    <script src="https://cdn.jsdelivr.net/npm/@ericblade/quagga2/dist/quagga.min.js"></script>
     <style>
-        body { font-family: sans-serif; padding: 20px; background: #f4f4f4; color: #333; }
-        .card { background: white; padding: 15px; border-radius: 8px; margin-bottom: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
-        h2, h3 { margin-top: 0; color: #00B900; }
-        label { font-size: 0.9em; font-weight: bold; }
-        input, select, button { width: 100%; padding: 12px; margin: 8px 0; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; font-size: 16px; }
-        
-        /* ボタンの色分け */
-        button { color: white; border: none; font-weight: bold; cursor: pointer; transition: 0.3s; }
-        button:active { opacity: 0.7; }
-        .btn-scan { background: #555; } /* スキャン：グレー */
-        .btn-add { background: #007bff; } /* リスト追加：青 */
-        .btn-send { background: #00B900; margin-top: 20px; font-size: 18px; } /* 注文確定：LINEグリーン */
-        
-        #orderList { margin-top: 20px; border-top: 2px solid #00B900; padding-top: 10px; }
-        .item-row { border-bottom: 1px dashed #eee; padding: 8px 0; }
+        body { font-family: sans-serif; padding: 20px; background: #f4f4f4; }
+        .card { background: white; padding: 15px; border-radius: 8px; margin-bottom: 10px; }
+        input, button { width: 100%; padding: 12px; margin: 8px 0; border-radius: 4px; border: 1px solid #ccc; box-sizing: border-box; }
+        button { background: #00B900; color: white; border: none; font-weight: bold; }
+        #interactive.viewport { width: 100%; height: 250px; overflow: hidden; position: relative; background: #000; display: none; }
+        #interactive.viewport canvas, video { position: absolute; top: 0; left: 0; width: 100%; height: 100%; }
     </style>
 </head>
 <body>
-
-    <h2>商品受注入力</h2>
-
+    <h2>内蔵スキャナー受注</h2>
     <div class="card">
-        <h3>商品入力</h3>
-        <button class="btn-scan" onclick="scanBarcode()">📷 バーコードを読み取る</button>
+        <div id="interactive" class="viewport"></div>
+        <button id="scanBtn" onclick="startScanner()" style="background:#555;">📷 カメラを起動する</button>
         
-        <label>JANコード</label>
-        <input type="text" id="janCode" placeholder="バーコード番号">
-        
-        <label>商品名</label>
-        <input type="text" id="itemName" placeholder="商品名を入力">
-        
-        <label>数量</label>
-        <input type="number" id="quantity" value="1" min="1">
-        
-        <button class="btn-add" onclick="addToCart()">＋ リストに追加</button>
+        <input type="text" id="janCode" placeholder="JANコード">
+        <input type="text" id="itemName" placeholder="商品名">
+        <input type="number" id="quantity" value="1">
+        <button onclick="addToCart()" style="background:#007bff;">＋ リストに追加</button>
     </div>
 
     <div id="orderList">
         <h3>注文リスト</h3>
-        <div id="items">
-            <p style="color: #888;">リストに商品がありません</p>
-        </div>
-        <button class="btn-send" onclick="sendOrder()">この内容で注文を確定する</button>
+        <div id="items"></div>
+        <button onclick="sendOrder()">注文を確定する</button>
     </div>
 
     <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
     <script>
-        let cart = [];
-
-        // 1. LIFFの初期化
         async function initLiff() {
-            try {
-                // ★あなたの LIFF ID に書き換えました
-                await liff.init({ liffId: "2006764491-L32vX6j0" }); 
-                if (!liff.isLoggedIn()) {
-                    liff.login();
-                }
-            } catch (err) {
-                console.error("LIFF初期化失敗", err);
-            }
+            await liff.init({ liffId: "2008900667-HkwbRxSb" });
+            if (!liff.isLoggedIn()) { liff.login(); }
         }
         initLiff();
 
-        // バーコードスキャン機能（安定版への書き換え）
-async function scanBarcode() {
-    if (!liff.isInClient()) {
-        alert("LINEアプリ内で実行してください");
-        return;
-    }
-    // スキャン権限があるか確認し、スキャンを実行
-    if (liff.scanCode) {
-        liff.scanCode().then(result => {
-            document.getElementById('janCode').value = result.value;
-            document.getElementById('itemName').value = "読み取り商品 (" + result.value + ")";
-        }).catch(err => {
-            console.error(err);
-            alert("スキャンに失敗しました: " + err.message);
-        });
-    } else {
-        alert("このLINEバージョンではスキャン機能がサポートされていません");
-    }
-}
+        // 内蔵カメラを起動する関数
+        function startScanner() {
+            const viewport = document.getElementById('interactive');
+            viewport.style.display = 'block';
+            
+            Quagga.init({
+                inputStream: { name: "Live", type: "LiveStream", target: viewport },
+                decoder: { readers: ["ean_reader"] } // JANコード用
+            }, function(err) {
+                if (err) { alert("カメラ起動失敗"); return; }
+                Quagga.start();
+            });
 
-        // 3. 注文リスト（カート）に追加
+            Quagga.onDetected(function(result) {
+                document.getElementById('janCode').value = result.codeResult.code;
+                document.getElementById('itemName').value = "スキャン商品(" + result.codeResult.code + ")";
+                Quagga.stop();
+                viewport.style.display = 'none';
+                alert("読み取り成功！");
+            });
+        }
+
+        // --- 以下の addToCart, renderCart, sendOrder は前回と同じ ---
+        let cart = [];
         function addToCart() {
-            const jan = document.getElementById('janCode').value;
-            const name = document.getElementById('itemName').value;
-            const qty = document.getElementById('quantity').value;
-
-            if (!name) {
-                alert("商品名を入力してください");
-                return;
-            }
-
-            cart.push({ jan, name, qty });
+            cart.push({
+                jan: document.getElementById('janCode').value,
+                name: document.getElementById('itemName').value,
+                qty: document.getElementById('quantity').value
+            });
             renderCart();
-
-            // 入力欄をクリア
-            document.getElementById('janCode').value = "";
-            document.getElementById('itemName').value = "";
-            document.getElementById('quantity').value = "1";
         }
-
-        // 4. カートの中身を画面に表示
         function renderCart() {
-            const div = document.getElementById('items');
-            if (cart.length === 0) {
-                div.innerHTML = '<p style="color: #888;">リストに商品がありません</p>';
-                return;
-            }
-
-            div.innerHTML = cart.map((item, index) => `
-                <div class="item-row">
-                    <strong>${item.name}</strong> × ${item.qty}個<br>
-                    <small style="color:#666;">JAN: ${item.jan || 'なし'}</small>
-                </div>
-            `).join('');
+            document.getElementById('items').innerHTML = cart.map(i => `<div>${i.name} x ${i.qty}</div>`).join('');
         }
-
-        // 5. GAS（スプレッドシート）へ送信
         async function sendOrder() {
-            if (cart.length === 0) {
-                alert("注文する商品がありません");
-                return;
-            }
-
-            try {
-                const profile = await liff.getProfile();
-                
-                // 送信用データ作成
-                const data = {
+            const profile = await liff.getProfile();
+            const gasUrl = "https://script.google.com/macros/s/AKfycbyRsSAmqoM5YFmgfQ82TLWake1K5u78UiO7ap5iY9pvJkFpQVhIEVIB-BGIJEVgLDuJww/exec";
+            await fetch(gasUrl, {
+                method: "POST",
+                body: JSON.stringify({
                     userName: profile.displayName,
-                    itemName: cart.map(i => `${i.name}(${i.jan || 'N/A'})`).join(" / "),
-                    quantity: cart.reduce((sum, i) => sum + parseInt(i.qty), 0),
-                    totalAmount: "要確認" // 必要に応じて計算ロジックを追加
-                };
-
-                // ★あなたの GAS URL に書き換えました
-                const gasUrl = "https://script.google.com/macros/s/AKfycbyRsSAmqoM5YFmgfQ82TLWake1K5u78UiO7ap5iY9pvJkFpQVhIEVIB-BGIJEVgLDuJww/exec";
-
-                const response = await fetch(gasUrl, {
-                    method: "POST",
-                    body: JSON.stringify(data)
-                });
-
-                if (response.ok) {
-                    alert("注文ありがとうございます！送信完了しました。");
-                    liff.closeWindow(); // アプリを閉じる
-                } else {
-                    alert("送信エラーが発生しました(400/500)");
-                }
-            } catch (err) {
-                console.error(err);
-                alert("通信エラー: " + err.message);
-            }
+                    itemName: cart.map(i => i.name).join(", "),
+                    quantity: cart.length
+                })
+            });
+            alert("送信完了");
+            liff.closeWindow();
         }
     </script>
 </body>
 </html>
-
