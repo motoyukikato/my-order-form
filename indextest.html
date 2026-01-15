@@ -5,13 +5,34 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>内蔵スキャナー受注アプリ</title>
     <script src="https://cdn.jsdelivr.net/npm/@ericblade/quagga2/dist/quagga.min.js"></script>
-    <style>
-        body { font-family: sans-serif; padding: 20px; background: #f4f4f4; }
-        .card { background: white; padding: 15px; border-radius: 8px; margin-bottom: 10px; }
-        input, button { width: 100%; padding: 12px; margin: 8px 0; border-radius: 4px; border: 1px solid #ccc; box-sizing: border-box; }
-        button { background: #00B900; color: white; border: none; font-weight: bold; }
-        #interactive.viewport { width: 100%; height: 250px; overflow: hidden; position: relative; background: #000; display: none; }
-        #interactive.viewport canvas, video { position: absolute; top: 0; left: 0; width: 100%; height: 100%; }
+   <style>
+        body { font-family: sans-serif; padding: 15px; background: #f4f4f4; color: #333; }
+        .card { background: white; padding: 15px; border-radius: 12px; margin-bottom: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        h2 { text-align: center; color: #00B900; }
+        
+        /* 入力項目とボタンのデザイン */
+        input, button { width: 100%; padding: 14px; margin: 8px 0; border-radius: 8px; border: 1px solid #ddd; box-sizing: border-box; font-size: 16px; }
+        button { background: #00B900; color: white; border: none; font-weight: bold; cursor: pointer; }
+        button:active { opacity: 0.8; } /* 押した時に少し色が変わる */
+
+        /* ★カメラ表示エリアを大きく、スマホにフィットさせる設定 */
+        #interactive.viewport { 
+            width: 100%; 
+            height: 350px; /* 高さを250pxから350pxにアップ */
+            overflow: hidden; 
+            position: relative; 
+            background: #000; 
+            display: none; 
+            border-radius: 12px; 
+            border: 3px solid #00B900; /* 読み取り中と分かりやすく枠を付ける */
+        }
+        
+        /* 映像を枠いっぱいに広げる設定 */
+        #interactive.viewport video, #interactive.viewport canvas { 
+            width: 100%; 
+            height: 100%; 
+            object-fit: cover; /* 隙間なく映像を広げる */
+        }
     </style>
 </head>
 <body>
@@ -46,10 +67,25 @@
             viewport.style.display = 'block';
             
             Quagga.init({
-                inputStream: { name: "Live", type: "LiveStream", target: viewport },
-                decoder: { readers: ["ean_reader"] } // JANコード用
+                inputStream: {
+                    name: "Live",
+                    type: "LiveStream",
+                    target: viewport,
+                    constraints: {
+                        width: { min: 640 },
+                        height: { min: 480 },
+                        facingMode: "environment" // 背面カメラを優先的に使う設定
+                    },
+                },
+                decoder: { 
+                    readers: ["ean_reader"] // JANコード用
+                }
             }, function(err) {
-                if (err) { alert("カメラ起動失敗"); return; }
+                if (err) { 
+                    console.error(err);
+                    alert("カメラ起動失敗: " + err); 
+                    return; 
+                }
                 Quagga.start();
             });
 
@@ -92,3 +128,4 @@
     </script>
 </body>
 </html>
+
