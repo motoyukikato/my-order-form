@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JAN対応・受注アプリ</title>
+    <style>
+        body { font-family: sans-serif; padding: 20px; background: #f4f4f4; }
+        .card { background: white; padding: 15px; border-radius: 8px; margin-bottom: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        input, select, button { width: 100%; padding: 12px; margin: 8px 0; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
+        button { background: #00B900; color: white; border: none; font-weight: bold; cursor: pointer; }
+        .btn-scan { background: #555; }
+        .btn-add { background: #007bff; }
+        #orderList { margin-top: 20px; border-top: 2px solid #00B900; padding-top: 10px; }
+    </style>
+</head>
+<body>
+
+    <div class="card">
+        <h3>商品入力</h3>
+        <button class="btn-scan" onclick="scanBarcode()">📷 バーコードを読み取る</button>
+        <input type="text" id="janCode" placeholder="JANコード">
+        <input type="text" id="itemName" placeholder="商品名">
+        <input type="number" id="quantity" value="1">
+        <button class="btn-add" onclick="addToCart()">＋ リストに追加</button>
+    </div>
+
+    <div id="orderList">
+        <h3>注文リスト</h3>
+        <div id="items"></div>
+        <button onclick="sendOrder()">この内容で注文を確定する</button>
+    </div>
+
+    <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+    <script>
+        let cart = [];
+
+        async function initLiff() {
+            await liff.init({ liffId: "YOUR_LIFF_ID" });
+            if (!liff.isLoggedIn()) { liff.login(); }
+        }
+        initLiff();
+
+        // バーコードスキャン機能
+        async function scanBarcode() {
+            if (!liff.isInClient()) {
+                alert("LINEアプリ内で開いてください");
+                return;
+            }
+            try {
+                const result = await liff.scanCodeV2();
+                document.getElementById('janCode').value = result.value;
+                // 本来はここでJANコードから商品名を検索するDBがあると便利ですが、
+                // 今回は手入力か、簡易的な名称を入れます
+                document.getElementById('itemName').value = "読み取り商品 (" + result.value + ")";
+            } catch (err) {
+                console.error(err);
+                alert("スキャンに失敗しました");
+            }
+        }
+
+        // リストに追加
+        function addToCart() {
+            const item = {
+                jan: document.getElementById('janCode').value,
+                name: document.getElementById('itemName').value,
+                qty: document.getElementById('quantity').value
+            };
+            if (!item.name) return alert("商品名を入力してください");
+            
+            cart.push(item);
+            renderCart();
+            
+            // 入力欄をリセット
+            document.getElementById('janCode').value = "";
+            document.getElementById('itemName').value = "";
+            document.getElementById('quantity').value = "1";
+        }
+
+        // 画面にリストを表示
+        function renderCart() {
+            const div = document.getElementById('items');
+            div.innerHTML = cart.map((item, index) => `
+                <div class="card">
+                    ${item.name} x ${item.qty}個<br>
+                    <small>JAN: ${item.jan}</small>
+                </div>
+            `).join('');
+        }
+
+        // GASへ送信
+        async function sendOrder() {
+            if (cart.length === 0) return alert("リストが空です");
+            
+            const profile = await liff.getProfile();
+            const data = {
+                userName: profile.displayName,
+                // リストを1つの文字列にまとめて送信
+                itemName: cart.map(i => `${i.name}(${i.jan})`).join(", "),
+                quantity: cart.reduce((sum, i) => sum + parseInt(i.qty), 0),
+                totalAmount: 0 // 必要に応じて計算
+            };
+
+            const response = await fetch("YOUR_GAS_URL", {
+                method: "POST",
+                body: JSON.stringify(data)
+            });
+
+            if (response.ok) {
+                alert("注文が完了しました！");
+                liff.closeWindow();
+            }
+        }
+    </script>
+</body>
+</html>
