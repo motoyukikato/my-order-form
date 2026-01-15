@@ -54,78 +54,103 @@
     </div>
 
     <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
-    <script>
-        async function initLiff() {
-            await liff.init({ liffId: "2008900667-HkwbRxSb" });
+<script>
+    // 1. LIFF ID を設定 (あなたのID)
+    async function initLiff() {
+        try {
+            await liff.init({ liffId: "2008900667-HkwbRxSb" }); 
             if (!liff.isLoggedIn()) { liff.login(); }
+        } catch (err) {
+            alert("LIFF初期化エラー: " + err);
         }
-        initLiff();
+    }
+    initLiff();
 
-        // 内蔵カメラを起動する関数
-        function startScanner() {
-            const viewport = document.getElementById('interactive');
-            viewport.style.display = 'block';
-            
-            Quagga.init({
-                inputStream: {
-                    name: "Live",
-                    type: "LiveStream",
-                    target: viewport,
-                    constraints: {
-                        width: { min: 640 },
-                        height: { min: 480 },
-                        facingMode: "environment" // 背面カメラを優先的に使う設定
-                    },
+    // 2. カメラ起動
+    function startScanner() {
+        const viewport = document.getElementById('interactive');
+        viewport.style.display = 'block';
+        Quagga.init({
+            inputStream: {
+                name: "Live",
+                type: "LiveStream",
+                target: viewport,
+                constraints: {
+                    facingMode: "environment"
                 },
-                decoder: { 
-                    readers: ["ean_reader"] // JANコード用
-                }
-            }, function(err) {
-                if (err) { 
-                    console.error(err);
-                    alert("カメラ起動失敗: " + err); 
-                    return; 
-                }
-                Quagga.start();
-            });
+            },
+            decoder: { readers: ["ean_reader"] }
+        }, function(err) {
+            if (err) { alert("カメラ起動失敗: " + err); return; }
+            Quagga.start();
+        });
+        Quagga.onDetected(function(result) {
+            document.getElementById('janCode').value = result.codeResult.code;
+            document.getElementById('itemName').value = "スキャン商品(" + result.codeResult.code + ")";
+            Quagga.stop();
+            viewport.style.display = 'none';
+        });
+    }
 
-            Quagga.onDetected(function(result) {
-                document.getElementById('janCode').value = result.codeResult.code;
-                document.getElementById('itemName').value = "スキャン商品(" + result.codeResult.code + ")";
-                Quagga.stop();
-                viewport.style.display = 'none';
-                alert("読み取り成功！");
-            });
+    let cart = [];
+    function addToCart() {
+        const jan = document.getElementById('janCode').value;
+        const name = document.getElementById('itemName').value;
+        const qty = document.getElementById('quantity').value;
+
+        if (!name) { alert("商品名を入力してください"); return; }
+
+        cart.push({ jan, name, qty });
+        renderCart();
+
+        // 入力をリセット
+        document.getElementById('janCode').value = "";
+        document.getElementById('itemName').value = "";
+        document.getElementById('quantity').value = "1";
+    }
+
+    function renderCart() {
+        const div = document.getElementById('items');
+        div.innerHTML = cart.map(i => `
+            <div style="border-bottom:1px solid #ddd; padding:5px;">
+                ${i.name} x ${i.qty}個
+            </div>
+        `).join('');
+    }
+
+    // 3. 送信処理（ここを修正しました）
+    async function sendOrder() {
+        if (cart.length === 0) {
+            alert("リストに商品がありません");
+            return;
         }
 
-        // --- 以下の addToCart, renderCart, sendOrder は前回と同じ ---
-        let cart = [];
-        function addToCart() {
-            cart.push({
-                jan: document.getElementById('janCode').value,
-                name: document.getElementById('itemName').value,
-                qty: document.getElementById('quantity').value
-            });
-            renderCart();
-        }
-        function renderCart() {
-            document.getElementById('items').innerHTML = cart.map(i => `<div>${i.name} x ${i.qty}</div>`).join('');
-        }
-        async function sendOrder() {
+        try {
             const profile = await liff.getProfile();
+            // あなたのGAS URL
             const gasUrl = "https://script.google.com/macros/s/AKfycbyRsSAmqoM5YFmgfQ82TLWake1K5u78UiO7ap5iY9pvJkFpQVhIEVIB-BGIJEVgLDuJww/exec";
-            await fetch(gasUrl, {
-                method: "POST",
-                body: JSON.stringify({
-                    userName: profile.displayName,
-                    itemName: cart.map(i => i.name).join(", "),
-                    quantity: cart.length
-                })
-            });
-            alert("送信完了");
-            liff.closeWindow();
-        }
-    </script>
-</body>
-</html>
+            
+            // 送信内容の整理
+            const orderData = {
+                userName: profile.displayName,
+                itemName: cart.map(i => `${i.name}(${i.jan})`).join(", "),
+                quantity: cart.reduce((sum, i) => sum + parseInt(i.qty), 0)
+            };
 
+            // GASへ送信
+            const response = await fetch(gasUrl, {
+                method: "POST",
+                mode: "no-cors", // 重要：セキュリティによるエラーを防ぐ
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(orderData)
+            });
+
+            // 成功メッセージ
+            alert("注文を受け付けました！");
+            liff.closeWindow(); // 画面を閉じる
+
+        } catch (error) {
+            alert("送信に失敗しました: " + error.message);
+        }
+    }
+</script>
