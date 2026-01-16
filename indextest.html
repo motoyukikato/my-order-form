@@ -2,200 +2,141 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>在庫確認・受注アプリ</title>
-    <script src="https://cdn.jsdelivr.net/npm/@ericblade/quagga2/dist/quagga.min.js"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>高精度スキャナー受注アプリ</title>
+    <script src="https://unpkg.com/html5-qrcode"></script>
     <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
     <style>
-        body { font-family: sans-serif; padding: 15px; background: #f4f4f4; color: #333; }
-        .card { background: white; padding: 15px; border-radius: 12px; margin-bottom: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
-        h2 { text-align: center; color: #00B900; }
-        input, button { width: 100%; padding: 14px; margin: 8px 0; border-radius: 8px; border: 1px solid #ddd; box-sizing: border-box; font-size: 16px; }
-        button { background: #00B900; color: white; border: none; font-weight: bold; cursor: pointer; transition: 0.3s; }
-        button:disabled { background: #ccc !important; cursor: not-allowed; }
-        
-        #statusInfo { margin-top: 5px; font-weight: bold; font-size: 14px; }
-        .stock-label { color: #007bff; }
-        .price-label { color: #e63946; margin-left: 10px; }
-
-        /* カメラエリア */
-        #interactive.viewport { 
-            width: 100%; 
-            height: 300px; 
-            overflow: hidden; 
-            position: relative; 
-            background: #000; 
-            display: none; 
-            border-radius: 12px; 
-            border: 3px solid #00B900; 
-        }
-        #interactive.viewport video, #interactive.viewport canvas { 
-            width: 100%; 
-            height: 100%; 
-            object-fit: cover; 
-        }
+        body { font-family: sans-serif; margin: 0; padding: 20px; background: #f8f9fa; }
+        .card { background: white; padding: 20px; border-radius: 15px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); margin-bottom: 20px; }
+        h2 { color: #00B900; text-align: center; margin-top: 0; }
+        #reader { width: 100%; border-radius: 12px; overflow: hidden; display: none; }
+        input, button { width: 100%; padding: 15px; margin: 10px 0; border-radius: 10px; border: 1px solid #ddd; box-sizing: border-box; font-size: 16px; }
+        button { background: #00B900; color: white; border: none; font-weight: bold; }
+        .btn-scan { background: #555; }
+        .btn-add { background: #007bff; }
+        .btn-send { background: #28a745; margin-top: 20px; height: 60px; font-size: 18px; }
+        .item-row { padding: 10px; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; }
     </style>
 </head>
 <body>
 
-    <h2>内蔵スキャナー受注</h2>
+<div class="card">
+    <h2>在庫確認・受注</h2>
+    
+    <div id="reader"></div>
+    
+    <button id="startBtn" class="btn-scan" onclick="startScan()">📷 バーコードをスキャン</button>
+    
+    <label>JANコード</label>
+    <input type="text" id="janCode" readonly placeholder="スキャンすると入力されます">
+    
+    <label>商品名</label>
+    <input type="text" id="itemName" placeholder="商品名を入力">
+    
+    <label>数量</label>
+    <input type="number" id="quantity" value="1">
+    
+    <button class="btn-add" onclick="addToCart()">＋ リストに追加</button>
+</div>
 
-    <div class="card">
-        <div id="interactive" class="viewport"></div>
-        <button id="scanBtn" onclick="startScanner()" style="background:#555;">📷 カメラを起動する</button>
-        
-        <input type="text" id="janCode" placeholder="JANコード">
-        <input type="text" id="itemName" placeholder="商品名/品番">
-        
-        <div id="statusInfo">
-            <span class="stock-label" id="dispStock">在庫: ---</span>
-            <span class="price-label" id="dispPrice">単価: ---</span>
-        </div>
-
-        <input type="number" id="quantity" value="1" min="1">
-        <button onclick="addToCart()" style="background:#007bff;">＋ リストに追加</button>
-    </div>
-
-    <div id="orderList" class="card">
-        <h3>注文リスト</h3>
-        <div id="items" style="margin-bottom:10px;"></div>
-        <button id="submitBtn" onclick="sendOrder()">注文を確定する</button>
-    </div>
+<div class="card">
+    <h3>現在の注文リスト</h3>
+    <div id="cartList"></div>
+    <button id="sendBtn" class="btn-send" onclick="sendOrder()">注文を確定する</button>
+</div>
 
 <script>
-    // --- 【設定】あなたの最新のGAS URL ---
-    const gasUrl = "https://script.google.com/macros/s/AKfycbwPci5JdzhT3OlOMcyI06bJHliPwA5-eQe2fjb3IkhQE8tBdRWSh4Lf9VqfQwhOi9ISbw/exec";
+    // ★★★ 設定箇所 ★★★
+    const MY_GAS_URL = "https://script.google.com/macros/s/AKfycbyDl1Rsj3Y1AHzaeB3GZa06fhMMslxYuzxmHtavXJcqXYML1oMf9fpqaqopJ04y7PcyNA/exec"; 
+    const MY_LIFF_ID = "2008900667-HkwbRxSb";
+    // ★★★★★★★★★★★★
 
-    // --- 1. LIFF初期化 ---
+    let html5QrCode;
+
+    // LIFF初期化
     async function initLiff() {
-        try {
-            await liff.init({ liffId: "2008900667-HkwbRxSb" }); 
-            if (!liff.isLoggedIn()) { liff.login(); }
-        } catch (err) { console.error("LIFF初期化エラー", err); }
+        await liff.init({ liffId: MY_LIFF_ID });
+        if (!liff.isLoggedIn()) { liff.login(); }
     }
     initLiff();
 
-    let isScanning = false; 
+    // スキャン開始
+    function startScan() {
+        const readerDiv = document.getElementById('reader');
+        readerDiv.style.display = 'block';
+        document.getElementById('startBtn').style.display = 'none';
 
-    // --- 2. スキャナー起動 ---
-    function startScanner() {
-        if (isScanning) return; 
-        const viewport = document.getElementById('interactive');
-        viewport.style.display = 'block';
-        
-       
-Quagga.init({
-    inputStream: {
-        name: "Live",
-        type: "LiveStream",
-        target: viewport,
-        constraints: {
-            // 解像度をフルHDクラスに引き上げる
-            width: { min: 1280 },
-            height: { min: 720 },
-            facingMode: "environment",
-            // ピント合わせ（オートフォーカス）をより強力に要求
-            focusMode: "continuous"
-        },
-    },
-    // 誤読防止：パッチサイズを小さくし、ハーフサンプルを無効にする
-    locate: true,
-    halfSample: false,
-    patchSize: "small", 
-    decoder: {
-        readers: ["ean_reader"],
-        // 誤読防止：複数回の照合が一致した時だけ結果を出す（重要！）
-        multiple: false
-    } function(err) {
-            if (err) { alert("カメラ起動失敗: " + err); return; }
-            Quagga.start();
-        });
-        Quagga.onDetected(async function(result) {
-            if (isScanning) return; 
-            isScanning = true; 
-            
-            const code = result.codeResult.code;
-            document.getElementById('janCode').value = code;
-            
-            // --- GASに情報を問い合わせ ---
-            try {
-                const response = await fetch(`${gasUrl}?jan=${code}`);
-                const data = await response.json();
-                
-                document.getElementById('itemName').value = data.name;
-                document.getElementById('dispStock').innerText = "在庫: " + data.stock;
-                document.getElementById('dispPrice').innerText = "単価: " + data.price + "円";
-            } catch (e) {
-                document.getElementById('itemName').value = "商品(" + code + ")";
+        html5QrCode = new Html5Qrcode("reader");
+        const config = { fps: 10, qrbox: { width: 250, height: 150 } };
+
+        html5QrCode.start(
+            { facingMode: "environment" }, 
+            config,
+            (decodedText) => {
+                document.getElementById('janCode').value = decodedText;
+                document.getElementById('itemName').value = "商品:" + decodedText;
+                stopScan();
             }
-            
-            Quagga.stop();
-            viewport.style.display = 'none';
-            setTimeout(() => { isScanning = false; }, 1500);
-        });
+        ).catch(err => alert("カメラ起動失敗: " + err));
     }
 
-    // --- 3. リスト追加処理 ---
+    function stopScan() {
+        if (html5QrCode) {
+            html5QrCode.stop().then(() => {
+                document.getElementById('reader').style.display = 'none';
+                document.getElementById('startBtn').style.display = 'block';
+            });
+        }
+    }
+
+    // カート処理
     let cart = [];
     function addToCart() {
         const jan = document.getElementById('janCode').value;
         const name = document.getElementById('itemName').value;
         const qty = document.getElementById('quantity').value;
-        if (!name || !jan) { alert("商品が読み込まれていません"); return; }
+        if(!jan || !name) return alert("商品をスキャンしてください");
 
-        cart.push({ jan, name, qty });
-        renderCart();
-
-        // フォームリセット
+        cart.push({ name: name, qty: qty });
+        updateList();
+        
+        // リセット
         document.getElementById('janCode').value = "";
         document.getElementById('itemName').value = "";
-        document.getElementById('quantity').value = "1";
-        document.getElementById('dispStock').innerText = "在庫: ---";
-        document.getElementById('dispPrice').innerText = "単価: ---";
     }
 
-    function renderCart() {
-        const div = document.getElementById('items');
-        div.innerHTML = cart.map((i, index) => `
-            <div style="border-bottom:1px solid #ddd; padding:8px; display:flex; justify-content:space-between; align-items:center;">
-                <span>${i.name} x ${i.qty}</span>
-                <span style="color:red; cursor:pointer;" onclick="removeItem(${index})">✕ 削除</span>
-            </div>
-        `).join('');
+    function updateList() {
+        document.getElementById('cartList').innerHTML = cart.map(i => 
+            `<div class="item-row"><span>${i.name}</span><span>${i.qty}個</span></div>`
+        ).join('');
     }
 
-    function removeItem(index) {
-        cart.splice(index, 1);
-        renderCart();
-    }
-
-    // --- 4. 注文送信 ---
+    // 送信処理
     async function sendOrder() {
-        if (cart.length === 0) { alert("リストが空です"); return; }
-        const submitBtn = document.getElementById('submitBtn');
-        submitBtn.disabled = true;
-        submitBtn.innerText = "送信中...";
+        if (cart.length === 0) return alert("リストが空です");
+        const sendBtn = document.getElementById('sendBtn');
+        sendBtn.disabled = true;
+        sendBtn.innerText = "送信中...";
 
         try {
             const profile = await liff.getProfile();
-            const orderData = { userName: profile.displayName, orders: cart };
-
-            await fetch(gasUrl, {
+            await fetch(MY_GAS_URL, {
                 method: "POST",
-                mode: "no-cors", // CORSエラー回避
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(orderData)
+                mode: "no-cors",
+                body: JSON.stringify({
+                    userName: profile.displayName,
+                    itemName: cart.map(i => i.name).join(", "),
+                    quantity: cart.length
+                })
             });
-
-            alert("注文を受け付けました！");
+            alert("注文が完了しました！");
             liff.closeWindow();
-        } catch (error) {
-            alert("送信エラー: " + error.message);
-            submitBtn.disabled = false;
-            submitBtn.innerText = "注文を確定する";
+        } catch (e) {
+            alert("エラー: " + e);
+            sendBtn.disabled = false;
         }
     }
 </script>
 </body>
 </html>
-
