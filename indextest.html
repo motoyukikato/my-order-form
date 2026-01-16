@@ -50,7 +50,10 @@
     </div>
 
 <script>
-    // --- LIFF初期化 ---
+    // --- 共通設定：GASのURL ---
+    const gasUrl = "https://script.google.com/macros/s/AKfycbxXctNq4NQeH_hhdpY8_Gv9LfYdzreHyw8fCzd6liy07CKNhJN6wFmtPeZP86bp3vmuBQ/exec";
+
+    // --- 1. LIFF初期化 ---
     async function initLiff() {
         try {
             await liff.init({ liffId: "2008900667-HkwbRxSb" }); 
@@ -61,7 +64,7 @@
 
     let isScanning = false; 
 
-    // --- スキャナー起動 ---
+    // --- 2. スキャナー制御 ---
     function startScanner() {
         if (isScanning) return; 
         const viewport = document.getElementById('interactive');
@@ -82,10 +85,8 @@
             const code = result.codeResult.code;
             document.getElementById('janCode').value = code;
             
-            // --- GASに在庫情報を問い合わせ (doGet呼び出し) ---
-            const gasUrl = "ここにGASのURLを貼る"; 
+            // --- GASに在庫情報を問い合わせ (doGet) ---
             try {
-                // GETリクエストで問い合わせ
                 const response = await fetch(`${gasUrl}?jan=${code}`);
                 const data = await response.json();
                 
@@ -103,7 +104,7 @@
         });
     }
 
-    // --- カート処理 ---
+    // --- 3. カート処理 ---
     let cart = [];
     function addToCart() {
         const jan = document.getElementById('janCode').value;
@@ -114,7 +115,7 @@
         cart.push({ jan, name, qty });
         renderCart();
 
-        // フォームリセット
+        // 入力リセット
         document.getElementById('janCode').value = "";
         document.getElementById('itemName').value = "";
         document.getElementById('quantity').value = "1";
@@ -125,9 +126,9 @@
     function renderCart() {
         const div = document.getElementById('items');
         div.innerHTML = cart.map((i, index) => `
-            <div style="border-bottom:1px solid #ddd; padding:8px; display:flex; justify-content:space-between;">
+            <div style="border-bottom:1px solid #ddd; padding:8px; display:flex; justify-content:space-between; align-items:center;">
                 <span>${i.name} x ${i.qty}</span>
-                <span style="color:red;" onclick="removeItem(${index})">✕ 削除</span>
+                <span style="color:red; cursor:pointer;" onclick="removeItem(${index})">✕ 削除</span>
             </div>
         `).join('');
     }
@@ -137,13 +138,38 @@
         renderCart();
     }
 
-    // --- 注文確定送信 ---
+    // --- 4. 注文送信 (doPost) ---
     async function sendOrder() {
         if (cart.length === 0) { alert("リストに商品がありません"); return; }
+        
         const submitBtn = document.getElementById('submitBtn');
         submitBtn.disabled = true;
         submitBtn.innerText = "送信中...";
 
         try {
             const profile = await liff.getProfile();
-            const gasUrl = "https://script.google.com/macros/s/AKfycbxXctNq4NQeH_hhdpY8_Gv9LfYdzreHyw8fCzd6liy07CKNhJN6wFmtPeZP86bp3vmuBQ/exec";
+            
+            const orderData = {
+                userName: profile.displayName,
+                orders: cart 
+            };
+
+            await fetch(gasUrl, {
+                method: "POST",
+                mode: "no-cors",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(orderData)
+            });
+
+            alert("注文を受け付けました！");
+            liff.closeWindow();
+
+        } catch (error) {
+            alert("送信に失敗しました: " + error.message);
+            submitBtn.disabled = false;
+            submitBtn.innerText = "注文を確定する";
+        }
+    }
+</script>
+</body>
+</html>
