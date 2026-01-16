@@ -83,19 +83,33 @@
         const viewport = document.getElementById('interactive');
         viewport.style.display = 'block';
         
-        Quagga.init({
-            inputStream: { 
-                name: "Live", 
-                type: "LiveStream", 
-                target: viewport, 
-                constraints: { facingMode: "environment" } 
-            },
-            decoder: { readers: ["ean_reader"], multiple: false }
-        }, function(err) {
+       
+Quagga.init({
+    inputStream: {
+        name: "Live",
+        type: "LiveStream",
+        target: viewport,
+        constraints: {
+            // 解像度をフルHDクラスに引き上げる
+            width: { min: 1280 },
+            height: { min: 720 },
+            facingMode: "environment",
+            // ピント合わせ（オートフォーカス）をより強力に要求
+            focusMode: "continuous"
+        },
+    },
+    // 誤読防止：パッチサイズを小さくし、ハーフサンプルを無効にする
+    locate: true,
+    halfSample: false,
+    patchSize: "small", 
+    decoder: {
+        readers: ["ean_reader"],
+        // 誤読防止：複数回の照合が一致した時だけ結果を出す（重要！）
+        multiple: false
+    } function(err) {
             if (err) { alert("カメラ起動失敗: " + err); return; }
             Quagga.start();
         });
-
         Quagga.onDetected(async function(result) {
             if (isScanning) return; 
             isScanning = true; 
@@ -184,3 +198,4 @@
 </script>
 </body>
 </html>
+
