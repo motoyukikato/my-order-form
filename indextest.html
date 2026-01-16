@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>内蔵スキャナー受注アプリ</title>
+    <title>在庫確認・受注アプリ</title>
     <script src="https://cdn.jsdelivr.net/npm/@ericblade/quagga2/dist/quagga.min.js"></script>
     <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
     <style>
@@ -13,6 +13,12 @@
         input, button { width: 100%; padding: 14px; margin: 8px 0; border-radius: 8px; border: 1px solid #ddd; box-sizing: border-box; font-size: 16px; }
         button { background: #00B900; color: white; border: none; font-weight: bold; cursor: pointer; transition: 0.3s; }
         button:disabled { background: #ccc !important; cursor: not-allowed; }
+        
+        /* 在庫表示エリア */
+        #statusInfo { margin-top: 5px; font-weight: bold; font-size: 14px; }
+        .stock-label { color: #007bff; }
+        .price-label { color: #e63946; margin-left: 10px; }
+
         #interactive.viewport { width: 100%; height: 300px; overflow: hidden; position: relative; background: #000; display: none; border-radius: 12px; border: 3px solid #00B900; }
         #interactive.viewport video, #interactive.viewport canvas { width: 100%; height: 100%; object-fit: cover; }
     </style>
@@ -26,8 +32,14 @@
         <button id="scanBtn" onclick="startScanner()" style="background:#555;">📷 カメラを起動する</button>
         
         <input type="text" id="janCode" placeholder="JANコード">
-        <input type="text" id="itemName" placeholder="商品名">
-        <input type="number" id="quantity" value="1">
+        <input type="text" id="itemName" placeholder="商品名/品番">
+        
+        <div id="statusInfo">
+            <span class="stock-label" id="dispStock">在庫: ---</span>
+            <span class="price-label" id="dispPrice">単価: ---</span>
+        </div>
+
+        <input type="number" id="quantity" value="1" min="1">
         <button onclick="addToCart()" style="background:#007bff;">＋ リストに追加</button>
     </div>
 
@@ -38,6 +50,7 @@
     </div>
 
 <script>
+    // --- LIFF初期化 ---
     async function initLiff() {
         try {
             await liff.init({ liffId: "2008900667-HkwbRxSb" }); 
@@ -47,10 +60,13 @@
     initLiff();
 
     let isScanning = false; 
+
+    // --- スキャナー起動 ---
     function startScanner() {
         if (isScanning) return; 
         const viewport = document.getElementById('interactive');
         viewport.style.display = 'block';
+        
         Quagga.init({
             inputStream: { name: "Live", type: "LiveStream", target: viewport, constraints: { facingMode: "environment" } },
             decoder: { readers: ["ean_reader"], multiple: false }
@@ -58,29 +74,52 @@
             if (err) { alert("カメラ起動失敗: " + err); return; }
             Quagga.start();
         });
-        Quagga.onDetected(function(result) {
+
+        Quagga.onDetected(async function(result) {
             if (isScanning) return; 
             isScanning = true; 
+            
             const code = result.codeResult.code;
             document.getElementById('janCode').value = code;
-            document.getElementById('itemName').value = "スキャン商品(" + code + ")";
+            
+            // --- GASに在庫情報を問い合わせ (doGet呼び出し) ---
+            const gasUrl = "ここにGASのURLを貼る"; 
+            try {
+                // GETリクエストで問い合わせ
+                const response = await fetch(`${gasUrl}?jan=${code}`);
+                const data = await response.json();
+                
+                document.getElementById('itemName').value = data.name;
+                document.getElementById('dispStock').innerText = "在庫: " + data.stock;
+                document.getElementById('dispPrice').innerText = "単価: " + data.price + "円";
+            } catch (e) {
+                document.getElementById('itemName').value = "商品(" + code + ")";
+                document.getElementById('dispStock').innerText = "在庫: 取得失敗";
+            }
+            
             Quagga.stop();
             viewport.style.display = 'none';
             setTimeout(() => { isScanning = false; }, 1500);
         });
     }
 
+    // --- カート処理 ---
     let cart = [];
     function addToCart() {
         const jan = document.getElementById('janCode').value;
         const name = document.getElementById('itemName').value;
         const qty = document.getElementById('quantity').value;
         if (!name || !jan) { alert("商品を入力してください"); return; }
+
         cart.push({ jan, name, qty });
         renderCart();
+
+        // フォームリセット
         document.getElementById('janCode').value = "";
         document.getElementById('itemName').value = "";
         document.getElementById('quantity').value = "1";
+        document.getElementById('dispStock').innerText = "在庫: ---";
+        document.getElementById('dispPrice').innerText = "単価: ---";
     }
 
     function renderCart() {
@@ -98,6 +137,7 @@
         renderCart();
     }
 
+    // --- 注文確定送信 ---
     async function sendOrder() {
         if (cart.length === 0) { alert("リストに商品がありません"); return; }
         const submitBtn = document.getElementById('submitBtn');
@@ -106,33 +146,4 @@
 
         try {
             const profile = await liff.getProfile();
-            // ↓ ここにご自身のGASウェブアプリURLを貼り付けてください
-            const gasUrl = "https://script.google.com/macros/s/AKfycbzh_PCW6W3zpFNdyM3p-nnSH6GuMaShr7D_foMD6TP5EFvCKV3tC9GqR_laTNb-XFOVOQ/exec";
-            
-            const orderData = {
-                userName: profile.displayName,
-                orders: cart // カートの中身（配列）をそのまま送る
-            };
-
-            await fetch(gasUrl, {
-                method: "POST",
-                mode: "no-cors",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(orderData)
-            });
-
-            alert("注文を受け付けました！");
-            liff.closeWindow();
-        } catch (error) {
-            alert("送信に失敗しました: " + error.message);
-            submitBtn.disabled = false;
-            submitBtn.innerText = "注文を確定する";
-        }
-    }
-</script>
-</body>
-</html>
-
-
-
-
+            const gasUrl = "https://script.google.com/macros/s/AKfycbxXctNq4NQeH_hhdpY8_Gv9LfYdzreHyw8fCzd6liy07CKNhJN6wFmtPeZP86bp3vmuBQ/exec";
