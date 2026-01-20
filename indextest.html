@@ -10,9 +10,12 @@
         body { font-family: sans-serif; margin: 0; padding: 20px; background: #f8f9fa; }
         .card { background: white; padding: 20px; border-radius: 15px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); margin-bottom: 20px; }
         h2 { color: #00B900; text-align: center; margin-top: 0; }
-        #reader { width: 100%; border-radius: 12px; overflow: hidden; display: none; }
+        #reader { width: 100%; border-radius: 12px; overflow: hidden; display: none; margin-bottom: 10px; }
         input, button { width: 100%; padding: 15px; margin: 10px 0; border-radius: 10px; border: 1px solid #ddd; box-sizing: border-box; font-size: 16px; }
         button { background: #00B900; color: white; border: none; font-weight: bold; }
+        .info-text { font-size: 14px; color: #666; margin: 5px 0; }
+        .stock-val { color: #007bff; font-weight: bold; }
+        .price-val { color: #e63946; font-weight: bold; }
         .btn-scan { background: #555; }
         .btn-add { background: #007bff; }
         .btn-send { background: #28a745; margin-top: 20px; height: 60px; font-size: 18px; }
@@ -23,16 +26,19 @@
 
 <div class="card">
     <h2>在庫確認・受注</h2>
-    
     <div id="reader"></div>
-    
     <button id="startBtn" class="btn-scan" onclick="startScan()">📷 バーコードをスキャン</button>
     
     <label>JANコード</label>
-    <input type="text" id="janCode" readonly placeholder="スキャンすると入力されます">
+    <input type="text" id="janCode" readonly placeholder="スキャンしてください">
     
     <label>商品名</label>
-    <input type="text" id="itemName" placeholder="商品名を入力">
+    <input type="text" id="itemName" placeholder="商品名が自動入力されます">
+
+    <div id="itemDetail" style="display:none; background:#f0f7ff; padding:10px; border-radius:8px;">
+        <p class="info-text">在庫状況: <span id="dispStock" class="stock-val">--</span></p>
+        <p class="info-text">販売単価: <span id="dispPrice" class="price-val">--</span>円</p>
+    </div>
     
     <label>数量</label>
     <input type="number" id="quantity" value="1">
@@ -47,38 +53,56 @@
 </div>
 
 <script>
-    // ★★★ 設定箇所 ★★★
+    // 設定を反映済みです
     const MY_GAS_URL = "https://script.google.com/macros/s/AKfycbxRGFsQLGFo2tg6BX7orzGCSzz3jEsUhgummaz7HUHnwvVYtQjt1FGb_L7399KVxTpnvQ/exec"; 
     const MY_LIFF_ID = "2008900667-HkwbRxSb";
-    // ★★★★★★★★★★★★
 
     let html5QrCode;
 
-    // LIFF初期化
     async function initLiff() {
         await liff.init({ liffId: MY_LIFF_ID });
         if (!liff.isLoggedIn()) { liff.login(); }
     }
     initLiff();
 
-    // スキャン開始
     function startScan() {
         const readerDiv = document.getElementById('reader');
         readerDiv.style.display = 'block';
         document.getElementById('startBtn').style.display = 'none';
 
         html5QrCode = new Html5Qrcode("reader");
-        const config = { fps: 10, qrbox: { width: 250, height: 150 } };
-
         html5QrCode.start(
             { facingMode: "environment" }, 
-            config,
-            (decodedText) => {
+            { fps: 10, qrbox: { width: 250, height: 150 } },
+            async (decodedText) => {
                 document.getElementById('janCode').value = decodedText;
-                document.getElementById('itemName').value = "商品:" + decodedText;
                 stopScan();
+                // 在庫データを取得しにいく命令を実行
+                fetchProductInfo(decodedText);
             }
         ).catch(err => alert("カメラ起動失敗: " + err));
+    }
+
+    // ★追加：スキャン後にGASへ商品情報を聞きに行く関数
+    async function fetchProductInfo(jan) {
+        document.getElementById('itemName').value = "スプレッドシートを照会中...";
+        try {
+            const res = await fetch(`${MY_GAS_URL}?jan=${jan}`);
+            const data = await res.json();
+            
+            if(data.name && !data.name.includes("未登録")) {
+                document.getElementById('itemName').value = data.name;
+                document.getElementById('dispStock').innerText = data.stock;
+                document.getElementById('dispPrice').innerText = data.price;
+                document.getElementById('itemDetail').style.display = 'block';
+            } else {
+                alert("商品が見つかりませんでした(" + jan + ")");
+                document.getElementById('itemName').value = "未登録の商品";
+            }
+        } catch (e) {
+            alert("通信エラー: GASの設定（全員に公開）を確認してください");
+            document.getElementById('itemName').value = "エラー";
+        }
     }
 
     function stopScan() {
@@ -90,20 +114,19 @@
         }
     }
 
-    // カート処理
     let cart = [];
     function addToCart() {
         const jan = document.getElementById('janCode').value;
         const name = document.getElementById('itemName').value;
         const qty = document.getElementById('quantity').value;
-        if(!jan || !name) return alert("商品をスキャンしてください");
+        if(!jan || name === "スプレッドシートを照会中..." || name === "エラー") return alert("商品をスキャンしてください");
 
         cart.push({ name: name, qty: qty });
         updateList();
         
-        // リセット
         document.getElementById('janCode').value = "";
         document.getElementById('itemName').value = "";
+        document.getElementById('itemDetail').style.display = 'none';
     }
 
     function updateList() {
@@ -112,7 +135,6 @@
         ).join('');
     }
 
-    // 送信処理
     async function sendOrder() {
         if (cart.length === 0) return alert("リストが空です");
         const sendBtn = document.getElementById('sendBtn');
@@ -140,6 +162,3 @@
 </script>
 </body>
 </html>
-
-
-
