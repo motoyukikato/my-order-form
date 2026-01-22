@@ -21,7 +21,9 @@ async function fetchItemName(input) {
                     <div style="font-size: 15px; color: #2c3e50; margin: 3px 0;"><strong>${data.itemName}</strong></div>
                     <div style="display: flex; justify-content: space-between; font-size: 13px;">
                         <span style="color: #e67e22;">単価: ¥${data.price ? Number(data.price).toLocaleString() : '---'}</span>
-                        <span style="color: ${data.stock > 0 ? '#28a745' : '#ff4d4d'};">在庫: ${data.stock > 0 ? data.stock + ' 個' : '欠品中'}</span>
+                        <span style="color: #2c3e50;">
+    在庫: ${data.stock || '---'}
+</span>
                     </div>
                 </div>`;
         } else {
@@ -31,3 +33,4 @@ async function fetchItemName(input) {
         display.innerHTML = "<div style='color: #ff4d4d;'>検索エラーが発生しました</div>";
     }
 }
+
