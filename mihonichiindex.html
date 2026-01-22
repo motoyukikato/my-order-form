@@ -1,129 +1,12 @@
-<!DOCTYPE html>
-<html lang="ja">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>名古屋花き 注文アプリ</title>
-    <script charset="utf-8" src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-    <style>
-        :root { --primary-color: #2c3e50; --accent-color: #28a745; --bg-color: #f8f9fa; }
-        body { font-family: 'Helvetica Neue', Arial, sans-serif; margin: 0; padding-bottom: 80px; background-color: var(--bg-color); color: #333; }
-        
-        /* ヘッダー */
-        .header { background: white; padding: 15px; text-align: center; box-shadow: 0 2px 5px rgba(0,0,0,0.1); position: sticky; top: 0; z-index: 100; }
-        .header h2 { margin: 0; font-size: 18px; color: var(--primary-color); }
-
-        /* コンテンツエリア */
-        .content { padding: 15px; max-width: 500px; margin: 0 auto; }
-        .card { background: white; border-radius: 12px; padding: 15px; margin-bottom: 15px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
-        .section-title { font-size: 14px; font-weight: bold; color: var(--primary-color); margin-bottom: 10px; border-left: 4px solid var(--accent-color); padding-left: 8px; }
-
-        /* 入力項目 */
-        .form-group { margin-bottom: 12px; }
-        label { display: block; font-size: 12px; margin-bottom: 4px; color: #666; }
-        input, textarea { width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 16px; box-sizing: border-box; }
-        
-        /* 商品カード */
-        .item-row { position: relative; padding-top: 10px; border-top: 1px dashed #eee; margin-top: 10px; }
-        .item-name-display { font-size: 13px; color: var(--accent-color); font-weight: bold; margin: 5px 0; min-height: 18px; }
-
-        /* 下部ナビゲーションメニュー */
-        .footer-nav { position: fixed; bottom: 0; left: 0; right: 0; background: white; display: flex; justify-content: space-around; padding: 10px 0; border-top: 1px solid #ddd; box-shadow: 0 -2px 10px rgba(0,0,0,0.05); }
-        .nav-item { text-align: center; color: #777; text-decoration: none; font-size: 10px; flex: 1; border: none; background: none; cursor: pointer; }
-        .nav-item i { display: block; font-size: 20px; margin-bottom: 3px; }
-        .nav-item.active { color: var(--primary-color); font-weight: bold; }
-        .nav-item.send { color: var(--accent-color); }
-
-        /* ボタン */
-        .btn-add { background: #e9ecef; color: #495057; border: none; width: 100%; padding: 10px; border-radius: 8px; font-weight: bold; cursor: pointer; margin-top: 10px; }
-    </style>
-</head>
-<body>
-
-<div class="header">
-    <h2>顧客情報入力</h2>
-</div>
-
-<div class="content" id="mainContent">
-    <div class="card">
-        <div class="section-title">基本情報</div>
-        <div class="form-group">
-            <label>店名 (必須)</label>
-            <input type="text" id="storeName" placeholder="株式会社〇〇">
-        </div>
-        <div class="form-group">
-            <label>メールアドレス</label>
-            <input type="email" id="email" placeholder="控え送信先">
-        </div>
-    </div>
-
-    <div class="card" id="orderCard">
-        <div class="section-title">注文内容</div>
-        <div id="itemContainer">
-            <div class="item-row">
-                <div class="form-group">
-                    <label>品番 / JAN</label>
-                    <input type="text" class="partNo-input" placeholder="入力で検索" onchange="fetchItemName(this)">
-                    <div class="item-name-display"></div>
-                </div>
-                <div class="form-group">
-                    <label>数量</label>
-                    <input type="number" class="quantity-input" value="1" min="1">
-                </div>
-            </div>
-        </div>
-        <button class="btn-add" onclick="addNewItem()"><i class="fas fa-plus"></i> 商品を追加</button>
-    </div>
-
-    <div class="card">
-        <div class="section-title">備考</div>
-        <textarea id="comments" rows="3" placeholder="ご要望があればご記入ください"></textarea>
-    </div>
-</div>
-
-<nav class="footer-nav">
-    <button class="nav-item active" onclick="location.reload()">
-        <i class="fas fa-home"></i>ホーム
-    </button>
-    <button class="nav-item" onclick="document.querySelector('.partNo-input').focus()">
-        <i class="fas fa-barcode"></i>入力
-    </button>
-    <button class="nav-item send" onclick="sendOrder()">
-        <i class="fas fa-paper-plane"></i>注文送信
-    </button>
-    <button class="nav-item" onclick="liff.closeWindow()">
-        <i class="fas fa-times-circle"></i>終了
-    </button>
-</nav>
-
-<script>
-    const flowUrl = "https://default9b258ec3f0904041bdcf3f8e9c128b.4f.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/2a103696f19b42f685e940c3f0bdab05/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=TuEWCx-Z2Grf6fep1ZQtUXF762w8NZbPJUAS8XxIod4";
-
-    async function initLiff() {
-        await liff.init({ liffId: "2008835052-zCjbE0pV" });
-        if (!liff.isLoggedIn()) liff.login();
-    }
-
-    window.onload = () => {
-        initLiff();
-        document.getElementById('storeName').value = localStorage.getItem('storeName') || "";
-        document.getElementById('email').value = localStorage.getItem('email') || "";
-    };
-
-    function addNewItem() {
-        const container = document.getElementById('itemContainer');
-        const clone = container.firstElementChild.cloneNode(true);
-        clone.querySelector('.partNo-input').value = "";
-        clone.querySelector('.item-name-display').textContent = "";
-        container.appendChild(clone);
-    }
-
+// JANコードから複数の商品情報を検索して表示する関数
     async function fetchItemName(input) {
         const jan = input.value;
         const display = input.parentElement.querySelector('.item-name-display');
-        if (!jan) return;
-        display.textContent = "検索中...";
+        if (!jan) { display.innerHTML = ""; return; }
+        
+        display.innerHTML = "<i class='fas fa-spinner fa-spin'></i> 検索中...";
+        display.style.color = "#666";
+
         try {
             const res = await fetch(flowUrl, {
                 method: 'POST',
@@ -131,37 +14,25 @@
                 body: JSON.stringify({ action: "lookup", jan: jan })
             });
             const data = await res.json();
-            display.textContent = data.itemName ? "品名: " + data.itemName : "⚠️未登録";
-        } catch (e) { display.textContent = "Error"; }
-    }
-
-    async function sendOrder() {
-        const storeName = document.getElementById('storeName').value;
-        const items = Array.from(document.querySelectorAll('.item-row')).map(row => ({
-            partNo: row.querySelector('.partNo-input').value,
-            quantity: row.querySelector('.quantity-input').value
-        })).filter(i => i.partNo);
-
-        if (!storeName || items.length === 0) { alert("店名と商品を入力してください"); return; }
-
-        try {
-            const res = await fetch(flowUrl, {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({
-                    storeName,
-                    email: document.getElementById('email').value,
-                    items,
-                    comments: document.getElementById('comments').value
-                })
-            });
-            if (res.ok) {
-                localStorage.setItem('storeName', storeName);
-                alert("注文を送信しました！");
-                liff.closeWindow();
+            
+            if (data.itemName) {
+                // 品番、品名、単価、在庫状況をレイアウトして表示
+                display.innerHTML = `
+                    <div style="background: #eef9f1; padding: 10px; border-radius: 8px; margin-top: 5px; border: 1px solid #d4edda;">
+                        <div style="font-size: 11px; color: #666;">品番: ${data.partNo || '---'}</div>
+                        <div style="font-size: 15px; color: #2c3e50; margin: 3px 0;"><strong>${data.itemName}</strong></div>
+                        <div style="display: flex; justify-content: space-between; font-size: 13px;">
+                            <span style="color: #e67e22;">単価: ¥${Number(data.price).toLocaleString()}</span>
+                            <span style="color: ${data.stock > 0 ? '#28a745' : '#ff4d4d'};">
+                                在庫: ${data.stock > 0 ? data.stock + ' 個' : '欠品中'}
+                            </span>
+                        </div>
+                    </div>
+                `;
+            } else {
+                display.innerHTML = "<div style='color: #ff4d4d; padding: 5px;'>⚠️ 商品が見つかりません</div>";
             }
-        } catch (e) { alert("送信失敗"); }
+        } catch (e) {
+            display.innerHTML = "<div style='color: #ff4d4d;'>検索エラーが発生しました</div>";
+        }
     }
-</script>
-</body>
-</html>
