@@ -1,36 +1,78 @@
-async function fetchItemName(input) {
-    const jan = input.value;
-    const display = input.parentElement.querySelector('.item-name-display');
-    if (!jan) {
-        display.innerHTML = "";
-        return;
-    }
-    display.innerHTML = "<i class='fas fa-spinner fa-spin'></i> 検索中...";
-    display.style.color = "#666";
-    try {
-        const res = await fetch(flowUrl, {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({ action: "lookup", jan: jan })
-        });
-        const data = await res.json();
-        if (data.itemName) {
-            display.innerHTML = `
-                <div style="background: #eef9f1; padding: 10px; border-radius: 8px; margin-top: 5px; border: 1px solid #d4edda; text-align: left;">
-                    <div style="font-size: 11px; color: #666;">品番: ${data.partNo || '---'}</div>
-                    <div style="font-size: 15px; color: #2c3e50; margin: 3px 0;"><strong>${data.itemName}</strong></div>
-                    <div style="display: flex; justify-content: space-between; font-size: 13px;">
-                        <span style="color: #e67e22;">単価: ¥${data.price ? Number(data.price).toLocaleString() : '---'}</span>
-                        <span style="color: #2c3e50;">
-    在庫: ${data.stock || '---'}
-</span>
-                    </div>
-                </div>`;
-        } else {
-            display.innerHTML = "<div style='color: #ff4d4d; padding: 5px;'>⚠️ 商品が見つかりません</div>";
-        }
-    } catch (e) {
-        display.innerHTML = "<div style='color: #ff4d4d;'>検索エラーが発生しました</div>";
-    }
-}
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>買い物カゴ - 削除機能付き</title>
+    <style>
+        body { font-family: sans-serif; padding: 20px; }
+        .item { border-bottom: 1px solid #ccc; padding: 10px 0; display: flex; justify-content: space-between; align-items: center; }
+        .remove-btn { background-color: #ff4d4d; color: white; border: none; padding: 5px 10px; cursor: pointer; border-radius: 3px; }
+        #order-btn { margin-top: 20px; padding: 15px; background-color: #28a745; color: white; border: none; width: 100%; font-size: 1.2em; cursor: pointer; }
+    </style>
+</head>
+<body>
+    <h1>買い物カゴの中身</h1>
+    <div id="cart-list"></div>
+    <button id="order-btn" onclick="sendOrder()">注文を確定する</button>
 
+    <script>
+        const API_URL = "https://default9b258ec3f0904041bdcf3f8e9c128b.4f.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/07f9d1f370764796ac8a33bb06b2ab90/triggers/manual/paths/invoke?api-version=2016-06-01&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=Z_f_your_signature_here"; // ※本来は全文コピーしたものに置き換えてください
+
+        let cart = JSON.parse(localStorage.getItem('cart')) || [];
+
+        function displayCart() {
+            const list = document.getElementById('cart-list');
+            list.innerHTML = '';
+            if (cart.length === 0) {
+                list.innerHTML = '<p>カゴは空です</p>';
+                return;
+            }
+            cart.forEach((item, index) => {
+                const div = document.createElement('div');
+                div.className = 'item';
+                div.innerHTML = `
+                    <span>JAN: ${item.jan} (${item.quantity}個)</span>
+                    <button class="remove-btn" onclick="removeItem(${index})">削除</button>
+                `;
+                list.appendChild(div);
+            });
+        }
+
+        function removeItem(index) {
+            cart.splice(index, 1);
+            localStorage.setItem('cart', JSON.stringify(cart));
+            displayCart();
+        }
+
+        async function sendOrder() {
+            if (cart.length === 0) return alert('カゴが空です');
+            
+            const payload = {
+                action: "order",
+                items: cart
+            };
+
+            try {
+                const response = await fetch("https://default9b258ec3f0904041bdcf3f8e9c128b.4f.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/07f9d1f370764796ac8a33bb06b2ab90/triggers/manual/paths/invoke?api-version=1", { // あなたのURL
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(payload)
+                });
+
+                if (response.ok) {
+                    alert('注文が完了しました！');
+                    localStorage.removeItem('cart');
+                    window.location.reload();
+                } else {
+                    alert('エラーが発生しました');
+                }
+            } catch (e) {
+                alert('送信に失敗しました');
+            }
+        }
+
+        displayCart();
+    </script>
+</body>
+</html>
