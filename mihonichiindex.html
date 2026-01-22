@@ -2,7 +2,10 @@
     async function fetchItemName(input) {
         const jan = input.value;
         const display = input.parentElement.querySelector('.item-name-display');
-        if (!jan) { display.innerHTML = ""; return; }
+        if (!jan) { 
+            display.innerHTML = ""; 
+            return; 
+        }
         
         display.innerHTML = "<i class='fas fa-spinner fa-spin'></i> 検索中...";
         display.style.color = "#666";
@@ -18,11 +21,11 @@
             if (data.itemName) {
                 // 品番、品名、単価、在庫状況をレイアウトして表示
                 display.innerHTML = `
-                    <div style="background: #eef9f1; padding: 10px; border-radius: 8px; margin-top: 5px; border: 1px solid #d4edda;">
+                    <div style="background: #eef9f1; padding: 10px; border-radius: 8px; margin-top: 5px; border: 1px solid #d4edda; text-align: left;">
                         <div style="font-size: 11px; color: #666;">品番: ${data.partNo || '---'}</div>
                         <div style="font-size: 15px; color: #2c3e50; margin: 3px 0;"><strong>${data.itemName}</strong></div>
                         <div style="display: flex; justify-content: space-between; font-size: 13px;">
-                            <span style="color: #e67e22;">単価: ¥${Number(data.price).toLocaleString()}</span>
+                            <span style="color: #e67e22;">単価: ¥${data.price ? Number(data.price).toLocaleString() : '---'}</span>
                             <span style="color: ${data.stock > 0 ? '#28a745' : '#ff4d4d'};">
                                 在庫: ${data.stock > 0 ? data.stock + ' 個' : '欠品中'}
                             </span>
