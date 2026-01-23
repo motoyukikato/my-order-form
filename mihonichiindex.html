@@ -3,61 +3,84 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>注文テスト画面</title>
+    <title>LINE受注システム</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/quagga/0.12.1/quagga.min.js"></script>
     <style>
-        body { font-family: sans-serif; padding: 20px; text-align: center; }
-        .box { border: 2px solid #007bff; padding: 20px; border-radius: 10px; margin-bottom: 20px; }
-        button { padding: 10px 20px; font-size: 16px; cursor: pointer; border-radius: 5px; border: none; }
-        .add-btn { background-color: #007bff; color: white; margin-bottom: 10px; }
-        .order-btn { background-color: #28a745; color: white; width: 100%; font-weight: bold; }
+        body { font-family: sans-serif; margin: 20px; }
+        #interactive.viewport { width: 100%; height: 300px; position: relative; overflow: hidden; }
+        #interactive.viewport > canvas, #interactive.viewport > video { position: absolute; top: 0; left: 0; width: 100%; height: 100%; }
+        .order-item { border-bottom: 1px solid #ccc; padding: 10px 0; }
+        button { padding: 10px; background: #28a745; color: white; border: none; border-radius: 5px; cursor: pointer; }
     </style>
 </head>
 <body>
-    <h1>注文テスト</h1>
+    <h2>LINE受注システム</h2>
 
-    <div class="box">
-        <h3>① まずは商品を追加</h3>
-        <p>JAN: 4901234567890</p>
-        <button class="add-btn" onclick="addToCart('4901234567890')">カゴに入れる</button>
+    <div id="interactive" class="viewport"></div>
+    <p>ステータス: <span id="status">読み取り停止中</span></p>
+    <button onclick="startScanner()">スキャン開始</button>
+
+    <hr>
+
+    <div id="customer-info">
+        <h3>顧客情報</h3>
+        <p>社名: <span id="company-name">未取得</span></p>
     </div>
 
-    <div class="box">
-        <h3>② カゴの状態</h3>
-        <div id="cart-list">空です</div>
+    <div id="cart-area">
+        <h3>注文商品一覧</h3>
+        <div id="cart-list"></div>
+        <button onclick="sendOrder()" style="margin-top:20px; background:#007bff;">注文を確定してメール送信</button>
     </div>
-
-    <button class="order-btn" onclick="sendOrder()">③ 注文を確定する</button>
 
     <script>
-        // ★ここに今の短いURLを一旦貼り付けてください
-        // ↓このように、最後が UtqM で終わる長いURLを貼り付けてください
-const API_URL = "https://default9b258ec3f0904041bdcf3f8e9c128b.4f.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/07f9d1f370764796ac8a33bb06b2ab90/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=2EIkThjCBuMWWQX8AuwTthobbzJ77KHfCCFnT-_UtqM";
-
+        const API_URL = "あなたのPower AutomateのURL"; // ★ここにURLを貼り付け
         let cart = [];
 
-        function addToCart(janCode) {
-            cart.push({ jan: janCode, quantity: 1 });
-            document.getElementById('cart-list').innerText = "JAN: " + janCode + " が入りました！";
-            alert("カゴに追加しました。これで注文確定ボタンが押せます。");
+        function startScanner() {
+            document.getElementById('status').innerText = "読み取り中...";
+            Quagga.init({
+                inputStream: { name: "Live", type: "LiveStream", target: document.querySelector('#interactive') },
+                decoder: { readers: ["ean_reader", "code_128_reader", "qr_reader"] }
+            }, function(err) {
+                if (err) { console.log(err); return; }
+                Quagga.start();
+            });
+        }
+
+        Quagga.onDetected(function(result) {
+            const code = result.codeResult.code;
+            document.getElementById('status').innerText = "読み取り成功: " + code;
+            
+            // 無限追加の仕組み：読み取ったコードをカートに追加
+            addItemToCart(code);
+            Quagga.stop(); // 一旦停止
+        });
+
+        function addItemToCart(jan) {
+            // 本来はここでSharePointから商品名を取得するが、まずはJANと数量1を追加
+            cart.push({ jan: jan, quantity: 1 });
+            updateCartDisplay();
+        }
+
+        function updateCartDisplay() {
+            const list = document.getElementById('cart-list');
+            list.innerHTML = cart.map((item, index) => `
+                <div class="order-item">
+                    JAN: ${item.jan} | 数量: <input type="number" value="${item.quantity}" onchange="cart[${index}].quantity=this.value">
+                </div>
+            `).join('');
         }
 
         async function sendOrder() {
-            if (cart.length === 0) return alert("カゴが空です！先に上のボタンを押してください。");
-            
-            try {
-                const response = await fetch(API_URL, {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ items: cart })
-                });
-                if (response.ok) alert("送信成功！");
-                else alert("URLが短いため、送信エラー（401等）になります。");
-            } catch (e) {
-                alert("送信に失敗しました。");
-            }
+            // Power Automateへ送信
+            const response = await fetch(API_URL, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ items: cart })
+            });
+            if (response.ok) alert("受注完了！メールを送信しました。");
         }
     </script>
 </body>
 </html>
-
-
