@@ -13,8 +13,16 @@
 </head>
 <body>
     <h2>見本市スキャナー</h2>
+    
     <button onclick="handleScan()">📸 商品スキャン開始</button>
     
+    <hr> <div style="margin: 20px 0; padding: 15px; background: #f8f9fa; border-radius: 10px; border: 1px solid #ddd;">
+        <p style="margin: 0 0 10px 0; font-weight: bold;">品番（商品No）で入力：</p>
+        <input type="text" id="manual-id" placeholder="例: 40229" style="width: 60%; padding: 10px; border-radius: 5px; border: 1px solid #ccc;">
+        <button onclick="handleManualSearch()" style="padding: 10px 15px; background: #007bff; color: white; border: none; border-radius: 5px; cursor: pointer;">追加</button>
+    </div>
+
+    <hr> <h3>注文カート</h3>
     <div id="cart-list">
         </div>
 
@@ -74,7 +82,38 @@
         }
 
         liff.init({ liffId: "2008942151-HVIKLBVG" });
+        // 品番入力で商品を探す関数
+async function handleManualSearch() {
+    const idField = document.getElementById('manual-id');
+    const code = idField.value.trim();
+
+    if (!code) {
+        alert("品番を入力してください");
+        return;
+    }
+
+    try {
+        const res = await fetch(SEARCH_URL, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ jan: code })
+        });
+        
+        const data = await res.json();
+
+        if (data.name) {
+            cart.push({ jan: code, name: data.name, price: data.price });
+            updateCartUI(); // カートの表示を更新
+            idField.value = ""; // 入力欄をクリア
+        } else {
+            alert("該当する商品が見つかりません。品番を確認してください。");
+        }
+    } catch (err) {
+        alert("通信エラーが発生しました。URLが正しいか確認してください。");
+    }
+}
     </script>
 </body>
 </html>
+
 
