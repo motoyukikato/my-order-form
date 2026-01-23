@@ -1,67 +1,79 @@
 <!DOCTYPE html>
-<html lang="ja">
+<html>
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>受注スキャナー</title>
+    <title>見本市注文アプリ</title>
     <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
     <style>
-        body { font-family: sans-serif; text-align: center; padding: 20px; }
-        button { padding: 20px; font-size: 18px; background: #00b900; color: white; border: none; border-radius: 10px; width: 100%; }
-        #result { margin-top: 20px; padding: 10px; border: 1px solid #ccc; min-height: 50px; }
+        body { font-family: sans-serif; padding: 20px; }
+        .item-card { border: 1px solid #ccc; padding: 10px; margin-bottom: 10px; border-radius: 5px; }
+        button { padding: 10px 20px; font-size: 16px; cursor: pointer; }
+        #send-btn { background-color: #28a745; color: white; border: none; width: 100%; margin-top: 20px; }
     </style>
 </head>
 <body>
-
-    <h2>受注アプリ</h2>
+    <h2>見本市スキャナー</h2>
     <button onclick="handleScan()">📸 商品スキャン開始</button>
     
-    <div id="result">ここに読み取り結果が出ます</div>
+    <div id="cart-list">
+        </div>
+
+    <button id="send-btn" onclick="sendOrder()">🛒 注文を確定してメール送信</button>
 
     <script>
-// ★自分の情報を貼り付け
-const LIFF_ID = "2008942151-HVIKLBVG"; 
-const FLOW_URL = "https://default9b258ec3f0904041bdcf3f8e9c128b.4f.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/e251147543764915b5e738754e6c8116/triggers/manual/paths/invoke?api-version=1";
+        // ★ ここに「検索用」と「送信用」のURLを貼り付ける
+        const SEARCH_URL = "https://default9b258ec3f0904041bdcf3f8e9c128b.4f.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/e251147543764915b5e738754e6c8116/triggers/manual/paths/invoke?api-version=1";
+        const ORDER_URL = "https://default9b258ec3f0904041bdcf3f8e9c128b.4f.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/07f9d1f370764796ac8a33bb06b2ab90/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=2EIkThjCBuMWWQX8AuwTthobbzJ77KHfCCFnT-_UtqM";
 
-async function handleScan() {
-    try {
-        const result = await liff.scanCodeV2();
-        const code = result.value;
-        if (!code) return;
+        const cart = []; // スキャンした商品を溜める配列
 
-        // --- ここからPower Automateとの連携 ---
-        document.getElementById('result').innerText = "商品情報を検索中...";
+        async function handleScan() {
+            try {
+                const result = await liff.scanCodeV2();
+                const code = result.value;
+                if (!code) return;
 
-        const response = await fetch(FLOW_URL, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ jan: code }) // JANコードを送信
-        });
+                // Power Automateで商品検索
+                const res = await fetch(SEARCH_URL, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ jan: code })
+                });
+                const data = await res.json();
 
-        const data = await response.json(); // フローから返ってきた品名・単価
+                // カートに追加
+                cart.push({ jan: code, name: data.name, price: data.price });
+                updateCartUI();
 
-        // 画面に「無限追加」していく
-        addItemToCart(data.name, data.price, code);
-        
-        document.getElementById('result').innerText = "追加しました: " + data.name;
+            } catch (err) { alert("エラー: " + err.message); }
+        }
 
-    } catch (err) {
-        alert("エラー: " + err.message);
-    }
-}
+        function updateCartUI() {
+            const list = document.getElementById('cart-list');
+            list.innerHTML = "";
+            cart.forEach(item => {
+                const div = document.createElement('div');
+                div.className = "item-card";
+                div.innerHTML = `<b>${item.name}</b><br>JAN: ${item.jan} / 単価: ${item.price}円`;
+                list.appendChild(div);
+            });
+        }
 
-function addItemToCart(name, price, jan) {
-    const list = document.getElementById('cart-list'); // HTML側にこのIDのdivを作っておく
-    const div = document.createElement('div');
-    div.style.borderBottom = "1px solid #ccc";
-    div.innerHTML = `
-        <p><strong>${name}</strong> (${jan})</p>
-        <p>${price}円 × <input type="number" value="1" style="width:50px">個</p>
-    `;
-    list.appendChild(div);
-}
+        async function sendOrder() {
+            if (cart.length === 0) return alert("商品がありません");
+            
+            try {
+                // Power Automate（メール送信フロー）へ「配列」として送る
+                const res = await fetch(ORDER_URL, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ items: cart }) // ★これがエラーを直す鍵「Array」です
+                });
+                if (res.ok) alert("注文を送信しました！");
+            } catch (err) { alert("送信エラー: " + err.message); }
+        }
+
+        liff.init({ liffId: "2008942151-HVIKLBVG" });
     </script>
 </body>
 </html>
-
-
