@@ -1,26 +1,45 @@
-<script src="https://unpkg.com/@zxing/library@latest"></script>
-
+<script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
 <script>
-    const codeReader = new ZXing.BrowserMultiFormatReader();
-    let selectedDeviceId;
+    // 1. LIFFの初期化（これをしないとスキャナーは動きません）
+    liff.init({
+        liffId: "https://liff.line.me/2008942151-HVIKLBVG" 
+    }).then(() => {
+        console.log("LIFF初期化成功");
+    }).catch((err) => {
+        console.error("LIFF初期化失敗", err);
+    });
 
-    function startScanner() {
-        codeReader.listVideoInputDevices()
-            .then((videoInputDevices) => {
-                // 背面カメラを自動選択（なければ最初のカメラ）
-                selectedDeviceId = videoInputDevices.length > 1 ? videoInputDevices[1].deviceId : videoInputDevices[0].deviceId;
-                
-                codeReader.decodeFromVideoDevice(selectedDeviceId, 'video', (result, err) => {
-                    if (result) {
-                        console.log(result.text);
-                        document.getElementById('status').innerText = "成功: " + result.text;
-                        addItemToCart(result.text);
-                        // 連続読み取りを防ぐ場合はここで一旦止める
-                    }
-                });
-            })
-            .catch((err) => console.error(err));
+    // 2. LINE標準スキャナーを起動する関数
+    function scanBarcode() {
+        if (!liff.isInClient()) {
+            alert("LINEアプリ内で開いてください");
+            return;
+        }
+        
+        liff.scanCodeV2().then(result => {
+            const code = result.value;
+            if (!code) return;
+
+            // 会員コードかJANコードかを判別して処理
+            if (code.startsWith('CUST')) { 
+                fetchCustomerInfo(code); // 顧客情報を取る関数へ
+            } else { 
+                addItemToCart(code);    // 商品をカートに入れる関数へ
+            }
+        }).catch(err => {
+            console.error("スキャン失敗", err);
+        });
+    }
+
+    // 3. 商品をリストに追加する関数（無限追加のベース）
+    function addItemToCart(jan) {
+        // ここでPower Automateを叩いて商品名・単価を取得する処理を後で書きます
+        const cartList = document.getElementById('cart-list');
+        const div = document.createElement('div');
+        div.innerHTML = `JAN: ${jan} <input type="number" value="1">`;
+        cartList.appendChild(div); // これで画面にどんどん追加されます
     }
 </script>
 
 <video id="video" width="100%" height="300" style="border: 1px solid gray"></video>
+
