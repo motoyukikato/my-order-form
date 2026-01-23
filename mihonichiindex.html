@@ -19,39 +19,48 @@
     <div id="result">ここに読み取り結果が出ます</div>
 
     <script>
-        // ★ここを自分の LIFF ID に書き換えてください
-        const LIFF_ID = "2008942151-HVIKLBVG"; 
+// ★自分の情報を貼り付け
+const LIFF_ID = "2008942151-HVIKLBVG"; 
+const FLOW_URL = "https://default9b258ec3f0904041bdcf3f8e9c128b.4f.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/07f9d1f370764796ac8a33bb06b2ab90/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=2EIkThjCBuMWWQX8AuwTthobbzJ77KHfCCFnT-_UtqM";
 
-        // 初期化処理
-        liff.init({ liffId: LIFF_ID })
-            .then(() => { console.log("LIFF initialized"); })
-            .catch((err) => { alert("初期化失敗: " + err); });
+async function handleScan() {
+    try {
+        const result = await liff.scanCodeV2();
+        const code = result.value;
+        if (!code) return;
 
-        // あなたが送ってくれたスキャン関数はここに入ります
-        async function handleScan() {
-            if (!liff.isInClient()) {
-                alert("LINEアプリの中で開いてください");
-                return;
-            }
+        // --- ここからPower Automateとの連携 ---
+        document.getElementById('result').innerText = "商品情報を検索中...";
 
-            try {
-                const result = await liff.scanCodeV2();
-                const code = result.value;
-                
-                if (!code) {
-                    alert("読み取りがキャンセルされました");
-                    return;
-                }
+        const response = await fetch(FLOW_URL, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ jan: code }) // JANコードを送信
+        });
 
-                // 画面に表示
-                document.getElementById('result').innerText = "読み取り成功: " + code;
-                alert("読み取り成功: " + code);
+        const data = await response.json(); // フローから返ってきた品名・単価
 
-            } catch (err) {
-                console.error(err);
-                alert("エラー詳細: " + err.message + "\n※LINE DevelopersのScan code設定を確認してください。");
-            }
-        }
+        // 画面に「無限追加」していく
+        addItemToCart(data.name, data.price, code);
+        
+        document.getElementById('result').innerText = "追加しました: " + data.name;
+
+    } catch (err) {
+        alert("エラー: " + err.message);
+    }
+}
+
+function addItemToCart(name, price, jan) {
+    const list = document.getElementById('cart-list'); // HTML側にこのIDのdivを作っておく
+    const div = document.createElement('div');
+    div.style.borderBottom = "1px solid #ccc";
+    div.innerHTML = `
+        <p><strong>${name}</strong> (${jan})</p>
+        <p>${price}円 × <input type="number" value="1" style="width:50px">個</p>
+    `;
+    list.appendChild(div);
+}
     </script>
 </body>
 </html>
+
