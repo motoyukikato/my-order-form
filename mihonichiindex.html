@@ -3,92 +3,54 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>受注管理システム</title>
+    <title>受注スキャナー</title>
     <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
     <style>
-        body { font-family: sans-serif; margin: 0; padding: 20px; background: #f8f9fa; }
-        .card { background: white; padding: 15px; border-radius: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); margin-bottom: 15px; }
-        .order-item { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #eee; padding: 10px 0; }
-        input[type="number"] { width: 50px; padding: 5px; }
-        button { width: 100%; padding: 15px; font-size: 16px; border: none; border-radius: 5px; cursor: pointer; margin-top: 10px; }
-        .btn-scan { background: #00b900; color: white; }
-        .btn-send { background: #007bff; color: white; }
-        #status { font-size: 12px; color: #666; text-align: center; }
+        body { font-family: sans-serif; text-align: center; padding: 20px; }
+        button { padding: 20px; font-size: 18px; background: #00b900; color: white; border: none; border-radius: 10px; width: 100%; }
+        #result { margin-top: 20px; padding: 10px; border: 1px solid #ccc; min-height: 50px; }
     </style>
 </head>
 <body>
 
-    <div class="card">
-        <h3>👤 顧客情報</h3>
-        <p id="cust-name">未取得（QRをスキャンしてください）</p>
-    </div>
-
-    <div class="card">
-        <h3>🛒 注文商品一覧</h3>
-        <div id="cart-list">
-            </div>
-        <button class="btn-scan" onclick="handleScan()">📸 商品をスキャン</button>
-    </div>
-
-    <button class="btn-send" onclick="sendOrder()">✅ 注文を確定する</button>
-    <p id="status">LIFF初期化中...</p>
+    <h2>受注アプリ</h2>
+    <button onclick="handleScan()">📸 商品スキャン開始</button>
+    
+    <div id="result">ここに読み取り結果が出ます</div>
 
     <script>
+        // ★ここを自分の LIFF ID に書き換えてください
         const LIFF_ID = "2008942151-HVIKLBVG"; 
-        const FLOW_URL = "https://default9b258ec3f0904041bdcf3f8e9c128b.4f.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/07f9d1f370764796ac8a33bb06b2ab90/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=2EIkThjCBuMWWQX8AuwTthobbzJ77KHfCCFnT-_UtqM";
-        let orderList = [];
 
-        // 1. LIFFの初期化
-        liff.init({ liffId: LIFF_ID }).then(() => {
-            document.getElementById('status').innerText = "ログイン完了";
-        }).catch(err => {
-            document.getElementById('status').innerText = "初期化エラー: " + err;
-        });
+        // 初期化処理
+        liff.init({ liffId: LIFF_ID })
+            .then(() => { console.log("LIFF initialized"); })
+            .catch((err) => { alert("初期化失敗: " + err); });
 
-        // 2. スキャン処理
+        // あなたが送ってくれたスキャン関数はここに入ります
         async function handleScan() {
+            if (!liff.isInClient()) {
+                alert("LINEアプリの中で開いてください");
+                return;
+            }
+
             try {
                 const result = await liff.scanCodeV2();
                 const code = result.value;
-                if (!code) return;
-
-                // Power Automateへデータを問い合わせる
-                document.getElementById('status').innerText = "商品検索中...";
-                const res = await fetch(FLOW_URL, {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ jan: code })
-                });
                 
-                const item = await res.json(); // フローから品名と単価が返ってくる想定
-                addItem(item.name, item.price, code);
-                document.getElementById('status').innerText = "追加完了: " + item.name;
+                if (!code) {
+                    alert("読み取りがキャンセルされました");
+                    return;
+                }
+
+                // 画面に表示
+                document.getElementById('result').innerText = "読み取り成功: " + code;
+                alert("読み取り成功: " + code);
 
             } catch (err) {
-                alert("スキャンに失敗しました: " + err);
+                console.error(err);
+                alert("エラー詳細: " + err.message + "\n※LINE DevelopersのScan code設定を確認してください。");
             }
-        }
-
-        // 3. 画面に商品行を「無限追加」
-        function addItem(name, price, jan) {
-            const list = document.getElementById('cart-list');
-            const row = document.createElement('div');
-            row.className = 'order-item';
-            row.innerHTML = `
-                <div>
-                    <strong>${name}</strong><br>
-                    <small>${price}円 (JAN:${jan})</small>
-                </div>
-                <input type="number" class="item-qty" value="1" data-jan="${jan}" data-name="${name}" data-price="${price}">
-            `;
-            list.appendChild(row);
-            orderList.push({ jan, name, price });
-        }
-
-        // 4. 注文送信
-        async function sendOrder() {
-            // ここで再度Power Automateを叩いてSharePointに保存＆メール送信
-            alert("注文データを送信しました（この先のフローは別途構築が必要です）");
         }
     </script>
 </body>
