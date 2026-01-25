@@ -42,14 +42,21 @@
 
 <section id="home" class="page-section active">
     <h2 style="text-align: center; letter-spacing: 5px;">顧客情報</h2>
-    <div class="card" style="min-height: 200px; display: flex; align-items: center; justify-content: center; color: #aaa;">
-        <p id="customer-info">データを出力しています...</p>
+    
+    <div class="card" id="cust-display" style="text-align: left; padding: 15px; min-height: 120px; line-height: 1.6;">
+        <div id="cust-loading" style="text-align:center; color:#ccc; padding-top: 30px;">顧客QRをスキャンしてください</div>
+        <div id="cust-data" style="display:none;">
+            <b id="res-customer" style="font-size: 1.2em; color: #3b5998;"></b><br>
+            <span id="res-zip"></span><br>
+            <span id="res-addr1"></span> <span id="res-addr2"></span><br>
+            TEL: <span id="res-tel"></span><br>
+            Email: <span id="res-email"></span>
+        </div>
     </div>
-    <div style="display: flex; gap: 5px; justify-content: center; align-items: center;">
-        <span style="font-size: 0.9em;">手入力用→</span>
-        <input type="text" id="cust-id" placeholder="電話番号検索" style="width: 140px;">
-        <button class="btn-blue" style="background: #3b5998;">確定</button>
-    </div>
+
+    <button class="btn-scan" onclick="handleCustomerScan()" style="background: #28a745; margin-top: 20px; width: 100%; height: 60px; font-size: 1.1em;">
+        <i class="fa-solid fa-qrcode"></i> 顧客QRをスキャン
+    </button>
 </section>
 
 <section id="barcode" class="page-section">
@@ -177,8 +184,49 @@
 
     // LIFF初期化
     liff.init({ liffId: "2008942151-HVIKLBVG" });
+    // 顧客スキャンの実行関数
+async function handleCustomerScan() {
+    try {
+        // LINEのスキャナーを起動
+        const result = await liff.scanCodeV2();
+        if (!result.value) return;
+
+        // 画面を「照会中」にする
+        document.getElementById("cust-loading").style.display = "block";
+        document.getElementById("cust-loading").innerText = "照会中...";
+        document.getElementById("cust-data").style.display = "none";
+
+        // Power Automateにデータを送り、結果を受け取る
+        const res = await fetch(CUSTOMER_SEARCH_URL, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ jan: result.value })
+        });
+        const data = await res.json();
+
+        // データがあった場合、画面に書き込む
+        if (data.customer) {
+            document.getElementById("res-customer").innerText = data.customer;
+            document.getElementById("res-zip").innerText = "〒" + (data.zip || "");
+            document.getElementById("res-addr1").innerText = data.address1 || "";
+            document.getElementById("res-addr2").innerText = data.address2 || "";
+            document.getElementById("res-tel").innerText = data.tel || "";
+            document.getElementById("res-email").innerText = data.email || "---";
+
+            // 表示を「データあり」に切り替える
+            document.getElementById("cust-loading").style.display = "none";
+            document.getElementById("cust-data").style.display = "block";
+        } else {
+            alert("顧客が見つかりません。コードを確認してください。");
+            document.getElementById("cust-loading").innerText = "顧客QRをスキャンしてください";
+        }
+    } catch (err) {
+        alert("スキャンエラー: " + err.message);
+    }
+}
 </script>
 
 </body>
 </html>
+
 
