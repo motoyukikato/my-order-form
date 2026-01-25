@@ -44,7 +44,7 @@
     <h2 style="text-align: center; letter-spacing: 5px;">顧客情報</h2>
     
     <div class="card" id="cust-display" style="text-align: left; padding: 15px; min-height: 120px; line-height: 1.6;">
-        <div id="cust-loading" style="text-align:center; color:#ccc; padding-top: 30px;">顧客QRをスキャンしてください</div>
+        <div id="cust-loading" style="text-align:center; color:#ccc; padding-top: 30px;">顧客情報を検索してください</div>
         <div id="cust-data" style="display:none;">
             <b id="res-customer" style="font-size: 1.2em; color: #3b5998;"></b><br>
             <span id="res-zip"></span><br>
@@ -54,7 +54,15 @@
         </div>
     </div>
 
-    <button class="btn-scan" onclick="handleCustomerScan()" style="background: #28a745; margin-top: 20px; width: 100%; height: 60px; font-size: 1.1em;">
+    <div class="card" style="padding: 15px;">
+        <p style="text-align: left; font-size: 0.9em; font-weight: bold; margin-bottom: 8px;">電話番号で検索：</p>
+        <div style="display: flex; gap: 5px;">
+            <input type="tel" id="cust-manual-input" placeholder="例: 09012345678" style="flex: 1; font-size: 16px;">
+            <button class="btn-blue" onclick="handleCustomerManualSearch()">検索</button>
+        </div>
+    </div>
+
+    <button class="btn-scan" onclick="handleCustomerScan()" style="background: #28a745; margin-top: 10px; width: 100%; height: 60px; font-size: 1.1em;">
         <i class="fa-solid fa-qrcode"></i> 顧客QRをスキャン
     </button>
 </section>
@@ -92,24 +100,66 @@
 </nav>
 
 <script>
-    // 設定
+// 設定
     const SEARCH_URL = "https://default9b258ec3f0904041bdcf3f8e9c128b.4f.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/e251147543764915b5e738754e6c8116/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=TowxosK6T9X4qf8OE_FzC45ns9RLytXJgo3c8gOEi6Q";
     const ORDER_URL = "https://default9b258ec3f0904041bdcf3f8e9c128b.4f.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/07f9d1f370764796ac8a33bb06b2ab90/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=2EIkThjCBuMWWQX8AuwTthobbzJ77KHfCCFnT-_UtqM";
-   const CUSTOMER_SEARCH_URL = "https://default9b258ec3f0904041bdcf3f8e9c128b.4f.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/bf9ccef62dad43c1a887216f81d0b97e/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=nlGwH-lBbA8F835qzaRsd7Spy5XM0tOncMVAD4GOuBE"; 
+    const CUSTOMER_SEARCH_URL = "https://default9b258ec3f0904041bdcf3f8e9c128b.4f.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/bf9ccef62dad43c1a887216f81d0b97e/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=nlGwH-lBbA8F835qzaRsd7Spy5XM0tOncMVAD4GOuBE"; 
     const cart = [];
 
-    // 画面切り替え
+    // --- 画面操作 ---
     function showPage(pageId) {
-        // 全セクション非表示
         document.querySelectorAll('.page-section').forEach(sec => sec.classList.remove('active'));
-        // 指定セクション表示
         document.getElementById(pageId).classList.add('active');
-        // メニューの色変更
         document.querySelectorAll('.footer-menu button').forEach(btn => btn.classList.remove('active-menu'));
         document.getElementById('nav-' + pageId).classList.add('active-menu');
     }
 
-    // 商品検索共通処理
+    // --- 顧客検索 (スキャン & 電話番号) ---
+    async function handleCustomerScan() {
+        try {
+            const result = await liff.scanCodeV2();
+            if (result.value) await fetchCustomerData(result.value);
+        } catch (err) { alert("スキャン失敗: " + err.message); }
+    }
+
+    async function handleCustomerManualSearch() {
+        const input = document.getElementById('cust-manual-input');
+        const code = input.value.trim();
+        if (!code) return alert("電話番号またはコードを入力してください");
+        await fetchCustomerData(code);
+        input.value = ""; 
+    }
+
+    async function fetchCustomerData(searchValue) {
+        try {
+            document.getElementById("cust-loading").style.display = "block";
+            document.getElementById("cust-loading").innerText = "照会中...";
+            document.getElementById("cust-data").style.display = "none";
+
+            const res = await fetch(CUSTOMER_SEARCH_URL, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ jan: searchValue })
+            });
+            const data = await res.json();
+
+            if (data.customer) {
+                document.getElementById("res-customer").innerText = data.customer;
+                document.getElementById("res-zip").innerText = "〒" + (data.zip || "");
+                document.getElementById("res-addr1").innerText = data.address1 || "";
+                document.getElementById("res-addr2").innerText = data.address2 || "";
+                document.getElementById("res-tel").innerText = data.tel || "";
+                document.getElementById("res-email").innerText = data.email || "---";
+                document.getElementById("cust-loading").style.display = "none";
+                document.getElementById("cust-data").style.display = "block";
+            } else {
+                alert("顧客が見つかりません。");
+                document.getElementById("cust-loading").innerText = "検索またはスキャンしてください";
+            }
+        } catch (err) { alert("照会エラー: " + err.message); }
+    }
+
+    // --- 商品検索 ---
     async function searchProduct(code) {
         try {
             const res = await fetch(SEARCH_URL, {
@@ -119,20 +169,15 @@
             });
             const data = await res.json();
 
-          if (data.name) {
-    // jan: data.id と書き換えることで、フローから返ってきた「Title」を使います
-    cart.push({ jan: data.id, name: data.name, price: data.price });
-    updateCartUI();
-    alert("「" + data.name + "」を追加しました！");
-} else {
-                alert("商品が見つかりません。");
-            }
-        } catch (err) {
-            alert("検索エラー: " + err.message);
-        }
+            if (data.name) {
+                // 品番(id)でカートに追加
+                cart.push({ jan: data.id, name: data.name, price: data.price, quantity: 1 });
+                updateCartUI();
+                alert("「" + data.name + "」を追加しました！");
+            } else { alert("商品が見つかりません。"); }
+        } catch (err) { alert("検索エラー: " + err.message); }
     }
 
-    // スキャン
     async function handleScan() {
         try {
             const result = await liff.scanCodeV2();
@@ -140,7 +185,6 @@
         } catch (err) { alert("スキャン失敗: " + err.message); }
     }
 
-    // 手入力
     async function handleManualSearch() {
         const input = document.getElementById('manual-id');
         const code = input.value.trim();
@@ -148,72 +192,52 @@
         await searchProduct(code);
         input.value = "";
     }
-// カート更新（数量手入力対応版）
-function updateCartUI() {
-    const list = document.getElementById('cart-list');
-    if (cart.length === 0) {
-        list.innerHTML = '<p style="text-align: center; color: #888;">商品は入っていません</p>';
-        return;
-    }
 
-    list.innerHTML = "";
-    let totalAll = 0;
+    // --- カート管理 ---
+    function updateCartUI() {
+        const list = document.getElementById('cart-list');
+        if (cart.length === 0) {
+            list.innerHTML = '<p style="text-align: center; color: #888;">商品は入っていません</p>';
+            return;
+        }
+        list.innerHTML = "";
+        let totalAll = 0;
 
-    cart.forEach((item, index) => {
-        // 初回追加時は数量が設定されていないので1をセット
-        if (!item.quantity) item.quantity = 1;
-        
-        const subtotal = item.price * item.quantity;
-        totalAll += subtotal;
-
-        const div = document.createElement('div');
-        div.className = "item-card";
-        div.style = "border-bottom: 1px solid #eee; padding: 10px 0;";
-        div.innerHTML = `
-            <div style="display: flex; justify-content: space-between;">
-                <b>${item.name}</b>
-                <button onclick="removeItem(${index})" style="background:none; border:none; color:red; font-size:12px;">削除</button>
-            </div>
-            <small>品番: ${item.jan} / 単価: ${Number(item.price).toLocaleString()}円</small><br>
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 8px;">
-                <div>
-                    数量: <input type="number" inputmode="numeric" value="${item.quantity}" min="1" 
-    onchange="updateQuantity(${index}, this.value)" 
-    style="width: 60px; padding: 8px; border: 1px solid #ccc; border-radius: 4px; font-size: 16px;">
+        cart.forEach((item, index) => {
+            const subtotal = item.price * item.quantity;
+            totalAll += subtotal;
+            const div = document.createElement('div');
+            div.className = "item-card";
+            div.innerHTML = `
+                <div style="display: flex; justify-content: space-between;">
+                    <b>${item.name}</b>
+                    <button onclick="removeItem(${index})" style="color:red; border:none; background:none;">削除</button>
                 </div>
-                <b style="color: #333;">小計: ${subtotal.toLocaleString()}円</b>
-            </div>
-        `;
-        list.appendChild(div);
-    });
+                <small>品番: ${item.jan} / 単価: ${Number(item.price).toLocaleString()}円</small><br>
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 8px;">
+                    <div>数量: <input type="number" inputmode="numeric" value="${item.quantity}" min="1" onchange="updateQuantity(${index}, this.value)" style="width: 50px; font-size: 16px;"></div>
+                    <b>小計: ${subtotal.toLocaleString()}円</b>
+                </div>
+            `;
+            list.appendChild(div);
+        });
 
-    const summaryDiv = document.createElement('div');
-    summaryDiv.style = "margin-top: 20px; padding: 15px; background: #f9f9f9; border-radius: 8px; text-align: right;";
-    summaryDiv.innerHTML = `
-        <strong style="font-size: 1.3em; color: #d32f2f;">合計金額: ${totalAll.toLocaleString()}円</strong>
-    `;
-    list.appendChild(summaryDiv);
-}
-
-// 数量が変更された時に実行される関数
-function updateQuantity(index, newQty) {
-    const qty = parseInt(newQty);
-    if (qty > 0) {
-        cart[index].quantity = qty;
-        updateCartUI(); // 再描画して小計・合計を更新
+        const summaryDiv = document.createElement('div');
+        summaryDiv.style = "margin-top: 20px; padding: 15px; background: #eee; border-radius: 8px; text-align: right;";
+        summaryDiv.innerHTML = `<strong>合計金額: ${totalAll.toLocaleString()}円</strong>`;
+        list.appendChild(summaryDiv);
     }
-}
 
-// 削除関数（前回のものと同じ）
-function removeItem(index) {
-    if(confirm("この商品を削除しますか？")) {
-        cart.splice(index, 1);
-        updateCartUI();
+    function updateQuantity(index, newQty) {
+        const qty = parseInt(newQty);
+        if (qty > 0) { cart[index].quantity = qty; updateCartUI(); }
     }
-}
-    
 
-    // 注文送信
+    function removeItem(index) {
+        if(confirm("削除しますか？")) { cart.splice(index, 1); updateCartUI(); }
+    }
+
+    // --- 注文送信 ---
     async function sendOrder() {
         if (cart.length === 0) return alert("カートが空です");
         try {
@@ -231,52 +255,13 @@ function removeItem(index) {
         } catch (err) { alert("送信エラー: " + err.message); }
     }
 
-    // LIFF初期化
+    // 初期化
     liff.init({ liffId: "2008942151-HVIKLBVG" });
-    // 顧客スキャンの実行関数
-async function handleCustomerScan() {
-    try {
-        // LINEのスキャナーを起動
-        const result = await liff.scanCodeV2();
-        if (!result.value) return;
-
-        // 画面を「照会中」にする
-        document.getElementById("cust-loading").style.display = "block";
-        document.getElementById("cust-loading").innerText = "照会中...";
-        document.getElementById("cust-data").style.display = "none";
-
-        // Power Automateにデータを送り、結果を受け取る
-        const res = await fetch(CUSTOMER_SEARCH_URL, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ jan: result.value })
-        });
-        const data = await res.json();
-
-        // データがあった場合、画面に書き込む
-        if (data.customer) {
-            document.getElementById("res-customer").innerText = data.customer;
-            document.getElementById("res-zip").innerText = "〒" + (data.zip || "");
-            document.getElementById("res-addr1").innerText = data.address1 || "";
-            document.getElementById("res-addr2").innerText = data.address2 || "";
-            document.getElementById("res-tel").innerText = data.tel || "";
-            document.getElementById("res-email").innerText = data.email || "---";
-
-            // 表示を「データあり」に切り替える
-            document.getElementById("cust-loading").style.display = "none";
-            document.getElementById("cust-data").style.display = "block";
-        } else {
-            alert("顧客が見つかりません。コードを確認してください。");
-            document.getElementById("cust-loading").innerText = "顧客QRをスキャンしてください";
-        }
-    } catch (err) {
-        alert("スキャンエラー: " + err.message);
-    }
-}
 </script>
 
 </body>
 </html>
+
 
 
 
