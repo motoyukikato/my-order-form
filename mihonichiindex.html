@@ -177,9 +177,9 @@ function updateCartUI() {
             <small>品番: ${item.jan} / 単価: ${Number(item.price).toLocaleString()}円</small><br>
             <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 8px;">
                 <div>
-                    数量: <input type="number" value="${item.quantity}" min="1" 
-                        onchange="updateQuantity(${index}, this.value)" 
-                        style="width: 50px; padding: 5px; border: 1px solid #ccc; border-radius: 4px;">
+                    数量: <input type="number" inputmode="numeric" value="${item.quantity}" min="1" 
+    onchange="updateQuantity(${index}, this.value)" 
+    style="width: 60px; padding: 8px; border: 1px solid #ccc; border-radius: 4px; font-size: 16px;">
                 </div>
                 <b style="color: #333;">小計: ${subtotal.toLocaleString()}円</b>
             </div>
@@ -277,6 +277,7 @@ async function handleCustomerScan() {
 
 </body>
 </html>
+
 
 
 
