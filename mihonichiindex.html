@@ -119,11 +119,12 @@
             });
             const data = await res.json();
 
-            if (data.name) {
-                cart.push({ jan: code, name: data.name, price: data.price });
-                updateCartUI();
-                alert("「" + data.name + "」を追加しました！");
-            } else {
+          if (data.name) {
+    // jan: data.id と書き換えることで、フローから返ってきた「Title」を使います
+    cart.push({ jan: data.id, name: data.name, price: data.price });
+    updateCartUI();
+    alert("「" + data.name + "」を追加しました！");
+} else {
                 alert("商品が見つかりません。");
             }
         } catch (err) {
@@ -228,5 +229,6 @@ async function handleCustomerScan() {
 
 </body>
 </html>
+
 
 
