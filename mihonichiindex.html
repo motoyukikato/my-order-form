@@ -1,119 +1,183 @@
 <!DOCTYPE html>
-<html>
+<html lang="ja">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>見本市注文アプリ</title>
     <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
-        body { font-family: sans-serif; padding: 20px; }
-        .item-card { border: 1px solid #ccc; padding: 10px; margin-bottom: 10px; border-radius: 5px; }
-        button { padding: 10px 20px; font-size: 16px; cursor: pointer; }
-        #send-btn { background-color: #28a745; color: white; border: none; width: 100%; margin-top: 20px; }
+        body { font-family: sans-serif; margin: 0; padding-bottom: 80px; background: #f4f4f4; color: #333; }
+        header { background: #fff; text-align: center; padding: 15px; border-bottom: 1px solid #ddd; position: sticky; top: 0; z-index: 100; }
+        
+        /* 画面セクションの切り替え */
+        .page-section { display: none; padding: 20px; min-height: 80vh; }
+        .active { display: block; }
+
+        /* カードデザイン */
+        .card { background: #fff; padding: 20px; border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); margin-bottom: 20px; text-align: center; }
+        .item-card { background: #fff; border: 1px solid #ddd; padding: 12px; margin-bottom: 10px; border-radius: 8px; text-align: left; }
+
+        /* 入力エリア */
+        input[type="text"] { width: 70%; padding: 12px; border: 1px solid #ccc; border-radius: 5px; font-size: 16px; }
+        .btn-blue { padding: 12px 20px; background: #007bff; color: white; border: none; border-radius: 5px; font-weight: bold; }
+        .btn-scan { padding: 20px; background: #3b5998; color: white; border: none; border-radius: 10px; width: 100%; font-size: 18px; margin-top: 20px; }
+
+        /* 下部ナビゲーションメニュー */
+        .footer-menu { position: fixed; bottom: 0; width: 100%; background: #fff; border-top: 1px solid #ddd; display: flex; justify-content: space-around; padding: 10px 0; box-shadow: 0 -2px 10px rgba(0,0,0,0.05); }
+        .footer-menu button { background: none; border: none; color: #888; font-size: 11px; cursor: pointer; flex: 1; outline: none; }
+        .footer-menu button i { font-size: 24px; margin-bottom: 4px; display: block; }
+        .footer-menu button.active-menu { color: #3b5998; font-weight: bold; }
+
+        /* 送信ボタン */
+        #send-btn { background-color: #28a745; color: white; border: none; width: 100%; padding: 15px; font-size: 18px; border-radius: 10px; margin-top: 20px; }
     </style>
 </head>
 <body>
-    <h2>見本市スキャナー</h2>
-    
-    <button onclick="handleScan()">📸 商品スキャン開始</button>
-    
-    <hr> <div style="margin: 20px 0; padding: 15px; background: #f8f9fa; border-radius: 10px; border: 1px solid #ddd;">
-        <p style="margin: 0 0 10px 0; font-weight: bold;">品番（商品No）で入力：</p>
-        <input type="text" id="manual-id" placeholder="例: 40229" style="width: 60%; padding: 10px; border-radius: 5px; border: 1px solid #ccc;">
-        <button onclick="handleManualSearch()" style="padding: 10px 15px; background: #007bff; color: white; border: none; border-radius: 5px; cursor: pointer;">追加</button>
+
+<header>
+    <div style="font-size: 1.2em; font-weight: bold;">見本市注文アプリ</div>
+    <div style="font-size: 0.8em; color: #888;">motoyukikato.github.io</div>
+</header>
+
+<section id="home" class="page-section active">
+    <h2 style="text-align: center; letter-spacing: 5px;">顧客情報</h2>
+    <div class="card" style="min-height: 200px; display: flex; align-items: center; justify-content: center; color: #aaa;">
+        <p id="customer-info">データを出力しています...</p>
     </div>
+    <div style="display: flex; gap: 5px; justify-content: center; align-items: center;">
+        <span style="font-size: 0.9em;">手入力用→</span>
+        <input type="text" id="cust-id" placeholder="電話番号検索" style="width: 140px;">
+        <button class="btn-blue" style="background: #3b5998;">確定</button>
+    </div>
+</section>
 
-    <hr> <h3>注文カート</h3>
+<section id="barcode" class="page-section">
+    <h2>バーコードリーダー</h2>
+    <div class="card">
+        <p>カメラで商品のJANコードを<br>スキャンしてください</p>
+        <button class="btn-scan" onclick="handleScan()"><i class="fa-solid fa-barcode"></i> 商品スキャン開始</button>
+    </div>
+</section>
+
+<section id="input" class="page-section">
+    <h2>品番入力</h2>
+    <div class="card">
+        <p style="text-align: left; font-weight: bold;">品番（商品No）で入力：</p>
+        <input type="text" id="manual-id" placeholder="例: 40229">
+        <button class="btn-blue" onclick="handleManualSearch()">追加</button>
+    </div>
+</section>
+
+<section id="cart" class="page-section">
+    <h2>注文カート</h2>
     <div id="cart-list">
-        </div>
-
+        <p style="text-align: center; color: #888;">商品は入っていません</p>
+    </div>
     <button id="send-btn" onclick="sendOrder()">🛒 注文を確定してメール送信</button>
+</section>
 
-    <script>
-        // ★ ここに「検索用」と「送信用」のURLを貼り付ける
-        const SEARCH_URL = "https://default9b258ec3f0904041bdcf3f8e9c128b.4f.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/e251147543764915b5e738754e6c8116/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=TowxosK6T9X4qf8OE_FzC45ns9RLytXJgo3c8gOEi6Q";
-        const ORDER_URL = "https://default9b258ec3f0904041bdcf3f8e9c128b.4f.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/07f9d1f370764796ac8a33bb06b2ab90/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=2EIkThjCBuMWWQX8AuwTthobbzJ77KHfCCFnT-_UtqM";
+<nav class="footer-menu">
+    <button onclick="showPage('home')" id="nav-home" class="active-menu"><i class="fa-solid fa-house"></i>ホーム</button>
+    <button onclick="showPage('barcode')" id="nav-barcode"><i class="fa-solid fa-camera"></i>バーコード</button>
+    <button onclick="showPage('input')" id="nav-input"><i class="fa-solid fa-keyboard"></i>入力</button>
+    <button onclick="showPage('cart')" id="nav-cart"><i class="fa-solid fa-cart-shopping"></i>カート</button>
+</nav>
 
-        const cart = []; // スキャンした商品を溜める配列
+<script>
+    // 設定
+    const SEARCH_URL = "https://default9b258ec3f0904041bdcf3f8e9c128b.4f.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/e251147543764915b5e738754e6c8116/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=TowxosK6T9X4qf8OE_FzC45ns9RLytXJgo3c8gOEi6Q";
+    const ORDER_URL = "https://default9b258ec3f0904041bdcf3f8e9c128b.4f.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/07f9d1f370764796ac8a33bb06b2ab90/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=2EIkThjCBuMWWQX8AuwTthobbzJ77KHfCCFnT-_UtqM";
+    
+    const cart = [];
 
-        async function handleScan() {
-            try {
-                const result = await liff.scanCodeV2();
-                const code = result.value;
-                if (!code) return;
+    // 画面切り替え
+    function showPage(pageId) {
+        // 全セクション非表示
+        document.querySelectorAll('.page-section').forEach(sec => sec.classList.remove('active'));
+        // 指定セクション表示
+        document.getElementById(pageId).classList.add('active');
+        // メニューの色変更
+        document.querySelectorAll('.footer-menu button').forEach(btn => btn.classList.remove('active-menu'));
+        document.getElementById('nav-' + pageId).classList.add('active-menu');
+    }
 
-                // Power Automateで商品検索
-                const res = await fetch(SEARCH_URL, {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ jan: code })
-                });
-                const data = await res.json();
+    // 商品検索共通処理
+    async function searchProduct(code) {
+        try {
+            const res = await fetch(SEARCH_URL, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ jan: code })
+            });
+            const data = await res.json();
 
-                // カートに追加
+            if (data.name) {
                 cart.push({ jan: code, name: data.name, price: data.price });
                 updateCartUI();
-
-            } catch (err) { alert("エラー: " + err.message); }
+                alert("「" + data.name + "」を追加しました！");
+            } else {
+                alert("商品が見つかりません。");
+            }
+        } catch (err) {
+            alert("検索エラー: " + err.message);
         }
-
-        function updateCartUI() {
-            const list = document.getElementById('cart-list');
-            list.innerHTML = "";
-            cart.forEach(item => {
-                const div = document.createElement('div');
-                div.className = "item-card";
-                div.innerHTML = `<b>${item.name}</b><br>JAN: ${item.jan} / 単価: ${item.price}円`;
-                list.appendChild(div);
-            });
-        }
-
-        async function sendOrder() {
-            if (cart.length === 0) return alert("商品がありません");
-            
-            try {
-                // Power Automate（メール送信フロー）へ「配列」として送る
-                const res = await fetch(ORDER_URL, {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ items: cart }) // ★これがエラーを直す鍵「Array」です
-                });
-                if (res.ok) alert("注文を送信しました！");
-            } catch (err) { alert("送信エラー: " + err.message); }
-        }
-
-        liff.init({ liffId: "2008942151-HVIKLBVG" });
-        // 品番入力で商品を探す関数
-async function handleManualSearch() {
-    const idField = document.getElementById('manual-id');
-    const code = idField.value.trim();
-
-    if (!code) {
-        alert("品番を入力してください");
-        return;
     }
 
-    try {
-        const res = await fetch(SEARCH_URL, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ jan: code })
+    // スキャン
+    async function handleScan() {
+        try {
+            const result = await liff.scanCodeV2();
+            if (result.value) await searchProduct(result.value);
+        } catch (err) { alert("スキャン失敗: " + err.message); }
+    }
+
+    // 手入力
+    async function handleManualSearch() {
+        const input = document.getElementById('manual-id');
+        const code = input.value.trim();
+        if (!code) return alert("品番を入力してください");
+        await searchProduct(code);
+        input.value = "";
+    }
+
+    // カート更新
+    function updateCartUI() {
+        const list = document.getElementById('cart-list');
+        if (cart.length === 0) {
+            list.innerHTML = '<p style="text-align: center; color: #888;">商品は入っていません</p>';
+            return;
+        }
+        list.innerHTML = "";
+        cart.forEach(item => {
+            const div = document.createElement('div');
+            div.className = "item-card";
+            div.innerHTML = `<b>${item.name}</b><br><small>品番: ${item.jan} / 単価: ${item.price}円</small>`;
+            list.appendChild(div);
         });
-        
-        const data = await res.json();
-
-        if (data.name) {
-            cart.push({ jan: code, name: data.name, price: data.price });
-            updateCartUI(); // カートの表示を更新
-            idField.value = ""; // 入力欄をクリア
-        } else {
-            alert("該当する商品が見つかりません。品番を確認してください。");
-        }
-    } catch (err) {
-        alert("通信エラーが発生しました。URLが正しいか確認してください。");
     }
-}
-    </script>
+
+    // 注文送信
+    async function sendOrder() {
+        if (cart.length === 0) return alert("カートが空です");
+        try {
+            const res = await fetch(ORDER_URL, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ items: cart })
+            });
+            if (res.ok) {
+                alert("注文を送信しました！");
+                cart.length = 0;
+                updateCartUI();
+                showPage('home');
+            }
+        } catch (err) { alert("送信エラー: " + err.message); }
+    }
+
+    // LIFF初期化
+    liff.init({ liffId: "2008942151-HVIKLBVG" });
+</script>
+
 </body>
 </html>
-
-
