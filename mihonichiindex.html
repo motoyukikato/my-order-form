@@ -148,7 +148,7 @@
         await searchProduct(code);
         input.value = "";
     }
-// カート更新
+// カート更新（数量手入力対応版）
 function updateCartUI() {
     const list = document.getElementById('cart-list');
     if (cart.length === 0) {
@@ -157,42 +157,54 @@ function updateCartUI() {
     }
 
     list.innerHTML = "";
-    let totalAll = 0; // 全体の合計金額を貯める変数
+    let totalAll = 0;
 
     cart.forEach((item, index) => {
-        // もし数量(quantity)がデータになければ1個として計算
-        const qty = item.quantity || 1;
-        const subtotal = item.price * qty;
+        // 初回追加時は数量が設定されていないので1をセット
+        if (!item.quantity) item.quantity = 1;
+        
+        const subtotal = item.price * item.quantity;
         totalAll += subtotal;
 
         const div = document.createElement('div');
         div.className = "item-card";
-        div.style = "border-bottom: 1px solid #eee; padding: 10px 0;"; // 少し見やすく装飾
+        div.style = "border-bottom: 1px solid #eee; padding: 10px 0;";
         div.innerHTML = `
             <div style="display: flex; justify-content: space-between;">
                 <b>${item.name}</b>
                 <button onclick="removeItem(${index})" style="background:none; border:none; color:red; font-size:12px;">削除</button>
             </div>
             <small>品番: ${item.jan} / 単価: ${Number(item.price).toLocaleString()}円</small><br>
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 5px;">
-                <span>数量: ${qty}</span>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 8px;">
+                <div>
+                    数量: <input type="number" value="${item.quantity}" min="1" 
+                        onchange="updateQuantity(${index}, this.value)" 
+                        style="width: 50px; padding: 5px; border: 1px solid #ccc; border-radius: 4px;">
+                </div>
                 <b style="color: #333;">小計: ${subtotal.toLocaleString()}円</b>
             </div>
         `;
         list.appendChild(div);
     });
 
-    // 最後に合計金額のエリアを追加
     const summaryDiv = document.createElement('div');
     summaryDiv.style = "margin-top: 20px; padding: 15px; background: #f9f9f9; border-radius: 8px; text-align: right;";
     summaryDiv.innerHTML = `
-        <span style="font-size: 0.9em; color: #666;">合計点数: ${cart.length}点</span><br>
         <strong style="font-size: 1.3em; color: #d32f2f;">合計金額: ${totalAll.toLocaleString()}円</strong>
     `;
     list.appendChild(summaryDiv);
 }
 
-// ついでに削除ボタンも機能させるための関数
+// 数量が変更された時に実行される関数
+function updateQuantity(index, newQty) {
+    const qty = parseInt(newQty);
+    if (qty > 0) {
+        cart[index].quantity = qty;
+        updateCartUI(); // 再描画して小計・合計を更新
+    }
+}
+
+// 削除関数（前回のものと同じ）
 function removeItem(index) {
     if(confirm("この商品を削除しますか？")) {
         cart.splice(index, 1);
@@ -265,6 +277,7 @@ async function handleCustomerScan() {
 
 </body>
 </html>
+
 
 
 
