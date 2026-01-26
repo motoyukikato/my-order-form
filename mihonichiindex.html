@@ -152,7 +152,7 @@
             <div class="item-card">
                 <b>${item.name}</b><br>
                 単価: ${item.price.toLocaleString()}円 / 
-                数量: <input type="number" value="${item.quantity}" onchange="updateQty(${i}, this.value)" style="width:40px;">
+                数量: <input type="number" inputmode="numeric" pattern="[0-9]*" value="${item.quantity}" onchange="updateQty(${i}, this.value)" style="width:40px; font-size: 16px;">
                 <br><b>小計: ${subtotal.toLocaleString()}円</b>
                 <button onclick="removeItem(${i})" style="color:red; float:right; border:none; background:none;">削除</button>
             </div>`;
@@ -208,4 +208,5 @@
 </script>
 </body>
 </html>
+
 
