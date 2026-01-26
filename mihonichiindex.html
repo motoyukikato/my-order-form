@@ -87,9 +87,11 @@
 </nav>
 
 <script>
+    // URL設定（最新の注文URL「Iod4」に固定済み）
     const SEARCH_URL = "https://default9b258ec3f0904041bdcf3f8e9c128b.4f.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/e251147543764915b5e738754e6c8116/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=TowxosK6T9X4qf8OE_FzC45ns9RLytXJgo3c8gOEi6Q";
     const ORDER_URL = "https://default9b258ec3f0904041bdcf3f8e9c128b.4f.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/2a103696f19b42f685e940c3f0bdab05/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=TuEWCx-Z2Grf6fep1ZQtUXF762w8NZbPJUAS8XxIod4";
     const CUSTOMER_SEARCH_URL = "https://default9b258ec3f0904041bdcf3f8e9c128b.4f.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/bf9ccef62dad43c1a887216f81d0b97e/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=nlGwH-lBbA8F835qzaRsd7Spy5XM0tOncMVAD4GOuBE"; 
+    
     const cart = [];
 
     function showPage(pageId) {
@@ -148,119 +150,4 @@
             const data = await res.json();
             if (data.name) {
                 cart.push({ jan: data.id, name: data.name, price: data.price, quantity: 1 });
-                updateCartUI();
-                
-                // --- ここを追加！ ---
-                // alert(data.name + "を追加"); // アラートが邪魔な場合は消してもOKです
-                showPage('cart'); // 自動でカート画面に切り替え
-                // ------------------
-                
-            } else { alert("商品なし"); }
-        } catch (err) { alert("エラー: " + err.message); }
-    }
-
-    async function handleScan() {
-        try {
-            const res = await liff.scanCodeV2();
-            if (res.value) await searchProduct(res.value);
-        } catch (err) { alert("失敗"); }
-    }
-
-    async function handleManualSearch() {
-        const val = document.getElementById('manual-id').value.trim();
-        if (val) { await searchProduct(val); document.getElementById('manual-id').value = ""; }
-    }
-
-    function updateCartUI() {
-        const list = document.getElementById('cart-list');
-        if (cart.length === 0) { list.innerHTML = '<p style="text-align: center;">空です</p>'; return; }
-        list.innerHTML = "";
-        let total = 0;
-        cart.forEach((item, i) => {
-            const sub = item.price * item.quantity;
-            total += sub;
-            const div = document.createElement('div');
-            div.className = "item-card";
-            div.innerHTML = `
-                <b>${item.name}</b><br><small>品番: ${item.jan}</small><br>
-                数量: <input type="number" inputmode="numeric" value="${item.quantity}" onchange="updateQty(${i}, this.value)" style="width:50px; font-size:16px;">
-                <b>小計: ${sub.toLocaleString()}円</b>
-                <button onclick="removeItem(${i})" style="color:red; border:none; background:none; float:right;">削除</button>
-            `;
-            list.appendChild(div);
-        });
-        const summary = document.createElement('div');
-        summary.style = "margin-top:10px; padding:10px; background:#eee; text-align:right;";
-        summary.innerHTML = `<strong>合計: ${total.toLocaleString()}円</strong>`;
-        list.appendChild(summary);
-    }
-
-    function updateQty(i, q) { if (q > 0) { cart[i].quantity = parseInt(q); updateCartUI(); } }
-    function removeItem(i) { if(confirm("削除しますか？")) { cart.splice(i, 1); updateCartUI(); } }
-
-   async function sendOrder() {
-        if (cart.length === 0) return alert("カートが空です");
-        
-        // ボタンを一時的に無効化（連打による二重送信防止）
-        const btn = document.getElementById('send-btn');
-        btn.disabled = true;
-        btn.innerText = "送信中...";
-
-        try {
-            const res = await fetch(ORDER_URL, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-               body: JSON.stringify({ 
-            storeName: document.getElementById("res-customer").innerText, 
-            email: document.getElementById("res-email").innerText,      
-            items: cart.map(item => ({
-                partNo: item.jan,
-                name: item.name,      
-                price: item.price,    
-                quantity: String(item.quantity) 
-            })),
-            comments: "アプリからの注文",
-            customerAddress: document.getElementById("res-addr1").innerText + document.getElementById("res-addr2").innerText,
-            customerTel: document.getElementById("res-tel").innerText
-        });
-
-            if (res.ok) {
-                alert("注文を送信しました！");
-                
-                // 1. カートを空にする
-                cart.length = 0;
-                updateCartUI();
-                
-                // 2. 画面上の顧客表示をリセット（ここが重要！）
-                document.getElementById("cust-data").style.display = "none";
-                document.getElementById("cust-loading").style.display = "block";
-                document.getElementById("cust-loading").innerText = "顧客情報を検索またはスキャンしてください";
-                
-                // 3. 入力欄も一応空にする
-                if(document.getElementById("cust-manual-input")) {
-                    document.getElementById("cust-manual-input").value = "";
-                }
-
-                // 4. ホーム画面に戻る
-                showPage('home');
-            } else {
-                alert("送信に失敗しました。電波状況を確認してください。");
-            }
-        } catch (err) { 
-            alert("エラーが発生しました: " + err.message); 
-        } finally {
-            // 処理が終わったらボタンを元に戻す
-            btn.disabled = false;
-            btn.innerText = "🛒 注文を確定してメール送信";
-        }
-    }
-
-    liff.init({ liffId: "2008942151-HVIKLBVG" });
-</script>
-</body>
-</html>
-
-
-
-
-
+                updateCart
