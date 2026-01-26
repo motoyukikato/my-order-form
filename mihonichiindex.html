@@ -32,6 +32,7 @@
     <div class="card" id="cust-display">
         <div id="cust-loading" style="text-align:center; color:#ccc; padding: 20px;">検索またはスキャンしてください</div>
       <div id="cust-data" style="display:none;">
+    <div id="cust-data" style="display:none;">
     <b id="res-customer" style="font-size: 1.2em; color: #3b5998;"></b><br>
     住所１: <span id="res-address1"></span><br>
     住所２: <span id="res-address2"></span><br>
@@ -113,8 +114,13 @@
         });
         const data = await res.json();
         if (data.customer) {
+            // ここでフローから返ってきた値を画面の各IDに流し込みます
             document.getElementById("res-customer").innerText = data.customer;
+            document.getElementById("res-address1").innerText = data.address1 || "";
+            document.getElementById("res-address2").innerText = data.address2 || "";
+            document.getElementById("res-tel").innerText = data.tel || "";
             document.getElementById("res-email").innerText = data.email || "";
+            
             document.getElementById("cust-loading").style.display = "none";
             document.getElementById("cust-data").style.display = "block";
         }
@@ -208,5 +214,6 @@
 </script>
 </body>
 </html>
+
 
 
