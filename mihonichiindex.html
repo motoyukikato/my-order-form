@@ -31,14 +31,13 @@
     <h2 style="text-align: center;">顧客情報</h2>
     <div class="card" id="cust-display">
         <div id="cust-loading" style="text-align:center; color:#ccc; padding: 20px;">検索またはスキャンしてください</div>
-      <div id="cust-data" style="display:none;">
-    <div id="cust-data" style="display:none;">
-    <b id="res-customer" style="font-size: 1.2em; color: #3b5998;"></b><br>
-    住所１: <span id="res-address1"></span><br>
-    住所２: <span id="res-address2"></span><br>
-    電話: <span id="res-tel"></span><br>
-    Email: <span id="res-email"></span>
-</div>
+        <div id="cust-data" style="display:none;">
+            <b id="res-customer" style="font-size: 1.2em; color: #3b5998;"></b><br>
+            住所１: <span id="res-address1"></span><br>
+            住所２: <span id="res-address2"></span><br>
+            電話: <span id="res-tel"></span><br>
+            Email: <span id="res-email"></span>
+        </div>
     </div>
     <div class="card">
         <input type="tel" id="cust-manual-input" placeholder="電話番号を入力" style="width: 60%; padding: 10px;">
@@ -107,22 +106,27 @@
     }
 
     async function fetchCustomerData(val) {
-        const res = await fetch(CUSTOMER_SEARCH_URL, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ jan: val })
-        });
-        const data = await res.json();
-        if (data.customer) {
-            // ここでフローから返ってきた値を画面の各IDに流し込みます
-            document.getElementById("res-customer").innerText = data.customer;
-            document.getElementById("res-address1").innerText = data.address1 || "";
-            document.getElementById("res-address2").innerText = data.address2 || "";
-            document.getElementById("res-tel").innerText = data.tel || "";
-            document.getElementById("res-email").innerText = data.email || "";
-            
-            document.getElementById("cust-loading").style.display = "none";
-            document.getElementById("cust-data").style.display = "block";
+        try {
+            const res = await fetch(CUSTOMER_SEARCH_URL, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ jan: val })
+            });
+            const data = await res.json();
+            if (data.customer) {
+                document.getElementById("res-customer").innerText = data.customer;
+                document.getElementById("res-address1").innerText = data.address1 || "";
+                document.getElementById("res-address2").innerText = data.address2 || "";
+                document.getElementById("res-tel").innerText = data.tel || "";
+                document.getElementById("res-email").innerText = data.email || "";
+                
+                document.getElementById("cust-loading").style.display = "none";
+                document.getElementById("cust-data").style.display = "block";
+            } else {
+                alert("顧客データが見つかりませんでした。");
+            }
+        } catch (e) {
+            alert("顧客検索でエラーが発生しました。");
         }
     }
 
@@ -188,7 +192,10 @@
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ 
-                    storeName: customer, 
+                    storeName: customer,
+                    address1: document.getElementById("res-address1").innerText,
+                    address2: document.getElementById("res-address2").innerText,
+                    tel: document.getElementById("res-tel").innerText,
                     email: document.getElementById("res-email").innerText,      
                     items: cart.map(item => ({ 
                         partNo: item.jan, 
@@ -214,6 +221,3 @@
 </script>
 </body>
 </html>
-
-
-
