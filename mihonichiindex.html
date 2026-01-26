@@ -20,6 +20,7 @@
         .footer-menu button i { font-size: 24px; display: block; margin-bottom: 4px; }
         .footer-menu button.active-menu { color: #3b5998; font-weight: bold; }
         #send-btn { background-color: #28a745; color: white; border: none; width: 100%; padding: 15px; font-size: 18px; border-radius: 10px; margin-top: 20px; }
+        #send-btn:disabled { background-color: #ccc; }
         textarea { width: 100%; border: 1px solid #ddd; border-radius: 5px; padding: 10px; box-sizing: border-box; font-size: 16px; }
     </style>
 </head>
@@ -81,14 +82,17 @@
 </nav>
 
 <script>
+    // URL設定
     const SEARCH_URL = "https://default9b258ec3f0904041bdcf3f8e9c128b.4f.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/e251147543764915b5e738754e6c8116/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=TowxosK6T9X4qf8OE_FzC45ns9RLytXJgo3c8gOEi6Q";
     const ORDER_URL = "https://default9b258ec3f0904041bdcf3f8e9c128b.4f.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/2a103696f19b42f685e940c3f0bdab05/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=TuEWCx-Z2Grf6fep1ZQtUXF762w8NZbPJUAS8XxIod4";
     const CUSTOMER_SEARCH_URL = "https://default9b258ec3f0904041bdcf3f8e9c128b.4f.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/bf9ccef62dad43c1a887216f81d0b97e/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=nlGwH-lBbA8F835qzaRsd7Spy5XM0tOncMVAD4GOuBE"; 
     
     let cart = [];
 
+    // LIFF初期化
     liff.init({ liffId: "2008942151-HVIKLBVG" });
 
+    // ページ切り替え
     function showPage(pageId) {
         document.querySelectorAll('.page-section').forEach(sec => sec.classList.remove('active'));
         document.getElementById(pageId).classList.add('active');
@@ -96,6 +100,7 @@
         document.getElementById('nav-' + pageId).classList.add('active-menu');
     }
 
+    // 顧客検索（手入力・スキャン共通）
     async function handleCustomerManualSearch() {
         const val = document.getElementById('cust-manual-input').value.trim();
         if (val) await fetchCustomerData(val);
@@ -130,6 +135,7 @@
         }
     }
 
+    // 商品検索
     async function searchProduct(code) {
         const res = await fetch(SEARCH_URL, {
             method: "POST",
@@ -141,6 +147,8 @@
             cart.push({ jan: data.id, name: data.name, price: Number(data.price), quantity: 1 });
             updateCartUI();
             showPage('cart');
+        } else {
+            alert("商品が見つかりません");
         }
     }
 
@@ -150,6 +158,7 @@
         if (val) { await searchProduct(val); document.getElementById('manual-id').value = ""; }
     }
 
+    // カートUI更新
     function updateCartUI() {
         const list = document.getElementById('cart-list');
         if (cart.length === 0) { list.innerHTML = '<p style="text-align: center;">空です</p>'; return; }
@@ -175,9 +184,13 @@
     function updateQty(i, q) { if (q > 0) { cart[i].quantity = parseInt(q); updateCartUI(); } }
     function removeItem(i) { cart.splice(i, 1); updateCartUI(); }
 
+    // 【重要】注文送信処理
     async function sendOrder() {
         const customer = document.getElementById("res-customer").innerText;
+        const email = document.getElementById("res-email").innerText.trim();
+
         if (!customer) return alert("顧客を選択してください");
+        if (!email) return alert("顧客のメールアドレスが登録されていません。");
         if (cart.length === 0) return alert("カートが空です");
 
         const btn = document.getElementById('send-btn');
@@ -196,7 +209,7 @@
                     address1: document.getElementById("res-address1").innerText,
                     address2: document.getElementById("res-address2").innerText,
                     tel: document.getElementById("res-tel").innerText,
-                    email: document.getElementById("res-email").innerText.trim(),,      
+                    email: email, 
                     items: cart.map(item => ({ 
                         partNo: item.jan, 
                         name: item.name, 
@@ -208,15 +221,15 @@
                     comment: document.getElementById("order-comment").value
                 })
             });
+
             if (res.ok) { 
                 alert("注文を送信しました"); 
                 
-                // --- カートとコメントのクリア ---
+                // データクリア
                 cart = []; 
                 document.getElementById("order-comment").value = "";
                 updateCartUI(); 
 
-                // --- 顧客情報のクリア（ここが新しく追加する部分！） ---
                 document.getElementById("res-customer").innerText = "";
                 document.getElementById("res-address1").innerText = "";
                 document.getElementById("res-address2").innerText = "";
@@ -224,18 +237,20 @@
                 document.getElementById("res-email").innerText = "";
                 document.getElementById("cust-manual-input").value = ""; 
 
-                // --- 表示を初期状態のリセット ---
                 document.getElementById("cust-data").style.display = "none";
                 document.getElementById("cust-loading").style.display = "block";
 
-                // ホームに戻る
                 showPage('home'); 
+            } else {
+                alert("送信エラーが発生しました。Power Automateの設定を確認してください。");
             }
-        } catch (err) { alert("送信失敗"); }
-        finally { btn.disabled = false; btn.innerText = "🛒 注文を確定する"; }
+        } catch (err) { 
+            alert("送信に失敗しました: " + err.message); 
+        } finally { 
+            btn.disabled = false; 
+            btn.innerText = "🛒 注文を確定する"; 
+        }
     }
 </script>
 </body>
 </html>
-
-
