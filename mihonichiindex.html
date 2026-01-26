@@ -196,7 +196,7 @@
                     address1: document.getElementById("res-address1").innerText,
                     address2: document.getElementById("res-address2").innerText,
                     tel: document.getElementById("res-tel").innerText,
-                    email: document.getElementById("res-email").innerText,      
+                    email: document.getElementById("res-email").innerText.trim(),,      
                     items: cart.map(item => ({ 
                         partNo: item.jan, 
                         name: item.name, 
@@ -237,4 +237,5 @@
 </script>
 </body>
 </html>
+
 
