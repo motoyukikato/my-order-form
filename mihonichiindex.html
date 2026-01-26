@@ -198,20 +198,55 @@
     function updateQty(i, q) { if (q > 0) { cart[i].quantity = parseInt(q); updateCartUI(); } }
     function removeItem(i) { if(confirm("削除しますか？")) { cart.splice(i, 1); updateCartUI(); } }
 
-    async function sendOrder() {
-        if (cart.length === 0) return;
+   async function sendOrder() {
+        if (cart.length === 0) return alert("カートが空です");
+        
+        // ボタンを一時的に無効化（連打による二重送信防止）
+        const btn = document.getElementById('send-btn');
+        btn.disabled = true;
+        btn.innerText = "送信中...";
+
         try {
             const res = await fetch(ORDER_URL, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ items: cart })
             });
-            if (res.ok) { alert("送信完了"); cart.length = 0; updateCartUI(); showPage('home'); }
-        } catch (err) { alert("エラー"); }
+
+            if (res.ok) {
+                alert("注文を送信しました！");
+                
+                // 1. カートを空にする
+                cart.length = 0;
+                updateCartUI();
+                
+                // 2. 画面上の顧客表示をリセット（ここが重要！）
+                document.getElementById("cust-data").style.display = "none";
+                document.getElementById("cust-loading").style.display = "block";
+                document.getElementById("cust-loading").innerText = "顧客情報を検索またはスキャンしてください";
+                
+                // 3. 入力欄も一応空にする
+                if(document.getElementById("cust-manual-input")) {
+                    document.getElementById("cust-manual-input").value = "";
+                }
+
+                // 4. ホーム画面に戻る
+                showPage('home');
+            } else {
+                alert("送信に失敗しました。電波状況を確認してください。");
+            }
+        } catch (err) { 
+            alert("エラーが発生しました: " + err.message); 
+        } finally {
+            // 処理が終わったらボタンを元に戻す
+            btn.disabled = false;
+            btn.innerText = "🛒 注文を確定してメール送信";
+        }
     }
 
     liff.init({ liffId: "2008942151-HVIKLBVG" });
 </script>
 </body>
 </html>
+
 
