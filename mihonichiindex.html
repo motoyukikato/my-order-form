@@ -149,7 +149,12 @@
             if (data.name) {
                 cart.push({ jan: data.id, name: data.name, price: data.price, quantity: 1 });
                 updateCartUI();
-                alert(data.name + "を追加");
+                
+                // --- ここを追加！ ---
+                // alert(data.name + "を追加"); // アラートが邪魔な場合は消してもOKです
+                showPage('cart'); // 自動でカート画面に切り替え
+                // ------------------
+                
             } else { alert("商品なし"); }
         } catch (err) { alert("エラー: " + err.message); }
     }
@@ -209,3 +214,4 @@
 </script>
 </body>
 </html>
+
