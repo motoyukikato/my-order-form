@@ -20,42 +20,32 @@
         .footer-menu button i { font-size: 24px; display: block; margin-bottom: 4px; }
         .footer-menu button.active-menu { color: #3b5998; font-weight: bold; }
         #send-btn { background-color: #28a745; color: white; border: none; width: 100%; padding: 15px; font-size: 18px; border-radius: 10px; margin-top: 20px; }
+        textarea { width: 100%; border: 1px solid #ddd; border-radius: 5px; padding: 10px; box-sizing: border-box; font-size: 16px; }
     </style>
 </head>
 <body>
 
-<header>
-    <div style="font-size: 1.2em; font-weight: bold;">見本市注文アプリ</div>
-</header>
+<header><div style="font-size: 1.2em; font-weight: bold;">見本市注文アプリ</div></header>
 
 <section id="home" class="page-section active">
     <h2 style="text-align: center;">顧客情報</h2>
-    <div class="card" id="cust-display" style="min-height: 120px; line-height: 1.6;">
-        <div id="cust-loading" style="text-align:center; color:#ccc; padding-top: 30px;">検索またはスキャンしてください</div>
+    <div class="card" id="cust-display">
+        <div id="cust-loading" style="text-align:center; color:#ccc; padding: 20px;">検索またはスキャンしてください</div>
         <div id="cust-data" style="display:none;">
             <b id="res-customer" style="font-size: 1.2em; color: #3b5998;"></b><br>
-            <span id="res-zip"></span><br>
-            <span id="res-addr1"></span> <span id="res-addr2"></span><br>
-            TEL: <span id="res-tel"></span><br>
             Email: <span id="res-email"></span>
         </div>
     </div>
-    <div class="card" style="padding: 15px;">
-        <p style="font-weight: bold; margin-bottom: 8px;">電話番号で検索：</p>
-        <div style="display: flex; gap: 5px;">
-            <input type="tel" id="cust-manual-input" placeholder="09012345678" style="flex: 1; font-size: 16px; padding: 10px;">
-            <button class="btn-blue" onclick="handleCustomerManualSearch()">検索</button>
-        </div>
+    <div class="card">
+        <input type="tel" id="cust-manual-input" placeholder="電話番号を入力" style="width: 60%; padding: 10px;">
+        <button class="btn-blue" onclick="handleCustomerManualSearch()">検索</button>
     </div>
-    <button class="btn-scan" onclick="handleCustomerScan()" style="background: #28a745;">
-        <i class="fa-solid fa-qrcode"></i> 顧客QRをスキャン
-    </button>
+    <button class="btn-scan" onclick="handleCustomerScan()" style="background: #28a745;"><i class="fa-solid fa-qrcode"></i> 顧客スキャン</button>
 </section>
 
 <section id="barcode" class="page-section">
-    <h2>バーコードリーダー</h2>
+    <h2>スキャン</h2>
     <div class="card" style="text-align: center;">
-        <p>商品のJANコードをスキャンしてください</p>
         <button class="btn-scan" onclick="handleScan()"><i class="fa-solid fa-barcode"></i> 商品スキャン開始</button>
     </div>
 </section>
@@ -63,20 +53,21 @@
 <section id="input" class="page-section">
     <h2>品番入力</h2>
     <div class="card">
-        <p style="font-weight: bold;">品番で入力：</p>
-        <div style="display: flex; gap: 5px;">
-            <input type="text" id="manual-id" placeholder="例: 40229" style="flex: 1; font-size: 16px; padding: 10px;">
-            <button class="btn-blue" onclick="handleManualSearch()">追加</button>
-        </div>
+        <input type="text" id="manual-id" placeholder="品番を入力" style="width: 60%; padding: 10px;">
+        <button class="btn-blue" onclick="handleManualSearch()">追加</button>
     </div>
 </section>
 
 <section id="cart" class="page-section">
     <h2>注文カート</h2>
-    <div id="cart-list">
-        <p style="text-align: center; color: #888;">商品は入っていません</p>
+    <div id="cart-list"><p style="text-align: center;">空です</p></div>
+    
+    <div class="card">
+        <p style="font-weight: bold;">備考欄（コメント）：</p>
+        <textarea id="order-comment" rows="3" placeholder="納期指定などあれば入力してください"></textarea>
     </div>
-    <button id="send-btn" onclick="sendOrder()">🛒 注文を確定してメール送信</button>
+
+    <button id="send-btn" onclick="sendOrder()">🛒 注文を確定する</button>
 </section>
 
 <nav class="footer-menu">
@@ -91,79 +82,56 @@
     const ORDER_URL = "https://default9b258ec3f0904041bdcf3f8e9c128b.4f.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/2a103696f19b42f685e940c3f0bdab05/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=TuEWCx-Z2Grf6fep1ZQtUXF762w8NZbPJUAS8XxIod4";
     const CUSTOMER_SEARCH_URL = "https://default9b258ec3f0904041bdcf3f8e9c128b.4f.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/bf9ccef62dad43c1a887216f81d0b97e/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=nlGwH-lBbA8F835qzaRsd7Spy5XM0tOncMVAD4GOuBE"; 
     
-    const cart = [];
+    let cart = [];
 
-    liff.init({ liffId: "2008942151-HVIKLBVG" }).catch(err => console.error(err));
+    liff.init({ liffId: "2008942151-HVIKLBVG" });
 
     function showPage(pageId) {
         document.querySelectorAll('.page-section').forEach(sec => sec.classList.remove('active'));
         document.getElementById(pageId).classList.add('active');
         document.querySelectorAll('.footer-menu button').forEach(btn => btn.classList.remove('active-menu'));
-        const navBtn = document.getElementById('nav-' + pageId);
-        if(navBtn) navBtn.classList.add('active-menu');
+        document.getElementById('nav-' + pageId).classList.add('active-menu');
     }
 
     async function handleCustomerManualSearch() {
-        const input = document.getElementById('cust-manual-input');
-        const code = input.value.trim();
-        if (!code) return alert("電話番号を入力してください");
-        await fetchCustomerData(code);
+        const val = document.getElementById('cust-manual-input').value.trim();
+        if (val) await fetchCustomerData(val);
     }
 
     async function handleCustomerScan() {
-        try {
-            const result = await liff.scanCodeV2();
-            if (result.value) await fetchCustomerData(result.value);
-        } catch (err) { alert("スキャン失敗: " + err.message); }
+        liff.scanCodeV2().then(result => { if (result.value) fetchCustomerData(result.value); });
     }
 
     async function fetchCustomerData(val) {
-        try {
-            document.getElementById("cust-loading").style.display = "block";
-            document.getElementById("cust-loading").innerText = "照会中...";
-            document.getElementById("cust-data").style.display = "none";
-            const res = await fetch(CUSTOMER_SEARCH_URL, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ jan: val })
-            });
-            const data = await res.json();
-            if (data.customer) {
-                document.getElementById("res-customer").innerText = data.customer;
-                document.getElementById("res-zip").innerText = "〒" + (data.zip || "");
-                document.getElementById("res-addr1").innerText = data.address1 || "";
-                document.getElementById("res-addr2").innerText = data.address2 || "";
-                document.getElementById("res-tel").innerText = data.tel || "";
-                document.getElementById("res-email").innerText = data.email || "---";
-                document.getElementById("cust-loading").style.display = "none";
-                document.getElementById("cust-data").style.display = "block";
-            } else { alert("顧客が見つかりません"); }
-        } catch (err) { alert("照会エラー: " + err.message); }
+        const res = await fetch(CUSTOMER_SEARCH_URL, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ jan: val })
+        });
+        const data = await res.json();
+        if (data.customer) {
+            document.getElementById("res-customer").innerText = data.customer;
+            document.getElementById("res-email").innerText = data.email || "";
+            document.getElementById("cust-loading").style.display = "none";
+            document.getElementById("cust-data").style.display = "block";
+        }
     }
 
     async function searchProduct(code) {
-        try {
-            const res = await fetch(SEARCH_URL, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ jan: code })
-            });
-            const data = await res.json();
-            if (data.name) {
-                cart.push({ jan: data.id, name: data.name, price: data.price, quantity: 1 });
-                updateCartUI();
-                showPage('cart');
-            } else { alert("商品なし"); }
-        } catch (err) { alert("エラー: " + err.message); }
+        const res = await fetch(SEARCH_URL, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ jan: code })
+        });
+        const data = await res.json();
+        if (data.name) {
+            cart.push({ jan: data.id, name: data.name, price: Number(data.price), quantity: 1 });
+            updateCartUI();
+            showPage('cart');
+        }
     }
 
-    async function handleScan() {
-        try {
-            const res = await liff.scanCodeV2();
-            if (res.value) await searchProduct(res.value);
-        } catch (err) { alert("失敗"); }
-    }
-
+    async function handleScan() { liff.scanCodeV2().then(res => { if (res.value) searchProduct(res.value); }); }
     async function handleManualSearch() {
         const val = document.getElementById('manual-id').value.trim();
         if (val) { await searchProduct(val); document.getElementById('manual-id').value = ""; }
@@ -172,64 +140,67 @@
     function updateCartUI() {
         const list = document.getElementById('cart-list');
         if (cart.length === 0) { list.innerHTML = '<p style="text-align: center;">空です</p>'; return; }
-        list.innerHTML = "";
+        
         let total = 0;
-        cart.forEach((item, i) => {
-            const sub = item.price * item.quantity;
-            total += sub;
-            const div = document.createElement('div');
-            div.className = "item-card";
-            div.innerHTML = `
-                <b>${item.name}</b><br><small>品番: ${item.jan}</small><br>
-                数量: <input type="number" value="${item.quantity}" onchange="updateQty(${i}, this.value)" style="width:50px;">
-                <b>小計: ${sub.toLocaleString()}円</b>
-                <button onclick="removeItem(${i})" style="color:red; border:none; background:none; float:right;">削除</button>
-            `;
-            list.appendChild(div);
-        });
-        const summary = document.createElement('div');
-        summary.style = "margin-top:10px; padding:10px; background:#eee; text-align:right;";
-        summary.innerHTML = `<strong>合計: ${total.toLocaleString()}円</strong>`;
-        list.appendChild(summary);
+        let html = cart.map((item, i) => {
+            const subtotal = item.price * item.quantity;
+            total += subtotal;
+            return `
+            <div class="item-card">
+                <b>${item.name}</b><br>
+                単価: ${item.price.toLocaleString()}円 / 
+                数量: <input type="number" value="${item.quantity}" onchange="updateQty(${i}, this.value)" style="width:40px;">
+                <br><b>小計: ${subtotal.toLocaleString()}円</b>
+                <button onclick="removeItem(${i})" style="color:red; float:right; border:none; background:none;">削除</button>
+            </div>`;
+        }).join('');
+        
+        html += `<div style="text-align:right; padding:10px; font-size:1.2em;"><b>合計金額: ${total.toLocaleString()}円</b></div>`;
+        list.innerHTML = html;
     }
 
     function updateQty(i, q) { if (q > 0) { cart[i].quantity = parseInt(q); updateCartUI(); } }
-    function removeItem(i) { if(confirm("削除しますか？")) { cart.splice(i, 1); updateCartUI(); } }
+    function removeItem(i) { cart.splice(i, 1); updateCartUI(); }
 
     async function sendOrder() {
+        const customer = document.getElementById("res-customer").innerText;
+        if (!customer) return alert("顧客を選択してください");
         if (cart.length === 0) return alert("カートが空です");
+
         const btn = document.getElementById('send-btn');
         btn.disabled = true;
         btn.innerText = "送信中...";
+
+        let totalAmount = 0;
+        cart.forEach(item => totalAmount += (item.price * item.quantity));
 
         try {
             const res = await fetch(ORDER_URL, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ 
-                    storeName: document.getElementById("res-customer").innerText, 
+                    storeName: customer, 
                     email: document.getElementById("res-email").innerText,      
-                    items: cart.map(item => ({
-                        partNo: item.jan,
-                        name: item.name,      
-                        price: item.price,    
-                        quantity: String(item.quantity) 
+                    items: cart.map(item => ({ 
+                        partNo: item.jan, 
+                        name: item.name, 
+                        price: item.price, 
+                        quantity: String(item.quantity),
+                        subtotal: item.price * item.quantity
                     })),
-                    customerAddress: document.getElementById("res-addr1").innerText + document.getElementById("res-addr2").innerText,
-                    customerTel: document.getElementById("res-tel").innerText
+                    total: totalAmount,
+                    comment: document.getElementById("order-comment").value
                 })
             });
-
-            if (res.ok) {
-                alert("注文を送信しました！");
-                cart.length = 0;
-                updateCartUI();
-                showPage('home');
-            } else {
-                alert("送信失敗。URL設定を確認してください。");
+            if (res.ok) { 
+                alert("注文を送信しました"); 
+                cart = []; 
+                document.getElementById("order-comment").value = "";
+                updateCartUI(); 
+                showPage('home'); 
             }
-        } catch (err) { alert("エラー: " + err.message); }
-        finally { btn.disabled = false; btn.innerText = "🛒 注文を確定してメール送信"; }
+        } catch (err) { alert("送信失敗"); }
+        finally { btn.disabled = false; btn.innerText = "🛒 注文を確定する"; }
     }
 </script>
 </body>
