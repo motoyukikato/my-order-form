@@ -210,7 +210,12 @@
             const res = await fetch(ORDER_URL, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ items: cart })
+               body: JSON.stringify({ 
+            items: cart,
+            customerName: document.getElementById("res-customer").innerText,
+            customerAddress: document.getElementById("res-addr1").innerText + document.getElementById("res-addr2").innerText,
+            customerTel: document.getElementById("res-tel").innerText
+        })
             });
 
             if (res.ok) {
@@ -248,5 +253,6 @@
 </script>
 </body>
 </html>
+
 
 
