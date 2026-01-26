@@ -210,9 +210,25 @@
             });
             if (res.ok) { 
                 alert("注文を送信しました"); 
+                
+                // --- カートとコメントのクリア ---
                 cart = []; 
                 document.getElementById("order-comment").value = "";
                 updateCartUI(); 
+
+                // --- 顧客情報のクリア（ここが新しく追加する部分！） ---
+                document.getElementById("res-customer").innerText = "";
+                document.getElementById("res-address1").innerText = "";
+                document.getElementById("res-address2").innerText = "";
+                document.getElementById("res-tel").innerText = "";
+                document.getElementById("res-email").innerText = "";
+                document.getElementById("cust-manual-input").value = ""; 
+
+                // --- 表示を初期状態のリセット ---
+                document.getElementById("cust-data").style.display = "none";
+                document.getElementById("cust-loading").style.display = "block";
+
+                // ホームに戻る
                 showPage('home'); 
             }
         } catch (err) { alert("送信失敗"); }
@@ -221,3 +237,4 @@
 </script>
 </body>
 </html>
+
