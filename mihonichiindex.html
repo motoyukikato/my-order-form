@@ -136,7 +136,7 @@
     }
 
     // 商品検索
-    async function searchProduct(code) {
+   async function searchProduct(code) {
         const res = await fetch(SEARCH_URL, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -144,7 +144,16 @@
         });
         const data = await res.json();
         if (data.name) {
-            cart.push({ jan: data.id, name: data.name, price: Number(data.price), quantity: 1 });
+            // ロット（入数）を取得。データにない場合は 1 にする
+            const itemLot = Number(data.lot) || 1; 
+
+            cart.push({ 
+                jan: data.id, 
+                name: data.name, 
+                price: Number(data.price), 
+                quantity: itemLot, // ★ 初期値をロット数にする
+                lot: itemLot       // ★ ロット情報も保存しておく
+            });
             updateCartUI();
             showPage('cart');
         } else {
@@ -254,3 +263,4 @@
 </script>
 </body>
 </html>
+
