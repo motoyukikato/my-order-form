@@ -3,116 +3,259 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>受注フォーム</title>
+    <title>名古屋花き商事本部受注アプリ</title>
+    <script charset="utf-8" src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
     <style>
-        body { font-family: sans-serif; padding: 20px; background-color: #f8f9fa; color: #333; }
-        .card { background: white; padding: 15px; border-radius: 8px; margin-bottom: 15px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
-        h3 { margin-top: 0; font-size: 16px; border-bottom: 2px solid #00B900; padding-bottom: 5px; }
-        label { font-weight: bold; display: block; margin-top: 10px; font-size: 14px; }
-        input, textarea { width: 100%; padding: 10px; margin: 5px 0 10px; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box; }
-        .item-row { border-left: 4px solid #00B900; position: relative; }
-        .remove-btn { color: #dc3545; font-size: 12px; cursor: pointer; text-align: right; font-weight: bold; }
-        button { width: 100%; padding: 12px; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; transition: 0.3s; }
-        .add-btn { background-color: #6c757d; color: white; margin-bottom: 15px; }
-        .add-btn:hover { background-color: #5a6268; }
-        .submit-btn { background-color: #00B900; color: white; font-size: 18px; margin-top: 10px; }
-        .submit-btn:hover { background-color: #009900; }
+        body { font-family: sans-serif; padding: 15px; background-color: #f4f4f4; }
+        .container { max-width: 500px; margin: 0 auto; background: white; padding: 20px; border-radius: 12px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        h2 { font-size: 20px; text-align: center; color: #2c3e50; margin-bottom: 20px; }
+        .input-group { margin-bottom: 15px; }
+        label { display: block; font-weight: bold; margin-bottom: 5px; font-size: 14px; }
+        select, input, textarea { width: 100%; padding: 10px; box-sizing: border-box; border: 1px solid #ddd; border-radius: 6px; font-size: 16px; }
+        .item-card { background: #fdfdfd; padding: 15px; border: 1px solid #e0e0e0; border-radius: 8px; margin-bottom: 15px; position: relative; }
+        .item-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; border-bottom: 1px solid #eee; padding-bottom: 5px; }
+        .item-label { font-weight: bold; color: #28a745; }
+        .remove-btn { background: #ff4d4d; color: white; border: none; padding: 4px 10px; border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: bold; }
+        .add-btn { background: #007bff; color: white; border: none; padding: 12px; border-radius: 6px; cursor: pointer; width: 100%; font-weight: bold; margin-bottom: 20px; }
+        #sendBtn { width: 100%; padding: 15px; background: #28a745; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 18px; font-weight: bold; }
+        .loading { display: none; text-align: center; margin-top: 10px; font-weight: bold; }
+        .save-info { font-size: 11px; color: #666; margin-top: 5px; }
+        #userInfo { font-size: 12px; color: #28a745; text-align: right; margin-bottom: 10px; font-weight: bold; }
     </style>
 </head>
 <body>
 
-    <div class="card">
-        <h3>発注者情報</h3>
-        <label>屋号</label>
-        <input type="text" id="storeName" placeholder="例：〇〇花店" required>
+<div class="container">
+    <h2>名古屋花き商事本部注文フォーム</h2>
+    <div id="userInfo"></div>
+
+    <div class="input-group">
+        <label>店名</label>
+        <input type="text" id="storeName" placeholder="必須入力">
+    </div>
+    <div class="input-group">
         <label>メールアドレス</label>
-        <input type="email" id="email" placeholder="example@mail.com" required>
-        <label>備考・コメント</label>
-        <textarea id="comments" rows="3" placeholder="納期希望など"></textarea>
+        <input type="email" id="email" placeholder="控え送信先">
+        <p class="save-info">※店名とメールは自動で保存されます</p>
     </div>
 
+    <hr>
+    <h3>注文内容</h3>
+    
     <div id="itemContainer">
-        <div class="card item-row">
-            <h3>アイテム </h3>
-            <input type="text" name="maker" placeholder="メーカー" required>
-            <input type="text" name="partNo" placeholder="品番" required>
-            <input type="number" name="quantity" placeholder="数量" required>
+        <div class="item-card">
+            <div class="item-header">
+                <span class="item-label">商品</span>
+            </div>
+            <div class="input-group">
+                <label>五十音インデックス</label>
+                <select class="category-select" onchange="updateMakerOptions(this)">
+                    <option value="">▼ 行を選択</option>
+                    <option value="あ">あ行</option>
+                    <option value="か">か行</option>
+                    <option value="さ">さ行</option>
+                    <option value="た">た行</option>
+                    <option value="な">な行</option>
+                    <option value="は">は行</option>
+                    <option value="ま">ま行</option>
+                    <option value="や">や行</option>
+                    <option value="ら">ら行</option>
+                    <option value="わ">わ行</option>
+                    <option value="その他">その他</option>
+                </select>
+            </div>
+            <div class="input-group">
+                <label>メーカー名（五十音順）</label>
+                <select class="maker-select">
+                    <option value="">行を選んでください</option>
+                </select>
+            </div>
+            <div class="input-group">
+                <label>品番 / 数量</label>
+                <input type="text" class="partNo-input" placeholder="品番">
+                <input type="number" class="quantity-input" value="1" min="1" style="margin-top:5px;">
+            </div>
         </div>
     </div>
 
-    <button type="button" class="add-btn" onclick="addItem()">＋ アイテムを追加する</button>
-    <button type="button" class="submit-btn" onclick="sendOrder()">注文を送信する</button>
+    <button type="button" class="add-btn" onclick="addNewItem()">＋ 商品を追加する</button>
 
-    <script>
-        let itemCount = 1;
+    <div class="input-group">
+        <label>画像添付1（写メ注文など）</label>
+        <input type="file" id="imageFile1" accept="image/*">
+    </div>
+    <div class="input-group">
+        <label>画像添付2</label>
+        <input type="file" id="imageFile2" accept="image/*">
+    </div>
 
-        // 項目を追加する機能
-        function addItem() {
-            itemCount++;
-            const container = document.getElementById('itemContainer');
-            const html = `
-                <div class="card item-row">
-                    <div class="remove-btn" onclick="this.parentElement.remove()">✕ 削除</div>
-                    <h3>アイテム</h3>
-                    <input type="text" name="maker" placeholder="メーカー" required>
-                    <input type="text" name="partNo" placeholder="品番" required>
-                    <input type="number" name="quantity" placeholder="数量" required>
-                </div>`;
-            container.insertAdjacentHTML('beforeend', html);
+    <div class="input-group">
+        <label>備考</label>
+        <textarea id="comments" rows="3"></textarea>
+    </div>
+
+    <button id="sendBtn" onclick="sendOrder()">注文を送信する</button>
+    <div id="loadingMsg" class="loading">送信中...</div>
+</div>
+
+<script>
+    const gasUrl = "https://script.google.com/macros/s/AKfycbzGJdT9vEs2K3aI0OuKZ3r6Pf3hXjBk0J_hynb5HpQS5FYGNpE_2LyCAgKiQpZ5V7iy/exec";
+
+    // メーカー全リスト（読み仮名の1文字目をキーとして自動分類）
+    const allMakers = [
+        "アイハラ貿易（ポリラフィア)", "アスカ商会", "アズワン（試験管）", "アモローサ", "アムールデフルール", "アンコーポレーション", "アーティフィシャル", "青山リボン", "朝日ワイヤー", "大地農園", "大口産業", "大鉄", "大同クラフト", "大仙", "ウォルナット", "エコゼリー", "エルコミューン", "エイチツーオー", "か行", "カメヤマキャンドル", "カルナック", "クレイ", "クリザール", "クレエ", "グリーンハウス", "グリーンポット", "グローバルアロー", "コアトレーディング", "コベントガーデン", "坂源", "三和トレーディング", "シモジマ", "志成販売", "スミザーズオアシス", "外山刃物", "ダイショウ", "田中陶器", "ダルトン", "チョイス", "ツル", "東京リボン", "東京かんかん", "東京堂", "トーク", "ドリームファームスズカ", "ネイチャーデザインズ", "パレス化学", "パレ", "パナソニック", "ハナリンクス", "ヒロセ", "ビヨン", "フロールエバー", "フラワーベース", "プラスガーデン", "ポッシュリビング", "ボブクラフト", "松村工芸", "マグネット", "丸滉製陶", "丸又平野陶器店", "丸和貿易", "ミュールミル", "村田屋産業", "モノ・インターナショナル", "ヤマテー", "ヤード", "横浜ディスプレイミュージアム", "ラライワント", "リード商事", "ワサラ", "ワンダーゾーン"
+    ];
+
+    // 五十音判定用関数
+    function getKanaRow(char) {
+        if (!char) return "その他";
+        const code = char.charCodeAt(0);
+        if (char.match(/[あ-おア-オ]/)) return "あ";
+        if (char.match(/[か-こカ-コ]/)) return "か";
+        if (char.match(/[さ-そサ-ソ]/)) return "さ";
+        if (char.match(/[た-とタ-ト]/)) return "た";
+        if (char.match(/[な-のナ-ノ]/)) return "な";
+        if (char.match(/[は-ほハ-ホ]/)) return "は";
+        if (char.match(/[ま-もマ-モ]/)) return "ま";
+        if (char.match(/[や-よヤ-ヨ]/)) return "や";
+        if (char.match(/[ら-ろラ-ロ]/)) return "ら";
+        if (char.match(/[わ-んワ-ン]/)) return "わ";
+        return "その他";
+    }
+
+    // メーカーデータを「行」ごとに整理
+    const makerData = {};
+    allMakers.forEach(m => {
+        const row = getKanaRow(m[0]);
+        if (!makerData[row]) makerData[row] = [];
+        makerData[row].push(m);
+    });
+    // 各行内を五十音順にソート
+    for(let key in makerData) {
+        makerData[key].sort();
+    }
+
+    async function initLiff() {
+        try {
+            await liff.init({ liffId: "2008835052-zCjbE0pV" }); 
+            if (!liff.isLoggedIn()) {
+                liff.login();
+            } else {
+                const profile = await liff.getProfile();
+                document.getElementById('userInfo').textContent = "ユーザー: " + profile.displayName;
+            }
+        } catch (error) {
+            console.error("LIFFの初期化に失敗", error);
         }
+    }
 
-        // データをGASに送る機能
-        async function sendOrder() {
-            const btn = document.querySelector('.submit-btn');
-            btn.disabled = true;
-            btn.innerText = "送信中...";
+    window.onload = function() {
+        initLiff();
+        const savedStoreName = localStorage.getItem('storeName');
+        const savedEmail = localStorage.getItem('email');
+        if (savedStoreName) document.getElementById('storeName').value = savedStoreName;
+        if (savedEmail) document.getElementById('email').value = savedEmail;
+    };
 
-            const payload = {
-                storeName: document.getElementById('storeName').value,
-                email: document.getElementById('email').value,
-                comments: document.getElementById('comments').value,
-                items: []
-            };
+    function updateMakerOptions(catSelect) {
+        const row = catSelect.value;
+        const makerSelect = catSelect.closest('.item-card').querySelector('.maker-select');
+        makerSelect.innerHTML = '<option value="">選択してください</option>';
+        if (row && makerData[row]) {
+            makerData[row].forEach(m => {
+                const opt = document.createElement('option');
+                opt.value = opt.textContent = m;
+                makerSelect.appendChild(opt);
+            });
+        }
+    }
 
-            const makers = document.getElementsByName('maker');
-            const partNos = document.getElementsByName('partNo');
-            const quantities = document.getElementsByName('quantity');
+    function addNewItem() {
+        const container = document.getElementById('itemContainer');
+        const firstCard = container.querySelector('.item-card');
+        const newCard = firstCard.cloneNode(true);
+        const header = newCard.querySelector('.item-header');
+        header.innerHTML = '<span class="item-label">追加商品</span><button type="button" class="remove-btn" onclick="this.closest(\'.item-card\').remove()">削除</button>';
+        newCard.querySelectorAll('input').forEach(input => input.value = (input.type === 'number' ? 1 : ''));
+        newCard.querySelector('.maker-select').innerHTML = '<option value="">行を選んでください</option>';
+        newCard.querySelector('.category-select').value = "";
+        container.appendChild(newCard);
+    }
 
-            for (let i = 0; i < makers.length; i++) {
-                payload.items.push({
-                    maker: makers[i].value,
-                    partNo: partNos[i].value,
-                    quantity: quantities[i].value
+    const toBase64 = file => new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.readAsDataURL(file);
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = error => reject(error);
+    });
+
+    async function sendOrder() {
+        const btn = document.getElementById('sendBtn');
+        const storeName = document.getElementById('storeName').value;
+        const email = document.getElementById('email').value;
+
+        if (!storeName) { alert('店名を入れてください'); return; }
+
+        const items = [];
+        document.querySelectorAll('.item-card').forEach(card => {
+            const maker = card.querySelector('.maker-select').value;
+            if (maker) {
+                items.push({
+                    maker: maker,
+                    partNo: card.querySelector('.partNo-input').value,
+                    quantity: card.querySelector('.quantity-input').value
                 });
             }
+        });
 
-            // 【重要】ここに作成したGASのURLを貼り付けてください
-            const gasUrl ="https://script.google.com/macros/s/AKfycbxTQe2g6TaLMdmPuJ-y0aM9zyPs35uDPqDhrwaiX-Vbw4RHgCx6Zm5ciM1Hc2s62b43/exec";
+        if (items.length === 0) { alert('メーカーを選択してください'); return; }
 
-            try {
-                await fetch(gasUrl, {
-                    method: "POST",
-                    body: JSON.stringify(payload)
-                });
-                alert("注文が正常に送信されました！");
-                location.reload(); // 送信後に画面をリセット
-            } catch (e) {
-                alert("エラーが発生しました。URLの設定などを確認してください。");
-                btn.disabled = false;
-                btn.innerText = "注文を送信する";
-            }
+        localStorage.setItem('storeName', storeName);
+        localStorage.setItem('email', email);
+
+        btn.disabled = true;
+        document.getElementById('loadingMsg').style.display = 'block';
+
+        let imageData1 = null;
+        const fileInput1 = document.getElementById('imageFile1');
+        if (fileInput1.files.length > 0) {
+            const file1 = fileInput1.files[0];
+            const base64_1 = await toBase64(file1);
+            imageData1 = { data: base64_1.split(',')[1], type: file1.type };
         }
-    </script>
+
+        let imageData2 = null;
+        const fileInput2 = document.getElementById('imageFile2');
+        if (fileInput2.files.length > 0) {
+            const file2 = fileInput2.files[0];
+            const base64_2 = await toBase64(file2);
+            imageData2 = { data: base64_2.split(',')[1], type: file2.type };
+        }
+
+        try {
+            const response = await fetch(gasUrl, {
+                method: 'POST',
+                body: JSON.stringify({
+                    storeName: storeName,
+                    email: email,
+                    items: items,
+                    comments: document.getElementById('comments').value,
+                    imageFile1: imageData1,
+                    imageFile2: imageData2
+                })
+            });
+            const res = await response.json();
+            if (res.status === 'success') { 
+                alert('注文完了！控えメールを送信しました。'); 
+                liff.closeWindow(); 
+            }
+        } catch (e) {
+            alert('送信に失敗しました。');
+        } finally {
+            btn.disabled = false;
+            document.getElementById('loadingMsg').style.display = 'none';
+        }
+    }
+</script>
 </body>
-
 </html>
-
-
-
-
-
-
-
-
-
-
