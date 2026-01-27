@@ -100,8 +100,7 @@
 
 <script>
     const gasUrl = "https://script.google.com/macros/s/AKfycbzGJdT9vEs2K3aI0OuKZ3r6Pf3hXjBk0J_hynb5HpQS5FYGNpE_2LyCAgKiQpZ5V7iy/exec";
-
-  // メーカーリスト（「よみがな:表示名」の形式にすることで漢字を正しく分類します）
+// メーカーリスト（よみがな:表示名）
     const allMakers = [
         "あいはらぼうえき:アイハラ貿易（ポリラフィア)", "あすかしょうかい:アスカ商会", "あずわん:アズワン（試験管）", 
         "あもろーさ:アモローサ", "あむーるでふるーる:アムールデフルール", "あんこーぽれーしょん:アンコーポレーション", 
@@ -114,7 +113,7 @@
         "こべんとがーでん:コベントガーデン", "さかげん:坂源", "さんわとれーでぃんぐ:三和トレーディング", 
         "しもじま:シモジマ", "しせいはんぱい:志成販売", "すみざーずおあしす:スミザーズオアシス", 
         "とやまはもの:外山刃物", "たなかとうき:田中陶器", "だるとん:ダルトン", "でるき:デルキ",
-         "とうきょうりぼん:東京リボン", "とうきょうかんかん:東京かんかん", "だいどうくらふと:大同クラフト","とすだいす:TOSSDICE","だんぼーる:段ボール",
+        "とうきょうりぼん:東京リボン", "とうきょうかんかん:東京かんかん", "だいどうくらふと:大同クラフト","とすだいす:TOSSDICE","だんぼーる:段ボール",
         "とうきょうどう:東京堂", "とーく:トーク", "どりーむふぁーむすずか:ドリームファームスズカ", "とうか:東花","とうほうぼうえき:東方貿易",
         "ねいちゃーでざいんず:ネイチャーデザインズ", "ぱれすかがく:パレス化学", "ぱれ:パレ", "ぽっしゅりびんぐ:ポッシュリビング",
         "ふぁーむ:FARM", "はなりんくす:花Links", "ふろーねっと:flonet", "ほわいえ:ホワイエ", "はなのそのくぼた:花のそのくぼた",
@@ -127,7 +126,6 @@
         "りーどしょうじ:リード商事", "わさら:WASARA", "わんだーぞーん:ワンダーゾーン","わこうかがく:和光化学"
     ];
 
-    // 五十音判定用関数（よみがなから「行」を判定）
     function getKanaRow(kana) {
         const first = kana.charAt(0);
         if (first.match(/[あ-お]/)) return "あ";
@@ -143,7 +141,6 @@
         return "その他";
     }
 
-    // メーカーデータを「行」ごとに整理
     const makerData = {};
     allMakers.forEach(item => {
         const [kana, name] = item.split(':');
@@ -152,10 +149,10 @@
         makerData[row].push({kana: kana, name: name});
     });
 
-    // 各行の中を、よみがな順に並び替え
     for(let key in makerData) {
         makerData[key].sort((a, b) => a.kana.localeCompare(b.kana, 'ja'));
     }
+ 
 
     async function initLiff() {
         try {
@@ -179,17 +176,26 @@
         if (savedEmail) document.getElementById('email').value = savedEmail;
     };
 
-    function updateMakerOptions(catSelect) {
+  function updateMakerOptions(catSelect) {
         const row = catSelect.value;
         const makerSelect = catSelect.closest('.item-card').querySelector('.maker-select');
-        makerSelect.innerHTML = '<option value="">選択してください</option>';
-        if (row && makerData[row]) {
+        
+        makerSelect.innerHTML = '';
+
+        if (row === "その他") {
+            const opt = document.createElement('option');
+            opt.value = "備考に記入";
+            opt.textContent = "メーカー名を備考に記入してください";
+            makerSelect.appendChild(opt);
+        } else if (row && makerData[row]) {
+            makerSelect.innerHTML = '<option value="">選択してください</option>';
             makerData[row].forEach(m => {
                 const opt = document.createElement('option');
-                opt.value = m.name;    // 送信される値はメーカー名
-                opt.textContent = m.name; // 表示される値もメーカー名
+                opt.value = opt.textContent = m.name;
                 makerSelect.appendChild(opt);
             });
+        } else {
+            makerSelect.innerHTML = '<option value="">行を選んでください</option>';
         }
     }
 
@@ -282,5 +288,6 @@
 </script>
 </body>
 </html>
+
 
 
