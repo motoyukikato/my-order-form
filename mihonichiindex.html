@@ -199,43 +199,51 @@
     function updateQty(i, q) { if (q > 0) { cart[i].quantity = parseInt(q); updateCartUI(); } }
     function removeItem(i) { cart.splice(i, 1); updateCartUI(); }
 
-    // 【重要】注文送信処理
-    async function sendOrder() {
-        const customer = document.getElementById("res-customer").innerText;
-        const email = document.getElementById("res-email").innerText.trim();
+    // 【重要】注文送信処理の修正
+async function sendOrder() {
+    const customer = document.getElementById("res-customer").innerText;
+    const email = document.getElementById("res-email").innerText.trim();
 
-        if (!customer) return alert("顧客を選択してください");
-        if (!email) return alert("顧客のメールアドレスが登録されていません。");
-        if (cart.length === 0) return alert("カートが空です");
+    if (!customer) return alert("顧客を選択してください");
+    if (!email) return alert("顧客のメールアドレスが登録されていません。");
+    if (cart.length === 0) return alert("カートが空です");
 
-        const btn = document.getElementById('send-btn');
-        btn.disabled = true;
-        btn.innerText = "送信中...";
+    const btn = document.getElementById('send-btn');
+    btn.disabled = true;
+    btn.innerText = "送信中...";
 
-        let totalAmount = 0;
-        cart.forEach(item => totalAmount += (item.price * item.quantity));
+    let totalAmount = 0;
+    cart.forEach(item => totalAmount += (item.price * item.quantity));
 
-        try {
-            const res = await fetch(ORDER_URL, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ 
-                    storeName: customer,
-                    address1: document.getElementById("res-address1").innerText,
-                    address2: document.getElementById("res-address2").innerText,
-                    tel: document.getElementById("res-tel").innerText,
-                    email: email, 
-                    items: cart.map(item => ({ 
-                        partNo: item.jan, 
-                        name: item.name, 
-                        price: item.price, 
-                        quantity: String(item.quantity),
-                        subtotal: item.price * item.quantity
-                    })),
-                    total: totalAmount,
-                    comment: document.getElementById("order-comment").value
-                })
-            });
+    // 送信データの組み立て
+    const requestData = { 
+        jan: cart[0] ? cart[0].jan : "", // 代表のJANコード（必要なら）
+        customerName: customer,
+        postCode: "", // HTML側に郵便番号入力があればここにセット
+        address1: document.getElementById("res-address1").innerText,
+        address2: document.getElementById("res-address2").innerText,
+        tel: document.getElementById("res-tel").innerText,
+        email: email, 
+        comment: document.getElementById("order-comment").value,
+        // 以下、注文明細（メール送信フロー用）
+        items: cart.map(item => ({ 
+            partNo: item.jan, 
+            name: item.name, 
+            price: item.price, 
+            quantity: String(item.quantity),
+            subtotal: item.price * item.quantity
+        })),
+        total: totalAmount
+    };
+
+    try {
+        // 先ほど作成した「01_検索用フロー」のURL、または「確定用フロー」のURL
+        const res = await fetch(ORDER_URL, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(requestData)
+        });
+
 
             if (res.ok) { 
                 alert("注文を送信しました"); 
@@ -269,5 +277,6 @@
 </script>
 </body>
 </html>
+
 
 
