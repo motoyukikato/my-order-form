@@ -219,7 +219,7 @@ async function sendOrder() {
     const requestData = { 
         jan: cart[0] ? cart[0].jan : "", // 代表のJANコード（必要なら）
         customerName: customer,
-        postCode: "", // HTML側に郵便番号入力があればここにセット
+        postCode: document.getElementById("res-postcode") ? document.getElementById("res-postcode").innerText : "",
         address1: document.getElementById("res-address1").innerText,
         address2: document.getElementById("res-address2").innerText,
         tel: document.getElementById("res-tel").innerText,
@@ -277,6 +277,7 @@ async function sendOrder() {
 </script>
 </body>
 </html>
+
 
 
 
