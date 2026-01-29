@@ -98,7 +98,14 @@
     }
 
     // 顧客検索
-    async function fetchCustomerData(val) {
+   async function fetchCustomerData(val) {
+    if (!val) return;
+    
+    // 読み込み中表示
+    document.getElementById("cust-loading").innerText = "検索中...";
+    document.getElementById("cust-data").style.display = "none";
+    document.getElementById("cust-loading").style.display = "block";
+
     try {
         const res = await fetch(GAS_URL, {
             method: "POST",
@@ -106,8 +113,8 @@
         });
         const data = await res.json();
         
-        // ★ ここで「data.customer」など、GASが返してきた名前に合わせます
         if (data && data.customer) { 
+            // 成功時
             document.getElementById("res-customer").innerText = data.customer;
             document.getElementById("res-address1").innerText = data.address1 || "";
             document.getElementById("res-address2").innerText = data.address2 || "";
@@ -116,14 +123,18 @@
             
             document.getElementById("cust-loading").style.display = "none";
             document.getElementById("cust-data").style.display = "block";
+        } else if (data && data.error) {
+            // ★ GAS側で「見つからない」と判定された理由を表示
+            alert("GASからの報告: " + data.error);
+            document.getElementById("cust-loading").innerText = "検索またはスキャンしてください";
         } else {
             alert("顧客データが見つかりませんでした。");
         }
     } catch (e) {
-        alert("検索エラーが発生しました。");
+        console.error(e);
+        alert("検索エラーが発生しました。URLが正しいか、GASが公開されているか確認してください。");
     }
 }
-
     // 商品検索
     async function searchProduct(code) {
         try {
@@ -213,6 +224,7 @@
 
 </body>
 </html>
+
 
 
 
