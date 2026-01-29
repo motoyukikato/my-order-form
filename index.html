@@ -99,27 +99,30 @@
 
     // 顧客検索
     async function fetchCustomerData(val) {
-        try {
-            const res = await fetch(GAS_URL, {
-                method: "POST",
-                body: JSON.stringify({ action: "customerSearch", val: val })
-            });
-            const data = await res.json();
-            if (data) {
-                document.getElementById("res-customer").innerText = data.customer;
-                document.getElementById("res-address1").innerText = data.address1 || "";
-                document.getElementById("res-address2").innerText = data.address2 || "";
-                document.getElementById("res-tel").innerText = data.tel || "";
-                document.getElementById("res-email").innerText = data.email || "";
-                document.getElementById("cust-loading").style.display = "none";
-                document.getElementById("cust-data").style.display = "block";
-            } else {
-                alert("顧客データが見つかりませんでした。");
-            }
-        } catch (e) {
-            alert("顧客検索エラー");
+    try {
+        const res = await fetch(GAS_URL, {
+            method: "POST",
+            body: JSON.stringify({ action: "customerSearch", val: val })
+        });
+        const data = await res.json();
+        
+        // ★ ここで「data.customer」など、GASが返してきた名前に合わせます
+        if (data && data.customer) { 
+            document.getElementById("res-customer").innerText = data.customer;
+            document.getElementById("res-address1").innerText = data.address1 || "";
+            document.getElementById("res-address2").innerText = data.address2 || "";
+            document.getElementById("res-tel").innerText = data.tel || "";
+            document.getElementById("res-email").innerText = data.email || "";
+            
+            document.getElementById("cust-loading").style.display = "none";
+            document.getElementById("cust-data").style.display = "block";
+        } else {
+            alert("顧客データが見つかりませんでした。");
         }
+    } catch (e) {
+        alert("検索エラーが発生しました。");
     }
+}
 
     // 商品検索
     async function searchProduct(code) {
@@ -210,6 +213,7 @@
 
 </body>
 </html>
+
 
 
 
