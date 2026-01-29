@@ -237,15 +237,17 @@ async function sendOrder() {
         comment: document.getElementById("order-comment").value,
         // 以下、注文明細（メール送信フロー用）
        // 修正後：lotも送信データに含める
-// 修正後：品番、JANコード、ロットをそれぞれ独立させる
+
+// --- ✅ 修正後（これをコピーして差し替えてください） ---
 items: cart.map(item => ({ 
-    partNo: item.partNo || item.jan, // 品番（もし商品検索時にpartNoがあればそれを使う）
-    jan: item.jan,                  // JANコード
+    partNo: item.partNo || item.jan, 
+    jan: item.jan,                   
     name: item.name,  
     price: item.price,  
     quantity: String(item.quantity),
     subtotal: item.price * item.quantity,
-    lot: String(item.lot)           // ロット
+    lot: String(item.lot),          // ロットを確実に送る
+    stock: String(item.stock || 0)  // ★追加：在庫数も一緒に送る
 })),
         total: totalAmount
     };
@@ -291,6 +293,7 @@ items: cart.map(item => ({
 </script>
 </body>
 </html>
+
 
 
 
