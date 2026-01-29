@@ -152,7 +152,7 @@ if (data.items && data.items.length > 0) {
     const itemLot = Number(product.lot) || 1; 
 
     cart.push({ 
-        jan: product.id || code, // id が空なら検索コードをそのまま使う
+        jan: code, // id が空なら検索コードをそのまま使う
         name: product.name, 
         price: Number(product.price), 
         quantity: itemLot,
@@ -281,6 +281,7 @@ async function sendOrder() {
 </script>
 </body>
 </html>
+
 
 
 
