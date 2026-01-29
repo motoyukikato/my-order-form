@@ -152,11 +152,13 @@ if (data.items && data.items.length > 0) {
     const itemLot = Number(product.lot) || 1; 
 
     cart.push({ 
-    jan: product.id || code, 
-    name: product.name,
-    price: Number(product.price), 
+        jan: code,                    // スキャンしたJANコード
+        partNo: product.partNo || "", // フローから返ってきた「品番」
+        name: product.name,
+        price: Number(product.price), 
         quantity: itemLot,
-        lot: itemLot
+        lot: itemLot,
+        stock: product.stock          // ★追加：フローから返ってきた「在庫数」
     });
     updateCartUI();
     showPage('cart');
@@ -180,9 +182,13 @@ if (data.items && data.items.length > 0) {
         let html = cart.map((item, i) => {
             const subtotal = item.price * item.quantity;
             total += subtotal;
-           return `
+         return `
 <div class="item-card">
     <b>${item.name}</b><br>
+    <span style="font-size: 0.9em; color: ${item.stock < 10 ? 'red' : '#555'};">
+        在庫数: <b>${item.stock}</b>
+    </span><br>
+
     単価: ${item.price.toLocaleString()}円 / ロット: ${item.lot}<br>
     数量: <input type="number" 
                 inputmode="numeric" 
@@ -231,14 +237,16 @@ async function sendOrder() {
         comment: document.getElementById("order-comment").value,
         // 以下、注文明細（メール送信フロー用）
        // 修正後：lotも送信データに含める
+// 修正後：品番、JANコード、ロットをそれぞれ独立させる
 items: cart.map(item => ({ 
-    partNo: item.jan,  
+    partNo: item.partNo || item.jan, // 品番（もし商品検索時にpartNoがあればそれを使う）
+    jan: item.jan,                  // JANコード
     name: item.name,  
     price: item.price,  
     quantity: String(item.quantity),
     subtotal: item.price * item.quantity,
-    lot: String(item.lot) // ←これを追加！
-})), 
+    lot: String(item.lot)           // ロット
+})),
         total: totalAmount
     };
 
@@ -283,6 +291,7 @@ items: cart.map(item => ({
 </script>
 </body>
 </html>
+
 
 
 
