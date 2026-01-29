@@ -100,7 +100,7 @@
         document.getElementById('nav-' + pageId).classList.add('active-menu');
     }
 
-    // 顧客検索（手入力・スキャン共通）
+    // 顧客検索
     async function handleCustomerManualSearch() {
         const val = document.getElementById('cust-manual-input').value.trim();
         if (val) await fetchCustomerData(val);
@@ -124,7 +124,6 @@
                 document.getElementById("res-address2").innerText = data.address2 || "";
                 document.getElementById("res-tel").innerText = data.tel || "";
                 document.getElementById("res-email").innerText = data.email || "";
-                
                 document.getElementById("cust-loading").style.display = "none";
                 document.getElementById("cust-data").style.display = "block";
             } else {
@@ -136,40 +135,36 @@
     }
 
     // 商品検索
-   async function searchProduct(code) {
-        const res = await fetch(SEARCH_URL, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ jan: code })
-        });
-        const data = await res.json();
-    
+    async function searchProduct(code) {
+        try {
+            const res = await fetch(SEARCH_URL, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ jan: code })
+            });
+            const data = await res.json();
 
-// フローが返した items 配列の 0番目（最初の1件）を取り出す
-if (data.items && data.items.length > 0) {
-    const product = data.items[0]; 
+            if (data.items && data.items.length > 0) {
+                const product = data.items[0]; 
+                const itemLot = Number(product.lot) || 1; 
 
-    const itemLot = Number(product.lot) || 1; 
-
-    cart.push({ 
-        // スキャンしたコードではなく、フローから返ってきたJANを優先
-        jan: product.jan || code,      
-        
-        // 品番が空、または品番とJANが同じ値で返ってきている場合に備える
-        partNo: product.partNo || "品番未設定", 
-        
-        name: product.name,
-        price: Number(product.price), 
-        quantity: itemLot,
-        lot: itemLot,
-        stock: product.stock 
-    });
-    updateCartUI();
-    showPage('cart');
-}
-} else {
-    alert("商品が見つかりません");
-}
+                cart.push({ 
+                    jan: product.jan || code,
+                    partNo: product.partNo || "品番なし", // 品番を優先
+                    name: product.name,
+                    price: Number(product.price), 
+                    quantity: itemLot,
+                    lot: itemLot,
+                    stock: product.stock 
+                });
+                updateCartUI();
+                showPage('cart');
+            } else {
+                alert("商品が見つかりません");
+            }
+        } catch (e) {
+            alert("検索エラーが発生しました");
+        }
     }
 
     async function handleScan() { liff.scanCodeV2().then(res => { if (res.value) searchProduct(res.value); }); }
@@ -187,24 +182,18 @@ if (data.items && data.items.length > 0) {
         let html = cart.map((item, i) => {
             const subtotal = item.price * item.quantity;
             total += subtotal;
-         return `
-<div class="item-card">
-    <b>${item.name}</b><br>
-    <span style="font-size: 0.9em; color: ${item.stock < 10 ? 'red' : '#555'};">
-        在庫数: <b>${item.stock}</b>
-    </span><br>
-
-    単価: ${item.price.toLocaleString()}円 / ロット: ${item.lot}<br>
-    数量: <input type="number" 
-                inputmode="numeric" 
-                min="${item.lot}" 
-                step="${item.lot}" 
-                value="${item.quantity}" 
-                onchange="updateQty(${i}, this.value)" 
-                style="width:60px; font-size: 16px;">
-    <br><b>小計: ${subtotal.toLocaleString()}円</b>
-    <button onclick="removeItem(${i})" style="color:red; float:right; border:none; background:none;">削除</button>
-</div>`;
+            return `
+            <div class="item-card">
+                <b>${item.name}</b><br>
+                <small>品番: ${item.partNo}</small><br>
+                <span style="font-size: 0.9em; color: ${item.stock < 10 ? 'red' : '#555'};">
+                    在庫数: <b>${item.stock}</b>
+                </span><br>
+                単価: ${item.price.toLocaleString()}円 / ロット: ${item.lot}<br>
+                数量: <input type="number" inputmode="numeric" min="${item.lot}" step="${item.lot}" value="${item.quantity}" onchange="updateQty(${i}, this.value)" style="width:60px; font-size: 16px;">
+                <br><b>小計: ${subtotal.toLocaleString()}円</b>
+                <button onclick="removeItem(${i})" style="color:red; float:right; border:none; background:none;">削除</button>
+            </div>`;
         }).join('');
         
         html += `<div style="text-align:right; padding:10px; font-size:1.2em;"><b>合計金額: ${total.toLocaleString()}円</b></div>`;
@@ -214,79 +203,65 @@ if (data.items && data.items.length > 0) {
     function updateQty(i, q) { if (q > 0) { cart[i].quantity = parseInt(q); updateCartUI(); } }
     function removeItem(i) { cart.splice(i, 1); updateCartUI(); }
 
-    // 【重要】注文送信処理の修正
-async function sendOrder() {
-    const customer = document.getElementById("res-customer").innerText;
-    const email = document.getElementById("res-email").innerText.trim();
+    // 注文送信
+    async function sendOrder() {
+        const customer = document.getElementById("res-customer").innerText;
+        const email = document.getElementById("res-email").innerText.trim();
 
-    if (!customer) return alert("顧客を選択してください");
-    if (!email) return alert("顧客のメールアドレスが登録されていません。");
-    if (cart.length === 0) return alert("カートが空です");
+        if (!customer) return alert("顧客を選択してください");
+        if (!email) return alert("顧客のメールアドレスが登録されていません。");
+        if (cart.length === 0) return alert("カートが空です");
 
-    const btn = document.getElementById('send-btn');
-    btn.disabled = true;
-    btn.innerText = "送信中...";
+        const btn = document.getElementById('send-btn');
+        btn.disabled = true;
+        btn.innerText = "送信中...";
 
-    let totalAmount = 0;
-    cart.forEach(item => totalAmount += (item.price * item.quantity));
+        let totalAmount = 0;
+        cart.forEach(item => totalAmount += (item.price * item.quantity));
 
-    // 送信データの組み立て
-    const requestData = { 
-        jan: cart[0] ? cart[0].jan : "", // 代表のJANコード（必要なら）
-        customerName: customer,
-        postCode: document.getElementById("res-postcode") ? document.getElementById("res-postcode").innerText : "",
-        address1: document.getElementById("res-address1").innerText,
-        address2: document.getElementById("res-address2").innerText,
-        tel: document.getElementById("res-tel").innerText,
-        email: email, 
-        comment: document.getElementById("order-comment").value,
-        // 以下、注文明細（メール送信フロー用）
-       // 修正後：lotも送信データに含める
+        const requestData = { 
+            customerName: customer,
+            address1: document.getElementById("res-address1").innerText,
+            address2: document.getElementById("res-address2").innerText,
+            tel: document.getElementById("res-tel").innerText,
+            email: email, 
+            comment: document.getElementById("order-comment").value,
+            items: cart.map(item => ({ 
+                partNo: item.partNo, 
+                jan: item.jan,                   
+                name: item.name,  
+                price: item.price,  
+                quantity: String(item.quantity),
+                subtotal: item.price * item.quantity,
+                lot: String(item.lot),
+                stock: String(item.stock || 0)
+            })),
+            total: totalAmount
+        };
 
-// --- ✅ 修正後（これをコピーして差し替えてください） ---
-items: cart.map(item => ({ 
-    partNo: item.partNo || item.jan, 
-    jan: item.jan,                   
-    name: item.name,  
-    price: item.price,  
-    quantity: String(item.quantity),
-    subtotal: item.price * item.quantity,
-    lot: String(item.lot),          // ロットを確実に送る
-    stock: String(item.stock || 0)  // ★追加：在庫数も一緒に送る
-})),
-        total: totalAmount
-    };
-
-    try {
-        // 先ほど作成した「01_検索用フロー」のURL、または「確定用フロー」のURL
-        const res = await fetch(ORDER_URL, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(requestData)
-        });
-
+        try {
+            const res = await fetch(ORDER_URL, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(requestData)
+            });
 
             if (res.ok) { 
                 alert("注文を送信しました"); 
-                
-                // データクリア
                 cart = []; 
                 document.getElementById("order-comment").value = "";
                 updateCartUI(); 
-
                 document.getElementById("res-customer").innerText = "";
                 document.getElementById("res-address1").innerText = "";
                 document.getElementById("res-address2").innerText = "";
                 document.getElementById("res-tel").innerText = "";
                 document.getElementById("res-email").innerText = "";
                 document.getElementById("cust-manual-input").value = ""; 
-
                 document.getElementById("cust-data").style.display = "none";
                 document.getElementById("cust-loading").style.display = "block";
-
                 showPage('home'); 
             } else {
-                alert("送信エラーが発生しました。Power Automateの設定を確認してください。");
+                alert("送信エラーが発生しました。");
             }
         } catch (err) { 
             alert("送信に失敗しました: " + err.message); 
@@ -298,6 +273,7 @@ items: cart.map(item => ({
 </script>
 </body>
 </html>
+
 
 
 
