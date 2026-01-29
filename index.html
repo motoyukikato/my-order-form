@@ -2,292 +2,223 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>名古屋花き商事本部受注アプリ</title>
-    <script charset="utf-8" src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>見本市注文アプリ</title>
+    <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
-        body { font-family: sans-serif; padding: 15px; background-color: #f4f4f4; }
-        .container { max-width: 500px; margin: 0 auto; background: white; padding: 20px; border-radius: 12px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
-        h2 { font-size: 20px; text-align: center; color: #2c3e50; margin-bottom: 20px; }
-        .input-group { margin-bottom: 15px; }
-        label { display: block; font-weight: bold; margin-bottom: 5px; font-size: 14px; }
-        select, input, textarea { width: 100%; padding: 10px; box-sizing: border-box; border: 1px solid #ddd; border-radius: 6px; font-size: 16px; }
-        .item-card { background: #fdfdfd; padding: 15px; border: 1px solid #e0e0e0; border-radius: 8px; margin-bottom: 15px; position: relative; }
-        .item-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; border-bottom: 1px solid #eee; padding-bottom: 5px; }
-        .item-label { font-weight: bold; color: #28a745; }
-        .remove-btn { background: #ff4d4d; color: white; border: none; padding: 4px 10px; border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: bold; }
-        .add-btn { background: #007bff; color: white; border: none; padding: 12px; border-radius: 6px; cursor: pointer; width: 100%; font-weight: bold; margin-bottom: 20px; }
-        #sendBtn { width: 100%; padding: 15px; background: #28a745; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 18px; font-weight: bold; }
-        .loading { display: none; text-align: center; margin-top: 10px; font-weight: bold; }
-        .save-info { font-size: 11px; color: #666; margin-top: 5px; }
-        #userInfo { font-size: 12px; color: #28a745; text-align: right; margin-bottom: 10px; font-weight: bold; }
+        body { font-family: sans-serif; margin: 0; padding-bottom: 80px; background: #f4f4f4; color: #333; }
+        header { background: #fff; text-align: center; padding: 15px; border-bottom: 1px solid #ddd; position: sticky; top: 0; z-index: 100; }
+        .page-section { display: none; padding: 20px; min-height: 80vh; }
+        .active { display: block; }
+        .card { background: #fff; padding: 20px; border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); margin-bottom: 20px; }
+        .item-card { background: #fff; border: 1px solid #ddd; padding: 12px; margin-bottom: 10px; border-radius: 8px; }
+        .btn-blue { padding: 10px 20px; background: #007bff; color: white; border: none; border-radius: 5px; font-weight: bold; }
+        .btn-scan { padding: 20px; background: #3b5998; color: white; border: none; border-radius: 10px; width: 100%; font-size: 18px; margin-top: 10px; }
+        .footer-menu { position: fixed; bottom: 0; width: 100%; background: #fff; border-top: 1px solid #ddd; display: flex; justify-content: space-around; padding: 10px 0; }
+        .footer-menu button { background: none; border: none; color: #888; font-size: 11px; flex: 1; cursor: pointer; }
+        .footer-menu button i { font-size: 24px; display: block; margin-bottom: 4px; }
+        .footer-menu button.active-menu { color: #3b5998; font-weight: bold; }
+        #send-btn { background-color: #28a745; color: white; border: none; width: 100%; padding: 15px; font-size: 18px; border-radius: 10px; margin-top: 20px; }
+        #send-btn:disabled { background-color: #ccc; }
+        textarea { width: 100%; border: 1px solid #ddd; border-radius: 5px; padding: 10px; box-sizing: border-box; font-size: 16px; }
     </style>
 </head>
 <body>
 
-<div class="container">
-    <h2>名古屋花き商事本部注文フォーム</h2>
-    <div id="userInfo"></div>
+<header><div style="font-size: 1.2em; font-weight: bold;">見本市注文アプリ</div></header>
 
-    <div class="input-group">
-        <label>店名</label>
-        <input type="text" id="storeName" placeholder="必須入力">
-    </div>
-    <div class="input-group">
-        <label>メールアドレス</label>
-        <input type="email" id="email" placeholder="控え送信先">
-        <p class="save-info">※店名とメールは自動で保存されます</p>
-    </div>
-
-    <hr>
-    <h3>注文内容</h3>
-    
-    <div id="itemContainer">
-        <div class="item-card">
-            <div class="item-header">
-                <span class="item-label">商品</span>
-            </div>
-            <div class="input-group">
-                <label>五十音インデックス</label>
-                <select class="category-select" onchange="updateMakerOptions(this)">
-                    <option value="">▼ 行を選択</option>
-                    <option value="あ">あ行</option>
-                    <option value="か">か行</option>
-                    <option value="さ">さ行</option>
-                    <option value="た">た行</option>
-                    <option value="な">な行</option>
-                    <option value="は">は行</option>
-                    <option value="ま">ま行</option>
-                    <option value="や">や行</option>
-                    <option value="ら">ら行</option>
-                    <option value="わ">わ行</option>
-                    <option value="その他">その他</option>
-                </select>
-            </div>
-            <div class="input-group">
-                <label>メーカー名（五十音順）</label>
-                <select class="maker-select">
-                    <option value="">行を選んでください</option>
-                </select>
-            </div>
-            <div class="input-group">
-                <label>品番 / 数量</label>
-                <input type="text" class="partNo-input" placeholder="品番">
-                <input type="number" class="quantity-input" value="1" min="1" style="margin-top:5px;">
-            </div>
+<section id="home" class="page-section active">
+    <h2 style="text-align: center;">顧客情報</h2>
+    <div class="card" id="cust-display">
+        <div id="cust-loading" style="text-align:center; color:#ccc; padding: 20px;">検索またはスキャンしてください</div>
+        <div id="cust-data" style="display:none;">
+            <b id="res-customer" style="font-size: 1.2em; color: #3b5998;"></b><br>
+            <span id="res-address1"></span><br>
+            <span id="res-address2"></span><br>
+            TEL: <span id="res-tel"></span><br>
+            <span id="res-email"></span>
         </div>
     </div>
-
-    <button type="button" class="add-btn" onclick="addNewItem()">＋ 商品を追加する</button>
-
-    <div class="input-group">
-        <label>画像添付1（写メ注文など）</label>
-        <input type="file" id="imageFile1" accept="image/*">
+    <div class="card">
+        <input type="tel" id="cust-manual-input" placeholder="電話番号を入力" style="width: 60%; padding: 10px;">
+        <button class="btn-blue" onclick="handleCustomerManualSearch()">検索</button>
     </div>
-    <div class="input-group">
-        <label>画像添付2</label>
-        <input type="file" id="imageFile2" accept="image/*">
+    <button class="btn-scan" onclick="handleCustomerScan()" style="background: #28a745;"><i class="fa-solid fa-qrcode"></i> 顧客スキャン</button>
+</section>
+
+<section id="barcode" class="page-section">
+    <h2>スキャン</h2>
+    <div class="card" style="text-align: center;">
+        <button class="btn-scan" onclick="handleScan()"><i class="fa-solid fa-barcode"></i> 商品スキャン開始</button>
+    </div>
+</section>
+
+<section id="input" class="page-section">
+    <h2>品番入力</h2>
+    <div class="card">
+        <input type="text" id="manual-id" placeholder="品番を入力" style="width: 60%; padding: 10px;">
+        <button class="btn-blue" onclick="handleManualSearch()">追加</button>
+    </div>
+</section>
+
+<section id="cart" class="page-section">
+    <h2>注文カート</h2>
+    <div id="cart-list"><p style="text-align: center;">空です</p></div>
+    
+    <div class="card">
+        <p style="font-weight: bold;">備考欄（コメント）：</p>
+        <textarea id="order-comment" rows="3" placeholder="納期指定などあれば入力してください"></textarea>
     </div>
 
-    <div class="input-group">
-        <label>備考</label>
-        <textarea id="comments" rows="3"></textarea>
-    </div>
+    <button id="send-btn" onclick="sendOrder()">🛒 注文を確定する</button>
+</section>
 
-    <button id="sendBtn" onclick="sendOrder()">注文を送信する</button>
-    <div id="loadingMsg" class="loading">送信中...</div>
-</div>
-
+<nav class="footer-menu">
+    <button onclick="showPage('home')" id="nav-home" class="active-menu"><i class="fa-solid fa-house"></i>ホーム</button>
+    <button onclick="showPage('barcode')" id="nav-barcode"><i class="fa-solid fa-camera"></i>スキャン</button>
+    <button onclick="showPage('input')" id="nav-input"><i class="fa-solid fa-keyboard"></i>入力</button>
+    <button onclick="showPage('cart')" id="nav-cart"><i class="fa-solid fa-cart-shopping"></i>カート</button>
+</nav>
 <script>
-    const gasUrl = "https://script.google.com/macros/s/AKfycbzGJdT9vEs2K3aI0OuKZ3r6Pf3hXjBk0J_hynb5HpQS5FYGNpE_2LyCAgKiQpZ5V7iy/exec";
-// メーカーリスト（よみがな:表示名）
-    const allMakers = [
-        "あいはらぼうえき:アイハラ貿易（ポリラフィア)", "あすかしょうかい:アスカ商会", "あずわん:アズワン（試験管）", 
-        "あもろーさ:アモローサ", "あむーるでふるーる:アムールデフルール", "あんこーぽれーしょん:アンコーポレーション", 
-        "あおやまりぼん:青山リボン", "あさひわいやー:朝日ワイヤー", "べるで:ヴェルデ",
-        "おおちのうえん:大地農園", "おおぐちさんぎょう:大口産業", "だいてつ:大鉄", "だいどうくらふと:大同クラフト", "いんたーりんく:インターリンク",
-        "だいせん:大仙", "うぉるなっと:ウォルナット", "えこぜりー:エコゼリー", "えるこみゅーん:エルコミューン", 
-        "えいちつーおー:エイチツーオー", "かめやまきゃんどる:カメヤマキャンドル", "かるなっく:カルナック", "きゅーふら:Q-FLA",
-        "くれい:クレイ", "くりざーる:クリザール", "くれえ:クレエ", "ぐりーんはうす:グリーンハウス", "きゃびのちぇ:キャビノチェ",
-        "ぐりーんぽっと:グリーンポット", "ぐろーばるあろー:グローバルアロー", "こあとれーでぃんぐ:コアトレーディング", 
-        "こべんとがーでん:コベントガーデン", "さかげん:坂源", "さんわとれーでぃんぐ:三和トレーディング", 
-        "しもじま:シモジマ", "しせいはんぱい:志成販売", "すみざーずおあしす:スミザーズオアシス", 
-        "とやまはもの:外山刃物", "たなかとうき:田中陶器", "だるとん:ダルトン", "でるき:デルキ",
-        "とうきょうりぼん:東京リボン", "とうきょうかんかん:東京かんかん", "だいどうくらふと:大同クラフト","とすだいす:TOSSDICE","だんぼーる:段ボール",
-        "とうきょうどう:東京堂", "とーく:トーク", "どりーむふぁーむすずか:ドリームファームスズカ", "とうか:東花","とうほうぼうえき:東方貿易",
-        "ねいちゃーでざいんず:ネイチャーデザインズ", "ぱれすかがく:パレス化学", "ぱれ:パレ", "ぽっしゅりびんぐ:ポッシュリビング",
-        "ふぁーむ:FARM", "はなりんくす:花Links", "ふろーねっと:flonet", "ほわいえ:ホワイエ", "はなのそのくぼた:花のそのくぼた",
-        "ふろーるえばー:フロールエバー", "ふらわーべーす:フラワーベース", "ぷらすがーでん:プラスガーデン", "だいせん:大仙",
-        "ぽっしゅりびんぐ:ポッシュリビング", "ぼぶくらふと:ボブクラフト", "まつむらこうげい:松村工芸", "ほしの:星野",
-        "まぐねっと:マグネット", "まるこうせいとう:丸滉製陶", "まるまたひらのとうきてん:丸又平野陶器店", 
-        "まるわぼうえき:丸和貿易", "みゅーるみる:ミュールミル", "むらたやさんぎょう:村田屋産業", 
-        "ものいんたーなしょなる:モノ・インターナショナル", "やまてー:ヤマテー", "やーど:yard", "ゆうぜん:友膳",
-        "よこはまでぃすぷれいみゅーじあむ:横浜ディスプレイミュージアム", "ららいわんと:ラライワント","りぶきゅりえいと:Lib curate", 
-        "りーどしょうじ:リード商事", "わさら:WASARA", "わんだーぞーん:ワンダーゾーン","わこうかがく:和光化学"
-    ];
+    // ★ ここをご自身のGASウェブアプリURLに書き換えてください
+    const GAS_URL = "https://script.google.com/macros/s/AKfycbySVnqT5KVU2ebt89g_cB4XQErYVIjUGfcxxb2JpuJ4UWvOkr6TTvMaEt-MNAJdy-JV/exec"; 
+    
+    let cart = [];
 
-    function getKanaRow(kana) {
-        const first = kana.charAt(0);
-        if (first.match(/[あ-お]/)) return "あ";
-        if (first.match(/[か-こが-ご]/)) return "か";
-        if (first.match(/[さ-そざ-ぞ]/)) return "さ";
-        if (first.match(/[た-とだ-ど]/)) return "た";
-        if (first.match(/[な-の]/)) return "な";
-        if (first.match(/[は-ほば-ぼぱ-ぽ]/)) return "は";
-        if (first.match(/[ま-も]/)) return "ま";
-        if (first.match(/[や-よ]/)) return "や";
-        if (first.match(/[ら-ろ]/)) return "ら";
-        if (first.match(/[わ-ん]/)) return "わ";
-        return "その他";
+    // LIFF初期化
+    liff.init({ liffId: "2008942151-HVIKLBVG" });
+
+    // ページ切り替え
+    function showPage(pageId) {
+        document.querySelectorAll('.page-section').forEach(sec => sec.classList.remove('active'));
+        document.getElementById(pageId).classList.add('active');
+        document.querySelectorAll('.footer-menu button').forEach(btn => btn.classList.remove('active-menu'));
+        document.getElementById('nav-' + pageId).classList.add('active-menu');
     }
 
-    const makerData = {};
-    allMakers.forEach(item => {
-        const [kana, name] = item.split(':');
-        const row = getKanaRow(kana);
-        if (!makerData[row]) makerData[row] = [];
-        makerData[row].push({kana: kana, name: name});
-    });
-
-    for(let key in makerData) {
-        makerData[key].sort((a, b) => a.kana.localeCompare(b.kana, 'ja'));
-    }
- 
-
-    async function initLiff() {
+    // 顧客検索
+    async function fetchCustomerData(val) {
         try {
-            await liff.init({ liffId: "2008835052-zCjbE0pV" }); 
-            if (!liff.isLoggedIn()) {
-                liff.login();
+            const res = await fetch(GAS_URL, {
+                method: "POST",
+                body: JSON.stringify({ action: "customerSearch", val: val })
+            });
+            const data = await res.json();
+            if (data) {
+                document.getElementById("res-customer").innerText = data.customer;
+                document.getElementById("res-address1").innerText = data.address1 || "";
+                document.getElementById("res-address2").innerText = data.address2 || "";
+                document.getElementById("res-tel").innerText = data.tel || "";
+                document.getElementById("res-email").innerText = data.email || "";
+                document.getElementById("cust-loading").style.display = "none";
+                document.getElementById("cust-data").style.display = "block";
             } else {
-                const profile = await liff.getProfile();
-                document.getElementById('userInfo').textContent = "ユーザー: " + profile.displayName;
-            }
-        } catch (error) {
-            console.error("LIFFの初期化に失敗", error);
-        }
-    }
-
-    window.onload = function() {
-        initLiff();
-        const savedStoreName = localStorage.getItem('storeName');
-        const savedEmail = localStorage.getItem('email');
-        if (savedStoreName) document.getElementById('storeName').value = savedStoreName;
-        if (savedEmail) document.getElementById('email').value = savedEmail;
-    };
-
-  function updateMakerOptions(catSelect) {
-        const row = catSelect.value;
-        const makerSelect = catSelect.closest('.item-card').querySelector('.maker-select');
-        
-        makerSelect.innerHTML = '';
-
-        if (row === "その他") {
-            const opt = document.createElement('option');
-            opt.value = "備考に記入";
-            opt.textContent = "メーカー名を備考に記入してください";
-            makerSelect.appendChild(opt);
-        } else if (row && makerData[row]) {
-            makerSelect.innerHTML = '<option value="">選択してください</option>';
-            makerData[row].forEach(m => {
-                const opt = document.createElement('option');
-                opt.value = opt.textContent = m.name;
-                makerSelect.appendChild(opt);
-            });
-        } else {
-            makerSelect.innerHTML = '<option value="">行を選んでください</option>';
-        }
-    }
-
-    function addNewItem() {
-        const container = document.getElementById('itemContainer');
-        const firstCard = container.querySelector('.item-card');
-        const newCard = firstCard.cloneNode(true);
-        const header = newCard.querySelector('.item-header');
-        header.innerHTML = '<span class="item-label">追加商品</span><button type="button" class="remove-btn" onclick="this.closest(\'.item-card\').remove()">削除</button>';
-        newCard.querySelectorAll('input').forEach(input => input.value = (input.type === 'number' ? 1 : ''));
-        newCard.querySelector('.maker-select').innerHTML = '<option value="">行を選んでください</option>';
-        newCard.querySelector('.category-select').value = "";
-        container.appendChild(newCard);
-    }
-
-    const toBase64 = file => new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.readAsDataURL(file);
-        reader.onload = () => resolve(reader.result);
-        reader.onerror = error => reject(error);
-    });
-
-    async function sendOrder() {
-        const btn = document.getElementById('sendBtn');
-        const storeName = document.getElementById('storeName').value;
-        const email = document.getElementById('email').value;
-
-        if (!storeName) { alert('店名を入れてください'); return; }
-
-        const items = [];
-        document.querySelectorAll('.item-card').forEach(card => {
-            const maker = card.querySelector('.maker-select').value;
-            if (maker) {
-                items.push({
-                    maker: maker,
-                    partNo: card.querySelector('.partNo-input').value,
-                    quantity: card.querySelector('.quantity-input').value
-                });
-            }
-        });
-
-        if (items.length === 0) { alert('メーカーを選択してください'); return; }
-
-        localStorage.setItem('storeName', storeName);
-        localStorage.setItem('email', email);
-
-        btn.disabled = true;
-        document.getElementById('loadingMsg').style.display = 'block';
-
-        let imageData1 = null;
-        const fileInput1 = document.getElementById('imageFile1');
-        if (fileInput1.files.length > 0) {
-            const file1 = fileInput1.files[0];
-            const base64_1 = await toBase64(file1);
-            imageData1 = { data: base64_1.split(',')[1], type: file1.type };
-        }
-
-        let imageData2 = null;
-        const fileInput2 = document.getElementById('imageFile2');
-        if (fileInput2.files.length > 0) {
-            const file2 = fileInput2.files[0];
-            const base64_2 = await toBase64(file2);
-            imageData2 = { data: base64_2.split(',')[1], type: file2.type };
-        }
-
-        try {
-            const response = await fetch(gasUrl, {
-                method: 'POST',
-                body: JSON.stringify({
-                    storeName: storeName,
-                    email: email,
-                    items: items,
-                    comments: document.getElementById('comments').value,
-                    imageFile1: imageData1,
-                    imageFile2: imageData2
-                })
-            });
-            const res = await response.json();
-            if (res.status === 'success') { 
-                alert('注文完了！控えメールを送信しました。'); 
-                liff.closeWindow(); 
+                alert("顧客データが見つかりませんでした。");
             }
         } catch (e) {
-            alert('送信に失敗しました。');
-        } finally {
-            btn.disabled = false;
-            document.getElementById('loadingMsg').style.display = 'none';
+            alert("顧客検索エラー");
         }
     }
+
+    // 商品検索
+    async function searchProduct(code) {
+        try {
+            const res = await fetch(GAS_URL, {
+                method: "POST",
+                body: JSON.stringify({ action: "productSearch", jan: code })
+            });
+            const data = await res.json();
+
+            if (data.items && data.items.length > 0) {
+                const product = data.items[0]; 
+                cart.push({ 
+                    jan: product.jan,
+                    partNo: product.partNo,
+                    name: product.name,
+                    price: Number(product.price), 
+                    quantity: Number(product.lot),
+                    lot: Number(product.lot),
+                    stock: product.stock 
+                });
+                updateCartUI();
+                showPage('cart');
+            } else {
+                alert("商品が見つかりません");
+            }
+        } catch (e) {
+            alert("商品検索エラー");
+        }
+    }
+
+    // 注文送信
+    async function sendOrder() {
+        const btn = document.getElementById('send-btn');
+        btn.disabled = true;
+        
+        const requestData = {
+            customerName: document.getElementById("res-customer").innerText,
+            email: document.getElementById("res-email").innerText,
+            comment: document.getElementById("order-comment").value,
+            items: cart,
+            total: cart.reduce((p, c) => p + (c.price * c.quantity), 0)
+        };
+
+        try {
+            const res = await fetch(GAS_URL, {
+                method: "POST",
+                body: JSON.stringify({ action: "orderSubmit", data: requestData })
+            });
+            if (res.ok) {
+                alert("注文を送信しました");
+                cart = [];
+                updateCartUI();
+                showPage('home');
+            }
+        } catch (e) {
+            alert("送信エラー");
+        } finally {
+            btn.disabled = false;
+        }
+    }
+
+    // (その他 updateCartUI などのUI関数は既存のままでOK)
+    async function handleCustomerManualSearch() {
+        const val = document.getElementById('cust-manual-input').value.trim();
+        if (val) await fetchCustomerData(val);
+    }
+    async function handleScan() { liff.scanCodeV2().then(res => { if (res.value) searchProduct(res.value); }); }
+    async function handleManualSearch() {
+        const val = document.getElementById('manual-id').value.trim();
+        if (val) { await searchProduct(val); document.getElementById('manual-id').value = ""; }
+    }
+    function updateCartUI() {
+        const list = document.getElementById('cart-list');
+        if (cart.length === 0) { list.innerHTML = '<p style="text-align: center;">空です</p>'; return; }
+        let total = 0;
+        let html = cart.map((item, i) => {
+            const subtotal = item.price * item.quantity;
+            total += subtotal;
+            return `<div class="item-card"><b>${item.name}</b><br><small>品番: ${item.partNo}</small><br>単価: ${item.price.toLocaleString()}円<br>数量: <input type="number" value="${item.quantity}" onchange="updateQty(${i}, this.value)" style="width:60px;"></div>`;
+        }).join('');
+        html += `<div style="text-align:right;"><b>合計: ${total.toLocaleString()}円</b></div>`;
+        list.innerHTML = html;
+    }
+    function updateQty(i, q) { if (q > 0) { cart[i].quantity = parseInt(q); updateCartUI(); } }
+    function removeItem(i) { cart.splice(i, 1); updateCartUI(); }
 </script>
+
 </body>
 </html>
+
+
+
+
+
+
+
+
+
 
 
 
