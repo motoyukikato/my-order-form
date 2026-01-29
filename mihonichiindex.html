@@ -143,22 +143,26 @@
             body: JSON.stringify({ jan: code })
         });
         const data = await res.json();
-        if (data.name) {
-            // ロット（入数）を取得。データにない場合は 1 にする
-            const itemLot = Number(data.lot) || 1; 
+       const data = await res.json();
 
-            cart.push({ 
-                jan: data.id, 
-                name: data.name, 
-                price: Number(data.price), 
-                quantity: itemLot, // ★ 初期値をロット数にする
-                lot: itemLot       // ★ ロット情報も保存しておく
-            });
-            updateCartUI();
-            showPage('cart');
-        } else {
-            alert("商品が見つかりません");
-        }
+// フローが返した items 配列の 0番目（最初の1件）を取り出す
+if (data.items && data.items.length > 0) {
+    const product = data.items[0]; // ここで実体を取り出す
+
+    const itemLot = Number(product.lot) || 1; 
+
+    cart.push({ 
+        jan: product.id || code, // id が空なら検索コードをそのまま使う
+        name: product.name, 
+        price: Number(product.price), 
+        quantity: itemLot,
+        lot: itemLot
+    });
+    updateCartUI();
+    showPage('cart');
+} else {
+    alert("商品が見つかりません");
+}
     }
 
     async function handleScan() { liff.scanCodeV2().then(res => { if (res.value) searchProduct(res.value); }); }
@@ -277,6 +281,7 @@ async function sendOrder() {
 </script>
 </body>
 </html>
+
 
 
 
