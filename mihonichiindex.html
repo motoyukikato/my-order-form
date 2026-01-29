@@ -147,21 +147,26 @@
 
 // フローが返した items 配列の 0番目（最初の1件）を取り出す
 if (data.items && data.items.length > 0) {
-    const product = data.items[0]; // ここで実体を取り出す
+    const product = data.items[0]; 
 
     const itemLot = Number(product.lot) || 1; 
 
     cart.push({ 
-        jan: code,                    // スキャンしたJANコード
-        partNo: product.partNo || "", // フローから返ってきた「品番」
+        // スキャンしたコードではなく、フローから返ってきたJANを優先
+        jan: product.jan || code,      
+        
+        // 品番が空、または品番とJANが同じ値で返ってきている場合に備える
+        partNo: product.partNo || "品番未設定", 
+        
         name: product.name,
         price: Number(product.price), 
         quantity: itemLot,
         lot: itemLot,
-        stock: product.stock          // ★追加：フローから返ってきた「在庫数」
+        stock: product.stock 
     });
     updateCartUI();
     showPage('cart');
+}
 } else {
     alert("商品が見つかりません");
 }
@@ -293,6 +298,7 @@ items: cart.map(item => ({
 </script>
 </body>
 </html>
+
 
 
 
