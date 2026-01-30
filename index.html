@@ -82,7 +82,8 @@
 <script>
     // URL設定
     const GAS_URL = "https://script.google.com/macros/s/AKfycbwRrjMvHNIbF5vsNztwEB205m2Gtp7o6Z3boPWG_Sl9NBPxS1GRjbIi59mkB50OoVKh/exec"; 
-    let cart = [];
+ let cart = [];
+    let currentZip = ""; // ★ここを追加！郵便番号を一時保存する変数です
 
     // LIFF初期化
     liff.init({ liffId: "2008942151-HVIKLBVG" })
@@ -261,6 +262,7 @@
 </script>
 </body>
 </html>
+
 
 
 
