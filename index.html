@@ -164,16 +164,16 @@
 
         try {
             const requestData = {
-                customerName: customerName,
-                // ★ここから下の項目を追加しました
-                address1: document.getElementById("res-address1").innerText,
-                address2: document.getElementById("res-address2").innerText,
-                tel: document.getElementById("res-tel").innerText,
-                // ★ここまで
-                email: document.getElementById("res-email").innerText,
-                comment: document.getElementById("order-comment").value,
-                items: cart
-            };
+    customerName: customerName,
+    zip: data_zip, // ★顧客検索時に取得した郵便番号
+    address1: document.getElementById("res-address1").innerText,
+    address2: document.getElementById("res-address2").innerText,
+    tel: document.getElementById("res-tel").innerText,
+    email: document.getElementById("res-email").innerText,
+    comment: document.getElementById("order-comment").value,
+    items: cart
+};
+        
 
             const res = await fetch(GAS_URL, {
                 method: "POST",
@@ -261,6 +261,7 @@
 </script>
 </body>
 </html>
+
 
 
 
