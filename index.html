@@ -136,23 +136,29 @@
     }
 }
     // 商品検索
-   async function searchProduct(code) {
-    if (!code) return;
+  async function searchProduct(code) {
+    // 診断1：ここが出れば、ボタンは正しく反応しています
+    alert("1. 検索ボタンが押されました。品番: " + code);
     
-    // デバッグ用：スキャンした値を画面に表示（確認したら消してOK）
-    console.log("検索実行中: ", code);
+    if (!code) return;
 
     try {
+        // 診断2：ここが出れば、GASへの送信直前です
+        console.log("GAS送信開始 URL:", GAS_URL);
+
         const res = await fetch(GAS_URL, {
             method: "POST",
-            // ★ポイント：jan と val 両方の名前で送ることでGAS側の受け取りミスを防ぐ
             body: JSON.stringify({ 
                 action: "productSearch", 
-                jan: String(code).trim(), 
-                val: String(code).trim() 
+                jan: String(code).trim(),
+                val: String(code).trim()
             })
         });
+
         const data = await res.json();
+        
+        // 診断3：ここが出れば、GASから返事が届いています
+        alert("2. GASから返答が届きました: " + JSON.stringify(data));
 
         if (data && data.items && data.items.length > 0) {
             const product = data.items[0]; 
@@ -168,13 +174,12 @@
             updateCartUI();
             showPage('cart');
         } else {
-            // GASからエラーが返ってきている場合はそれを表示
-            const msg = (data && data.error) ? data.error : "商品が見つかりません";
-            alert("検索結果: " + msg + "\n入力値: [" + code + "]");
+            const msg = data.error || "商品が見つかりません";
+            alert("3. 検索結果: " + msg);
         }
     } catch (e) {
-        console.error(e);
-        alert("通信エラーが発生しました。");
+        // 診断4：ここが出た場合は、通信そのものが失敗しています
+        alert("エラー発生: GASに繋がっていません。\n理由: " + e.message);
     }
 }
 
@@ -237,6 +242,7 @@
 
 </body>
 </html>
+
 
 
 
