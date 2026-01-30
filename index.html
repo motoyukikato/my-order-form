@@ -1,88 +1,7 @@
-<!DOCTYPE html>
-<html lang="ja">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>見本市注文アプリ</title>
-    <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-    <style>
-        body { font-family: sans-serif; margin: 0; padding-bottom: 80px; background: #f4f4f4; color: #333; }
-        header { background: #fff; text-align: center; padding: 15px; border-bottom: 1px solid #ddd; position: sticky; top: 0; z-index: 100; }
-        .page-section { display: none; padding: 20px; min-height: 80vh; }
-        .active { display: block; }
-        .card { background: #fff; padding: 20px; border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); margin-bottom: 20px; }
-        .item-card { background: #fff; border: 1px solid #ddd; padding: 12px; margin-bottom: 10px; border-radius: 8px; }
-        .btn-blue { padding: 10px 20px; background: #007bff; color: white; border: none; border-radius: 5px; font-weight: bold; }
-        .btn-scan { padding: 20px; background: #3b5998; color: white; border: none; border-radius: 10px; width: 100%; font-size: 18px; margin-top: 10px; }
-        .footer-menu { position: fixed; bottom: 0; width: 100%; background: #fff; border-top: 1px solid #ddd; display: flex; justify-content: space-around; padding: 10px 0; }
-        .footer-menu button { background: none; border: none; color: #888; font-size: 11px; flex: 1; cursor: pointer; }
-        .footer-menu button i { font-size: 24px; display: block; margin-bottom: 4px; }
-        .footer-menu button.active-menu { color: #3b5998; font-weight: bold; }
-        #send-btn { background-color: #28a745; color: white; border: none; width: 100%; padding: 15px; font-size: 18px; border-radius: 10px; margin-top: 20px; }
-        #send-btn:disabled { background-color: #ccc; }
-        textarea { width: 100%; border: 1px solid #ddd; border-radius: 5px; padding: 10px; box-sizing: border-box; font-size: 16px; }
-    </style>
-</head>
-<body>
-
-<header><div style="font-size: 1.2em; font-weight: bold;">見本市注文アプリ</div></header>
-
-<section id="home" class="page-section active">
-    <h2 style="text-align: center;">顧客情報</h2>
-    <div class="card" id="cust-display">
-        <div id="cust-loading" style="text-align:center; color:#ccc; padding: 20px;">検索またはスキャンしてください</div>
-        <div id="cust-data" style="display:none;">
-            <b id="res-customer" style="font-size: 1.2em; color: #3b5998;"></b><br>
-            <span id="res-address1"></span><br>
-            <span id="res-address2"></span><br>
-            TEL: <span id="res-tel"></span><br>
-            <span id="res-email"></span>
-        </div>
-    </div>
-    <div class="card">
-        <input type="tel" id="cust-manual-input" placeholder="電話番号を入力" style="width: 60%; padding: 10px;">
-        <button class="btn-blue" onclick="handleCustomerManualSearch()">検索</button>
-    </div>
-    <button class="btn-scan" onclick="handleCustomerScan()" style="background: #28a745;"><i class="fa-solid fa-qrcode"></i> 顧客スキャン</button>
-</section>
-
-<section id="barcode" class="page-section">
-    <h2>スキャン</h2>
-    <div class="card" style="text-align: center;">
-        <button class="btn-scan" onclick="handleScan()"><i class="fa-solid fa-barcode"></i> 商品スキャン開始</button>
-    </div>
-</section>
-
-<section id="input" class="page-section">
-    <h2>品番入力</h2>
-    <div class="card">
-        <input type="text" id="manual-id" placeholder="品番を入力" style="width: 60%; padding: 10px;">
-        <button class="btn-blue" onclick="handleManualSearch()">追加</button>
-    </div>
-</section>
-
-<section id="cart" class="page-section">
-    <h2>注文カート</h2>
-    <div id="cart-list"><p style="text-align: center;">空です</p></div>
-    <div class="card">
-        <p style="font-weight: bold;">備考欄（コメント）：</p>
-        <textarea id="order-comment" rows="3" placeholder="納期指定などあれば入力してください"></textarea>
-    </div>
-    <button id="send-btn" onclick="sendOrder()">🛒 注文を確定する</button>
-</section>
-
-<nav class="footer-menu">
-    <button onclick="showPage('home')" id="nav-home" class="active-menu"><i class="fa-solid fa-house"></i>ホーム</button>
-    <button onclick="showPage('barcode')" id="nav-barcode"><i class="fa-solid fa-camera"></i>スキャン</button>
-    <button onclick="showPage('input')" id="nav-input"><i class="fa-solid fa-keyboard"></i>入力</button>
-    <button onclick="showPage('cart')" id="nav-cart"><i class="fa-solid fa-cart-shopping"></i>カート</button>
-</nav>
-
 <script>
     const GAS_URL = "https://script.google.com/macros/s/AKfycbwXaNaJgO56x67XzCCUFa_vMkyz9mUb6J75Z0ADfTZyzRW8qrcfB8I8mf06mbicrvc/exec"; 
     let cart = [];
-    let currentZip = ""; // ★郵便番号を保存する変数を定義
+    let currentZip = ""; 
 
     liff.init({ liffId: "2008942151-HVIKLBVG" })
         .then(() => { console.log("LIFF Init OK"); })
@@ -109,9 +28,7 @@
                 document.getElementById("res-address2").innerText = data.address2 || "";
                 document.getElementById("res-tel").innerText = data.tel || "";
                 document.getElementById("res-email").innerText = data.email || "";
-                
-                currentZip = data.zip || ""; // ★取得した郵便番号を保存
-
+                currentZip = data.zip || ""; 
                 document.getElementById("cust-loading").style.display = "none";
                 document.getElementById("cust-data").style.display = "block";
             } else {
@@ -138,7 +55,7 @@
                     quantity: Number(product.lot || 1),
                     lot: Number(product.lot || 1),
                     stock: product.stock,
-                    maker: product.maker // ★メーカー情報もカートに保持
+                    maker: product.maker 
                 });
                 updateCartUI();
                 showPage('cart');
@@ -152,14 +69,12 @@
         if (cart.length === 0) { alert("カートが空です"); return; }
         const customerName = document.getElementById("res-customer").innerText;
         if (!customerName) { alert("顧客情報を検索してください"); return; }
-
         const btn = document.getElementById('send-btn');
         btn.disabled = true;
-
         try {
             const requestData = {
                 customerName: customerName,
-                zip: currentZip, // ★定義済みの currentZip を使用
+                zip: currentZip,
                 address1: document.getElementById("res-address1").innerText,
                 address2: document.getElementById("res-address2").innerText,
                 tel: document.getElementById("res-tel").innerText,
@@ -167,12 +82,10 @@
                 comment: document.getElementById("order-comment").value,
                 items: cart
             };
-
             const res = await fetch(GAS_URL, {
                 method: "POST",
                 body: JSON.stringify({ action: "orderSubmit", data: requestData })
             });
-
             if (res.ok) {
                 alert("注文を送信しました");
                 cart = [];
@@ -211,7 +124,7 @@
             const subtotal = item.price * item.quantity;
             total += subtotal;
             return `
-               <div class="item-card" style="position: relative;">
+                <div class="item-card" style="position: relative;">
                     <b>${item.name}</b><br>
                     <small>メーカー: ${item.maker || "未設定"} / 品番: ${item.partNo}</small><br>
                     
@@ -234,26 +147,24 @@
     }
 
     function updateQty(i, q) { if (q > 0) { cart[i].quantity = parseInt(q); updateCartUI(); } }
+
     function removeItem(i) {
         if (confirm("削除しますか？")) {
             cart.splice(i, 1);
             updateCartUI();
         }
     }
-    // --- ここから追加 ---
+
     async function toggleStock(partNo, newStatus) {
         if (!confirm(`この商品の在庫状況を「${newStatus}」に変更しますか？`)) return;
-
         try {
             const res = await fetch(GAS_URL, {
                 method: "POST",
                 body: JSON.stringify({ action: "updateStock", partNo: partNo, status: newStatus })
             });
             const data = await res.json();
-
             if (data.success) {
                 alert("在庫状況を更新しました。");
-                // カート内の該当商品の表示を更新
                 const item = cart.find(i => i.partNo === partNo);
                 if (item) item.stock = newStatus;
                 updateCartUI();
@@ -264,16 +175,11 @@
             alert("通信エラー: " + e.message);
         }
     }
-    // --- ここまで追加 ---async function handleCustomerScan() {
+
+    async function handleCustomerScan() {
         try {
             const res = await liff.scanCodeV2();
             if (res.value) await fetchCustomerData(res.value);
         } catch (e) { alert("スキャン失敗"); }
     }
 </script>
-</body>
-</html>
-
-
-
-
