@@ -151,31 +151,49 @@
         }
     }
 
-    async function sendOrder() {
+ async function sendOrder() {
         if (cart.length === 0) { alert("カートが空です"); return; }
+        
+        // 顧客情報が読み込まれているかチェック
+        const customerName = document.getElementById("res-customer").innerText;
+        if (!customerName) { alert("顧客情報を先に検索またはスキャンしてください"); return; }
+
         const btn = document.getElementById('send-btn');
         btn.disabled = true;
+        btn.innerText = "送信中...";
+
         try {
             const requestData = {
-                customerName: document.getElementById("res-customer").innerText,
+                customerName: customerName,
+                // ★ここから下の項目を追加しました
+                address1: document.getElementById("res-address1").innerText,
+                address2: document.getElementById("res-address2").innerText,
+                tel: document.getElementById("res-tel").innerText,
+                // ★ここまで
                 email: document.getElementById("res-email").innerText,
                 comment: document.getElementById("order-comment").value,
                 items: cart
             };
+
             const res = await fetch(GAS_URL, {
                 method: "POST",
                 body: JSON.stringify({ action: "orderSubmit", data: requestData })
             });
+
             if (res.ok) {
                 alert("注文を送信しました");
                 cart = [];
+                document.getElementById("order-comment").value = ""; // コメントもクリア
                 updateCartUI();
                 showPage('home');
+            } else {
+                alert("送信に失敗しました（ステータスエラー）");
             }
         } catch (e) {
             alert("送信エラー: " + e.message);
         } finally {
             btn.disabled = false;
+            btn.innerText = "🛒 注文を確定する";
         }
     }
 
@@ -243,6 +261,7 @@
 </script>
 </body>
 </html>
+
 
 
 
