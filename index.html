@@ -203,9 +203,19 @@
         let html = cart.map((item, i) => {
             const subtotal = item.price * item.quantity;
             total += subtotal;
-            return `<div class="item-card"><b>${item.name}</b><br><small>品番: ${item.partNo}</small><br>単価: ${item.price.toLocaleString()}円<br>数量: <input type="number" value="${item.quantity}" onchange="updateQty(${i}, this.value)" style="width:60px;"></div>`;
+            return `
+                <div class="item-card" style="position: relative;">
+                    <b>${item.name}</b><br>
+                    <small>品番: ${item.partNo}</small><br>
+                    <span style="color: #d9534f; font-weight: bold;">現在庫: ${item.stock || 0}</span><br>
+                    単価: ${item.price.toLocaleString()}円<br>
+                    数量: <input type="number" value="${item.quantity}" onchange="updateQty(${i}, this.value)" style="width:60px;">
+                    <button onclick="removeItem(${i})" style="position: absolute; top: 10px; right: 10px; color: #999; background: none; border: none; font-size: 1.2em;">
+                        <i class="fa-solid fa-trash-can"></i>
+                    </button>
+                </div>`;
         }).join('');
-        html += `<div style="text-align:right;"><b>合計: ${total.toLocaleString()}円</b></div>`;
+        html += `<div style="text-align:right; margin-top: 10px;"><b>合計: ${total.toLocaleString()}円</b></div>`;
         list.innerHTML = html;
     }
 
@@ -213,6 +223,7 @@
 </script>
 </body>
 </html>
+
 
 
 
