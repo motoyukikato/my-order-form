@@ -136,34 +136,47 @@
     }
 }
     // 商品検索
-    async function searchProduct(code) {
-        try {
-            const res = await fetch(GAS_URL, {
-                method: "POST",
-                body: JSON.stringify({ action: "productSearch", jan: code })
-            });
-            const data = await res.json();
+   async function searchProduct(code) {
+    if (!code) return;
+    
+    // デバッグ用：スキャンした値を画面に表示（確認したら消してOK）
+    console.log("検索実行中: ", code);
 
-            if (data.items && data.items.length > 0) {
-                const product = data.items[0]; 
-                cart.push({ 
-                    jan: product.jan,
-                    partNo: product.partNo,
-                    name: product.name,
-                    price: Number(product.price), 
-                    quantity: Number(product.lot),
-                    lot: Number(product.lot),
-                    stock: product.stock 
-                });
-                updateCartUI();
-                showPage('cart');
-            } else {
-                alert("商品が見つかりません");
-            }
-        } catch (e) {
-            alert("商品検索エラー");
+    try {
+        const res = await fetch(GAS_URL, {
+            method: "POST",
+            // ★ポイント：jan と val 両方の名前で送ることでGAS側の受け取りミスを防ぐ
+            body: JSON.stringify({ 
+                action: "productSearch", 
+                jan: String(code).trim(), 
+                val: String(code).trim() 
+            })
+        });
+        const data = await res.json();
+
+        if (data && data.items && data.items.length > 0) {
+            const product = data.items[0]; 
+            cart.push({ 
+                jan: product.jan,
+                partNo: product.partNo,
+                name: product.name,
+                price: Number(product.price), 
+                quantity: Number(product.lot || 1),
+                lot: Number(product.lot || 1),
+                stock: product.stock 
+            });
+            updateCartUI();
+            showPage('cart');
+        } else {
+            // GASからエラーが返ってきている場合はそれを表示
+            const msg = (data && data.error) ? data.error : "商品が見つかりません";
+            alert("検索結果: " + msg + "\n入力値: [" + code + "]");
         }
+    } catch (e) {
+        console.error(e);
+        alert("通信エラーが発生しました。");
     }
+}
 
     // 注文送信
     async function sendOrder() {
@@ -224,6 +237,7 @@
 
 </body>
 </html>
+
 
 
 
