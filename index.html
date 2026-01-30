@@ -98,7 +98,7 @@
 
     async function fetchCustomerData(val) {
         if (!val) return;
-        alert("顧客検索を開始します: " + val);
+      
         try {
             const res = await fetch(GAS_URL, {
                 method: "POST",
@@ -122,7 +122,7 @@
     }
 
     async function searchProduct(code) {
-        alert("商品検索を開始します: " + code); // ★これが出なければHTMLのonclickが壊れています
+    
         if (!code) return;
         try {
             const res = await fetch(GAS_URL, {
@@ -213,5 +213,6 @@
 </script>
 </body>
 </html>
+
 
 
