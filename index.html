@@ -227,9 +227,23 @@
             updateCartUI();    // 画面を再描画
         }
     }
+    // 顧客用スキャン機能の本体
+    async function handleCustomerScan() {
+        try {
+            const res = await liff.scanCodeV2();
+            if (res.value) {
+                // スキャンした値で顧客を検索する
+                await fetchCustomerData(res.value);
+            }
+        } catch (e) {
+            console.error(e);
+            alert("スキャンに失敗しました。LINEのカメラ権限を確認してください。");
+        }
+    }
 </script>
 </body>
 </html>
+
 
 
 
