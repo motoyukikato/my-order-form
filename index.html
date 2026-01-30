@@ -65,12 +65,10 @@
 <section id="cart" class="page-section">
     <h2>注文カート</h2>
     <div id="cart-list"><p style="text-align: center;">空です</p></div>
-    
     <div class="card">
         <p style="font-weight: bold;">備考欄（コメント）：</p>
         <textarea id="order-comment" rows="3" placeholder="納期指定などあれば入力してください"></textarea>
     </div>
-
     <button id="send-btn" onclick="sendOrder()">🛒 注文を確定する</button>
 </section>
 
@@ -80,16 +78,17 @@
     <button onclick="showPage('input')" id="nav-input"><i class="fa-solid fa-keyboard"></i>入力</button>
     <button onclick="showPage('cart')" id="nav-cart"><i class="fa-solid fa-cart-shopping"></i>カート</button>
 </nav>
+
 <script>
-    // ★ ここをご自身のGASウェブアプリURLに書き換えてください
-    const GAS_URL = "https://script.google.com/macros/s/AKfycbzzBk0C4PJw0WiiMmMk59WK1nanFF-O6QT9SFK_OOaV7Dzm4uTQrxTCTVZm7h1HGhXu/exec"; 
-    
+    // URL設定
+    const GAS_URL = "https://script.google.com/macros/library/d/1PKrSxu-hxTL652ulIsdCfGdy9MsW0yMmT5m3OXiJy7uY_Rii1QSVZoJx/19"; 
     let cart = [];
 
     // LIFF初期化
-    liff.init({ liffId: "2008942151-HVIKLBVG" });
+    liff.init({ liffId: "2008942151-HVIKLBVG" })
+        .then(() => { console.log("LIFF Init OK"); })
+        .catch((err) => { alert("LIFF初期化失敗: " + err); });
 
-    // ページ切り替え
     function showPage(pageId) {
         document.querySelectorAll('.page-section').forEach(sec => sec.classList.remove('active'));
         document.getElementById(pageId).classList.add('active');
@@ -97,106 +96,72 @@
         document.getElementById('nav-' + pageId).classList.add('active-menu');
     }
 
-    // 顧客検索
-   async function fetchCustomerData(val) {
-    if (!val) return;
-    
-    // 読み込み中表示
-    document.getElementById("cust-loading").innerText = "検索中...";
-    document.getElementById("cust-data").style.display = "none";
-    document.getElementById("cust-loading").style.display = "block";
-
-    try {
-        const res = await fetch(GAS_URL, {
-            method: "POST",
-            body: JSON.stringify({ action: "customerSearch", val: val })
-        });
-        const data = await res.json();
-        
-        if (data && data.customer) { 
-            // 成功時
-            document.getElementById("res-customer").innerText = data.customer;
-            document.getElementById("res-address1").innerText = data.address1 || "";
-            document.getElementById("res-address2").innerText = data.address2 || "";
-            document.getElementById("res-tel").innerText = data.tel || "";
-            document.getElementById("res-email").innerText = data.email || "";
-            
-            document.getElementById("cust-loading").style.display = "none";
-            document.getElementById("cust-data").style.display = "block";
-        } else if (data && data.error) {
-            // ★ GAS側で「見つからない」と判定された理由を表示
-            alert("GASからの報告: " + data.error);
-            document.getElementById("cust-loading").innerText = "検索またはスキャンしてください";
-        } else {
-            alert("顧客データが見つかりませんでした。");
-        }
-    } catch (e) {
-        console.error(e);
-        alert("検索エラーが発生しました。URLが正しいか、GASが公開されているか確認してください。");
-    }
-}
-    // 商品検索
-  async function searchProduct(code) {
-    // 診断1：ここが出れば、ボタンは正しく反応しています
-    alert("1. 検索ボタンが押されました。品番: " + code);
-    
-    if (!code) return;
-
-    try {
-        // 診断2：ここが出れば、GASへの送信直前です
-        console.log("GAS送信開始 URL:", GAS_URL);
-
-        const res = await fetch(GAS_URL, {
-            method: "POST",
-            body: JSON.stringify({ 
-                action: "productSearch", 
-                jan: String(code).trim(),
-                val: String(code).trim()
-            })
-        });
-
-        const data = await res.json();
-        
-        // 診断3：ここが出れば、GASから返事が届いています
-        alert("2. GASから返答が届きました: " + JSON.stringify(data));
-
-        if (data && data.items && data.items.length > 0) {
-            const product = data.items[0]; 
-            cart.push({ 
-                jan: product.jan,
-                partNo: product.partNo,
-                name: product.name,
-                price: Number(product.price), 
-                quantity: Number(product.lot || 1),
-                lot: Number(product.lot || 1),
-                stock: product.stock 
+    async function fetchCustomerData(val) {
+        if (!val) return;
+        alert("顧客検索を開始します: " + val);
+        try {
+            const res = await fetch(GAS_URL, {
+                method: "POST",
+                body: JSON.stringify({ action: "customerSearch", val: val })
             });
-            updateCartUI();
-            showPage('cart');
-        } else {
-            const msg = data.error || "商品が見つかりません";
-            alert("3. 検索結果: " + msg);
+            const data = await res.json();
+            if (data && data.customer) {
+                document.getElementById("res-customer").innerText = data.customer;
+                document.getElementById("res-address1").innerText = data.address1 || "";
+                document.getElementById("res-address2").innerText = data.address2 || "";
+                document.getElementById("res-tel").innerText = data.tel || "";
+                document.getElementById("res-email").innerText = data.email || "";
+                document.getElementById("cust-loading").style.display = "none";
+                document.getElementById("cust-data").style.display = "block";
+            } else {
+                alert("顧客が見つかりません: " + (data.error || ""));
+            }
+        } catch (e) {
+            alert("顧客検索エラー: " + e.message);
         }
-    } catch (e) {
-        // 診断4：ここが出た場合は、通信そのものが失敗しています
-        alert("エラー発生: GASに繋がっていません。\n理由: " + e.message);
     }
-}
 
-    // 注文送信
+    async function searchProduct(code) {
+        alert("商品検索を開始します: " + code); // ★これが出なければHTMLのonclickが壊れています
+        if (!code) return;
+        try {
+            const res = await fetch(GAS_URL, {
+                method: "POST",
+                body: JSON.stringify({ action: "productSearch", jan: String(code).trim() })
+            });
+            const data = await res.json();
+            if (data && data.items && data.items.length > 0) {
+                const product = data.items[0];
+                cart.push({
+                    jan: product.jan,
+                    partNo: product.partNo,
+                    name: product.name,
+                    price: Number(product.price),
+                    quantity: Number(product.lot || 1),
+                    lot: Number(product.lot || 1),
+                    stock: product.stock
+                });
+                updateCartUI();
+                showPage('cart');
+            } else {
+                alert("商品マスタ登録なし: " + (data.error || ""));
+            }
+        } catch (e) {
+            alert("商品検索エラー: " + e.message);
+        }
+    }
+
     async function sendOrder() {
+        if (cart.length === 0) { alert("カートが空です"); return; }
         const btn = document.getElementById('send-btn');
         btn.disabled = true;
-        
-        const requestData = {
-            customerName: document.getElementById("res-customer").innerText,
-            email: document.getElementById("res-email").innerText,
-            comment: document.getElementById("order-comment").value,
-            items: cart,
-            total: cart.reduce((p, c) => p + (c.price * c.quantity), 0)
-        };
-
         try {
+            const requestData = {
+                customerName: document.getElementById("res-customer").innerText,
+                email: document.getElementById("res-email").innerText,
+                comment: document.getElementById("order-comment").value,
+                items: cart
+            };
             const res = await fetch(GAS_URL, {
                 method: "POST",
                 body: JSON.stringify({ action: "orderSubmit", data: requestData })
@@ -208,22 +173,29 @@
                 showPage('home');
             }
         } catch (e) {
-            alert("送信エラー");
+            alert("送信エラー: " + e.message);
         } finally {
             btn.disabled = false;
         }
     }
 
-    // (その他 updateCartUI などのUI関数は既存のままでOK)
-    async function handleCustomerManualSearch() {
+    function handleCustomerManualSearch() {
         const val = document.getElementById('cust-manual-input').value.trim();
-        if (val) await fetchCustomerData(val);
+        if (val) fetchCustomerData(val);
     }
-    async function handleScan() { liff.scanCodeV2().then(res => { if (res.value) searchProduct(res.value); }); }
-    async function handleManualSearch() {
+    
+    function handleScan() {
+        liff.scanCodeV2().then(res => { if (res.value) searchProduct(res.value); });
+    }
+
+    function handleManualSearch() {
         const val = document.getElementById('manual-id').value.trim();
-        if (val) { await searchProduct(val); document.getElementById('manual-id').value = ""; }
+        if (val) {
+            searchProduct(val);
+            document.getElementById('manual-id').value = "";
+        }
     }
+
     function updateCartUI() {
         const list = document.getElementById('cart-list');
         if (cart.length === 0) { list.innerHTML = '<p style="text-align: center;">空です</p>'; return; }
@@ -236,43 +208,8 @@
         html += `<div style="text-align:right;"><b>合計: ${total.toLocaleString()}円</b></div>`;
         list.innerHTML = html;
     }
-    function updateQty(i, q) { if (q > 0) { cart[i].quantity = parseInt(q); updateCartUI(); } }
-    function removeItem(i) { cart.splice(i, 1); updateCartUI(); }
-</script>
 
+    function updateQty(i, q) { if (q > 0) { cart[i].quantity = parseInt(q); updateCartUI(); } }
+</script>
 </body>
 </html>
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
