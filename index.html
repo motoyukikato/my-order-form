@@ -80,12 +80,10 @@
 </nav>
 
 <script>
-    // URL設定
-    const GAS_URL = "https://script.google.com/macros/s/AKfycbwRrjMvHNIbF5vsNztwEB205m2Gtp7o6Z3boPWG_Sl9NBPxS1GRjbIi59mkB50OoVKh/exec"; 
- let cart = [];
-    let currentZip = ""; // ★ここを追加！郵便番号を一時保存する変数です
+    const GAS_URL = "https://script.google.com/macros/s/AKfycbzLnoPHCRR7UvUfovujZKGc95fw70lx_ULLIWM0Do47R_7e2hK-QuSBSDVmCpfEXlnE/exec"; 
+    let cart = [];
+    let currentZip = ""; // ★郵便番号を保存する変数を定義
 
-    // LIFF初期化
     liff.init({ liffId: "2008942151-HVIKLBVG" })
         .then(() => { console.log("LIFF Init OK"); })
         .catch((err) => { alert("LIFF初期化失敗: " + err); });
@@ -99,7 +97,6 @@
 
     async function fetchCustomerData(val) {
         if (!val) return;
-      
         try {
             const res = await fetch(GAS_URL, {
                 method: "POST",
@@ -112,18 +109,18 @@
                 document.getElementById("res-address2").innerText = data.address2 || "";
                 document.getElementById("res-tel").innerText = data.tel || "";
                 document.getElementById("res-email").innerText = data.email || "";
+                
+                currentZip = data.zip || ""; // ★取得した郵便番号を保存
+
                 document.getElementById("cust-loading").style.display = "none";
                 document.getElementById("cust-data").style.display = "block";
             } else {
-                alert("顧客が見つかりません: " + (data.error || ""));
+                alert("顧客が見つかりません");
             }
-        } catch (e) {
-            alert("顧客検索エラー: " + e.message);
-        }
+        } catch (e) { alert("顧客検索エラー: " + e.message); }
     }
 
     async function searchProduct(code) {
-    
         if (!code) return;
         try {
             const res = await fetch(GAS_URL, {
@@ -140,41 +137,36 @@
                     price: Number(product.price),
                     quantity: Number(product.lot || 1),
                     lot: Number(product.lot || 1),
-                    stock: product.stock
+                    stock: product.stock,
+                    maker: product.maker // ★メーカー情報もカートに保持
                 });
                 updateCartUI();
                 showPage('cart');
             } else {
-                alert("商品マスタ登録なし: " + (data.error || ""));
+                alert("商品マスタ登録なし");
             }
-        } catch (e) {
-            alert("商品検索エラー: " + e.message);
-        }
+        } catch (e) { alert("商品検索エラー: " + e.message); }
     }
 
- async function sendOrder() {
+    async function sendOrder() {
         if (cart.length === 0) { alert("カートが空です"); return; }
-        
-        // 顧客情報が読み込まれているかチェック
         const customerName = document.getElementById("res-customer").innerText;
-        if (!customerName) { alert("顧客情報を先に検索またはスキャンしてください"); return; }
+        if (!customerName) { alert("顧客情報を検索してください"); return; }
 
         const btn = document.getElementById('send-btn');
         btn.disabled = true;
-        btn.innerText = "送信中...";
 
         try {
             const requestData = {
-    customerName: customerName,
-    zip: data_zip, // ★顧客検索時に取得した郵便番号
-    address1: document.getElementById("res-address1").innerText,
-    address2: document.getElementById("res-address2").innerText,
-    tel: document.getElementById("res-tel").innerText,
-    email: document.getElementById("res-email").innerText,
-    comment: document.getElementById("order-comment").value,
-    items: cart
-};
-        
+                customerName: customerName,
+                zip: currentZip, // ★定義済みの currentZip を使用
+                address1: document.getElementById("res-address1").innerText,
+                address2: document.getElementById("res-address2").innerText,
+                tel: document.getElementById("res-tel").innerText,
+                email: document.getElementById("res-email").innerText,
+                comment: document.getElementById("order-comment").value,
+                items: cart
+            };
 
             const res = await fetch(GAS_URL, {
                 method: "POST",
@@ -184,17 +176,13 @@
             if (res.ok) {
                 alert("注文を送信しました");
                 cart = [];
-                document.getElementById("order-comment").value = ""; // コメントもクリア
                 updateCartUI();
                 showPage('home');
-            } else {
-                alert("送信に失敗しました（ステータスエラー）");
             }
         } catch (e) {
             alert("送信エラー: " + e.message);
         } finally {
             btn.disabled = false;
-            btn.innerText = "🛒 注文を確定する";
         }
     }
 
@@ -225,7 +213,7 @@
             return `
                 <div class="item-card" style="position: relative;">
                     <b>${item.name}</b><br>
-                    <small>品番: ${item.partNo}</small><br>
+                    <small>メーカー: ${item.maker || "未設定"} / 品番: ${item.partNo}</small><br>
                     <span style="color: #d9534f; font-weight: bold;">現在庫: ${item.stock || 0}</span><br>
                     単価: ${item.price.toLocaleString()}円<br>
                     数量: <input type="number" value="${item.quantity}" onchange="updateQty(${i}, this.value)" style="width:60px;">
@@ -239,46 +227,18 @@
     }
 
     function updateQty(i, q) { if (q > 0) { cart[i].quantity = parseInt(q); updateCartUI(); } }
-    // ★ここを追加！この位置に貼り付けてください
     function removeItem(i) {
-        if (confirm("この商品をカートから削除しますか？")) {
-            cart.splice(i, 1); // カート配列からi番目の要素を削除
-            updateCartUI();    // 画面を再描画
+        if (confirm("削除しますか？")) {
+            cart.splice(i, 1);
+            updateCartUI();
         }
     }
-    // 顧客用スキャン機能の本体
     async function handleCustomerScan() {
         try {
             const res = await liff.scanCodeV2();
-            if (res.value) {
-                // スキャンした値で顧客を検索する
-                await fetchCustomerData(res.value);
-            }
-        } catch (e) {
-            console.error(e);
-            alert("スキャンに失敗しました。LINEのカメラ権限を確認してください。");
-        }
+            if (res.value) await fetchCustomerData(res.value);
+        } catch (e) { alert("スキャン失敗"); }
     }
 </script>
 </body>
 </html>
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
