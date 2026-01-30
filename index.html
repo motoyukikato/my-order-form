@@ -80,7 +80,7 @@
 </nav>
 
 <script>
-    const GAS_URL = "https://script.google.com/macros/s/AKfycbw3yTCxJTUgzZFBEvklBQYgdv71fRYxFVzk4EvXgJ8ktt-welG8TIB9920Mcxz0QjI/exec"; 
+    const GAS_URL = "https://script.google.com/macros/s/AKfycbwXaNaJgO56x67XzCCUFa_vMkyz9mUb6J75Z0ADfTZyzRW8qrcfB8I8mf06mbicrvc/exec"; 
     let cart = [];
     let currentZip = ""; // ★郵便番号を保存する変数を定義
 
@@ -211,12 +211,19 @@
             const subtotal = item.price * item.quantity;
             total += subtotal;
             return `
-                <div class="item-card" style="position: relative;">
+               <div class="item-card" style="position: relative;">
                     <b>${item.name}</b><br>
                     <small>メーカー: ${item.maker || "未設定"} / 品番: ${item.partNo}</small><br>
-                    <span style="color: #d9534f; font-weight: bold;">現在庫: ${item.stock || 0}</span><br>
+                    
+                    <div style="background: #fff5f5; padding: 8px; border-radius: 5px; margin: 8px 0; border: 1px solid #ffcccc;">
+                        <span style="color: #d9534f; font-weight: bold;">在庫状況: ${item.stock || "設定なし"}</span><br>
+                        <button onclick="toggleStock('${item.partNo}', 'あり')" style="background:#28a745; color:white; border:none; padding:5px 10px; border-radius:3px; font-size:12px; margin-top:5px; cursor:pointer;">販売中にする</button>
+                        <button onclick="toggleStock('${item.partNo}', '完売')" style="background:#d9534f; color:white; border:none; padding:5px 10px; border-radius:3px; font-size:12px; margin-top:5px; margin-left:5px; cursor:pointer;">完売にする</button>
+                    </div>
+
                     単価: ${item.price.toLocaleString()}円<br>
-                    数量: <input type="number" value="${item.quantity}" onchange="updateQty(${i}, this.value)" style="width:60px;">
+                    数量: <input type="number" value="${item.quantity}" onchange="updateQty(${i}, this.value)" style="width:60px; font-size:16px;">
+                    
                     <button onclick="removeItem(${i})" style="position: absolute; top: 10px; right: 10px; color: #999; background: none; border: none; font-size: 1.2em;">
                         <i class="fa-solid fa-trash-can"></i>
                     </button>
@@ -233,7 +240,31 @@
             updateCartUI();
         }
     }
-    async function handleCustomerScan() {
+    // --- ここから追加 ---
+    async function toggleStock(partNo, newStatus) {
+        if (!confirm(`この商品の在庫状況を「${newStatus}」に変更しますか？`)) return;
+
+        try {
+            const res = await fetch(GAS_URL, {
+                method: "POST",
+                body: JSON.stringify({ action: "updateStock", partNo: partNo, status: newStatus })
+            });
+            const data = await res.json();
+
+            if (data.success) {
+                alert("在庫状況を更新しました。");
+                // カート内の該当商品の表示を更新
+                const item = cart.find(i => i.partNo === partNo);
+                if (item) item.stock = newStatus;
+                updateCartUI();
+            } else {
+                alert("エラー: " + data.error);
+            }
+        } catch (e) {
+            alert("通信エラー: " + e.message);
+        }
+    }
+    // --- ここまで追加 ---async function handleCustomerScan() {
         try {
             const res = await liff.scanCodeV2();
             if (res.value) await fetchCustomerData(res.value);
@@ -242,6 +273,7 @@
 </script>
 </body>
 </html>
+
 
 
 
