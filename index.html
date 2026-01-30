@@ -220,9 +220,17 @@
     }
 
     function updateQty(i, q) { if (q > 0) { cart[i].quantity = parseInt(q); updateCartUI(); } }
+    // ★ここを追加！この位置に貼り付けてください
+    function removeItem(i) {
+        if (confirm("この商品をカートから削除しますか？")) {
+            cart.splice(i, 1); // カート配列からi番目の要素を削除
+            updateCartUI();    // 画面を再描画
+        }
+    }
 </script>
 </body>
 </html>
+
 
 
 
