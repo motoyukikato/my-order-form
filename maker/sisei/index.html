@@ -41,7 +41,7 @@
         </div>
     </div>
     <div class="card">
-        <input type="tel" id="cust-manual-input" placeholder="電話番号を入力" style="width: 60%; padding: 10px;">
+        <input type="tel" id="cust-manual-input" placeholder="電話番号またはバーコード" style="width: 60%; padding: 10px;" onkeydown="if(event.keyCode==13) return false;">
         <button class="btn-blue" onclick="handleCustomerManualSearch()">検索</button>
     </div>
     <button class="btn-scan" onclick="handleCustomerScan()" style="background: #28a745;"><i class="fa-solid fa-qrcode"></i> 顧客スキャン</button>
@@ -57,7 +57,7 @@
 <section id="input" class="page-section">
     <h2>品番入力</h2>
     <div class="card">
-        <input type="text" id="manual-id" placeholder="品番を入力" style="width: 60%; padding: 10px;">
+       <input type="text" id="manual-id" placeholder="品番またはバーコード" style="width: 60%; padding: 10px;" onkeydown="if(event.keyCode==13) return false;">
         <button class="btn-blue" onclick="handleManualSearch()">追加</button>
     </div>
 </section>
@@ -81,7 +81,7 @@
 
 <script>
     // ★ご自身のGASのURLに書き換わっているか確認してください
-    const GAS_URL = "https://script.google.com/macros/s/AKfycbyuRfLuwO5pzLzM3Nw8H3ThSxEuH2zsiOH12A0mpGW5iAXKLmzQrjaUUyZZvdjfvISRPA/exec"; 
+    const GAS_URL = "https://script.google.com/macros/s/AKfycbzbXEQ-QTcVPdE48PRWEinCOnCbxml5JOsBZPVahNTESRG13UX0RO0MWYt7xyBiIwgqJg/exec"; 
     let cart = [];
     let currentZip = ""; 
 
@@ -147,6 +147,31 @@
         } catch (e) { alert("商品検索エラー: " + e.message); }
     }
 
+// バーコードリーダー入力時の共通処理（顧客・商品 両対応）
+    document.addEventListener('keypress', function (e) {
+        if (e.key === 'Enter') {
+            const activeEl = document.activeElement; // 今カーソルがある場所
+
+            // 1. 顧客検索入力欄にカーソルがある場合
+            if (activeEl.id === 'cust-manual-input') {
+                e.preventDefault();
+                const val = activeEl.value.trim();
+                if (val) {
+                    fetchCustomerData(val); // 顧客検索を実行
+                    activeEl.value = "";    // 入力欄をクリア
+                }
+            } 
+            // 2. 商品入力欄にカーソルがある場合
+            else if (activeEl.id === 'manual-id') {
+                e.preventDefault();
+                const code = activeEl.value.trim();
+                if (code) {
+                    searchProduct(code);    // 商品検索を実行
+                    activeEl.value = "";    // 入力欄をクリア
+                }
+            }
+        }
+    });
     async function sendOrder() {
         if (cart.length === 0) { alert("カートが空です"); return; }
         const customerName = document.getElementById("res-customer").innerText;
