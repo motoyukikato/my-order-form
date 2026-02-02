@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>【アスカ商会】見本市注文アプリ</title>
+    <title>【エルコミューン】見本市注文アプリ</title>
     <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
@@ -81,7 +81,7 @@
 
 <script>
     // ★ご自身のGASのURLに書き換わっているか確認してください
-    const GAS_URL = "https://script.google.com/macros/s/AKfycbxoocld8ZxLf-tmCxrPwBNg4NWI5gMLMISFvbheAF8HlRjwH_ZgTp2lugqZ8sgqZi4wsA/exec"; 
+    const GAS_URL = "https://script.google.com/macros/s/AKfycbysV01Gbs0GDppAXGpA-gqrZq-tzw-ZCUrJlLbX7ZD6Q7dhD_MzIiLgQNDbyM-UmEV-vA/exec"; 
     let cart = [];
     let currentZip = ""; 
 
