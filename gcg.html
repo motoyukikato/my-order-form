@@ -6,43 +6,41 @@
     <title>ご注文アプリ</title>
     <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
     <style>
-        /* アプリっぽいデザインのための簡易CSS */
         body { font-family: sans-serif; margin: 0; padding: 10px; background: #f4f4f4; }
         .item-card { background: white; border-radius: 8px; padding: 10px; margin-bottom: 10px; display: flex; align-items: center; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
-        .item-img { width: 80px; height: 80px; object-fit: cover; margin-right: 15px; border-radius: 4px; }
+        /* 画像のスタイルを調整 */
+        .item-img { width: 70px; height: 70px; object-fit: cover; margin-right: 15px; border-radius: 4px; background: #eee; }
         .item-info { flex-grow: 1; }
-        .qty-input { width: 60px; padding: 5px; font-size: 16px; }
-        .btn-submit { width: 100%; padding: 15px; background: #00b900; color: white; border: none; border-radius: 30px; font-size: 18px; font-weight: bold; margin-top: 20px; }
+        .qty-input { width: 60px; padding: 8px; font-size: 16px; border: 1px solid #ccc; border-radius: 4px; }
+        .btn-submit { width: 100%; padding: 15px; background: #00b900; color: white; border: none; border-radius: 30px; font-size: 18px; font-weight: bold; margin-top: 20px; position: sticky; bottom: 10px; }
+        h3 { background:#f0f0f0; padding:10px; margin-top:20px; border-left:5px solid #00b900; position: sticky; top: 0; z-index: 5; }
     </style>
 </head>
 <body>
     <div id="app">
-        <h2>商品一覧</h2>
+        <h2 style="text-align: center;">商品一覧</h2>
         <div id="itemList">読み込み中...</div>
         <button class="btn-submit" onclick="submitOrder()">注文を確定する</button>
     </div>
 
     <script>
-        const GAS_URL = "https://script.google.com/macros/s/AKfycbxcni9d3pjDFPh98KblC-txLm9ekwYb8xF9GpUpuiDGRgWIDEaOu8UI9rXNvJlcQVUZJA/exec"; // 先ほどデプロイしたGASのURL
+        const GAS_URL = "https://script.google.com/macros/s/AKfycbxcni9d3pjDFPh98KblC-txLm9ekwYb8xF9GpUpuiDGRgWIDEaOu8UI9rXNvJlcQVUZJA/exec";
 
 // カテゴリー判定ロジック
 function getCategory(id) {
-    // 1. フレーム
     const frameItems = ["EDC-001-N", "EDC-002-N", "680-819-310", "680-824-310"];
     if (frameItems.includes(id)) return "フレーム";
 
-    // 2. 資材
     const sizaiItems = ["EDC-001-NG", "EDC-001-NA", "EDC-001-NB", "EDC-002-NG", "EDC-002-NA", "EDC-002-NB"];
     if (sizaiItems.includes(id)) return "資材";
 
-    // 3. ガラスドーム
     const glassItems = ["777-410-000", "777-431-000", "777-432-000"];
     if (glassItems.includes(id)) return "ガラスドーム";
 
     return "その他";
 }
 
-// ① 起動時に在庫データを取得してカテゴリー別に表示
+// ① 起動時に在庫データを取得（Googleドライブ画像対応版）
 async function loadItems() {
     try {
         const res = await fetch(GAS_URL);
@@ -50,7 +48,6 @@ async function loadItems() {
         const listDiv = document.getElementById('itemList');
         listDiv.innerHTML = "";
 
-        // カテゴリー別に仕分け
         const categories = {};
         items.forEach(item => {
             const cat = getCategory(item.id);
@@ -58,23 +55,34 @@ async function loadItems() {
             categories[cat].push(item);
         });
 
-        // 画面描画
         for (const [catName, catItems] of Object.entries(categories)) {
-            listDiv.innerHTML += `<h3 style="background:#f0f0f0; padding:10px; margin-top:20px; border-left:5px solid #00b900;">${catName}</h3>`;
+            listDiv.innerHTML += `<h3>${catName}</h3>`;
             
             catItems.forEach(item => {
+                // --- 画像表示ロジック ---
+                let imgHtml = "";
+                if (item.imageJson) {
+                    // IDを抜き出してGoogleドライブのURLを作成
+                    const fileId = item.imageJson; // IDがそのまま入っている想定
+                    const driveUrl = `https://drive.google.com/uc?export=view&id=${fileId}`;
+                    imgHtml = `<img src="${driveUrl}" class="item-img" onerror="this.src='https://placehold.jp/24/cccccc/ffffff/200x200.png?text=No%20Image'">`;
+                } else {
+                    imgHtml = `<div class="item-img" style="display:flex;align-items:center;justify-content:center;font-size:10px;color:#999;">No Image</div>`;
+                }
+
                 listDiv.innerHTML += `
-                    <div class="item-card" style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #ddd; padding:10px; background:#fff;">
+                    <div class="item-card">
+                        ${imgHtml}
                         <div class="item-info">
                             <div><strong>${item.name}</strong></div>
-                            <div style="font-size:0.8em; color:gray;">${item.id} / 在庫: ${item.stock}${item.unit}</div>
+                            <div style="font-size:0.8em; color:gray;">${item.id}<br>在庫: ${item.stock}${item.unit}</div>
                         </div>
                         <input type="number" class="qty-input" 
                             data-id="${item.id}" 
                             data-name="${item.name}" 
                             data-unit="${item.unit}" 
                             data-stock="${item.stock}"
-                            style="width:60px; padding:5px;" min="0" placeholder="0">
+                            min="0" placeholder="0">
                     </div>`;
             });
         }
@@ -83,12 +91,10 @@ async function loadItems() {
     }
 }
 
-// ② 注文確定ボタンが押された時の処理
+// ② 注文確定ボタンの処理（変更なし）
 async function submitOrder() {
     const inputs = document.querySelectorAll('.qty-input');
     const colOrders = [];
-    
-    // 数量が入力されているものだけ抽出
     inputs.forEach(input => {
         const qty = parseInt(input.value);
         if (qty > 0) {
@@ -109,21 +115,15 @@ async function submitOrder() {
 
     if (!confirm("注文を確定してもよろしいですか？")) return;
 
-    // ボタンを無効化（二重送信防止）
     const btn = document.querySelector('.btn-submit');
     btn.disabled = true;
     btn.innerText = "送信中...";
 
-    // 以前PowerAppsで作ったメール本文(HTML)の作成ロジックをここで再現
-    const mailBody = createCustomerMail(colOrders);
-    const orderBody_Customer = createSupplierMail(colOrders, "customer");
-    const orderBody_Self = createSupplierMail(colOrders, "self");
-
     const payload = {
         colOrders: colOrders,
-        mailBody: mailBody,
-        orderBody_Customer: orderBody_Customer,
-        orderBody_Self: orderBody_Self
+        mailBody: createCustomerMail(colOrders),
+        orderBody_Customer: createSupplierMail(colOrders, "customer"),
+        orderBody_Self: createSupplierMail(colOrders, "self")
     };
 
     try {
@@ -134,7 +134,7 @@ async function submitOrder() {
         const result = await response.json();
         if (result.status === "success") {
             alert("確定されました。ありがとうございます。");
-            liff.closeWindow(); // LINE画面を閉じる
+            liff.closeWindow();
         }
     } catch (e) {
         alert("送信エラーが発生しました。");
@@ -143,40 +143,25 @@ async function submitOrder() {
     }
 }
 
-// 顧客向けメール作成関数
 function createCustomerMail(orders) {
     let rows = orders.map(o => `<tr><td>${o.ItemName}</td><td>${o.品名}</td><td>${o.Quantity} ${o.Unit}</td><td>${o.CurrentStock - o.Quantity}</td></tr>`).join('');
-    return `<div style='font-family:Meiryo;'>
-                <p>golden child garden 様</p>
-                <p>ご注文ありがとうございます。以下の内容で承りました。</p>
-                <table border='1' style='border-collapse:collapse;'>
-                    <tr bgcolor='#eee'><th>品番</th><th>品名</th><th>数量</th><th>在庫残</th></tr>
-                    ${rows}
-                </table>
-            </div>`;
+    return `<div style='font-family:Meiryo;'><p>golden child garden 様</p><p>ご注文ありがとうございます。</p><table border='1' style='border-collapse:collapse;'><tr bgcolor='#eee'><th>品番</th><th>品名</th><th>数量</th><th>在庫残</th></tr>${rows}</table></div>`;
 }
 
-// 仕入先向けメール作成関数（PowerAppsのFilterロジックを再現）
 function createSupplierMail(orders, type) {
     let filtered;
     if (type === "customer") {
-        // 8アイテム（顧客直送分）
         const targets = ["EDC-001-N","EDC-001-NG","EDC-001-NA","EDC-001-NB","EDC-002-N","EDC-002-NG","EDC-002-NA","EDC-002-NB","680-824-310"];
         filtered = orders.filter(o => targets.includes(o.ItemName));
     } else {
-        // 自社補充分（在庫しきい値判定）
         const thresholds = { "777-410-000": 24, "777-431-000": 24, "680-819-310": 15, "777-432-000": 12 };
         filtered = orders.filter(o => o.CurrentStock - o.Quantity < (thresholds[o.ItemName] || 0));
     }
-
     if (filtered.length === 0) return null;
-
     let rows = filtered.map(o => `<tr><td>${o.ItemName}</td><td>${o.Quantity} ${o.Unit}</td></tr>`).join('');
-    return `<div style='font-family:Meiryo;'><h3>発注書 (${type === "customer" ? "顧客納品" : "自社納品"})</h3>
-            <table border='1' style='border-collapse:collapse;'><tr><th>商品名</th><th>数量</th></tr>${rows}</table></div>`;
+    return `<div style='font-family:Meiryo;'><h3>発注書 (${type === "customer" ? "顧客納品" : "自社納品"})</h3><table border='1' style='border-collapse:collapse;'><tr><th>商品名</th><th>数量</th></tr>${rows}</table></div>`;
 }
 
-        // LIFF初期化
         liff.init({ liffId: "2008942151-9x7S0H52" }).then(() => {
             loadItems();
         });
