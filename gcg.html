@@ -59,15 +59,23 @@ async function loadItems() {
             listDiv.innerHTML += `<h3>${catName}</h3>`;
             
             catItems.forEach(item => {
-                // --- 画像表示ロジック ---
+                // --- 【修正版】画像表示ロジック：URLからIDを自動抽出 ---
                 let imgHtml = "";
-                if (item.imageJson) {
-                    // IDを抜き出してGoogleドライブのURLを作成
-                    const fileId = item.imageJson; // IDがそのまま入っている想定
-                    const driveUrl = `https://drive.google.com/uc?export=view&id=${fileId}`;
-                    imgHtml = `<img src="${driveUrl}" class="item-img" onerror="this.src='https://placehold.jp/24/cccccc/ffffff/200x200.png?text=No%20Image'">`;
-                } else {
-                    imgHtml = `<div class="item-img" style="display:flex;align-items:center;justify-content:center;font-size:10px;color:#999;">No Image</div>`;
+                if (item.imageJson && item.imageJson.includes("drive.google.com")) {
+                    // スペースを削除し、ID部分（/d/ と /view の間）を抜き出す
+                    const cleanUrl = item.imageJson.replace(/\s+/g, ""); 
+                    const match = cleanUrl.match(/\/d\/(.+?)\//);
+                    const fileId = match ? match[1] : null;
+                    
+                    if (fileId) {
+                        const driveUrl = `https://drive.google.com/uc?export=view&id=${fileId}`;
+                        imgHtml = `<img src="${driveUrl}" class="item-img" onerror="this.src='https://placehold.jp/24/cccccc/ffffff/200x200.png?text=No%20Image'">`;
+                    }
+                }
+                
+                // IDがうまく抜けない、またはURLがない場合の予備
+                if (!imgHtml) {
+                    imgHtml = `<div class="item-img" style="display:flex;align-items:center;justify-content:center;font-size:10px;color:#999;background:#eee;">No Image</div>`;
                 }
 
                 listDiv.innerHTML += `
