@@ -28,11 +28,11 @@
 // カテゴリー判定ロジック
 function getCategory(id) {
     // 1. フレーム
-    const frameItems = ["EDC-001-N", "EDC-001-NB", "680-819-310", "680-824-310", "EDC-002-N"];
+    const frameItems = ["EDC-001-N", "EDC-002-N", "680-819-310", "680-824-310"];
     if (frameItems.includes(id)) return "フレーム";
 
     // 2. 資材
-    const sizaiItems = ["EDC-001-NG", "EDC-001-NA", "EDC-002-NG", "EDC-002-NA", "EDC-002-NB"];
+    const sizaiItems = ["EDC-001-NG", "EDC-001-NA", "EDC-001-NB", "EDC-002-NG", "EDC-002-NA", "EDC-002-NB"];
     if (sizaiItems.includes(id)) return "資材";
 
     // 3. ガラスドーム
