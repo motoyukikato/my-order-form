@@ -27,9 +27,18 @@
 
 // カテゴリー判定ロジック
 function getCategory(id) {
-    if (id.startsWith("EDC")) return "フレーム";
-    if (id.startsWith("777-43")) return "ガラスドーム";
-    if (id.startsWith("777-41") || id.startsWith("680")) return "資材";
+    // 1. フレーム
+    const frameItems = ["EDC-001-N", "EDC-001-NB", "680-819-310", "680-824-310", "EDC-002-N"];
+    if (frameItems.includes(id)) return "フレーム";
+
+    // 2. 資材
+    const sizaiItems = ["EDC-001-NG", "EDC-001-NA", "EDC-002-NG", "EDC-002-NA", "EDC-002-NB"];
+    if (sizaiItems.includes(id)) return "資材";
+
+    // 3. ガラスドーム
+    const glassItems = ["777-410-000", "777-431-000", "777-432-000"];
+    if (glassItems.includes(id)) return "ガラスドーム";
+
     return "その他";
 }
 
