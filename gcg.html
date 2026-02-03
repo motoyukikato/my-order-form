@@ -60,22 +60,24 @@ async function loadItems() {
             
             catItems.forEach(item => {
                 let imgHtml = "";
-                // --- 【最強版】あらゆるGoogleドライブURLからIDを抽出するロジック ---
-                if (item.imageJson && item.imageJson.includes("drive.google.com")) {
-                    const url = item.imageJson.replace(/\s+/g, ""); // スペース除去
+                // --- 【決定版】URLからIDを抜き出すロジック ---
+                if (item.imageJson) {
                     let fileId = "";
+                    const rawValue = item.imageJson.toString().replace(/\s+/g, ""); // スペース除去
                     
-                    // パターンA: /d/○○○/view
-                    const matchD = url.match(/\/d\/(.+?)(\/|$)/);
-                    // パターンB: ?id=○○○
-                    const matchId = url.match(/[?&]id=(.+?)(&|$)/);
-                    
-                    fileId = matchD ? matchD[1] : (matchId ? matchId[1] : null);
+                    if (rawValue.includes("drive.google.com")) {
+                        // URL形式の場合： /d/ と /view の間を抜く
+                        const match = rawValue.match(/\/d\/(.+?)\//);
+                        fileId = match ? match[1] : "";
+                    } else {
+                        // すでにIDのみが入っている場合
+                        fileId = rawValue;
+                    }
                     
                     if (fileId) {
-                        // thumbnailを使わず、より確実な直接表示用URLを使用
-                        const driveUrl = `https://drive.google.com/uc?export=view&id=${fileId}`;
-                        imgHtml = `<img src="${driveUrl}" class="item-img" loading="lazy" onerror="this.src='https://placehold.jp/24/cccccc/ffffff/200x200.png?text=Error'">`;
+                        // Googleドライブのサムネイル機能を使って表示を高速化
+                        const driveUrl = `https://drive.google.com/thumbnail?authuser=0&sz=w320&id=${fileId}`;
+                        imgHtml = `<img src="${driveUrl}" class="item-img" onerror="this.src='https://placehold.jp/24/cccccc/ffffff/200x200.png?text=No%20Image'">`;
                     }
                 }
                 
@@ -103,7 +105,6 @@ async function loadItems() {
         document.getElementById('itemList').innerHTML = "読み込みエラー: " + e.message;
     }
 }
-
 // ② 注文確定ボタンの処理（変更なし）
 async function submitOrder() {
     const inputs = document.querySelectorAll('.qty-input');
