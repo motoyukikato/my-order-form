@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>【アスカ商会】見本市注文アプリ</title>
     <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/quagga/0.12.1/quagga.min.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
         body { font-family: sans-serif; margin: 0; padding-bottom: 80px; background: #f4f4f4; color: #333; }
@@ -23,42 +22,6 @@
         #send-btn { background-color: #28a745; color: white; border: none; width: 100%; padding: 15px; font-size: 18px; border-radius: 10px; margin-top: 20px; }
         #send-btn:disabled { background-color: #ccc; }
         textarea { width: 100%; border: 1px solid #ddd; border-radius: 5px; padding: 10px; box-sizing: border-box; font-size: 16px; }
-
-        /* --- バーコードスキャン用のデザインを追加 --- */
-        #interactive.viewport {
-            position: relative;
-            width: 100%;
-            height: 300px;
-            background: #000;
-            overflow: hidden;
-            border-radius: 10px;
-        }
-        #interactive.viewport video {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-        }
-        .scanner-laser {
-            position: absolute;
-            top: 50%; left: 50%;
-            transform: translate(-50%, -50%);
-            width: 80%; height: 40%;
-            border: 2px solid #00b900;
-            box-shadow: 0 0 0 1000px rgba(0, 0, 0, 0.4);
-            pointer-events: none;
-            z-index: 10;
-        }
-        .scanner-laser::after {
-            content: ""; display: block;
-            width: 100%; height: 2px;
-            background: red; position: absolute;
-            top: 50%; left: 0;
-            box-shadow: 0 0 8px red;
-            animation: scan-move 2s infinite linear;
-        }
-        @keyframes scan-move {
-            0% { top: 0%; } 50% { top: 100%; } 100% { top: 0%; }
-        }
     </style>
 </head>
 <body>
@@ -85,16 +48,11 @@
 </section>
 
 <section id="barcode" class="page-section">
-    <h2>バーコードスキャン</h2>
-    <div class="card" style="text-align: center;">
-        <div id="interactive" class="viewport">
-            <div class="scanner-laser"></div>
-        </div>
-        <button id="start-scan-btn" class="btn-scan" onclick="startBarcodeScanner()">
-            <i class="fa-solid fa-camera"></i> スキャン開始
-        </button>
-        <button id="stop-scan-btn" class="btn-scan" onclick="stopBarcodeScanner()" style="background: #d9534f; display: none;">
-            スキャンを止める
+    <h2>商品スキャン</h2>
+    <div class="card" style="text-align: center; padding: 40px 20px;">
+        <p style="margin-bottom: 20px; color: #666;">商品のバーコードを読み取ります</p>
+        <button class="btn-scan" onclick="handleScan()">
+            <i class="fa-solid fa-barcode"></i> 商品スキャン開始
         </button>
     </div>
 </section>
@@ -127,88 +85,28 @@
 <script>
     const GAS_URL = "https://script.google.com/macros/s/AKfycbyZyJOyxwj9tr_757YU6YrUby-ZLYgX99fMd-9bVd4EpiwurLB4GJjTfBvQDfqXVU3w/exec"; 
     let cart = [];
-    let currentZip = ""; 
 
     liff.init({ liffId: "2008942151-FsUbWNxa" })
         .then(() => { console.log("LIFF Init OK"); })
         .catch((err) => { alert("LIFF初期化失敗: " + err); });
 
     function showPage(pageId) {
-        if (pageId !== 'barcode') stopBarcodeScanner();
         document.querySelectorAll('.page-section').forEach(sec => sec.classList.remove('active'));
         document.getElementById(pageId).classList.add('active');
         document.querySelectorAll('.footer-menu button').forEach(btn => btn.classList.remove('active-menu'));
         document.getElementById('nav-' + pageId).classList.add('active-menu');
     }
 
-  // --- 超高精度バーコードスキャナー制御 ---
-    let isScanning = false;
-
-    async function startBarcodeScanner() {
-        isScanning = false;
-        const video = document.createElement('video');
-        const canvas = document.createElement('canvas');
-        const container = document.querySelector('#interactive');
-        container.innerHTML = ''; // 中身をリセット
-        container.appendChild(video);
-        
-        document.getElementById('start-scan-btn').style.display = 'none';
-        document.getElementById('stop-scan-btn').style.display = 'block';
-
+    // 商品スキャン（LINE公式スキャナー）
+    async function handleScan() {
         try {
-            const stream = await navigator.mediaDevices.getUserMedia({ 
-                video: { facingMode: "environment", focusMode: "continuous" } 
-            });
-            video.srcObject = stream;
-            video.setAttribute("playsinline", true);
-            video.play();
-
-            // Googleの認識エンジンが使えるかチェック
-            const barcodeDetector = ('BarcodeDetector' in window) ? new BarcodeDetector({ formats: ['ean_13', 'ean_8'] }) : null;
-
-            const tick = async () => {
-                if (isScanning) return;
-                
-                if (video.readyState === video.HAVE_ENOUGH_DATA) {
-                    let code = null;
-
-                    if (barcodeDetector) {
-                        // 【高精度モード】Googleのエンジンで解析
-                        const barcodes = await barcodeDetector.detect(video);
-                        if (barcodes.length > 0) code = barcodes[0].rawValue;
-                    } else {
-                        // 【通常モード】ライブラリで解析
-                        // ※予備としてQuaggaの解析ロジックをここに挟むことも可能ですが、まずは最新APIを優先
-                    }
-
-                    if (code) {
-                        isScanning = true;
-                        if (navigator.vibrate) navigator.vibrate(200);
-                        stopBarcodeScanner(stream);
-                        searchProduct(code);
-                        return;
-                    }
-                }
-                if (!isScanning) requestAnimationFrame(tick);
-            };
-            requestAnimationFrame(tick);
-
-        } catch (err) {
-            alert("カメラの起動に失敗しました。ブラウザの権限を確認してください。");
-            stopBarcodeScanner();
-        }
+            const res = await liff.scanCodeV2();
+            if (res.value) {
+                await searchProduct(res.value);
+            }
+        } catch (e) { console.log("キャンセル"); }
     }
 
-    function stopBarcodeScanner(stream) {
-        isScanning = true;
-        if (stream) {
-            stream.getTracks().forEach(track => track.stop());
-        }
-        document.getElementById('start-scan-btn').style.display = 'block';
-        document.getElementById('stop-scan-btn').style.display = 'none';
-        const container = document.querySelector('#interactive');
-        container.innerHTML = '<div class="scanner-laser"></div>'; // ガイド枠を戻す
-    }
     // 商品検索
     async function searchProduct(code) {
         if (!code) return;
@@ -232,10 +130,8 @@
                 });
                 updateCartUI();
                 showPage('cart');
-            } else {
-                alert("商品マスタ登録なし: " + code);
-            }
-        } catch (e) { alert("商品検索エラー: " + e.message); }
+            } else { alert("商品マスタ登録なし: " + code); }
+        } catch (e) { alert("商品検索エラー"); }
     }
 
     // 顧客検索
@@ -253,14 +149,12 @@
                 document.getElementById("res-address2").innerText = data.address2 || "";
                 document.getElementById("res-tel").innerText = data.tel || "";
                 document.getElementById("res-email").innerText = data.email || "";
-                currentZip = data.zip || ""; 
                 document.getElementById("cust-loading").style.display = "none";
                 document.getElementById("cust-data").style.display = "block";
             } else { alert("顧客が見つかりません"); }
-        } catch (e) { alert("顧客検索エラー: " + e.message); }
+        } catch (e) { alert("顧客検索エラー"); }
     }
 
-    // 以下、その他の既存機能（UI更新、送信など）
     function updateCartUI() {
         const list = document.getElementById('cart-list');
         if (cart.length === 0) { list.innerHTML = '<p style="text-align: center;">空です</p>'; return; }
@@ -271,15 +165,13 @@
             return `
                 <div class="item-card" style="position: relative;">
                     <b>${item.name}</b><br>
-                    <small>メーカー: ${item.maker || "未設定"} / 品番: ${item.partNo}</small><br>
-                    <div style="background: #fff5f5; padding: 8px; border-radius: 5px; margin: 8px 0; border: 1px solid #ffcccc;">
-                        <span style="color: #d9534f; font-weight: bold;">在庫状況: ${item.stock || "設定なし"}</span>
-                    </div>
+                    <small>品番: ${item.partNo}</small><br>
+                    在庫: ${item.stock || "設定なし"}<br>
                     単価: ${item.price.toLocaleString()}円 / 数量: <input type="number" value="${item.quantity}" onchange="updateQty(${i}, this.value)" style="width:60px;">
                     <button onclick="removeItem(${i})" style="position: absolute; top: 10px; right: 10px; border: none; background: none;"><i class="fa-solid fa-trash-can"></i></button>
                 </div>`;
         }).join('');
-        list.innerHTML = html + `<div style="text-align:right;"><b>合計: ${total.toLocaleString()}円</b></div>`;
+        list.innerHTML = html + `<div style="text-align:right; padding:10px;"><b>合計: ${total.toLocaleString()}円</b></div>`;
     }
 
     function updateQty(i, q) { if (q > 0) { cart[i].quantity = parseInt(q); updateCartUI(); } }
@@ -294,7 +186,15 @@
         try {
             const res = await fetch(GAS_URL, {
                 method: "POST",
-                body: JSON.stringify({ action: "orderSubmit", data: { customerName, items: cart, comment: document.getElementById("order-comment").value } })
+                body: JSON.stringify({ action: "orderSubmit", data: { 
+                    customerName, 
+                    address1: document.getElementById("res-address1").innerText,
+                    address2: document.getElementById("res-address2").innerText,
+                    tel: document.getElementById("res-tel").innerText,
+                    email: document.getElementById("res-email").innerText,
+                    items: cart, 
+                    comment: document.getElementById("order-comment").value 
+                } })
             });
             if (res.ok) { alert("注文完了"); cart = []; updateCartUI(); showPage('home'); }
         } catch (e) { alert("送信エラー"); } finally { btn.disabled = false; }
