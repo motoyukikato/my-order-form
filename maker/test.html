@@ -142,7 +142,11 @@
     }
 
     // --- バーコードスキャナー制御 (QuaggaJS) ---
+   // --- バーコードスキャナー制御 (修正版) ---
+    let isScanning = false; // ★この1行も関数の外（上）に書いてください
+
     function startBarcodeScanner() {
+        isScanning = false; 
         document.getElementById('start-scan-btn').style.display = 'none';
         document.getElementById('stop-scan-btn').style.display = 'block';
 
@@ -160,21 +164,21 @@
         });
 
         Quagga.onDetected(function(result) {
+            if (isScanning) return; // ★ここが2重読み込み防止のキモです
+
             const code = result.codeResult.code;
             if (code) {
+                isScanning = true; 
                 if (navigator.vibrate) navigator.vibrate(200);
-                stopBarcodeScanner();
-                searchProduct(code);
+                Quagga.stop(); 
+                
+                document.getElementById('start-scan-btn').style.display = 'block';
+                document.getElementById('stop-scan-btn').style.display = 'none';
+                
+                searchProduct(code); 
             }
         });
     }
-
-    function stopBarcodeScanner() {
-        Quagga.stop();
-        document.getElementById('start-scan-btn').style.display = 'block';
-        document.getElementById('stop-scan-btn').style.display = 'none';
-    }
-
     // 商品検索
     async function searchProduct(code) {
         if (!code) return;
