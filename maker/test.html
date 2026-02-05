@@ -141,43 +141,73 @@
         document.getElementById('nav-' + pageId).classList.add('active-menu');
     }
 
-    // --- バーコードスキャナー制御 (QuaggaJS) ---
-   // --- バーコードスキャナー制御 (修正版) ---
-    let isScanning = false; // ★この1行も関数の外（上）に書いてください
+  // --- 超高精度バーコードスキャナー制御 ---
+    let isScanning = false;
 
-    function startBarcodeScanner() {
-        isScanning = false; 
+    async function startBarcodeScanner() {
+        isScanning = false;
+        const video = document.createElement('video');
+        const canvas = document.createElement('canvas');
+        const container = document.querySelector('#interactive');
+        container.innerHTML = ''; // 中身をリセット
+        container.appendChild(video);
+        
         document.getElementById('start-scan-btn').style.display = 'none';
         document.getElementById('stop-scan-btn').style.display = 'block';
 
-        Quagga.init({
-            inputStream: {
-                name: "Live", type: "LiveStream",
-                target: document.querySelector('#interactive'),
-                constraints: { facingMode: "environment" },
-            },
-            decoder: { readers: ["ean_reader", "ean_8_reader"] },
-            locate: true
-        }, function(err) {
-            if (err) { alert("カメラ起動失敗: " + err); return; }
-            Quagga.start();
-        });
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ 
+                video: { facingMode: "environment", focusMode: "continuous" } 
+            });
+            video.srcObject = stream;
+            video.setAttribute("playsinline", true);
+            video.play();
 
-        Quagga.onDetected(function(result) {
-            if (isScanning) return; // ★ここが2重読み込み防止のキモです
+            // Googleの認識エンジンが使えるかチェック
+            const barcodeDetector = ('BarcodeDetector' in window) ? new BarcodeDetector({ formats: ['ean_13', 'ean_8'] }) : null;
 
-            const code = result.codeResult.code;
-            if (code) {
-                isScanning = true; 
-                if (navigator.vibrate) navigator.vibrate(200);
-                Quagga.stop(); 
+            const tick = async () => {
+                if (isScanning) return;
                 
-                document.getElementById('start-scan-btn').style.display = 'block';
-                document.getElementById('stop-scan-btn').style.display = 'none';
-                
-                searchProduct(code); 
-            }
-        });
+                if (video.readyState === video.HAVE_ENOUGH_DATA) {
+                    let code = null;
+
+                    if (barcodeDetector) {
+                        // 【高精度モード】Googleのエンジンで解析
+                        const barcodes = await barcodeDetector.detect(video);
+                        if (barcodes.length > 0) code = barcodes[0].rawValue;
+                    } else {
+                        // 【通常モード】ライブラリで解析
+                        // ※予備としてQuaggaの解析ロジックをここに挟むことも可能ですが、まずは最新APIを優先
+                    }
+
+                    if (code) {
+                        isScanning = true;
+                        if (navigator.vibrate) navigator.vibrate(200);
+                        stopBarcodeScanner(stream);
+                        searchProduct(code);
+                        return;
+                    }
+                }
+                if (!isScanning) requestAnimationFrame(tick);
+            };
+            requestAnimationFrame(tick);
+
+        } catch (err) {
+            alert("カメラの起動に失敗しました。ブラウザの権限を確認してください。");
+            stopBarcodeScanner();
+        }
+    }
+
+    function stopBarcodeScanner(stream) {
+        isScanning = true;
+        if (stream) {
+            stream.getTracks().forEach(track => track.stop());
+        }
+        document.getElementById('start-scan-btn').style.display = 'block';
+        document.getElementById('stop-scan-btn').style.display = 'none';
+        const container = document.querySelector('#interactive');
+        container.innerHTML = '<div class="scanner-laser"></div>'; // ガイド枠を戻す
     }
     // 商品検索
     async function searchProduct(code) {
