@@ -99,7 +99,6 @@
 </div>
 
 <script>
-    // GASのURL
     const gasUrl = "https://script.google.com/macros/s/AKfycbyclRe8jp0xQXCN2ocZFd_gzJLIoKOHWf_ekJU3dcZ3C3vyOMELhUVvIovl3xoa50fb/exec";
 
     // メーカー全リスト（よみがな:表示名）
@@ -108,7 +107,7 @@
         "あもろーさ:アモローサ", "あむーるでふるーる:アムールデフルール", "あんこーぽれーしょん:アンコーポレーション", 
         "あーてぃふぃしゃる:アーティフィシャル", "あおやまりぼん:青山リボン", "あさひわいやー:朝日ワイヤー", "べるで:ヴェルデ",
         "おおちのうえん:大地農園", "おおぐちさんぎょう:大口産業", "だいてつ:大鉄", "だいどうくらふと:大同クラフト", "いんたーりんく:インターリンク",
-        "だいせん:大仙", "うぉるなっと:ウォルナット", "えこぜりー:エコゼリー", "えるこみゅーん:エルコミューン", えすあーるさーびす:SRサービス(デコジャリ）,
+        "だいせん:大仙", "うぉるなっと:ウォルナット", "えこぜりー:エコゼリー", "えるこみゅーん:エルコミューン", "えすあーるさーびす:SRサービス(デコジャリ）",
         "えいちつーおー:エイチツーオー", "かめやまきゃんどる:カメヤマキャンドル", "かるなっく:カルナック", "きゅーふら:Q-FLA",
         "くれい:クレイ", "くりざーる:クリザール", "くれえ:クレエ", "ぐりーんはうす:グリーンハウス", "きゃびのちぇ:キャビノチェ",
         "ぐりーんぽっと:グリーンポット", "ぐろーばるあろー:グローバルアロー", "こあとれーでぃんぐ:コアトレーディング", 
@@ -145,7 +144,10 @@
 
     const makerData = {};
     allMakers.forEach(item => {
-        const [kana, name] = item.split(':');
+        const parts = item.split(':');
+        if (parts.length < 2) return;
+        const kana = parts[0];
+        const name = parts[1];
         const row = getKanaRow(kana);
         if (!makerData[row]) makerData[row] = [];
         makerData[row].push({kana: kana, name: name});
@@ -164,118 +166,3 @@
                 const profile = await liff.getProfile();
                 document.getElementById('userInfo').textContent = "ユーザー: " + profile.displayName;
             }
-        } catch (error) {
-            console.error("LIFFの初期化に失敗", error);
-        }
-    }
-
-    window.onload = function() {
-        initLiff();
-        const savedStoreName = localStorage.getItem('storeName');
-        const savedEmail = localStorage.getItem('email');
-        if (savedStoreName) document.getElementById('storeName').value = savedStoreName;
-        if (savedEmail) document.getElementById('email').value = savedEmail;
-    };
-
-    function updateMakerOptions(catSelect) {
-        const row = catSelect.value;
-        const makerSelect = catSelect.closest('.item-card').querySelector('.maker-select');
-        makerSelect.innerHTML = '';
-        if (row === "その他") {
-            const opt = document.createElement('option');
-            opt.value = "備考に記入";
-            opt.textContent = "メーカー名を備考に記入してください";
-            makerSelect.appendChild(opt);
-        } else if (row && makerData[row]) {
-            makerSelect.innerHTML = '<option value="">選択してください</option>';
-            makerData[row].forEach(m => {
-                const opt = document.createElement('option');
-                opt.value = opt.textContent = m.name;
-                makerSelect.appendChild(opt);
-            });
-        } else {
-            makerSelect.innerHTML = '<option value="">行を選んでください</option>';
-        }
-    }
-
-    function addNewItem() {
-        const container = document.getElementById('itemContainer');
-        const firstCard = container.querySelector('.item-card');
-        const newCard = firstCard.cloneNode(true);
-        const header = newCard.querySelector('.item-header');
-        header.innerHTML = '<span class="item-label">追加商品</span><button type="button" class="remove-btn" onclick="this.closest(\'.item-card\').remove()">削除</button>';
-        newCard.querySelectorAll('input').forEach(input => input.value = (input.type === 'number' ? 1 : ''));
-        newCard.querySelector('.maker-select').innerHTML = '<option value="">行を選んでください</option>';
-        newCard.querySelector('.category-select').value = "";
-        container.appendChild(newCard);
-    }
-
-    const toBase64 = file => new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.readAsDataURL(file);
-        reader.onload = () => resolve(reader.result);
-        reader.onerror = error => reject(error);
-    });
-
-    async function sendOrder() {
-        const btn = document.getElementById('sendBtn');
-        const storeName = document.getElementById('storeName').value;
-        const email = document.getElementById('email').value;
-        if (!storeName) { alert('店名を入れてください'); return; }
-        const items = [];
-        document.querySelectorAll('.item-card').forEach(card => {
-            const maker = card.querySelector('.maker-select').value;
-            if (maker) {
-                items.push({
-                    maker: maker,
-                    partNo: card.querySelector('.partNo-input').value,
-                    quantity: card.querySelector('.quantity-input').value
-                });
-            }
-        });
-        if (items.length === 0) { alert('メーカーを選択してください'); return; }
-        localStorage.setItem('storeName', storeName);
-        localStorage.setItem('email', email);
-        btn.disabled = true;
-        document.getElementById('loadingMsg').style.display = 'block';
-        let imageData1 = null;
-        const fileInput1 = document.getElementById('imageFile1');
-        if (fileInput1.files.length > 0) {
-            const file1 = fileInput1.files[0];
-            const base64_1 = await toBase64(file1);
-            imageData1 = { data: base64_1.split(',')[1], type: file1.type };
-        }
-        let imageData2 = null;
-        const fileInput2 = document.getElementById('imageFile2');
-        if (fileInput2.files.length > 0) {
-            const file2 = fileInput2.files[0];
-            const base64_2 = await toBase64(file2);
-            imageData2 = { data: base64_2.split(',')[1], type: file2.type };
-        }
-        try {
-            const response = await fetch(gasUrl, {
-                method: 'POST',
-                body: JSON.stringify({
-                    storeName: storeName,
-                    email: email,
-                    items: items,
-                    comments: document.getElementById('comments').value,
-                    imageFile1: imageData1,
-                    imageFile2: imageData2
-                })
-            });
-            const res = await response.json();
-            if (res.status === 'success') { 
-                alert('注文完了！控えメールを送信しました。'); 
-                liff.closeWindow(); 
-            }
-        } catch (e) {
-            alert('送信に失敗しました。');
-        } finally {
-            btn.disabled = false;
-            document.getElementById('loadingMsg').style.display = 'none';
-        }
-    }
-</script>
-</body>
-</html>
