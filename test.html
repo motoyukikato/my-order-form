@@ -101,61 +101,63 @@
 <script>
     const gasUrl = "https://script.google.com/macros/s/AKfycbyclRe8jp0xQXCN2ocZFd_gzJLIoKOHWf_ekJU3dcZ3C3vyOMELhUVvIovl3xoa50fb/exec";
 
-    // メーカー全リスト（よみがな:表示名）
+    // データの定義をきれいな配列として定義
     const allMakers = [
-        "あいはらぼうえき:アイハラ貿易（ポリラフィア)", "あすかしょうかい:アスカ商会", "あずわん:アズワン（試験管）", 
-        "あもろーさ:アモローサ", "あむーるでふるーる:アムールデフルール", "あんこーぽれーしょん:アンコーポレーション", 
+        "あいはらぼうえき:アイハラ貿易（ポリラフィア)", "あすかしょうかい:アスカ商会", "あずわん:アズワン（試験管）",
+        "あもろーさ:アモローサ", "あむーるでふるーる:アムールデフルール", "あんこーぽれーしょん:アンコーポレーション",
         "あーてぃふぃしゃる:アーティフィシャル", "あおやまりぼん:青山リボン", "あさひわいやー:朝日ワイヤー", "べるで:ヴェルデ",
         "おおちのうえん:大地農園", "おおぐちさんぎょう:大口産業", "だいてつ:大鉄", "だいどうくらふと:大同クラフト", "いんたーりんく:インターリンク",
         "だいせん:大仙", "うぉるなっと:ウォルナット", "えこぜりー:エコゼリー", "えるこみゅーん:エルコミューン", "えすあーるさーびす:SRサービス(デコジャリ）",
         "えいちつーおー:エイチツーオー", "かめやまきゃんどる:カメヤマキャンドル", "かるなっく:カルナック", "きゅーふら:Q-FLA",
         "くれい:クレイ", "くりざーる:クリザール", "くれえ:クレエ", "ぐりーんはうす:グリーンハウス", "きゃびのちぇ:キャビノチェ",
-        "ぐりーんぽっと:グリーンポット", "ぐろーばるあろー:グローバルアロー", "こあとれーでぃんぐ:コアトレーディング", 
-        "こべんとがーでん:コベントガーデン", "さかげん:坂源", "さんわとれーでぃんぐ:三和トレーディング", 
-        "しもじま:シモジマ", "しせいはんぱい:志成販売", "すみざーずおあしす:スミザーズオアシス", 
+        "ぐりーんぽっと:グリーンポット", "ぐろーばるあろー:グローバルアロー", "こあとれーでぃんぐ:コアトレーディング",
+        "こべんとがーでん:コベントガーデン", "さかげん:坂源", "さんわとれーでぃんぐ:三和トレーディング",
+        "しもじま:シモジマ", "しせいはんぱい:志成販売", "すみざーずおあしす:スミザーズオアシス",
         "とやまはもの:外山刃物", "たなかとうき:田中陶器", "だるとん:ダルトン", "でるき:デルキ",
         "とうきょうりぼん:東京リボン", "とうきょうかんかん:東京かんかん", "とすだいす:TOSSDICE", "だんぼーる:段ボール",
         "とうきょうどう:東京堂", "とーく:トーク", "どりーむふぁーむすずか:ドリームファームスズカ", "とうか:東花", "とうほうぼうえき:東方貿易",
         "ねいちゃーでざいんず:ネイチャーデザインズ", "ぱれすかがく:パレス化学", "ぱれ:パレ", "ぽっしゅりびんぐ:ポッシュリビング",
         "ふぁーむ:FARM", "はなりんくす:花Links", "ふろーねっと:flonet", "ほわいえ:ホワイエ", "はなのそのくぼた:花のそのくぼた",
-        "ふろーるえばー:フロールエバー", "ふらわーべーす:フラワーベース", "ぷらすがーでん:プラスガーデン", 
+        "ふろーるえばー:フロールエバー", "ふらわーべーす:フラワーベース", "ぷらすがーでん:プラスガーデン",
         "ぼぶくらふと:ボブクラフト", "まつむらこうげい:松村工芸", "ほしの:星野",
-        "まぐねっと:マグネット", "まるこうせいとう:丸滉製陶", "まるまひらのとうきてん:丸又平野陶器店", 
-        "まるわぼうえき:丸和貿易", "みゅーるみる:ミュールミル", "むらたやさんぎょう:村田屋産業", 
+        "まぐねっと:マグネット", "まるこうせいとう:丸滉製陶", "まるまひらのとうきてん:丸又平野陶器店",
+        "まるわぼうえき:丸和貿易", "みゅーるみる:ミュールミル", "むらたやさんぎょう:村田屋産業",
         "ものいんたーなしょなる:モノ・インターナショナル", "やまてー:ヤマテー", "やーど:yard", "ゆうぜん:友膳",
-        "よこはまでぃすぷれいみゅーじあむ:横浜ディスプレイミュージアム", "ららいわんと:ラライワント", "りぶきゅりえいと:Lib curate", 
+        "よこはまでぃすぷれいみゅーじあむ:横浜ディスプレイミュージアム", "ららいわんと:ラライワント", "りぶきゅりえいと:Lib curate",
         "りーどしょうじ:リード商事", "わさら:WASARA", "わんだーぞーん:ワンダーゾーン", "わこうかがく:和光化学"
     ];
 
-    function getKanaRow(kana) {
-        const first = kana.charAt(0);
-        if (first.match(/[あ-お]/)) return "あ";
-        if (first.match(/[か-こが-ご]/)) return "か";
-        if (first.match(/[さ-そざ-ぞ]/)) return "さ";
-        if (first.match(/[た-とだ-ど]/)) return "た";
-        if (first.match(/[な-の]/)) return "な";
-        if (first.match(/[は-ほば-ぼぱ-ぽ]/)) return "は";
-        if (first.match(/[ま-も]/)) return "ま";
-        if (first.match(/[や-よ]/)) return "や";
-        if (first.match(/[ら-ろ]/)) return "ら";
-        if (first.match(/[わ-ん]/)) return "わ";
-        return "その他";
-    }
-
     const makerData = {};
-    allMakers.forEach(item => {
-        const parts = item.split(':');
-        if (parts.length < 2) return;
-        const kana = parts[0];
-        const name = parts[1];
-        const row = getKanaRow(kana);
-        if (!makerData[row]) makerData[row] = [];
-        makerData[row].push({kana: kana, name: name});
-    });
 
-    for(let key in makerData) {
-        makerData[key].sort((a, b) => a.kana.localeCompare(b.kana, 'ja'));
+    function setupMakerData() {
+        allMakers.forEach(item => {
+            const parts = item.split(':');
+            if (parts.length < 2) return;
+            const kana = parts[0];
+            const name = parts[1];
+            
+            let row = "その他";
+            const first = kana.charAt(0);
+            if (first.match(/[あ-お]/)) row = "あ";
+            else if (first.match(/[か-こが-ご]/)) row = "か";
+            else if (first.match(/[さ-そざ-ぞ]/)) row = "さ";
+            else if (first.match(/[た-とだ-ど]/)) row = "た";
+            else if (first.match(/[な-の]/)) row = "な";
+            else if (first.match(/[は-ほば-ぼぱ-ぽ]/)) row = "は";
+            else if (first.match(/[ま-も]/)) row = "ま";
+            else if (first.match(/[や-よ]/)) row = "や";
+            else if (first.match(/[ら-ろ]/)) row = "ら";
+            else if (first.match(/[わ-ん]/)) row = "わ";
+
+            if (!makerData[row]) makerData[row] = [];
+            makerData[row].push({kana: kana, name: name});
+        });
+
+        for(let key in makerData) {
+            makerData[key].sort((a, b) => a.kana.localeCompare(b.kana, 'ja'));
+        }
     }
+    setupMakerData();
 
     async function initLiff() {
         try {
@@ -166,3 +168,35 @@
                 const profile = await liff.getProfile();
                 document.getElementById('userInfo').textContent = "ユーザー: " + profile.displayName;
             }
+        } catch (error) {
+            console.error("LIFF初期化エラー:", error);
+        }
+    }
+
+    window.onload = function() {
+        initLiff();
+        const savedStoreName = localStorage.getItem('storeName');
+        const savedEmail = localStorage.getItem('email');
+        if (savedStoreName) document.getElementById('storeName').value = savedStoreName;
+        if (savedEmail) document.getElementById('email').value = savedEmail;
+    };
+
+    function updateMakerOptions(catSelect) {
+        const row = catSelect.value;
+        const makerSelect = catSelect.closest('.item-card').querySelector('.maker-select');
+        makerSelect.innerHTML = '';
+
+        if (row === "その他") {
+            const opt = document.createElement('option');
+            opt.value = "備考に記入";
+            opt.textContent = "メーカー名を備考に記入してください";
+            makerSelect.appendChild(opt);
+        } else if (row && makerData[row]) {
+            makerSelect.innerHTML = '<option value="">選択してください</option>';
+            makerData[row].forEach(m => {
+                const opt = document.createElement('option');
+                opt.value = opt.textContent = m.name;
+                makerSelect.appendChild(opt);
+            });
+        } else {
+            makerSelect.innerHTML = '<option value="">行を選んで
