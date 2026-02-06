@@ -191,4 +191,82 @@
         const container = document.getElementById('itemContainer');
         const firstCard = container.querySelector('.item-card');
         const newCard = firstCard.cloneNode(true);
-        newCard.querySelector('.item-header').innerHTML = '<span class="item-label">追加商品</span>
+        newCard.querySelector('.item-header').innerHTML = '<span class="item-label">追加商品</span><button type="button" class="remove-btn" onclick="this.closest(\'.item-card\').remove()">削除</button>';
+        newCard.querySelectorAll('input').forEach(i => i.value = (i.type === 'number' ? 1 : ''));
+        newCard.querySelector('.maker-select').innerHTML = '<option value="">行を選んでください</option>';
+        newCard.querySelector('.category-select').value = "";
+        container.appendChild(newCard);
+    }
+
+    // 画像をBase64に変換する関数を復活
+    const toBase64 = file => new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.readAsDataURL(file);
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = error => reject(error);
+    });
+
+    async function sendOrder() {
+        const btn = document.getElementById('sendBtn');
+        const storeName = document.getElementById('storeName').value;
+        const email = document.getElementById('email').value;
+        if (!storeName) { alert('店名を入れてください'); return; }
+
+        const items = [];
+        document.querySelectorAll('.item-card').forEach(card => {
+            const m = card.querySelector('.maker-select').value;
+            if (m) items.push({ maker: m, partNo: card.querySelector('.partNo-input').value, quantity: card.querySelector('.quantity-input').value });
+        });
+
+        if (items.length === 0) { alert('メーカーを選択してください'); return; }
+
+        btn.disabled = true;
+        document.getElementById('loadingMsg').style.display = 'block';
+        localStorage.setItem('storeName', storeName);
+        localStorage.setItem('email', email);
+
+        let imageData1 = null;
+        let imageData2 = null;
+
+        try {
+            // 画像添付処理を復活
+            const fileInput1 = document.getElementById('imageFile1');
+            if (fileInput1.files.length > 0) {
+                const file1 = fileInput1.files[0];
+                const base64_1 = await toBase64(file1);
+                imageData1 = { data: base64_1.split(',')[1], type: file1.type };
+            }
+
+            const fileInput2 = document.getElementById('imageFile2');
+            if (fileInput2.files.length > 0) {
+                const file2 = fileInput2.files[0];
+                const base64_2 = await toBase64(file2);
+                imageData2 = { data: base64_2.split(',')[1], type: file2.type };
+            }
+
+            const response = await fetch(gasUrl, {
+                method: 'POST',
+                body: JSON.stringify({
+                    storeName: storeName,
+                    email: email,
+                    items: items,
+                    comments: document.getElementById('comments').value,
+                    imageFile1: imageData1,
+                    imageFile2: imageData2
+                })
+            });
+            const res = await response.json();
+            if (res.status === 'success') { 
+                alert('注文完了！控えメールを送信しました。'); 
+                liff.closeWindow(); 
+            }
+        } catch (e) { 
+            alert('送信に失敗しました。'); 
+        } finally {
+            btn.disabled = false;
+            document.getElementById('loadingMsg').style.display = 'none';
+        }
+    }
+</script>
+</body>
+</html>
