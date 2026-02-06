@@ -81,7 +81,7 @@
     <button type="button" class="add-btn" onclick="addNewItem()">＋ 商品を追加する</button>
 
     <div class="input-group">
-        <label>画像添付1</label>
+        <label>画像添付1（写メ注文など）</label>
         <input type="file" id="imageFile1" accept="image/*">
     </div>
     <div class="input-group">
@@ -116,7 +116,7 @@
         "とうきょうりぼん:東京リボン", "とうきょうかんかん:東京かんかん", "とすだいす:TOSSDICE", "だんぼーる:段ボール",
         "とうきょうどう:東京堂", "とーく:トーク", "どりーむふぁーむすずか:ドリームファームスズカ", "とうか:東花", "とうほうぼうえき:東方貿易",
         "ねいちゃーでざいんず:ネイチャーデザインズ", "ぱれすかがく:パレス化学", "ぱれ:パレ", "ぽっしゅりびんぐ:ポッシュリビング",
-        "ふぁーむ:FARM", "はなりんくす:花Links", "ふろーねっと:flonet", "ほわいえ:ホワイエ", "は花のそのくぼた:花のそのくぼた",
+        "ふぁーむ:FARM", "はなりんくす:花Links", "ふろーネット:flonet", "ほわいえ:ホワイエ", "はなのそのくぼた:花のそのくぼた",
         "ふろーるえばー:フロールエバー", "ふらわーべーす:フラワーベース", "ぷらすがーでん:プラスガーデン", 
         "ぼぶくらふと:ボブクラフト", "まつむらこうげい:松村工芸", "ほしの:星野",
         "まぐねっと:マグネット", "まるこうせいとう:丸滉製陶", "まるまひらのとうきてん:丸又平野陶器店", 
@@ -156,7 +156,6 @@
             return;
         }
 
-        // その場でフィルタリングして追加
         const filtered = allMakers.filter(item => {
             const kana = item.split(':')[0];
             return getKanaRow(kana) === row;
@@ -190,49 +189,6 @@
 
     function addNewItem() {
         const container = document.getElementById('itemContainer');
-        const newCard = container.querySelector('.item-card').cloneNode(true);
-        newCard.querySelector('.item-header').innerHTML = '<span class="item-label">追加商品</span><button type="button" class="remove-btn" onclick="this.closest(\'.item-card\').remove()">削除</button>';
-        newCard.querySelectorAll('input').forEach(i => i.value = (i.type === 'number' ? 1 : ''));
-        newCard.querySelector('.maker-select').innerHTML = '<option value="">行を選んでください</option>';
-        newCard.querySelector('.category-select').value = "";
-        container.appendChild(newCard);
-    }
-
-    async function sendOrder() {
-        const btn = document.getElementById('sendBtn');
-        const storeName = document.getElementById('storeName').value;
-        if (!storeName) { alert('店名を入れてください'); return; }
-
-        const items = [];
-        document.querySelectorAll('.item-card').forEach(card => {
-            const m = card.querySelector('.maker-select').value;
-            if (m) items.push({ maker: m, partNo: card.querySelector('.partNo-input').value, quantity: card.querySelector('.quantity-input').value });
-        });
-
-        if (items.length === 0) { alert('メーカーを選択してください'); return; }
-
-        btn.disabled = true;
-        document.getElementById('loadingMsg').style.display = 'block';
-        localStorage.setItem('storeName', storeName);
-        localStorage.setItem('email', document.getElementById('email').value);
-
-        try {
-            const response = await fetch(gasUrl, {
-                method: 'POST',
-                body: JSON.stringify({
-                    storeName: storeName,
-                    email: document.getElementById('email').value,
-                    items: items,
-                    comments: document.getElementById('comments').value
-                })
-            });
-            const res = await response.json();
-            if (res.status === 'success') { alert('注文完了！'); liff.closeWindow(); }
-        } catch (e) { alert('送信失敗'); } finally {
-            btn.disabled = false;
-            document.getElementById('loadingMsg').style.display = 'none';
-        }
-    }
-</script>
-</body>
-</html>
+        const firstCard = container.querySelector('.item-card');
+        const newCard = firstCard.cloneNode(true);
+        newCard.querySelector('.item-header').innerHTML = '<span class="item-label">追加商品</span>
