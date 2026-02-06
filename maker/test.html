@@ -57,8 +57,10 @@
 <section id="input" class="page-section">
     <h2>商品検索・追加</h2>
     <div class="card">
-        <input type="text" id="manual-id" placeholder="品番またはJANを入力" style="width: 60%; padding: 10px;">
-        <button class="btn-blue" onclick="handleSearchAndPreview()">検索</button>
+       <input type="text" id="manual-id" placeholder="品番またはJANを入力" style="width: 60%; padding: 10px;" list="prod-list">
+<datalist id="prod-list"></datalist>
+
+<button class="btn-blue" onclick="handleSearchAndPreview()">検索</button>
     </div>
 
     <div id="search-result-preview" style="display:none;">
@@ -104,9 +106,36 @@
     let cart = [];
     let currentZip = ""; 
 
+   // --- ここから追加 ---
+    async function loadProductSuggestions() {
+        try {
+            const res = await fetch(GAS_URL, {
+                method: "POST",
+                body: JSON.stringify({ action: "getAllProductNames" })
+            });
+            const products = await res.json();
+            const datalist = document.getElementById('prod-list');
+            if (datalist) {
+                datalist.innerHTML = "";
+                products.forEach(item => {
+                    const option = document.createElement('option');
+                    option.value = item.partNo;
+                    option.textContent = item.name;
+                    datalist.appendChild(option);
+                });
+            }
+        } catch (e) {
+            console.error("候補リスト取得失敗:", e);
+        }
+    }
+
     liff.init({ liffId: "2008942151-I3pB7ddi" })
-        .then(() => { console.log("LIFF Init OK"); })
+        .then(() => { 
+            console.log("LIFF Init OK");
+            loadProductSuggestions(); // 立ち上げ時にリストを読み込む
+        })
         .catch((err) => { alert("LIFF初期化失敗: " + err); });
+    // --- ここまで追加 ---
 
     function showPage(pageId) {
         document.querySelectorAll('.page-section').forEach(sec => sec.classList.remove('active'));
