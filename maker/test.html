@@ -57,10 +57,9 @@
 <section id="input" class="page-section">
     <h2>商品検索・追加</h2>
     <div class="card">
-       <input type="text" id="manual-id" placeholder="品番またはJANを入力" style="width: 60%; padding: 10px;" list="prod-list">
-<datalist id="prod-list"></datalist>
-
-<button class="btn-blue" onclick="handleSearchAndPreview()">検索</button>
+        <input type="text" id="manual-id" placeholder="品番またはJANを入力" style="width: 60%; padding: 10px;" list="prod-list">
+        <datalist id="prod-list"></datalist>
+        <button class="btn-blue" onclick="handleSearchAndPreview()">検索</button>
     </div>
 
     <div id="search-result-preview" style="display:none;">
@@ -101,12 +100,11 @@
 </nav>
 
 <script>
-    // ★ご自身のGASのURLに書き換わっているか確認してください
     const GAS_URL = "https://script.google.com/macros/s/AKfycbzKKx_80q2P-9-muchJqG8NX4Yi0P_vzqrqQuu5qMonYxV_8nBO3Tx-7V7ur1gaKHsHfg/exec"; 
     let cart = [];
     let currentZip = ""; 
+    let tempProduct = null;
 
-   // --- ここから追加 ---
     async function loadProductSuggestions() {
         try {
             const res = await fetch(GAS_URL, {
@@ -124,18 +122,15 @@
                     datalist.appendChild(option);
                 });
             }
-        } catch (e) {
-            console.error("候補リスト取得失敗:", e);
-        }
+        } catch (e) { console.error("候補リスト取得失敗:", e); }
     }
 
     liff.init({ liffId: "2008942151-I3pB7ddi" })
         .then(() => { 
             console.log("LIFF Init OK");
-            loadProductSuggestions(); // 立ち上げ時にリストを読み込む
+            loadProductSuggestions();
         })
         .catch((err) => { alert("LIFF初期化失敗: " + err); });
-    // --- ここまで追加 ---
 
     function showPage(pageId) {
         document.querySelectorAll('.page-section').forEach(sec => sec.classList.remove('active'));
@@ -161,9 +156,7 @@
                 currentZip = data.zip || ""; 
                 document.getElementById("cust-loading").style.display = "none";
                 document.getElementById("cust-data").style.display = "block";
-            } else {
-                alert("顧客が見つかりません");
-            }
+            } else { alert("顧客が見つかりません"); }
         } catch (e) { alert("顧客検索エラー: " + e.message); }
     }
 
@@ -189,27 +182,85 @@
                 });
                 updateCartUI();
                 showPage('cart');
-            } else {
-                alert("商品マスタ登録なし");
-            }
+            } else { alert("商品マスタ登録なし"); }
         } catch (e) { alert("商品検索エラー: " + e.message); }
     }
 
-    // バーコードリーダー入力時の処理
-document.addEventListener('keypress', function (e) {
-    // あなたのHTMLにある入力欄のID「manual-id」を指定します
-    const inputField = document.getElementById('manual-id');
-    
-    // Enterキーが押され、かつ、入力欄にカーソルがある場合
-    if (e.key === 'Enter' && document.activeElement === inputField) {
-        e.preventDefault(); // 画面のリロードを防ぐ
-        const code = inputField.value.trim();
-        if (code) {
-            searchProduct(code); // 商品検索を実行
-            inputField.value = ""; // 次の読み取りのために中身を空にする
-        }
+    async function handleSearchAndPreview() {
+        const code = document.getElementById('manual-id').value.trim();
+        if (!code) { alert("品番を入力してください"); return; }
+        try {
+            const res = await fetch(GAS_URL, {
+                method: "POST",
+                body: JSON.stringify({ action: "productSearch", jan: String(code) })
+            });
+            const data = await res.json();
+            if (data && data.items && data.items.length > 0) {
+                tempProduct = data.items[0];
+                document.getElementById("preview-name").innerText = tempProduct.name;
+                document.getElementById("preview-partNo").innerText = tempProduct.partNo;
+                document.getElementById("preview-price").innerText = tempProduct.price.toLocaleString();
+                document.getElementById("preview-maker").innerText = tempProduct.maker || "未設定";
+                document.getElementById("preview-stock").innerText = tempProduct.stock || "不明";
+                document.getElementById("preview-qty").value = tempProduct.lot || 1;
+                document.getElementById("search-result-preview").style.display = "block";
+            } else {
+                alert("商品が見つかりませんでした");
+                document.getElementById("search-result-preview").style.display = "none";
+            }
+        } catch (e) { alert("検索エラー: " + e.message); }
     }
-});
+
+    function addPreviewToCart() {
+        if (!tempProduct) return;
+        const qty = parseInt(document.getElementById("preview-qty").value);
+        cart.push({
+            jan: tempProduct.jan,
+            partNo: tempProduct.partNo,
+            name: tempProduct.name,
+            price: Number(tempProduct.price),
+            quantity: qty,
+            lot: Number(tempProduct.lot || 1),
+            stock: tempProduct.stock,
+            maker: tempProduct.maker 
+        });
+        updateCartUI();
+        document.getElementById("search-result-preview").style.display = "none";
+        document.getElementById("manual-id").value = "";
+        alert("カートに追加しました");
+        showPage('cart');
+    }
+
+    function updateCartUI() {
+        const list = document.getElementById('cart-list');
+        if (cart.length === 0) { list.innerHTML = '<p style="text-align: center;">空です</p>'; return; }
+        let total = 0;
+        let html = cart.map((item, i) => {
+            const subtotal = item.price * item.quantity;
+            total += subtotal;
+            return `
+                <div class="item-card" style="position: relative;">
+                    <b>${item.name}</b><br>
+                    <small>メーカー: ${item.maker || "未設定"} / 品番: ${item.partNo}</small><br>
+                    <div style="background: #fff5f5; padding: 8px; border-radius: 5px; margin: 8px 0; border: 1px solid #ffcccc;">
+                        <span style="color: #d9534f; font-weight: bold;">在庫状況: ${item.stock || "設定なし"}</span><br>
+                        <button onclick="toggleStock('${item.partNo}', 'あり')" style="background:#28a745; color:white; border:none; padding:5px 10px; border-radius:3px; font-size:12px; margin-top:5px;">販売中</button>
+                        <button onclick="toggleStock('${item.partNo}', '完売')" style="background:#d9534f; color:white; border:none; padding:5px 10px; border-radius:3px; font-size:12px; margin-top:5px; margin-left:5px;">完売</button>
+                    </div>
+                    単価: ${item.price.toLocaleString()}円<br>
+                    数量: <input type="number" value="${item.quantity}" onchange="updateQty(${i}, this.value)" style="width:60px; font-size:16px;">
+                    <button onclick="removeItem(${i})" style="position: absolute; top: 10px; right: 10px; color: #999; background: none; border: none; font-size: 1.2em;">
+                        <i class="fa-solid fa-trash-can"></i>
+                    </button>
+                </div>`;
+        }).join('');
+        html += `<div style="text-align:right; margin-top: 10px;"><b>合計: ${total.toLocaleString()}円</b></div>`;
+        list.innerHTML = html;
+    }
+
+    function updateQty(i, q) { if (q > 0) { cart[i].quantity = parseInt(q); updateCartUI(); } }
+    function removeItem(i) { if (confirm("削除しますか？")) { cart.splice(i, 1); updateCartUI(); } }
+
     async function sendOrder() {
         if (cart.length === 0) { alert("カートが空です"); return; }
         const customerName = document.getElementById("res-customer").innerText;
@@ -237,122 +288,12 @@ document.addEventListener('keypress', function (e) {
                 updateCartUI();
                 showPage('home');
             }
-        } catch (e) {
-            alert("送信エラー: " + e.message);
-        } finally {
-            btn.disabled = false;
-        }
-    }
-
-    function handleCustomerManualSearch() {
-        const val = document.getElementById('cust-manual-input').value.trim();
-        if (val) fetchCustomerData(val);
-    }
-    
-    function handleScan() {
-        liff.scanCodeV2().then(res => { if (res.value) searchProduct(res.value); });
-    }
-
-   // 新しい「検索」と「カート追加」の処理
-    let tempProduct = null;
-
-    // 1. 検索して確認画面（プレビュー）を出す
-    async function handleSearchAndPreview() {
-        const code = document.getElementById('manual-id').value.trim();
-        if (!code) { alert("品番を入力してください"); return; }
-
-        try {
-            const res = await fetch(GAS_URL, {
-                method: "POST",
-                body: JSON.stringify({ action: "productSearch", jan: String(code) })
-            });
-            const data = await res.json();
-
-            if (data && data.items && data.items.length > 0) {
-                tempProduct = data.items[0];
-                
-                // プレビュー画面に値を反映
-                document.getElementById("preview-name").innerText = tempProduct.name;
-                document.getElementById("preview-partNo").innerText = tempProduct.partNo;
-                document.getElementById("preview-price").innerText = tempProduct.price.toLocaleString();
-                document.getElementById("preview-maker").innerText = tempProduct.maker || "未設定";
-                document.getElementById("preview-stock").innerText = tempProduct.stock || "不明";
-                document.getElementById("preview-qty").value = tempProduct.lot || 1;
-
-                // プレビューを表示
-                document.getElementById("search-result-preview").style.display = "block";
-            } else {
-                alert("商品が見つかりませんでした");
-                document.getElementById("search-result-preview").style.display = "none";
-            }
-        } catch (e) { alert("検索エラー: " + e.message); }
-    }
-
-    // 2. カートに追加する（「カートに追加」ボタンを押したとき）
-    function addPreviewToCart() {
-        if (!tempProduct) return;
-        const qty = parseInt(document.getElementById("preview-qty").value);
-
-        cart.push({
-            jan: tempProduct.jan,
-            partNo: tempProduct.partNo,
-            name: tempProduct.name,
-            price: Number(tempProduct.price),
-            quantity: qty,
-            lot: Number(tempProduct.lot || 1),
-            stock: tempProduct.stock,
-            maker: tempProduct.maker 
-        });
-
-        updateCartUI();
-        document.getElementById("search-result-preview").style.display = "none";
-        document.getElementById("manual-id").value = "";
-        alert("カートに追加しました");
-        showPage('cart');
-    }
-    }
-
-    function updateCartUI() {
-        const list = document.getElementById('cart-list');
-        if (cart.length === 0) { list.innerHTML = '<p style="text-align: center;">空です</p>'; return; }
-        let total = 0;
-        let html = cart.map((item, i) => {
-            const subtotal = item.price * item.quantity;
-            total += subtotal;
-            return `
-                <div class="item-card" style="position: relative;">
-                    <b>${item.name}</b><br>
-                    <small>メーカー: ${item.maker || "未設定"} / 品番: ${item.partNo}</small><br>
-                    
-                    <div style="background: #fff5f5; padding: 8px; border-radius: 5px; margin: 8px 0; border: 1px solid #ffcccc;">
-                        <span style="color: #d9534f; font-weight: bold;">在庫状況: ${item.stock || "設定なし"}</span><br>
-                        <button onclick="toggleStock('${item.partNo}', 'あり')" style="background:#28a745; color:white; border:none; padding:5px 10px; border-radius:3px; font-size:12px; margin-top:5px; cursor:pointer;">販売中にする</button>
-                        <button onclick="toggleStock('${item.partNo}', '完売')" style="background:#d9534f; color:white; border:none; padding:5px 10px; border-radius:3px; font-size:12px; margin-top:5px; margin-left:5px; cursor:pointer;">完売にする</button>
-                    </div>
-
-                    単価: ${item.price.toLocaleString()}円<br>
-                    数量: <input type="number" value="${item.quantity}" onchange="updateQty(${i}, this.value)" style="width:60px; font-size:16px;">
-                    
-                    <button onclick="removeItem(${i})" style="position: absolute; top: 10px; right: 10px; color: #999; background: none; border: none; font-size: 1.2em;">
-                        <i class="fa-solid fa-trash-can"></i>
-                    </button>
-                </div>`;
-        }).join('');
-        html += `<div style="text-align:right; margin-top: 10px;"><b>合計: ${total.toLocaleString()}円</b></div>`;
-        list.innerHTML = html;
-    }
-
-    function updateQty(i, q) { if (q > 0) { cart[i].quantity = parseInt(q); updateCartUI(); } }
-
-    function removeItem(i) {
-        if (confirm("削除しますか？")) {
-            cart.splice(i, 1);
-            updateCartUI();
-        }
+        } catch (e) { alert("送信エラー: " + e.message); }
+        finally { btn.disabled = false; }
     }
 
     async function toggleStock(partNo, newStatus) {
-        if (!confirm(`この商品の在庫状況を「${newStatus}」に変更しますか？`)) return;
+        if (!confirm(`「${newStatus}」に変更しますか？`)) return;
         try {
             const res = await fetch(GAS_URL, {
                 method: "POST",
@@ -360,18 +301,19 @@ document.addEventListener('keypress', function (e) {
             });
             const data = await res.json();
             if (data.success) {
-                alert("在庫状況を更新しました。");
+                alert("更新完了");
                 const item = cart.find(i => i.partNo === partNo);
                 if (item) item.stock = newStatus;
                 updateCartUI();
-            } else {
-                alert("エラー: " + data.error);
             }
-        } catch (e) {
-            alert("通信エラー: " + e.message);
-        }
+        } catch (e) { alert("通信エラー: " + e.message); }
     }
 
+    function handleCustomerManualSearch() {
+        const val = document.getElementById('cust-manual-input').value.trim();
+        if (val) fetchCustomerData(val);
+    }
+    function handleScan() { liff.scanCodeV2().then(res => { if (res.value) searchProduct(res.value); }); }
     async function handleCustomerScan() {
         try {
             const res = await liff.scanCodeV2();
