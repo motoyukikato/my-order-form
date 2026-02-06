@@ -48,22 +48,26 @@
                 <span class="item-label">商品</span>
             </div>
             <div class="input-group">
-                <label>カテゴリー</label>
+                <label>五十音インデックス</label>
                 <select class="category-select" onchange="updateMakerOptions(this)">
-                    <option value="">▼ 選択してください</option>
-                    <option value="base">ベース</option>
-                    <option value="dry">ドライ、プリザ</option>
-                    <option value="artificial">アーティフィシャル</option>
-                    <option value="zakka">雑貨</option>
-                    <option value="trading">商社</option>
-                    <option value="supplies">消耗品</option>
-                    <option value="other">その他</option>
+                    <option value="">▼ 行を選択</option>
+                    <option value="あ">あ行</option>
+                    <option value="か">か行</option>
+                    <option value="さ">さ行</option>
+                    <option value="た">た行</option>
+                    <option value="な">な行</option>
+                    <option value="は">は行</option>
+                    <option value="ま">ま行</option>
+                    <option value="や">や行</option>
+                    <option value="ら">ら行</option>
+                    <option value="わ">わ行</option>
+                    <option value="その他">その他</option>
                 </select>
             </div>
             <div class="input-group">
                 <label>メーカー</label>
                 <select class="maker-select">
-                    <option value="">カテゴリーを選んでください</option>
+                    <option value="">行を選んでください</option>
                 </select>
             </div>
             <div class="input-group">
@@ -95,18 +99,61 @@
 </div>
 
 <script>
-    // ★重要：GASをデプロイし直したら、以下のURLを必ず最新のものに差し替えてください
+    // GASのURL
     const gasUrl = "https://script.google.com/macros/s/AKfycbyclRe8jp0xQXCN2ocZFd_gzJLIoKOHWf_ekJU3dcZ3C3vyOMELhUVvIovl3xoa50fb/exec";
 
-    const makerData = {
-        "base": ["flonet", "クレイ","ヤマテー","ホワイエ","ミュールミル","カルナック","FARM", "ワンダーゾーン", "ラライワント", "グリーンポット", "トーク", "ボブクラフト", "友膳", "デルキ", "エルコミューン", "フラワーベース", "花Links", "丸又平野陶器店", "丸滉製陶", "大口産業", "プラスガーデン", "田中陶器", "エイチツーオー", "村田屋産業", "yard", "リード商事", "大同クラフト", "WASARA"],
-        "dry": ["大地農園","フロールエバー", "コアトレーディング","アモローサ", "モノ・インターナショナル", "東花","ヴェルデ","東方貿易","ドリームファームスズカ"],
-        "artificial": ["アスカ商会", "横浜ディスプレイミュージアム", "パレ"],
-        "zakka": ["グリーンハウス", "カメヤマキャンドル", "コベントガーデン","グローバルアロー","ダルトン","ポッシュリビング","ネイチャーデザインズ","志成販売","クレエ","マグネット","TOSSDICE","Lib curate","丸和貿易","花の園くぼた","アムールデフルール", "東京かんかん","SRサービス（デコジャリ）","三和トレーディング","大仙","アンコーポレーション","外山刃物","坂源","キャビノチェ","大鉄","ウォルナット"],
-        "trading": ["松村工芸", "東京堂", "シモジマ"],
-        "supplies": ["パレス化学", "東京リボン", "青山リボン","スミザーズオアシス","インターリンク","エコゼリー","段ボール","朝日ワイヤー","和光化学","アズワン（試験管）","星野","Q-FLA","クリザール","アイハラ貿易（ポリラフィア)"],
-        "other": ["その他（詳細は備考へ）"]
-    };
+    // メーカー全リスト（よみがな:表示名）
+    const allMakers = [
+        "あいはらぼうえき:アイハラ貿易（ポリラフィア)", "あすかしょうかい:アスカ商会", "あずわん:アズワン（試験管）", 
+        "あもろーさ:アモローサ", "あむーるでふるーる:アムールデフルール", "あんこーぽれーしょん:アンコーポレーション", 
+        "あーてぃふぃしゃる:アーティフィシャル", "あおやまりぼん:青山リボン", "あさひわいやー:朝日ワイヤー", "べるで:ヴェルデ",
+        "おおちのうえん:大地農園", "おおぐちさんぎょう:大口産業", "だいてつ:大鉄", "だいどうくらふと:大同クラフト", "いんたーりんく:インターリンク",
+        "だいせん:大仙", "うぉるなっと:ウォルナット", "えこぜりー:エコゼリー", "えるこみゅーん:エルコミューン", えすあーるさーびす:SRサービス(デコジャリ）,
+        "えいちつーおー:エイチツーオー", "かめやまきゃんどる:カメヤマキャンドル", "かるなっく:カルナック", "きゅーふら:Q-FLA",
+        "くれい:クレイ", "くりざーる:クリザール", "くれえ:クレエ", "ぐりーんはうす:グリーンハウス", "きゃびのちぇ:キャビノチェ",
+        "ぐりーんぽっと:グリーンポット", "ぐろーばるあろー:グローバルアロー", "こあとれーでぃんぐ:コアトレーディング", 
+        "こべんとがーでん:コベントガーデン", "さかげん:坂源", "さんわとれーでぃんぐ:三和トレーディング", 
+        "しもじま:シモジマ", "しせいはんぱい:志成販売", "すみざーずおあしす:スミザーズオアシス", 
+        "とやまはもの:外山刃物", "たなかとうき:田中陶器", "だるとん:ダルトン", "でるき:デルキ",
+        "とうきょうりぼん:東京リボン", "とうきょうかんかん:東京かんかん", "とすだいす:TOSSDICE", "だんぼーる:段ボール",
+        "とうきょうどう:東京堂", "とーく:トーク", "どりーむふぁーむすずか:ドリームファームスズカ", "とうか:東花", "とうほうぼうえき:東方貿易",
+        "ねいちゃーでざいんず:ネイチャーデザインズ", "ぱれすかがく:パレス化学", "ぱれ:パレ", "ぽっしゅりびんぐ:ポッシュリビング",
+        "ふぁーむ:FARM", "はなりんくす:花Links", "ふろーねっと:flonet", "ほわいえ:ホワイエ", "はなのそのくぼた:花のそのくぼた",
+        "ふろーるえばー:フロールエバー", "ふらわーべーす:フラワーベース", "ぷらすがーでん:プラスガーデン", 
+        "ぼぶくらふと:ボブクラフト", "まつむらこうげい:松村工芸", "ほしの:星野",
+        "まぐねっと:マグネット", "まるこうせいとう:丸滉製陶", "まるまひらのとうきてん:丸又平野陶器店", 
+        "まるわぼうえき:丸和貿易", "みゅーるみる:ミュールミル", "むらたやさんぎょう:村田屋産業", 
+        "ものいんたーなしょなる:モノ・インターナショナル", "やまてー:ヤマテー", "やーど:yard", "ゆうぜん:友膳",
+        "よこはまでぃすぷれいみゅーじあむ:横浜ディスプレイミュージアム", "ららいわんと:ラライワント", "りぶきゅりえいと:Lib curate", 
+        "りーどしょうじ:リード商事", "わさら:WASARA", "わんだーぞーん:ワンダーゾーン", "わこうかがく:和光化学"
+    ];
+
+    function getKanaRow(kana) {
+        const first = kana.charAt(0);
+        if (first.match(/[あ-お]/)) return "あ";
+        if (first.match(/[か-こが-ご]/)) return "か";
+        if (first.match(/[さ-そざ-ぞ]/)) return "さ";
+        if (first.match(/[た-とだ-ど]/)) return "た";
+        if (first.match(/[な-の]/)) return "な";
+        if (first.match(/[は-ほば-ぼぱ-ぽ]/)) return "は";
+        if (first.match(/[ま-も]/)) return "ま";
+        if (first.match(/[や-よ]/)) return "や";
+        if (first.match(/[ら-ろ]/)) return "ら";
+        if (first.match(/[わ-ん]/)) return "わ";
+        return "その他";
+    }
+
+    const makerData = {};
+    allMakers.forEach(item => {
+        const [kana, name] = item.split(':');
+        const row = getKanaRow(kana);
+        if (!makerData[row]) makerData[row] = [];
+        makerData[row].push({kana: kana, name: name});
+    });
+
+    for(let key in makerData) {
+        makerData[key].sort((a, b) => a.kana.localeCompare(b.kana, 'ja'));
+    }
 
     async function initLiff() {
         try {
@@ -131,15 +178,23 @@
     };
 
     function updateMakerOptions(catSelect) {
-        const cat = catSelect.value;
+        const row = catSelect.value;
         const makerSelect = catSelect.closest('.item-card').querySelector('.maker-select');
-        makerSelect.innerHTML = '<option value="">選択してください</option>';
-        if (cat && makerData[cat]) {
-            makerData[cat].forEach(m => {
+        makerSelect.innerHTML = '';
+        if (row === "その他") {
+            const opt = document.createElement('option');
+            opt.value = "備考に記入";
+            opt.textContent = "メーカー名を備考に記入してください";
+            makerSelect.appendChild(opt);
+        } else if (row && makerData[row]) {
+            makerSelect.innerHTML = '<option value="">選択してください</option>';
+            makerData[row].forEach(m => {
                 const opt = document.createElement('option');
-                opt.value = opt.textContent = m;
+                opt.value = opt.textContent = m.name;
                 makerSelect.appendChild(opt);
             });
+        } else {
+            makerSelect.innerHTML = '<option value="">行を選んでください</option>';
         }
     }
 
@@ -150,7 +205,7 @@
         const header = newCard.querySelector('.item-header');
         header.innerHTML = '<span class="item-label">追加商品</span><button type="button" class="remove-btn" onclick="this.closest(\'.item-card\').remove()">削除</button>';
         newCard.querySelectorAll('input').forEach(input => input.value = (input.type === 'number' ? 1 : ''));
-        newCard.querySelector('.maker-select').innerHTML = '<option value="">カテゴリーを選んでください</option>';
+        newCard.querySelector('.maker-select').innerHTML = '<option value="">行を選んでください</option>';
         newCard.querySelector('.category-select').value = "";
         container.appendChild(newCard);
     }
@@ -166,9 +221,7 @@
         const btn = document.getElementById('sendBtn');
         const storeName = document.getElementById('storeName').value;
         const email = document.getElementById('email').value;
-
         if (!storeName) { alert('店名を入れてください'); return; }
-
         const items = [];
         document.querySelectorAll('.item-card').forEach(card => {
             const maker = card.querySelector('.maker-select').value;
@@ -180,16 +233,11 @@
                 });
             }
         });
-
         if (items.length === 0) { alert('メーカーを選択してください'); return; }
-
         localStorage.setItem('storeName', storeName);
         localStorage.setItem('email', email);
-
         btn.disabled = true;
         document.getElementById('loadingMsg').style.display = 'block';
-
-        // --- 画像1の処理 ---
         let imageData1 = null;
         const fileInput1 = document.getElementById('imageFile1');
         if (fileInput1.files.length > 0) {
@@ -197,8 +245,6 @@
             const base64_1 = await toBase64(file1);
             imageData1 = { data: base64_1.split(',')[1], type: file1.type };
         }
-
-        // --- 画像2の処理 ---
         let imageData2 = null;
         const fileInput2 = document.getElementById('imageFile2');
         if (fileInput2.files.length > 0) {
@@ -206,7 +252,6 @@
             const base64_2 = await toBase64(file2);
             imageData2 = { data: base64_2.split(',')[1], type: file2.type };
         }
-
         try {
             const response = await fetch(gasUrl, {
                 method: 'POST',
