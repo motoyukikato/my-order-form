@@ -137,7 +137,8 @@
                     quantity: Number(product.lot || 1),
                     lot: Number(product.lot || 1),
                     stock: product.stock,
-                    maker: product.maker 
+                    maker: product.maker ,
+                    memo: product.memo || ""
                 });
                 updateCartUI();
                 showPage('cart');
@@ -197,8 +198,7 @@
             document.getElementById('manual-id').value = "";
         }
     }
-
-    function updateCartUI() {
+function updateCartUI() {
         const list = document.getElementById('cart-list');
         if (cart.length === 0) { list.innerHTML = '<p style="text-align: center;">空です</p>'; return; }
         let total = 0;
@@ -210,6 +210,8 @@
                     <b>${item.name}</b><br>
                     <small>メーカー: ${item.maker || "未設定"} / 品番: ${item.partNo}</small><br>
                     
+                    ${item.memo ? `<div style="font-size: 0.85em; color: #666; background: #eee; padding: 4px 8px; border-radius: 4px; margin: 5px 0;">備考: ${item.memo}</div>` : ''}
+
                     <div style="background: #fff5f5; padding: 8px; border-radius: 5px; margin: 8px 0; border: 1px solid #ffcccc;">
                         <span style="color: #d9534f; font-weight: bold;">在庫状況: ${item.stock || "設定なし"}</span><br>
                         <button onclick="toggleStock('${item.partNo}', 'あり')" style="background:#28a745; color:white; border:none; padding:5px 10px; border-radius:3px; font-size:12px; margin-top:5px; cursor:pointer;">販売中にする</button>
@@ -227,6 +229,7 @@
         html += `<div style="text-align:right; margin-top: 10px;"><b>合計: ${total.toLocaleString()}円</b></div>`;
         list.innerHTML = html;
     }
+  
 
     function updateQty(i, q) { if (q > 0) { cart[i].quantity = parseInt(q); updateCartUI(); } }
 
