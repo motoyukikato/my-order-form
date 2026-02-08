@@ -104,26 +104,35 @@
     let cart = [];
     let currentZip = ""; 
     let tempProduct = null;
+async function loadProductSuggestions() {
+    try {
+        const res = await fetch(GAS_URL, {
+            method: "POST",
+            body: JSON.stringify({ action: "getAllProductNames" })
+        });
+        const products = await res.json();
+        
+        // ログを出してデータが正しく届いているか確認
+        console.log("取得データ:", products);
 
-    async function loadProductSuggestions() {
-        try {
-            const res = await fetch(GAS_URL, {
-                method: "POST",
-                body: JSON.stringify({ action: "getAllProductNames" })
+        const datalist = document.getElementById('prod-list');
+        if (datalist && Array.isArray(products)) {
+            datalist.innerHTML = "";
+            products.forEach(item => {
+                const option = document.createElement('option');
+                // valueに入力補完したい値を入れます
+                option.value = item.partNo; 
+                // 品番と一緒に商品名も見えたほうが選びやすいため label を活用
+                option.label = item.name; 
+                datalist.appendChild(option);
             });
-            const products = await res.json();
-            const datalist = document.getElementById('prod-list');
-            if (datalist) {
-                datalist.innerHTML = "";
-                products.forEach(item => {
-                    const option = document.createElement('option');
-                    option.value = item.partNo;
-                    option.textContent = item.name;
-                    datalist.appendChild(option);
-                });
-            }
-        } catch (e) { console.error("候補リスト取得失敗:", e); }
+            console.log("リスト生成完了");
+        }
+    } catch (e) { 
+        console.error("候補リスト取得失敗:", e); 
     }
+}
+   
 
     liff.init({ liffId: "2008942151-s75G9JBp" })
         .then(() => { 
