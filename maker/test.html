@@ -115,27 +115,38 @@
         .catch((err) => { alert("LIFF初期化失敗: " + err); });
 
     // 商品名・品番のドロップダウン候補を作成
-    async function loadProductSuggestions() {
-        try {
-            const res = await fetch(GAS_URL, {
-                method: "POST",
-                body: JSON.stringify({ action: "getAllProductNames" })
+   async function loadProductSuggestions() {
+    try {
+        const res = await fetch(GAS_URL, {
+            method: "POST",
+            body: JSON.stringify({ action: "getAllProductNames" })
+        });
+        const products = await res.json();
+        const datalist = document.getElementById('prod-list');
+        if (!datalist) return;
+
+        datalist.innerHTML = "";
+        
+        // 処理を分割してフリーズを防止
+        let index = 0;
+        function renderChunk() {
+            const chunk = products.slice(index, index + 100);
+            const fragment = document.createDocumentFragment();
+            chunk.forEach(item => {
+                const option = document.createElement('option');
+                option.value = item[0]; // 品番（以前はitem.partNoだったのを変更）
+                option.textContent = item[1]; // 商品名（以前はitem.nameだったのを変更）
+                fragment.appendChild(option);
             });
-            const products = await res.json();
-            const datalist = document.getElementById('prod-list');
-            if (datalist) {
-                datalist.innerHTML = "";
-                const fragment = document.createDocumentFragment();
-                products.forEach(item => {
-                    const option = document.createElement('option');
-                    option.value = item.partNo; // 品番を値に設定
-                    option.textContent = item.name; // 商品名を表示
-                    fragment.appendChild(option);
-                });
-                datalist.appendChild(fragment);
+            datalist.appendChild(fragment);
+            index += 100;
+            if (index < products.length) {
+                requestAnimationFrame(renderChunk);
             }
-        } catch (e) { console.error("候補リスト取得失敗:", e); }
-    }
+        }
+        renderChunk();
+    } catch (e) { console.error("候補リスト取得失敗:", e); }
+}
 
     function showPage(pageId) {
         document.querySelectorAll('.page-section').forEach(sec => sec.classList.remove('active'));
