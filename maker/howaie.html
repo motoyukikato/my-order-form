@@ -57,7 +57,9 @@
 <section id="input" class="page-section">
     <h2>商品検索・追加</h2>
     <div class="card">
-        <input type="text" id="manual-id" placeholder="品番またはJANを入力" style="width: 60%; padding: 10px;" list="prod-list">
+        <input type="text" id="manual-id" placeholder="品番またはJANを入力" 
+       style="width: 60%; padding: 10px;" list="prod-list" 
+       oninput="handleInputSelect(this.value)">
         <datalist id="prod-list"></datalist>
         <button class="btn-blue" onclick="handleSearchAndPreview()">検索</button>
     </div>
@@ -138,7 +140,19 @@
         document.querySelectorAll('.footer-menu button').forEach(btn => btn.classList.remove('active-menu'));
         document.getElementById('nav-' + pageId).classList.add('active-menu');
     }
-
+// --- ここから追加 ---
+function handleInputSelect(val) {
+    const list = document.getElementById('prod-list');
+    if (!list) return;
+    const options = list.options;
+    for (let i = 0; i < options.length; i++) {
+        if (options[i].value === val) {
+            handleSearchAndPreview(); // 一致したら検索を実行
+            break;
+        }
+    }
+}
+// --- ここまで追加 ---
     async function fetchCustomerData(val) {
         if (!val) return;
         try {
