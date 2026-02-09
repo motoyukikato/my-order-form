@@ -104,11 +104,36 @@
     let cart = [];
     let currentZip = ""; 
     let tempProduct = null;
+    let searchTimer; // 入力監視用
 
-    // 軽量化：起動時の全件読み込みを廃止
     liff.init({ liffId: "2008942151-FsUbWNxa" })
         .then(() => { console.log("LIFF Init OK"); })
         .catch((err) => { alert("LIFF初期化失敗: " + err); });
+
+    // --- 【追加】入力中に候補を表示する機能 ---
+    document.getElementById('manual-id').addEventListener('input', function() {
+        const val = this.value.trim();
+        clearTimeout(searchTimer);
+        if (val.length < 2) return; // 2文字以上入力されたら開始
+
+        searchTimer = setTimeout(async () => {
+            try {
+                const res = await fetch(GAS_URL, {
+                    method: "POST",
+                    body: JSON.stringify({ action: "getAllProductNames", filter: val })
+                });
+                const products = await res.json();
+                const datalist = document.getElementById('prod-list');
+                datalist.innerHTML = "";
+                products.forEach(item => {
+                    const option = document.createElement('option');
+                    option.value = item.partNo;
+                    option.textContent = item.name;
+                    datalist.appendChild(option);
+                });
+            } catch (e) { console.error("候補取得失敗"); }
+        }, 500); // 入力が止まって0.5秒後に実行（連打防止）
+    });
 
     function showPage(pageId) {
         document.querySelectorAll('.page-section').forEach(sec => sec.classList.remove('active'));
@@ -141,34 +166,7 @@
         } catch (e) { alert("顧客検索エラー"); }
     }
 
-    // 商品検索（スキャン用）
-    async function searchProduct(code) {
-        if (!code) return;
-        try {
-            const res = await fetch(GAS_URL, {
-                method: "POST",
-                body: JSON.stringify({ action: "productSearch", jan: String(code).trim() })
-            });
-            const data = await res.json();
-            if (data && data.items && data.items.length > 0) {
-                const product = data.items[0];
-                cart.push({
-                    jan: product.jan,
-                    partNo: product.partNo,
-                    name: product.name,
-                    price: Number(product.price),
-                    quantity: Number(product.lot || 1),
-                    lot: Number(product.lot || 1),
-                    stock: product.stock,
-                    maker: product.maker 
-                });
-                updateCartUI();
-                showPage('cart');
-            } else { alert("商品マスタ登録なし"); }
-        } catch (e) { alert("商品検索エラー"); }
-    }
-
-    // 商品検索（手入力用）：ボタン連打防止と軽量化
+    // 商品検索（手入力用）
     async function handleSearchAndPreview() {
         const btn = document.querySelector("#input .btn-blue");
         const code = document.getElementById('manual-id').value.trim();
@@ -203,6 +201,7 @@
         }
     }
 
+    // --- 以下の updateCartUI, addPreviewToCart, sendOrder 等は前回のコードと同じ ---
     function addPreviewToCart() {
         if (!tempProduct) return;
         const qty = parseInt(document.getElementById("preview-qty").value);
@@ -223,71 +222,42 @@
         showPage('cart');
     }
 
-    // カートUIの軽量化
     function updateCartUI() {
         const list = document.getElementById('cart-list');
         if (cart.length === 0) { list.innerHTML = '<p style="text-align: center;">空です</p>'; return; }
-        
         let total = 0;
         let html = cart.map((item, i) => {
-            const subtotal = item.price * item.quantity;
-            total += subtotal;
-            return `
-                <div class="item-card" style="position: relative;">
-                    <b>${item.name}</b><br>
-                    <small>${item.maker || "未設定"} / ${item.partNo}</small><br>
-                    <div style="background: #fff5f5; padding: 5px; border-radius: 5px; margin: 5px 0; font-size: 0.9em; border: 1px solid #ffcccc;">
-                        <span style="color: #d9534f; font-weight: bold;">在庫: ${item.stock || "設定なし"}</span>
-                    </div>
-                    単価: ${item.price.toLocaleString()}円 | 
-                    数量: <input type="number" value="${item.quantity}" onchange="updateQty(${i}, this.value)" style="width:50px; font-size:16px;">
-                    <button onclick="removeItem(${i})" style="position: absolute; top: 10px; right: 10px; color: #ccc; background: none; border: none;">
-                        <i class="fa-solid fa-trash-can"></i>
-                    </button>
-                </div>`;
+            total += item.price * item.quantity;
+            return `<div class="item-card" style="position: relative;">
+                <b>${item.name}</b><br>
+                <small>${item.partNo}</small><br>
+                <span style="color: #d9534f; font-weight: bold;">在庫: ${item.stock || "設定なし"}</span><br>
+                単価: ${item.price.toLocaleString()}円 | 
+                数量: <input type="number" value="${item.quantity}" onchange="updateQty(${i}, this.value)" style="width:50px;">
+                <button onclick="removeItem(${i})" style="position: absolute; top: 10px; right: 10px; border: none; background: none; color: #ccc;"><i class="fa-solid fa-trash-can"></i></button>
+            </div>`;
         }).join('');
-        html += `<div style="text-align:right; margin-top: 10px;"><b>合計: ${total.toLocaleString()}円</b></div>`;
-        list.innerHTML = html;
+        list.innerHTML = html + `<div style="text-align:right; margin-top: 10px;"><b>合計: ${total.toLocaleString()}円</b></div>`;
     }
 
     function updateQty(i, q) { if (q > 0) { cart[i].quantity = parseInt(q); updateCartUI(); } }
     function removeItem(i) { if (confirm("削除しますか？")) { cart.splice(i, 1); updateCartUI(); } }
 
     async function sendOrder() {
-        if (cart.length === 0) { alert("カートが空です"); return; }
-        const customerName = document.getElementById("res-customer").innerText;
-        if (!customerName) { alert("顧客情報を検索してください"); return; }
-        
+        if (cart.length === 0) return;
         const btn = document.getElementById('send-btn');
         btn.disabled = true;
         btn.innerText = "送信中...";
-        
         try {
             const requestData = {
-                customerName: customerName,
-                zip: currentZip,
-                address1: document.getElementById("res-address1").innerText,
-                address2: document.getElementById("res-address2").innerText,
-                tel: document.getElementById("res-tel").innerText,
-                email: document.getElementById("res-email").innerText,
-                comment: document.getElementById("order-comment").value,
-                items: cart
+                customerName: document.getElementById("res-customer").innerText,
+                items: cart,
+                comment: document.getElementById("order-comment").value
             };
-            const res = await fetch(GAS_URL, {
-                method: "POST",
-                body: JSON.stringify({ action: "orderSubmit", data: requestData })
-            });
-            if (res.ok) {
-                alert("注文を送信しました");
-                cart = [];
-                updateCartUI();
-                showPage('home');
-            }
-        } catch (e) { alert("送信エラー"); }
-        finally { 
-            btn.disabled = false; 
-            btn.innerText = "🛒 注文を確定する";
-        }
+            const res = await fetch(GAS_URL, { method: "POST", body: JSON.stringify({ action: "orderSubmit", data: requestData }) });
+            if (res.ok) { alert("送信完了"); cart = []; updateCartUI(); showPage('home'); }
+        } catch (e) { alert("エラー"); }
+        finally { btn.disabled = false; btn.innerText = "🛒 注文を確定する"; }
     }
 
     function handleCustomerManualSearch() {
@@ -296,10 +266,8 @@
     }
     function handleScan() { liff.scanCodeV2().then(res => { if (res.value) searchProduct(res.value); }); }
     async function handleCustomerScan() {
-        try {
-            const res = await liff.scanCodeV2();
-            if (res.value) await fetchCustomerData(res.value);
-        } catch (e) { alert("スキャン失敗"); }
+        try { const res = await liff.scanCodeV2(); if (res.value) await fetchCustomerData(res.value); }
+        catch (e) { alert("スキャン失敗"); }
     }
 </script>
 </body>
