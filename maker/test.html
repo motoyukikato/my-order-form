@@ -118,4 +118,193 @@
             
             const datalist = document.getElementById('prod-list');
             if (datalist) {
-                //
+                // 手入力しやすくするため、valueを「品名」に変更
+                datalist.innerHTML = allProducts.map(item => 
+                    `<option value="${item.name}">${item.partNo}</option>`
+                ).join('');
+            }
+            console.log("同期完了:", allProducts.length, "件");
+        } catch (e) { 
+            console.error("データ取得失敗:", e); 
+        }
+    }
+
+    liff.init({ liffId: "2008942151-FsUbWNxa" })
+        .then(() => { 
+            console.log("LIFF Init OK");
+            loadProductSuggestions();
+        })
+        .catch((err) => { alert("LIFF初期化失敗: " + err); });
+
+    function showPage(pageId) {
+        document.querySelectorAll('.page-section').forEach(sec => sec.classList.remove('active'));
+        document.getElementById(pageId).classList.add('active');
+        document.querySelectorAll('.footer-menu button').forEach(btn => btn.classList.remove('active-menu'));
+        document.getElementById('nav-' + pageId).classList.add('active-menu');
+    }
+
+    async function fetchCustomerData(val) {
+        if (!val) return;
+        const loading = document.getElementById("cust-loading");
+        loading.innerText = "検索中...";
+        try {
+            const res = await fetch(GAS_URL, {
+                method: "POST",
+                body: JSON.stringify({ action: "customerSearch", val: val })
+            });
+            const data = await res.json();
+            if (data && data.customer) {
+                document.getElementById("res-customer").innerText = data.customer;
+                document.getElementById("res-address1").innerText = data.address1 || "";
+                document.getElementById("res-address2").innerText = data.address2 || "";
+                document.getElementById("res-tel").innerText = data.tel || "";
+                document.getElementById("res-email").innerText = data.email || "";
+                currentZip = data.zip || ""; 
+                document.getElementById("cust-loading").style.display = "none";
+                document.getElementById("cust-data").style.display = "block";
+            } else { 
+                alert("顧客が見つかりません"); 
+                loading.innerText = "検索またはスキャンしてください";
+            }
+        } catch (e) { alert("顧客検索エラー: " + e.message); }
+    }
+
+    // --- 3. 商品検索ロジック（品番完全一致 または 品名部分一致） ---
+    function handleSearchAndPreview() {
+        const query = document.getElementById('manual-id').value.trim().toUpperCase();
+        if (!query) { alert("品名または品番を入力してください"); return; }
+
+        // JANを除外し、品番or品名で検索
+        const product = allProducts.find(item => 
+            (item.partNo && String(item.partNo).toUpperCase() === query) || // 品番完全一致
+            (item.name && String(item.name).toUpperCase().includes(query))   // 品名部分一致
+        );
+
+        if (product) {
+            tempProduct = product;
+            document.getElementById("preview-name").innerText = product.name;
+            document.getElementById("preview-partNo").innerText = product.partNo;
+            document.getElementById("preview-price").innerText = Number(product.price).toLocaleString();
+            document.getElementById("preview-maker").innerText = product.maker || "未設定";
+            document.getElementById("preview-stock").innerText = product.stock || "不明";
+            document.getElementById("preview-qty").value = product.lot || 1;
+            document.getElementById("search-result-preview").style.display = "block";
+        } else {
+            alert("商品が見つかりませんでした");
+            document.getElementById("search-result-preview").style.display = "none";
+        }
+    }
+
+    function searchProductLocal(code) {
+        if (!code) return;
+        // スキャン時は従来通りJANまたは品番で検索
+        const product = allProducts.find(item => 
+            String(item.partNo).toUpperCase() === String(code).toUpperCase() || String(item.jan) === String(code)
+        );
+        if (product) {
+            tempProduct = product;
+            document.getElementById('manual-id').value = product.name;
+            handleSearchAndPreview();
+            showPage('input');
+        } else {
+            alert("商品マスタ登録なし: " + code);
+        }
+    }
+
+    function addPreviewToCart() {
+        if (!tempProduct) return;
+        const qty = parseInt(document.getElementById("preview-qty").value);
+        cart.push({
+            jan: tempProduct.jan,
+            partNo: tempProduct.partNo,
+            name: tempProduct.name,
+            price: Number(tempProduct.price),
+            quantity: qty,
+            lot: Number(tempProduct.lot || 1),
+            stock: tempProduct.stock,
+            maker: tempProduct.maker 
+        });
+        updateCartUI();
+        document.getElementById("search-result-preview").style.display = "none";
+        document.getElementById("manual-id").value = "";
+        alert("カートに追加しました");
+        showPage('cart');
+    }
+
+    function updateCartUI() {
+        const list = document.getElementById('cart-list');
+        if (cart.length === 0) { list.innerHTML = '<p style="text-align: center;">空です</p>'; return; }
+        let total = 0;
+        let html = cart.map((item, i) => {
+            const subtotal = item.price * item.quantity;
+            total += subtotal;
+            return `
+                <div class="item-card" style="position: relative;">
+                    <b>${item.name}</b><br>
+                    <small>メーカー: ${item.maker || "未設定"} / 品番: ${item.partNo}</small><br>
+                    <div style="background: #fff5f5; padding: 8px; border-radius: 5px; margin: 8px 0; border: 1px solid #ffcccc;">
+                        <span style="color: #d9534f; font-weight: bold;">在庫状況: ${item.stock || "設定なし"}</span>
+                    </div>
+                    単価: ${item.price.toLocaleString()}円<br>
+                    数量: <input type="number" value="${item.quantity}" onchange="updateQty(${i}, this.value)" style="width:60px; font-size:16px;">
+                    <button onclick="removeItem(${i})" style="position: absolute; top: 10px; right: 10px; color: #999; background: none; border: none; font-size: 1.2em;">
+                        <i class="fa-solid fa-trash-can"></i>
+                    </button>
+                </div>`;
+        }).join('');
+        html += `<div style="text-align:right; margin-top: 10px;"><b>合計: ${total.toLocaleString()}円</b></div>`;
+        list.innerHTML = html;
+    }
+
+    function updateQty(i, q) { if (q > 0) { cart[i].quantity = parseInt(q); updateCartUI(); } }
+    function removeItem(i) { if (confirm("削除しますか？")) { cart.splice(i, 1); updateCartUI(); } }
+
+    async function sendOrder() {
+        if (cart.length === 0) { alert("カートが空です"); return; }
+        const customerName = document.getElementById("res-customer").innerText;
+        if (!customerName) { alert("顧客情報を検索してください"); return; }
+        const btn = document.getElementById('send-btn');
+        btn.disabled = true;
+        btn.innerText = "送信中...";
+        try {
+            const requestData = {
+                customerName: customerName,
+                zip: currentZip,
+                address1: document.getElementById("res-address1").innerText,
+                address2: document.getElementById("res-address2").innerText,
+                tel: document.getElementById("res-tel").innerText,
+                email: document.getElementById("res-email").innerText,
+                comment: document.getElementById("order-comment").value,
+                items: cart
+            };
+            const res = await fetch(GAS_URL, {
+                method: "POST",
+                body: JSON.stringify({ action: "orderSubmit", data: requestData })
+            });
+            if (res.ok) {
+                alert("注文を送信しました");
+                cart = [];
+                updateCartUI();
+                showPage('home');
+            }
+        } catch (e) { alert("送信エラー: " + e.message); }
+        finally { 
+            btn.disabled = false; 
+            btn.innerText = "🛒 注文を確定する";
+        }
+    }
+
+    function handleCustomerManualSearch() {
+        const val = document.getElementById('cust-manual-input').value.trim();
+        if (val) fetchCustomerData(val);
+    }
+    function handleScan() { liff.scanCodeV2().then(res => { if (res.value) searchProductLocal(res.value); }); }
+    async function handleCustomerScan() {
+        try {
+            const res = await liff.scanCodeV2();
+            if (res.value) await fetchCustomerData(res.value);
+        } catch (e) { alert("スキャン失敗"); }
+    }
+</script>
+</body>
+</html>
