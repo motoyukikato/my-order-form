@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>【インターリンク】見本市注文アプリ</title>
+    <title>インターリンク】見本市注文アプリ</title>
     <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
@@ -57,7 +57,7 @@
 <section id="input" class="page-section">
     <h2>商品検索・追加</h2>
     <div class="card">
-        <input type="text" id="manual-id" placeholder="品番またはJANを入力" style="width: 60%; padding: 10px;" list="prod-list">
+        <input type="text" id="manual-id" placeholder="品名または品番を入力" style="width: 60%; padding: 10px;" list="prod-list">
         <datalist id="prod-list"></datalist>
         <button class="btn-blue" onclick="handleSearchAndPreview()">検索</button>
     </div>
@@ -102,7 +102,7 @@
 <script>
     const GAS_URL = "https://script.google.com/macros/s/AKfycbxPMFpQ48YfHWWxLk8U3ROp-CP9wCYhqQc0bYalvT8pUeGnMKt3WzI6PTIt2Nu92m96/exec"; 
     let cart = [];
-    let allProducts = []; // 全商品を保持する配列
+    let allProducts = []; 
     let currentZip = ""; 
     let tempProduct = null;
 
@@ -116,11 +116,11 @@
             });
             allProducts = await res.json();
             
-            // datalist（入力候補）の更新
             const datalist = document.getElementById('prod-list');
             if (datalist) {
+                // 手入力しやすくするため、valueを「品名」に変更
                 datalist.innerHTML = allProducts.map(item => 
-                    `<option value="${item.partNo}">${item.name}</option>`
+                    `<option value="${item.name}">${item.partNo}</option>`
                 ).join('');
             }
             console.log("同期完了:", allProducts.length, "件");
@@ -143,7 +143,6 @@
         document.getElementById('nav-' + pageId).classList.add('active-menu');
     }
 
-    // --- 2. 顧客検索（これは個別に通信が必要） ---
     async function fetchCustomerData(val) {
         if (!val) return;
         const loading = document.getElementById("cust-loading");
@@ -170,14 +169,15 @@
         } catch (e) { alert("顧客検索エラー: " + e.message); }
     }
 
-    // --- 3. 【重要】商品検索をローカル(allProducts)から行う（爆速化） ---
+    // --- 3. 商品検索ロジック（品番完全一致 または 品名部分一致） ---
     function handleSearchAndPreview() {
-        const code = document.getElementById('manual-id').value.trim().toUpperCase();
-        if (!code) { alert("品番を入力してください"); return; }
+        const query = document.getElementById('manual-id').value.trim().toUpperCase();
+        if (!query) { alert("品名または品番を入力してください"); return; }
 
-        // 通信せずに手元のデータから探す
+        // JANを除外し、品番or品名で検索
         const product = allProducts.find(item => 
-            String(item.partNo).toUpperCase() === code || String(item.jan) === code
+            (item.partNo && String(item.partNo).toUpperCase() === query) || // 品番完全一致
+            (item.name && String(item.name).toUpperCase().includes(query))   // 品名部分一致
         );
 
         if (product) {
@@ -195,16 +195,15 @@
         }
     }
 
-    // スキャン時もローカル検索を利用
     function searchProductLocal(code) {
         if (!code) return;
+        // スキャン時は従来通りJANまたは品番で検索
         const product = allProducts.find(item => 
             String(item.partNo).toUpperCase() === String(code).toUpperCase() || String(item.jan) === String(code)
         );
         if (product) {
-            // 見つかったらプレビュー画面へ飛ばして入力させる
             tempProduct = product;
-            document.getElementById('manual-id').value = product.partNo;
+            document.getElementById('manual-id').value = product.name;
             handleSearchAndPreview();
             showPage('input');
         } else {
