@@ -22,6 +22,9 @@
         #send-btn { background-color: #28a745; color: white; border: none; width: 100%; padding: 15px; font-size: 18px; border-radius: 10px; margin-top: 20px; }
         #send-btn:disabled { background-color: #ccc; }
         textarea { width: 100%; border: 1px solid #ddd; border-radius: 5px; padding: 10px; box-sizing: border-box; font-size: 16px; }
+        /* 在庫更新ボタン用スタイル */
+        .admin-btn-group { display: flex; gap: 5px; margin-top: 10px; }
+        .btn-stock { flex: 1; border: none; padding: 8px 0; border-radius: 5px; color: white; font-size: 12px; font-weight: bold; cursor: pointer; }
     </style>
 </head>
 <body>
@@ -69,6 +72,16 @@
             <p>単価: <span id="preview-price"></span>円</p>
             <p>メーカー: <span id="preview-maker"></span></p>
             <p style="color: #d9534f; font-weight: bold;">在庫状況: <span id="preview-stock"></span></p>
+            
+            <div style="background: #f9f9f9; padding: 10px; border-radius: 5px; border: 1px dashed #ccc;">
+                <p style="font-size: 11px; margin: 0 0 5px 0; color: #666;">管理者用 在庫更新:</p>
+                <div class="admin-btn-group">
+                    <button onclick="updateStockStatus('欠品')" class="btn-stock" style="background:#d9534f;">欠品</button>
+                    <button onclick="updateStockStatus('△わずか')" class="btn-stock" style="background:#f0ad4e;">△わずか</button>
+                    <button onclick="updateStockStatus('在庫あり')" class="btn-stock" style="background:#28a745;">在庫あり</button>
+                </div>
+            </div>
+            
             <hr>
             <div style="text-align: center;">
                 <label>数量: </label>
@@ -106,7 +119,6 @@
     let currentZip = ""; 
     let tempProduct = null;
 
-    // --- 1. アプリ起動時に商品データを一括取得 ---
     async function loadProductSuggestions() {
         console.log("商品リストを取得中...");
         try {
@@ -118,7 +130,6 @@
             
             const datalist = document.getElementById('prod-list');
             if (datalist) {
-                // 手入力しやすくするため、valueを「品名」に変更
                 datalist.innerHTML = allProducts.map(item => 
                     `<option value="${item.name}">${item.partNo}</option>`
                 ).join('');
@@ -169,15 +180,13 @@
         } catch (e) { alert("顧客検索エラー: " + e.message); }
     }
 
-    // --- 3. 商品検索ロジック（品番完全一致 または 品名部分一致） ---
     function handleSearchAndPreview() {
         const query = document.getElementById('manual-id').value.trim().toUpperCase();
         if (!query) { alert("品名または品番を入力してください"); return; }
 
-        // JANを除外し、品番or品名で検索
         const product = allProducts.find(item => 
-            (item.partNo && String(item.partNo).toUpperCase() === query) || // 品番完全一致
-            (item.name && String(item.name).toUpperCase().includes(query))   // 品名部分一致
+            (item.partNo && String(item.partNo).toUpperCase() === query) || 
+            (item.name && String(item.name).toUpperCase().includes(query))
         );
 
         if (product) {
@@ -195,9 +204,33 @@
         }
     }
 
+    // ★在庫更新を実行する関数（追加箇所）
+    async function updateStockStatus(newStatus) {
+        if (!tempProduct || !tempProduct.partNo) return;
+        if (!confirm(`品番: ${tempProduct.partNo}\n在庫を「${newStatus}」に変更しますか？`)) return;
+
+        try {
+            const res = await fetch(GAS_URL, {
+                method: "POST",
+                body: JSON.stringify({ 
+                    action: "updateStock", 
+                    partNo: tempProduct.partNo, 
+                    status: newStatus 
+                })
+            });
+            const result = await res.json();
+            if (result.success) {
+                alert("更新完了");
+                document.getElementById("preview-stock").innerText = newStatus;
+                tempProduct.stock = newStatus; // ローカルデータも更新
+            } else {
+                alert("更新失敗");
+            }
+        } catch (e) { alert("通信エラー: " + e.message); }
+    }
+
     function searchProductLocal(code) {
         if (!code) return;
-        // スキャン時は従来通りJANまたは品番で検索
         const product = allProducts.find(item => 
             String(item.partNo).toUpperCase() === String(code).toUpperCase() || String(item.jan) === String(code)
         );
