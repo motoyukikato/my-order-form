@@ -62,27 +62,35 @@
         <button class="btn-blue" onclick="handleSearchAndPreview()">検索</button>
     </div>
 
-    <div id="search-result-preview" style="display:none;">
+  <div id="search-result-preview" style="display:none;">
     <div class="card" style="border: 2px solid #3b5998;">
         <h3 id="preview-name" style="margin-top:0;"></h3>
         <p>品番: <span id="preview-partNo"></span></p>
         <p>単価: <span id="preview-price"></span>円</p>
         <p>メーカー: <span id="preview-maker"></span></p>
-        
         <p>商品備考: <span id="preview-memo" style="color: #666;"></span></p> 
-        
-        <p style="color: #d9534f; font-weight: bold;">在庫状況: <span id="preview-stock"></span></p>
-        <hr>
-            <div style="text-align: center;">
-                <label>数量: </label>
-                <input type="number" id="preview-qty" value="1" min="1" style="width: 60px; font-size: 18px; padding: 5px;">
-                <br><br>
-                <button onclick="addPreviewToCart()" style="background: #28a745; color: white; border: none; padding: 15px 30px; border-radius: 10px; font-weight: bold; width: 100%;">
-                    🛒 この商品をカートに追加
-                </button>
+        <p style="color: #d9534f; font-weight: bold;">現在の在庫状況: <span id="preview-stock"></span></p>
+
+        <div style="margin: 15px 0; padding: 12px; background: #f9f9f9; border-radius: 8px; text-align: center; border: 1px solid #eee;">
+            <p style="font-size: 0.85em; margin-bottom: 10px; color: #555; font-weight: bold;">在庫ステータスを更新する</p>
+            <div style="display: flex; justify-content: center; gap: 5px;">
+                <button onclick="updateStock('欠品')" style="background:#d9534f; color:white; border:none; padding:10px 5px; border-radius:5px; flex:1; font-size: 14px; font-weight: bold;">欠品</button>
+                <button onclick="updateStock('〇')" style="background:#28a745; color:white; border:none; padding:10px 5px; border-radius:5px; flex:1; font-size: 14px; font-weight: bold;">在庫〇</button>
+                <button onclick="updateStock('△')" style="background:#ffc107; color:#333; border:none; padding:10px 5px; border-radius:5px; flex:1; font-size: 14px; font-weight: bold;">在庫△</button>
             </div>
         </div>
+
+        <hr>
+        <div style="text-align: center;">
+            <label>数量: </label>
+            <input type="number" id="preview-qty" value="1" min="1" style="width: 60px; font-size: 18px; padding: 5px;">
+            <br><br>
+            <button onclick="addPreviewToCart()" style="background: #28a745; color: white; border: none; padding: 15px 30px; border-radius: 10px; font-weight: bold; width: 100%;">
+                🛒 この商品をカートに追加
+            </button>
+        </div>
     </div>
+</div> 
 </section>
 
 <section id="cart" class="page-section">
@@ -103,9 +111,9 @@
 </nav>
 
 <script>
-    const GAS_URL = "https://script.google.com/macros/s/AKfycbzsYS4UEv_8Ev-zv9-GUvXDO4eciKEeCffeA-G0NlZNS7kngDBo41oXyRDag4ZYJ030/exec"; 
+    const GAS_URL = "https://script.google.com/macros/s/AKfycbzjNfFlwZrt-CGurCOidxFYHlOiJObCxmae90Kd8dsKJ2pHYsgu3dkKI3V-luemApSR/exec"; 
     let cart = [];
-    let allProducts = []; // 全商品を保持する配列
+    let allProducts = []; 
     let currentZip = ""; 
     let tempProduct = null;
 
@@ -119,7 +127,6 @@
             });
             allProducts = await res.json();
             
-            // datalist（入力候補）の更新
             const datalist = document.getElementById('prod-list');
             if (datalist) {
                 datalist.innerHTML = allProducts.map(item => 
@@ -146,7 +153,7 @@
         document.getElementById('nav-' + pageId).classList.add('active-menu');
     }
 
-    // --- 2. 顧客検索（これは個別に通信が必要） ---
+    // --- 2. 顧客検索 ---
     async function fetchCustomerData(val) {
         if (!val) return;
         const loading = document.getElementById("cust-loading");
@@ -173,42 +180,73 @@
         } catch (e) { alert("顧客検索エラー: " + e.message); }
     }
 
-    // --- 3. 【重要】商品検索をローカル(allProducts)から行う（爆速化） ---
+    // --- 3. 商品検索 ---
     function handleSearchAndPreview() {
-    const code = document.getElementById('manual-id').value.trim().toUpperCase();
-    if (!code) { alert("品番を入力してください"); return; }
+        const code = document.getElementById('manual-id').value.trim().toUpperCase();
+        if (!code) { alert("品番を入力してください"); return; }
 
-    const product = allProducts.find(item => 
-        String(item.partNo).toUpperCase() === code || String(item.jan) === code
-    );
+        const product = allProducts.find(item => 
+            String(item.partNo).toUpperCase() === code || String(item.jan) === code
+        );
 
-    if (product) {
-        tempProduct = product;
-        document.getElementById("preview-name").innerText = product.name;
-        document.getElementById("preview-partNo").innerText = product.partNo;
-        document.getElementById("preview-price").innerText = Number(product.price).toLocaleString();
-        document.getElementById("preview-maker").innerText = product.maker || "未設定";
-        document.getElementById("preview-stock").innerText = product.stock || "不明";
-        
-        // ★ここを追加：備考（memo）を画面に反映
-        document.getElementById("preview-memo").innerText = product.memo || "なし"; 
-        
-        document.getElementById("preview-qty").value = product.lot || 1;
-        document.getElementById("search-result-preview").style.display = "block";
-    } else {
-        alert("商品が見つかりませんでした");
-        document.getElementById("search-result-preview").style.display = "none";
+        if (product) {
+            tempProduct = product;
+            document.getElementById("preview-name").innerText = product.name;
+            document.getElementById("preview-partNo").innerText = product.partNo;
+            document.getElementById("preview-price").innerText = Number(product.price).toLocaleString();
+            document.getElementById("preview-maker").innerText = product.maker || "未設定";
+            
+            // ★追加：商品備考を表示
+            document.getElementById("preview-memo").innerText = product.memo || "なし"; 
+            
+            document.getElementById("preview-stock").innerText = product.stock || "不明";
+            document.getElementById("preview-qty").value = product.lot || 1;
+            document.getElementById("search-result-preview").style.display = "block";
+        } else {
+            alert("商品が見つかりませんでした");
+            document.getElementById("search-result-preview").style.display = "none";
+        }
     }
-}
 
-    // スキャン時もローカル検索を利用
+    // ★追加：在庫状況をスプレッドシートへリアルタイム更新する関数
+    async function updateStock(newStatus) {
+        if (!tempProduct) return;
+        if (!confirm(`在庫状況を「${newStatus}」に変更しますか？\n(スプレッドシートも即時更新されます)`)) return;
+
+        const partNo = tempProduct.partNo;
+        
+        try {
+            const res = await fetch(GAS_URL, {
+                method: "POST",
+                body: JSON.stringify({ 
+                    action: "updateStock", 
+                    partNo: partNo, 
+                    status: newStatus 
+                })
+            });
+            const result = await res.json();
+
+            if (result.success) {
+                alert("在庫状況を更新しました");
+                document.getElementById("preview-stock").innerText = newStatus;
+                // アプリ内のデータも同期
+                const idx = allProducts.findIndex(p => p.partNo === partNo);
+                if (idx !== -1) allProducts[idx].stock = newStatus;
+                tempProduct.stock = newStatus;
+            } else {
+                alert("更新に失敗しました");
+            }
+        } catch (e) {
+            alert("エラーが発生しました: " + e.message);
+        }
+    }
+
     function searchProductLocal(code) {
         if (!code) return;
         const product = allProducts.find(item => 
             String(item.partNo).toUpperCase() === String(code).toUpperCase() || String(item.jan) === String(code)
         );
         if (product) {
-            // 見つかったらプレビュー画面へ飛ばして入力させる
             tempProduct = product;
             document.getElementById('manual-id').value = product.partNo;
             handleSearchAndPreview();
@@ -218,7 +256,8 @@
         }
     }
 
- function addPreviewToCart() {
+    // --- カート追加 ---
+    function addPreviewToCart() {
         if (!tempProduct) return;
         const qty = parseInt(document.getElementById("preview-qty").value);
         cart.push({
@@ -230,7 +269,7 @@
             lot: Number(tempProduct.lot || 1),
             stock: tempProduct.stock,
             maker: tempProduct.maker,
-            memo: tempProduct.memo // ★ここを追加！これでカートに備考が引き継がれます
+            memo: tempProduct.memo // ★重要：備考をカートに引き継ぐ
         });
         updateCartUI();
         document.getElementById("search-result-preview").style.display = "none";
@@ -239,35 +278,34 @@
         showPage('cart');
     }
 
+    // --- カート画面の表示更新 ---
     function updateCartUI() {
-    const list = document.getElementById('cart-list');
-    if (cart.length === 0) { list.innerHTML = '<p style="text-align: center;">空です</p>'; return; }
-    let total = 0;
-    let html = cart.map((item, i) => {
-        const subtotal = item.price * item.quantity;
-        total += subtotal;
-        return `
-            <div class="item-card" style="position: relative;">
-                <b>${item.name}</b><br>
-                <small>メーカー: ${item.maker || "未設定"} / 品番: ${item.partNo}</small><br>
-                
-                <div style="font-size: 0.85em; color: #666; margin-top: 4px; border-left: 3px solid #eee; padding-left: 5px;">
-                    商品備考: ${item.memo || "なし"}
-                </div>
+        const list = document.getElementById('cart-list');
+        if (cart.length === 0) { list.innerHTML = '<p style="text-align: center;">空です</p>'; return; }
+        let total = 0;
+        let html = cart.map((item, i) => {
+            const subtotal = item.price * item.quantity;
+            total += subtotal;
+            return `
+                <div class="item-card" style="position: relative;">
+                    <b>${item.name}</b><br>
+                    <small>メーカー: ${item.maker || "未設定"} / 品番: ${item.partNo}</small><br>
+                    
+                    <div style="font-size: 0.85em; color: #666; margin-top: 4px;">備考: ${item.memo || "なし"}</div>
 
-                <div style="background: #fff5f5; padding: 8px; border-radius: 5px; margin: 8px 0; border: 1px solid #ffcccc;">
-                    <span style="color: #d9534f; font-weight: bold;">在庫状況: ${item.stock || "設定なし"}</span>
-                </div>
-                単価: ${item.price.toLocaleString()}円<br>
-                数量: <input type="number" value="${item.quantity}" onchange="updateQty(${i}, this.value)" style="width:60px; font-size:16px;">
-                <button onclick="removeItem(${i})" style="position: absolute; top: 10px; right: 10px; color: #999; background: none; border: none; font-size: 1.2em;">
-                    <i class="fa-solid fa-trash-can"></i>
-                </button>
-            </div>`;
-    }).join('');
-    html += `<div style="text-align:right; margin-top: 10px;"><b>合計: ${total.toLocaleString()}円</b></div>`;
-    list.innerHTML = html;
-}
+                    <div style="background: #fff5f5; padding: 8px; border-radius: 5px; margin: 8px 0; border: 1px solid #ffcccc;">
+                        <span style="color: #d9534f; font-weight: bold;">在庫状況: ${item.stock || "設定なし"}</span>
+                    </div>
+                    単価: ${item.price.toLocaleString()}円<br>
+                    数量: <input type="number" value="${item.quantity}" onchange="updateQty(${i}, this.value)" style="width:60px; font-size:16px;">
+                    <button onclick="removeItem(${i})" style="position: absolute; top: 10px; right: 10px; color: #999; background: none; border: none; font-size: 1.2em;">
+                        <i class="fa-solid fa-trash-can"></i>
+                    </button>
+                </div>`;
+        }).join('');
+        html += `<div style="text-align:right; margin-top: 10px;"><b>合計: ${total.toLocaleString()}円</b></div>`;
+        list.innerHTML = html;
+    }
 
     function updateQty(i, q) { if (q > 0) { cart[i].quantity = parseInt(q); updateCartUI(); } }
     function removeItem(i) { if (confirm("削除しますか？")) { cart.splice(i, 1); updateCartUI(); } }
