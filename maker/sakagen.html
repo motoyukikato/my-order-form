@@ -218,7 +218,7 @@
         }
     }
 
-    function addPreviewToCart() {
+ function addPreviewToCart() {
         if (!tempProduct) return;
         const qty = parseInt(document.getElementById("preview-qty").value);
         cart.push({
@@ -229,7 +229,8 @@
             quantity: qty,
             lot: Number(tempProduct.lot || 1),
             stock: tempProduct.stock,
-            maker: tempProduct.maker 
+            maker: tempProduct.maker,
+            memo: tempProduct.memo // ★ここを追加！これでカートに備考が引き継がれます
         });
         updateCartUI();
         document.getElementById("search-result-preview").style.display = "none";
