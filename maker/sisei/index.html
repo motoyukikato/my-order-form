@@ -22,6 +22,11 @@
         #send-btn { background-color: #28a745; color: white; border: none; width: 100%; padding: 15px; font-size: 18px; border-radius: 10px; margin-top: 20px; }
         #send-btn:disabled { background-color: #ccc; }
         textarea { width: 100%; border: 1px solid #ddd; border-radius: 5px; padding: 10px; box-sizing: border-box; font-size: 16px; }
+
+        /* 在庫更新ボタン用スタイル */
+        .stock-btn-group { display: flex; gap: 5px; margin-top: 10px; justify-content: center; }
+        .stock-btn { flex: 1; padding: 8px; border: 1px solid #ddd; border-radius: 5px; background: #f9f9f9; font-size: 12px; cursor: pointer; }
+        .stock-btn:active { background: #eee; }
     </style>
 </head>
 <body>
@@ -64,11 +69,20 @@
 
     <div id="search-result-preview" style="display:none;">
         <div class="card" style="border: 2px solid #3b5998;">
-            <h3 id="preview-name" style="margin-top:0;"></h3>
-            <p>品番: <span id="preview-partNo"></span></p>
+            <div id="preview-partNo" style="font-size: 1.4em; font-weight: bold; color: #000; margin-bottom: 2px;"></div>
+            <div id="preview-name" style="font-size: 0.85em; color: #555; margin-bottom: 10px;"></div>
+            
             <p>単価: <span id="preview-price"></span>円</p>
             <p>メーカー: <span id="preview-maker"></span></p>
-            <p style="color: #d9534f; font-weight: bold;">在庫状況: <span id="preview-stock"></span></p>
+            <p style="color: #d9534f; font-weight: bold;">現在の在庫状況: <span id="preview-stock"></span></p>
+            
+            <div class="stock-btn-group">
+                <button class="stock-btn" onclick="updateStockStatus('〇')">〇</button>
+                <button class="stock-btn" onclick="updateStockStatus('△')">△</button>
+                <button class="stock-btn" onclick="updateStockStatus('欠品')">欠品</button>
+                <button class="stock-btn" onclick="updateStockStatus('廃盤')">廃盤</button>
+            </div>
+
             <hr>
             <div style="text-align: center;">
                 <label>数量: </label>
@@ -102,36 +116,28 @@
 <script>
     const GAS_URL = "https://script.google.com/macros/s/AKfycbw-_C_uwP0ZmJtNkhI8G441hjETyC60vD1oMGHQF1sjuoMXBGtTQB9GpmPDDT-aqIc/exec"; 
     let cart = [];
-    let allProducts = []; // 全商品を保持する配列
+    let allProducts = []; 
     let currentZip = ""; 
     let tempProduct = null;
 
-    // --- 1. アプリ起動時に商品データを一括取得 ---
     async function loadProductSuggestions() {
-        console.log("商品リストを取得中...");
         try {
             const res = await fetch(GAS_URL, {
                 method: "POST",
                 body: JSON.stringify({ action: "getAllProductNames" })
             });
             allProducts = await res.json();
-            
-            // datalist（入力候補）の更新
             const datalist = document.getElementById('prod-list');
             if (datalist) {
                 datalist.innerHTML = allProducts.map(item => 
                     `<option value="${item.partNo}">${item.name}</option>`
                 ).join('');
             }
-            console.log("同期完了:", allProducts.length, "件");
-        } catch (e) { 
-            console.error("データ取得失敗:", e); 
-        }
+        } catch (e) { console.error("データ取得失敗:", e); }
     }
 
     liff.init({ liffId: "2008942151-RvABZzga" })
         .then(() => { 
-            console.log("LIFF Init OK");
             loadProductSuggestions();
         })
         .catch((err) => { alert("LIFF初期化失敗: " + err); });
@@ -143,7 +149,6 @@
         document.getElementById('nav-' + pageId).classList.add('active-menu');
     }
 
-    // --- 2. 顧客検索（これは個別に通信が必要） ---
     async function fetchCustomerData(val) {
         if (!val) return;
         const loading = document.getElementById("cust-loading");
@@ -170,23 +175,19 @@
         } catch (e) { alert("顧客検索エラー: " + e.message); }
     }
 
-    // --- 3. 【重要】商品検索をローカル(allProducts)から行う（爆速化） ---
     function handleSearchAndPreview() {
         const code = document.getElementById('manual-id').value.trim().toUpperCase();
         if (!code) { alert("品番を入力してください"); return; }
-
-        // 通信せずに手元のデータから探す
         const product = allProducts.find(item => 
             String(item.partNo).toUpperCase() === code || String(item.jan) === code
         );
-
         if (product) {
             tempProduct = product;
             document.getElementById("preview-name").innerText = product.name;
             document.getElementById("preview-partNo").innerText = product.partNo;
             document.getElementById("preview-price").innerText = Number(product.price).toLocaleString();
             document.getElementById("preview-maker").innerText = product.maker || "未設定";
-            document.getElementById("preview-stock").innerText = product.stock || "不明";
+            document.getElementById("preview-stock").innerText = product.stock || "設定なし";
             document.getElementById("preview-qty").value = product.lot || 1;
             document.getElementById("search-result-preview").style.display = "block";
         } else {
@@ -195,14 +196,33 @@
         }
     }
 
-    // スキャン時もローカル検索を利用
+    // 在庫更新機能（GAS側 updateStock アクション呼び出し）
+    async function updateStockStatus(newStatus) {
+        if (!tempProduct) return;
+        const partNo = tempProduct.partNo;
+        try {
+            const res = await fetch(GAS_URL, {
+                method: "POST",
+                body: JSON.stringify({ action: "updateStock", partNo: partNo, status: newStatus })
+            });
+            const result = await res.json();
+            if (result.success) {
+                tempProduct.stock = newStatus;
+                // ローカルの全商品リストも更新して検索結果に即反映
+                const idx = allProducts.findIndex(p => p.partNo === partNo);
+                if (idx !== -1) allProducts[idx].stock = newStatus;
+                document.getElementById("preview-stock").innerText = newStatus;
+                alert("在庫を「" + newStatus + "」に更新しました");
+            }
+        } catch (e) { alert("更新エラー: " + e.message); }
+    }
+
     function searchProductLocal(code) {
         if (!code) return;
         const product = allProducts.find(item => 
             String(item.partNo).toUpperCase() === String(code).toUpperCase() || String(item.jan) === String(code)
         );
         if (product) {
-            // 見つかったらプレビュー画面へ飛ばして入力させる
             tempProduct = product;
             document.getElementById('manual-id').value = product.partNo;
             handleSearchAndPreview();
@@ -241,8 +261,9 @@
             total += subtotal;
             return `
                 <div class="item-card" style="position: relative;">
-                    <b>${item.name}</b><br>
-                    <small>メーカー: ${item.maker || "未設定"} / 品番: ${item.partNo}</small><br>
+                    <div style="font-size: 1.4em; font-weight: bold; color: #000; margin-bottom: 2px;">${item.partNo}</div>
+                    <div style="font-size: 0.85em; color: #555; margin-bottom: 5px;">${item.name}</div>
+                    <small>メーカー: ${item.maker || "未設定"}</small><br>
                     <div style="background: #fff5f5; padding: 8px; border-radius: 5px; margin: 8px 0; border: 1px solid #ffcccc;">
                         <span style="color: #d9534f; font-weight: bold;">在庫状況: ${item.stock || "設定なし"}</span>
                     </div>
@@ -299,7 +320,13 @@
         const val = document.getElementById('cust-manual-input').value.trim();
         if (val) fetchCustomerData(val);
     }
-    function handleScan() { liff.scanCodeV2().then(res => { if (res.value) searchProductLocal(res.value); }); }
+    function handleScan() { 
+        liff.scanCodeV2().then(res => { 
+            if (res.value) searchProductLocal(res.value); 
+        }).catch(err => {
+            alert("スキャンに失敗しました。LINE DevelopersでScan Code権限が有効か確認してください。");
+        }); 
+    }
     async function handleCustomerScan() {
         try {
             const res = await liff.scanCodeV2();
