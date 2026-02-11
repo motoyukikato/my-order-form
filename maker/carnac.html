@@ -120,21 +120,35 @@
     let currentZip = ""; 
     let tempProduct = null;
 
-    async function loadProductSuggestions() {
+   async function loadProductSuggestions() {
+        console.log("商品リストを取得中...");
         try {
             const res = await fetch(GAS_URL, {
                 method: "POST",
                 body: JSON.stringify({ action: "getAllProductNames" })
             });
-            allProducts = await res.json();
-            const datalist = document.getElementById('prod-list');
-            if (datalist) {
-                datalist.innerHTML = allProducts.map(item => 
-                    `<option value="${item.partNo}">${item.name}</option>`
-                ).join('');
+            
+            // 取得したデータを一時保存
+            const data = await res.json();
+            
+            if (data && Array.isArray(data)) {
+                allProducts = data; // グローバル変数に格納
+                console.log("同期完了:", allProducts.length, "件の商品を読み込みました");
+                
+                const datalist = document.getElementById('prod-list');
+                if (datalist) {
+                    datalist.innerHTML = allProducts.map(item => 
+                        `<option value="${item.partNo}">${item.name}</option>`
+                    ).join('');
+                }
+            } else {
+                console.error("データが配列ではありません:", data);
             }
-        } catch (e) { console.error("データ取得失敗:", e); }
-    }
+        } catch (e) { 
+            console.error("データ取得失敗:", e); 
+            alert("商品データの取得に失敗しました。再読み込みしてください。");
+        }
+    } 
 
     liff.init({ liffId: "2008942151-I3pB7ddi" })
         .then(() => { 
