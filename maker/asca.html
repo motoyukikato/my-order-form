@@ -119,24 +119,34 @@
     let currentZip = ""; 
     let tempProduct = null;
 
-    async function loadProductSuggestions() {
-        console.log("商品リストを取得中...");
+ async function loadProductSuggestions() {
+        console.log("商品リストを取得開始...");
         try {
             const res = await fetch(GAS_URL, {
                 method: "POST",
                 body: JSON.stringify({ action: "getAllProductNames" })
             });
-            allProducts = await res.json();
             
+            if (!res.ok) throw new Error("ネットワーク応答が正常ではありません");
+            
+            allProducts = await res.json();
+            console.log("取得データ:", allProducts); // デバッグ用
+
             const datalist = document.getElementById('prod-list');
-            if (datalist) {
-                datalist.innerHTML = allProducts.map(item => 
-                    `<option value="${item.name}">${item.partNo}</option>`
-                ).join('');
+            if (datalist && Array.isArray(allProducts)) {
+                // 重複排除と空データの除外
+                datalist.innerHTML = allProducts
+                    .filter(item => item.name || item.partNo)
+                    .map(item => {
+                        // 品番をvalueに、商品名をラベルに設定（これで入力時に品番で補完されやすくなります）
+                        return `<option value="${item.partNo}">${item.name}</option>`;
+                    }).join('');
+                console.log("同期完了:", allProducts.length, "件をリストに反映しました");
             }
-            console.log("同期完了:", allProducts.length, "件");
         } catch (e) { 
-            console.error("データ取得失敗:", e); 
+            console.error("データ取得失敗:", e);
+            // 失敗した場合は3秒後に一度だけ再試行
+            setTimeout(loadProductSuggestions, 3000);
         }
     }
 
