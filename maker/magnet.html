@@ -100,13 +100,14 @@
 </nav>
 
 <script>
-    const GAS_URL = "https://script.google.com/macros/s/AKfycbyPGvu4SR68nAj1TteGZ1ODBguDuprw3X_iagote65kzlU9nzx1S0CokxqJDvsu1XtkuQ/exec"; 
+    // magnet/hunt9専用のGAS URL
+    const GAS_URL = "https://script.google.com/macros/s/AKfycbzxBof8w2ssGLMjugMCc-gtiPmqRA0HgX6uuQV6lXSGPs3BC-75H58ORT61dCrq7xdoIA/exec"; 
     let cart = [];
-    let allProducts = []; // 全商品を保持する配列
+    let allProducts = []; 
     let currentZip = ""; 
     let tempProduct = null;
 
-    // --- 1. アプリ起動時に商品データを一括取得 ---
+    // --- 1. アプリ起動時に商品データを一括取得（日付化防止・エラーログ強化版） ---
     async function loadProductSuggestions() {
         console.log("商品リストを取得中...");
         try {
@@ -114,24 +115,30 @@
                 method: "POST",
                 body: JSON.stringify({ action: "getAllProductNames" })
             });
-            allProducts = await res.json();
+            const data = await res.json();
             
-            // datalist（入力候補）の更新
-            const datalist = document.getElementById('prod-list');
-            if (datalist) {
-                datalist.innerHTML = allProducts.map(item => 
-                    `<option value="${item.partNo}">${item.name}</option>`
-                ).join('');
+            if (data && Array.isArray(data)) {
+                allProducts = data;
+                console.log("同期完了:", allProducts.length, "件");
+
+                const datalist = document.getElementById('prod-list');
+                if (datalist) {
+                    datalist.innerHTML = allProducts.map(item => 
+                        `<option value="${item.partNo}">${item.name}</option>`
+                    ).join('');
+                }
+            } else {
+                console.error("データ形式が正しくありません:", data);
             }
-            console.log("同期完了:", allProducts.length, "件");
         } catch (e) { 
-            console.error("データ取得失敗:", e); 
+            console.error("データ取得失敗:", e);
+            alert("商品データの読み込みに失敗しました。通信環境を確認して再起動してください。");
         }
     }
 
-    liff.init({ liffId: "2008942151-9VjkpSu7" })
+    // LIFF初期化（IDはmagnet用を維持）
+    liff.init({ liffId: "2008942151-71X05Z0F" })
         .then(() => { 
-            console.log("LIFF Init OK");
             loadProductSuggestions();
         })
         .catch((err) => { alert("LIFF初期化失敗: " + err); });
@@ -143,7 +150,7 @@
         document.getElementById('nav-' + pageId).classList.add('active-menu');
     }
 
-    // --- 2. 顧客検索（これは個別に通信が必要） ---
+    // --- 2. 顧客検索 ---
     async function fetchCustomerData(val) {
         if (!val) return;
         const loading = document.getElementById("cust-loading");
@@ -170,14 +177,15 @@
         } catch (e) { alert("顧客検索エラー: " + e.message); }
     }
 
-    // --- 3. 【重要】商品検索をローカル(allProducts)から行う（爆速化） ---
+    // --- 3. 商品検索（手入力・スキャン共通：照合ロジック強化） ---
     function handleSearchAndPreview() {
         const code = document.getElementById('manual-id').value.trim().toUpperCase();
         if (!code) { alert("品番を入力してください"); return; }
 
-        // 通信せずに手元のデータから探す
+        // 型変換を徹底して照合
         const product = allProducts.find(item => 
-            String(item.partNo).toUpperCase() === code || String(item.jan) === code
+            String(item.partNo).trim().toUpperCase() === code || 
+            String(item.jan).trim() === code
         );
 
         if (product) {
@@ -186,29 +194,32 @@
             document.getElementById("preview-partNo").innerText = product.partNo;
             document.getElementById("preview-price").innerText = Number(product.price).toLocaleString();
             document.getElementById("preview-maker").innerText = product.maker || "未設定";
-            document.getElementById("preview-stock").innerText = product.stock || "不明";
+            document.getElementById("preview-stock").innerText = product.stock || "設定なし";
             document.getElementById("preview-qty").value = product.lot || 1;
             document.getElementById("search-result-preview").style.display = "block";
         } else {
-            alert("商品が見つかりませんでした");
+            alert("商品が見つかりませんでした\n入力値: [" + code + "]\n読込済数: " + allProducts.length + "件");
             document.getElementById("search-result-preview").style.display = "none";
         }
     }
 
-    // スキャン時もローカル検索を利用
     function searchProductLocal(code) {
         if (!code) return;
+        const cleanCode = String(code).trim().toUpperCase();
+        
         const product = allProducts.find(item => 
-            String(item.partNo).toUpperCase() === String(code).toUpperCase() || String(item.jan) === String(code)
+            String(item.partNo).trim().toUpperCase() === cleanCode || 
+            String(item.jan).trim() === cleanCode
         );
+
         if (product) {
-            // 見つかったらプレビュー画面へ飛ばして入力させる
             tempProduct = product;
             document.getElementById('manual-id').value = product.partNo;
             handleSearchAndPreview();
             showPage('input');
         } else {
-            alert("商品マスタ登録なし: " + code);
+            // ここで件数を確認できるように変更
+            alert("商品マスタ登録なし\nスキャン値: [" + cleanCode + "]\n読込済マスタ数: " + allProducts.length + "件");
         }
     }
 
@@ -241,19 +252,19 @@
             total += subtotal;
             return `
                 <div class="item-card" style="position: relative;">
-                    <b>${item.name}</b><br>
-                    <small>メーカー: ${item.maker || "未設定"} / 品番: ${item.partNo}</small><br>
-                    <div style="background: #fff5f5; padding: 8px; border-radius: 5px; margin: 8px 0; border: 1px solid #ffcccc;">
-                        <span style="color: #d9534f; font-weight: bold;">在庫状況: ${item.stock || "設定なし"}</span>
+                    <div style="font-size: 1.1em; font-weight: bold; margin-bottom: 5px;">${item.partNo}</div>
+                    <div style="font-size: 0.9em; color: #666; margin-bottom: 8px;">${item.name}</div>
+                    <div style="background: #fff5f5; padding: 8px; border-radius: 5px; margin-bottom: 8px; border: 1px solid #ffcccc;">
+                        <span style="color: #d9534f; font-weight: bold;">状況: ${item.stock || "設定なし"}</span>
                     </div>
-                    単価: ${item.price.toLocaleString()}円<br>
-                    数量: <input type="number" value="${item.quantity}" onchange="updateQty(${i}, this.value)" style="width:60px; font-size:16px;">
+                    単価: ${item.price.toLocaleString()}円 / 数量: 
+                    <input type="number" value="${item.quantity}" onchange="updateQty(${i}, this.value)" style="width:60px; font-size:16px; padding: 3px;">
                     <button onclick="removeItem(${i})" style="position: absolute; top: 10px; right: 10px; color: #999; background: none; border: none; font-size: 1.2em;">
                         <i class="fa-solid fa-trash-can"></i>
                     </button>
                 </div>`;
         }).join('');
-        html += `<div style="text-align:right; margin-top: 10px;"><b>合計: ${total.toLocaleString()}円</b></div>`;
+        html += `<div style="text-align:right; margin-top: 10px; font-size: 1.2em;"><b>合計: ${total.toLocaleString()}円</b></div>`;
         list.innerHTML = html;
     }
 
@@ -299,7 +310,13 @@
         const val = document.getElementById('cust-manual-input').value.trim();
         if (val) fetchCustomerData(val);
     }
-    function handleScan() { liff.scanCodeV2().then(res => { if (res.value) searchProductLocal(res.value); }); }
+    function handleScan() { 
+        liff.scanCodeV2().then(res => { 
+            if (res.value) searchProductLocal(res.value); 
+        }).catch(err => {
+            alert("スキャンに失敗しました。カメラ権限を確認してください。");
+        });
+    }
     async function handleCustomerScan() {
         try {
             const res = await liff.scanCodeV2();
