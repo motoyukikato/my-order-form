@@ -181,10 +181,15 @@
 
     // --- 商品検索ロジック ---
     function handleSearchAndPreview() {
-        const code = document.getElementById('manual-id').value.trim().toUpperCase();
-        if (!code) return;
+        const inputVal = document.getElementById('manual-id').value.trim().toUpperCase();
+        if (!inputVal) return;
+
+        // 【修正ポイント】完全一致だけでなく、品番の先頭が一致するもの（前方一致）を探す
+        // 最初に見つかった1件をプレビューに表示する
         const product = allProducts.find(item => 
-            String(item.partNo).toUpperCase() === code || String(item.jan) === code
+            String(item.partNo).toUpperCase().startsWith(inputVal) || 
+            String(item.jan) === inputVal ||
+            String(item.partNo).toUpperCase() === inputVal
         );
         if (product) {
             tempProduct = product;
