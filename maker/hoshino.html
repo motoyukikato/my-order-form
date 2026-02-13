@@ -13,14 +13,14 @@
         .active { display: block; }
         .card { background: #fff; padding: 20px; border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); margin-bottom: 20px; }
         .item-card { background: #fff; border: 1px solid #ddd; padding: 12px; margin-bottom: 10px; border-radius: 8px; }
-        .btn-blue { padding: 10px 20px; background: #007bff; color: white; border: none; border-radius: 5px; font-weight: bold; }
-        .btn-scan { padding: 20px; background: #3b5998; color: white; border: none; border-radius: 10px; width: 100%; font-size: 18px; margin-top: 10px; }
-        .footer-menu { position: fixed; bottom: 0; width: 100%; background: #fff; border-top: 1px solid #ddd; display: flex; justify-content: space-around; padding: 10px 0; }
+        .btn-blue { padding: 10px 20px; background: #007bff; color: white; border: none; border-radius: 5px; font-weight: bold; cursor: pointer; }
+        .btn-scan { padding: 20px; background: #3b5998; color: white; border: none; border-radius: 10px; width: 100%; font-size: 18px; margin-top: 10px; cursor: pointer; }
+        .footer-menu { position: fixed; bottom: 0; width: 100%; background: #fff; border-top: 1px solid #ddd; display: flex; justify-content: space-around; padding: 10px 0; z-index: 1000; }
         .footer-menu button { background: none; border: none; color: #888; font-size: 11px; flex: 1; cursor: pointer; }
         .footer-menu button i { font-size: 24px; display: block; margin-bottom: 4px; }
         .footer-menu button.active-menu { color: #3b5998; font-weight: bold; }
-        #send-btn { background-color: #28a745; color: white; border: none; width: 100%; padding: 15px; font-size: 18px; border-radius: 10px; margin-top: 20px; }
-        #send-btn:disabled { background-color: #ccc; }
+        #send-btn { background-color: #28a745; color: white; border: none; width: 100%; padding: 15px; font-size: 18px; border-radius: 10px; margin-top: 20px; cursor: pointer; }
+        #send-btn:disabled { background-color: #ccc; cursor: not-allowed; }
         textarea { width: 100%; border: 1px solid #ddd; border-radius: 5px; padding: 10px; box-sizing: border-box; font-size: 16px; }
         .admin-btn-group { display: flex; gap: 5px; margin-top: 10px; }
         .btn-stock { flex: 1; border: none; padding: 8px 0; border-radius: 5px; color: white; font-size: 12px; font-weight: bold; cursor: pointer; }
@@ -69,7 +69,8 @@
             <h3 id="preview-name" style="margin-top:0;"></h3>
             <p>品番: <span id="preview-partNo"></span></p>
             <p>単価: <span id="preview-price"></span>円</p>
-            <p style="color: #666;">上代: <span id="preview-listPrice"></span>円</p> <p>メーカー: <span id="preview-maker"></span></p>
+            <p style="color: #666;">上代: <span id="preview-listPrice"></span>円</p>
+            <p>メーカー: <span id="preview-maker"></span></p>
             <p style="color: #d9534f; font-weight: bold;">在庫状況: <span id="preview-stock"></span></p>
             
             <div style="background: #f9f9f9; padding: 10px; border-radius: 5px; border: 1px dashed #ccc;">
@@ -86,7 +87,7 @@
                 <label>数量: </label>
                 <input type="number" id="preview-qty" value="1" min="1" style="width: 60px; font-size: 18px; padding: 5px;">
                 <br><br>
-                <button onclick="addPreviewToCart()" style="background: #28a745; color: white; border: none; padding: 15px 30px; border-radius: 10px; font-weight: bold; width: 100%;">
+                <button onclick="addPreviewToCart()" style="background: #28a745; color: white; border: none; padding: 15px 30px; border-radius: 10px; font-weight: bold; width: 100%; cursor: pointer;">
                     🛒 この商品をカートに追加
                 </button>
             </div>
@@ -119,32 +120,26 @@
     let tempProduct = null;
 
     async function loadProductSuggestions() {
-        console.log("商品リストを取得中...");
         try {
             const res = await fetch(GAS_URL, {
                 method: "POST",
                 body: JSON.stringify({ action: "getAllProductNames" })
             });
             allProducts = await res.json();
-            
             const datalist = document.getElementById('prod-list');
             if (datalist) {
                 datalist.innerHTML = allProducts.map(item => 
                     `<option value="${item.name}">${item.partNo}</option>`
                 ).join('');
             }
-            console.log("同期完了:", allProducts.length, "件");
-        } catch (e) { 
-            console.error("データ取得失敗:", e); 
-        }
+        } catch (e) { console.error("データ取得失敗:", e); }
     }
 
     liff.init({ liffId: "2008942151-J7m7J7MF" })
         .then(() => { 
-            console.log("LIFF Init OK");
             loadProductSuggestions();
         })
-        .catch((err) => { alert("LIFF初期化失敗: " + err); });
+        .catch((err) => { console.error("LIFF初期化失敗", err); });
 
     function showPage(pageId) {
         document.querySelectorAll('.page-section').forEach(sec => sec.classList.remove('active'));
@@ -193,7 +188,6 @@
             document.getElementById("preview-name").innerText = product.name;
             document.getElementById("preview-partNo").innerText = product.partNo;
             document.getElementById("preview-price").innerText = Number(product.price).toLocaleString();
-            // ★上代の表示処理を追加
             document.getElementById("preview-listPrice").innerText = product.listPrice ? Number(product.listPrice).toLocaleString() : "0";
             document.getElementById("preview-maker").innerText = product.maker || "未設定";
             document.getElementById("preview-stock").innerText = product.stock || "不明";
@@ -208,29 +202,21 @@
     async function updateStockStatus(newStatus) {
         if (!tempProduct || !tempProduct.partNo) return;
         if (!confirm(`品番: ${tempProduct.partNo}\n在庫を「${newStatus}」に変更しますか？`)) return;
-
         try {
             const res = await fetch(GAS_URL, {
                 method: "POST",
-                body: JSON.stringify({ 
-                    action: "updateStock", 
-                    partNo: tempProduct.partNo, 
-                    status: newStatus 
-                })
+                body: JSON.stringify({ action: "updateStock", partNo: tempProduct.partNo, status: newStatus })
             });
             const result = await res.json();
             if (result.success) {
                 alert("更新完了");
                 document.getElementById("preview-stock").innerText = newStatus;
                 tempProduct.stock = newStatus; 
-            } else {
-                alert("更新失敗");
             }
         } catch (e) { alert("通信エラー: " + e.message); }
     }
 
     function searchProductLocal(code) {
-        if (!code) return;
         const product = allProducts.find(item => 
             String(item.partNo).toUpperCase() === String(code).toUpperCase() || String(item.jan) === String(code)
         );
@@ -239,9 +225,7 @@
             document.getElementById('manual-id').value = product.name;
             handleSearchAndPreview();
             showPage('input');
-        } else {
-            alert("商品マスタ登録なし: " + code);
-        }
+        } else { alert("商品未登録: " + code); }
     }
 
     function addPreviewToCart() {
@@ -252,7 +236,7 @@
             partNo: tempProduct.partNo,
             name: tempProduct.name,
             price: Number(tempProduct.price),
-            listPrice: Number(tempProduct.listPrice || 0), // ★追加
+            listPrice: Number(tempProduct.listPrice || 0),
             quantity: qty,
             lot: Number(tempProduct.lot || 1),
             stock: tempProduct.stock,
@@ -279,11 +263,10 @@
                     <div style="background: #fff5f5; padding: 8px; border-radius: 5px; margin: 8px 0; border: 1px solid #ffcccc;">
                         <span style="color: #d9534f; font-weight: bold;">在庫状況: ${item.stock || "設定なし"}</span>
                     </div>
-                    <div style="font-size: 0.9em; color: #666; margin-bottom: 5px;">
-                        上代: ￥${(item.listPrice || 0).toLocaleString()} </div>
+                    <div style="font-size: 0.85em; color: #666; margin-bottom: 4px;">上代: ￥${(item.listPrice || 0).toLocaleString()}</div>
                     単価: ${item.price.toLocaleString()}円<br>
                     数量: <input type="number" value="${item.quantity}" onchange="updateQty(${i}, this.value)" style="width:60px; font-size:16px;">
-                    <button onclick="removeItem(${i})" style="position: absolute; top: 10px; right: 10px; color: #999; background: none; border: none; font-size: 1.2em;">
+                    <button onclick="removeItem(${i})" style="position: absolute; top: 10px; right: 10px; color: #999; background: none; border: none; font-size: 1.2em; cursor: pointer;">
                         <i class="fa-solid fa-trash-can"></i>
                     </button>
                 </div>`;
@@ -303,19 +286,21 @@
         btn.disabled = true;
         btn.innerText = "送信中...";
         try {
-            const requestData = {
-                customerName: customerName,
-                zip: currentZip,
-                address1: document.getElementById("res-address1").innerText,
-                address2: document.getElementById("res-address2").innerText,
-                tel: document.getElementById("res-tel").innerText,
-                email: document.getElementById("res-email").innerText,
-                comment: document.getElementById("order-comment").value,
-                items: cart
-            };
             const res = await fetch(GAS_URL, {
                 method: "POST",
-                body: JSON.stringify({ action: "orderSubmit", data: requestData })
+                body: JSON.stringify({ 
+                    action: "orderSubmit", 
+                    data: {
+                        customerName: customerName,
+                        zip: currentZip,
+                        address1: document.getElementById("res-address1").innerText,
+                        address2: document.getElementById("res-address2").innerText,
+                        tel: document.getElementById("res-tel").innerText,
+                        email: document.getElementById("res-email").innerText,
+                        comment: document.getElementById("order-comment").value,
+                        items: cart
+                    }
+                })
             });
             if (res.ok) {
                 alert("注文を送信しました");
@@ -324,10 +309,7 @@
                 showPage('home');
             }
         } catch (e) { alert("送信エラー: " + e.message); }
-        finally { 
-            btn.disabled = false; 
-            btn.innerText = "🛒 注文を確定する";
-        }
+        finally { btn.disabled = false; btn.innerText = "🛒 注文を確定する"; }
     }
 
     function handleCustomerManualSearch() {
