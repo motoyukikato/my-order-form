@@ -198,14 +198,47 @@
     }
 
     async function sendOrder() {
-        if (!currentCustomer || cart.length === 0) { alert("顧客情報またはカートが空です"); return; }
+        // 1. 顧客データから名前を抽出
+        const cName = currentCustomer ? (currentCustomer.customer || currentCustomer.name) : null;
+        
+        if (!cName || cart.length === 0) { 
+            alert("顧客情報を正しく読み込んでください"); 
+            return; 
+        }
+
         const btn = document.getElementById('send-btn');
-        btn.disabled = true; btn.innerText = "送信中...";
+        btn.disabled = true; 
+        btn.innerText = "送信中...";
+
         try {
-            await fetch(GAS_URL, { method: "POST", body: JSON.stringify({ action: "orderSubmit", data: { ...currentCustomer, comment: document.getElementById("order-comment").value, items: cart } }) });
-            alert("注文完了"); cart = []; showPage('home');
-        } catch (e) { alert("送信エラー"); }
-        btn.disabled = false; btn.innerText = "🛒 注文を確定する";
+            await fetch(GAS_URL, { 
+                method: "POST", 
+                body: JSON.stringify({ 
+                    action: "orderSubmit", 
+                    data: { 
+                        // ★GASの submitOrder 関数内の名前に1文字ずつ合わせる
+                        customerName: cName,                      // requestData.customerName に対応
+                        zip:      currentCustomer.zip || "",      // requestData.zip に対応
+                        address1: currentCustomer.address1 || "", // requestData.address1 に対応
+                        address2: currentCustomer.address2 || "", // requestData.address2 に対応
+                        tel:      currentCustomer.tel || "",      // requestData.tel に対応
+                        email:    currentCustomer.email || "",    // requestData.email に対応
+                        comment:  document.getElementById("order-comment").value, 
+                        items:    cart 
+                    } 
+                }) 
+            });
+            alert("注文完了"); 
+            cart = []; 
+            currentCustomer = null;
+            document.getElementById("cust-data").innerHTML = "<b>顧客を選択してください</b>";
+            showPage('home');
+        } catch (e) { 
+            alert("送信エラー"); 
+        } finally {
+            btn.disabled = false; 
+            btn.innerText = "🛒 注文を確定する";
+        }
     }
 
     // ★修正3: 顧客名の undefined 回避
