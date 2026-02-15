@@ -145,22 +145,37 @@
     let currentZip = ""; 
     let tempProduct = null;
 
-    async function loadProductSuggestions() {
-        try {
-            const res = await fetch(GAS_URL, { method: "POST", body: JSON.stringify({ action: "getAllProductNames" }) });
-            allProducts = await res.json();
-            const datalist = document.getElementById('prod-list');
-            if (datalist) {
-                datalist.innerHTML = allProducts.map(item => `<option value="${item.partNo}">${item.name}</option>`).join('');
-            }
-        } catch (e) { console.error("データ取得失敗", e); }
-    }
-
-    // Android用のLIFF IDを入れてください
-    liff.init({ liffId: "2008942151-W5m28ZUV" }).then(() => { 
-        loadProductSuggestions(); 
+   // 1. LIFFの初期化を待たずに、ページが開いたらすぐ商品データを取得する
+    window.addEventListener('load', () => {
+        loadProductSuggestions();
     });
 
+    async function loadProductSuggestions() {
+        console.log("商品データ取得開始...");
+        try {
+            const res = await fetch(GAS_URL, { 
+                method: "POST", 
+                body: JSON.stringify({ action: "getAllProductNames" }) 
+            });
+            allProducts = await res.json();
+            
+            const datalist = document.getElementById('prod-list');
+            if (datalist && allProducts.length > 0) {
+                // ここでdatalistに候補を詰め込む
+                datalist.innerHTML = allProducts.map(item => 
+                    `<option value="${item.partNo}">${item.name}</option>`
+                ).join('');
+                console.log("同期完了:", allProducts.length, "件の候補をセットしました");
+            }
+        } catch (e) { 
+            console.error("データ取得失敗", e); 
+        }
+    }
+
+    // 2. LIFFの初期化（スキャン機能などに必要）
+    liff.init({ liffId: "2008942151-W5m28ZUV" })
+        .then(() => { console.log("LIFF初期化成功"); })
+        .catch((err) => { console.error("LIFF初期化失敗", err); });
     function showPage(pageId) {
         document.querySelectorAll('.page-section').forEach(sec => sec.classList.remove('active'));
         document.getElementById(pageId).classList.add('active');
