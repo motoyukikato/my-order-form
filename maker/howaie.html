@@ -137,24 +137,46 @@
 </nav>
 
 <script>
-    const GAS_URL = "https://script.google.com/macros/s/AKfycbzo35Jj6AbSYV618IAFTz316Zw2ox5kVBmHn7oe95k8ecGocadn77-IF3KTEH-rFCZJ/exec"; 
+   const GAS_URL = "https://script.google.com/macros/s/AKfycbzo35Jj6AbSYV618IAFTz316Zw2ox5kVBmHn7oe95k8ecGocadn77-IF3KTEH-rFCZJ/exec"; 
     let cart = [];
     let allProducts = []; 
     let currentZip = ""; 
     let tempProduct = null;
 
+    // iPhone/Android共通：ページが開いたらすぐに商品データを取得する
+    document.addEventListener('DOMContentLoaded', () => {
+        loadProductSuggestions();
+    });
+
     async function loadProductSuggestions() {
+        console.log("商品データ取得開始...");
         try {
-            const res = await fetch(GAS_URL, { method: "POST", body: JSON.stringify({ action: "getAllProductNames" }) });
-            allProducts = await res.json();
-            const datalist = document.getElementById('prod-list');
-            if (datalist) {
-                datalist.innerHTML = allProducts.map(item => `<option value="${item.partNo}">${item.name}</option>`).join('');
+            const res = await fetch(GAS_URL, { 
+                method: "POST", 
+                body: JSON.stringify({ action: "getAllProductNames" }) 
+            });
+            const data = await res.json();
+            
+            if (data && Array.isArray(data)) {
+                allProducts = data;
+                const datalist = document.getElementById('prod-list');
+                if (datalist) {
+                    // iPhone対応：optionタグの中にテキスト（商品名）をしっかり入れる
+                    datalist.innerHTML = allProducts.map(item => 
+                        `<option value="${item.partNo}">${item.name}</option>`
+                    ).join('');
+                }
+                console.log("同期完了:", allProducts.length, "件");
             }
-            console.log("同期完了:", allProducts.length, "件");
-        } catch (e) { console.error("データ取得失敗", e); }
+        } catch (e) { 
+            console.error("データ取得失敗", e); 
+        }
     }
 
+    // LIFFの初期化（スキャン機能などに使用。データの取得とは切り離して実行）
+    liff.init({ liffId: "2008942151-W5m28ZUV" })
+        .then(() => { console.log("LIFF初期化成功"); })
+        .catch(err => { console.error("LIFF失敗", err); });
     liff.init({ liffId: "2008942151-W5m28ZUV" }).then(() => { loadProductSuggestions(); });
 
     function showPage(pageId) {
