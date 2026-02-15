@@ -91,20 +91,25 @@
     let currentCustomer = null;
     let tempProduct = null;
 
-    // 起動時に商品データをロード（爆速化の鍵）
-    window.onload = () => { loadProductSuggestions(); };
+    // ★修正1: 読み込み順序を安定させ、候補(datalist)を確実に出す
+    window.addEventListener('load', () => {
+        loadProductSuggestions();
+        // ★修正2: LIFFの初期化
+        liff.init({ liffId: "2008942151-UEqxdYta" })
+            .then(() => { console.log("LIFF OK"); })
+            .catch(err => { console.error(err); });
+    });
 
     async function loadProductSuggestions() {
         try {
             const res = await fetch(GAS_URL, { method: "POST", body: JSON.stringify({ action: "getAllProductNames" }) });
             allProducts = await res.json();
             const datalist = document.getElementById('prod-list');
+            // 候補リストをセット
             datalist.innerHTML = allProducts.map(item => `<option value="${item.partNo}">${item.name}</option>`).join('');
             console.log("同期完了:", allProducts.length, "件");
         } catch (e) { console.error("データ取得失敗", e); }
     }
-
-    liff.init({ liffId: "2008942151-UEqxdYta" }).then(() => { console.log("LIFF OK"); });
 
     function showPage(pageId) {
         document.querySelectorAll('.page-section').forEach(sec => sec.classList.remove('active'));
@@ -184,7 +189,6 @@
             const result = await res.json();
             if (result.success) {
                 cart[index].stock = newStatus;
-                // 全データ(allProducts)も更新
                 const pIdx = allProducts.findIndex(p => p.partNo === item.partNo);
                 if(pIdx !== -1) allProducts[pIdx].stock = newStatus;
                 updateCartUI();
@@ -204,15 +208,23 @@
         btn.disabled = false; btn.innerText = "🛒 注文を確定する";
     }
 
-    // 顧客検索（簡略版）
+    // ★修正3: 顧客名の undefined 回避
     async function handleCustomerManualSearch() {
         const val = document.getElementById('cust-manual-input').value.trim();
+        if(!val) return;
         const res = await fetch(GAS_URL, { method: "POST", body: JSON.stringify({ action: "customerSearch", val: val }) });
         const data = await res.json();
-        if (data.customer) {
+        
+        if (data && (data.customer || data.name)) {
             currentCustomer = data;
-            document.getElementById("cust-data").innerHTML = `<b>${data.customer}</b><br>${data.address1}`;
-        } else { alert("顧客なし"); }
+            // 名前が customer でも name でも受け取れるようにする
+            const name = data.customer || data.name;
+            const addr = data.address1 || data.address || "";
+            document.getElementById("cust-data").innerHTML = `<b>${name}</b><br>${addr}`;
+        } else { 
+            alert("顧客なし"); 
+            document.getElementById("cust-data").innerHTML = "<b>顧客を選択してください</b>";
+        }
     }
 </script>
 </body>
