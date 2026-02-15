@@ -173,9 +173,16 @@
     }
 
     // 2. LIFFの初期化（スキャン機能などに必要）
+    // 1. LIFFの初期化
     liff.init({ liffId: "2008942151-W5m28ZUV" })
-        .then(() => { console.log("LIFF初期化成功"); })
-        .catch((err) => { console.error("LIFF初期化失敗", err); });
+        .then(() => { 
+            console.log("LIFF初期化成功");
+        })
+        .catch((err) => { 
+            console.error("LIFF初期化失敗", err); 
+        });
+
+    // 2. ページ切り替え関数
     function showPage(pageId) {
         document.querySelectorAll('.page-section').forEach(sec => sec.classList.remove('active'));
         document.getElementById(pageId).classList.add('active');
@@ -184,19 +191,29 @@
         window.scrollTo(0, 0);
     }
 
-    // ★Android最適化スキャン（JANバーコード用）
+    // 3. スキャン関数（iPhoneの権限対策を強化）
     async function handleScan() {
+        // LINEアプリ以外で開いている場合のガード
+        if (!liff.isInClient()) {
+            alert("LINEアプリの中でスキャンボタンを押してください。");
+            return;
+        }
+
         try {
             const res = await liff.scanCodeV2();
             if (res && res.value) {
-                // 読み取った値をセットして検索実行
                 document.getElementById('manual-id').value = res.value;
                 handleSearchAndPreview();
-                showPage('input'); // 自動的にプレビュー画面へ移動
+                showPage('input'); 
             }
         } catch (e) {
-            if (e.message !== "User cancelled the scan.") {
-                alert("スキャンに失敗しました。カメラ権限を確認してください。");
+            console.error("Scan Error:", e);
+            
+            // iPhone特有の権限エラー判定
+            if (e.code === "FORBIDDEN" || e.message.includes("permission")) {
+                alert("カメラの使用が許可されていません。\n\niPhoneの「設定」＞「LINE」＞「カメラ」がONになっているか確認してください。");
+            } else if (e.message !== "User cancelled the scan.") {
+                alert("スキャンを開始できませんでした。アプリを一度閉じてから、再度お試しください。");
             }
         }
     }
