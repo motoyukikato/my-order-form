@@ -1,0 +1,76 @@
+function doPost(e) {
+  try {
+    const data = JSON.parse(e.postData.contents);
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const sheet = ss.getSheets()[0]; 
+    const timestamp = new Date();
+    
+    // ★設定エリア（ここが正しいか再度確認してください）
+    const FOLDER_ID = "1q6dqfUj6zCXcoGp4RtrvpyOiIXd1Jy0o"; 
+    const sheetUrl = "https://docs.google.com/spreadsheets/d/1VrbZbfIKK1r3emcxHy_yTXcIct8ZDpHe-LZhmfZrVGM/edit";
+    const adminEmail = "ft-order@flonet.co.jp";
+    const teamsUrl = "https://nagoyakaki.webhook.office.com/webhookb2/4866f2ab-dece-4afc-a73f-2d718a894930@9b258ec3-f090-4041-bdcf-3f8e9c128b4f/IncomingWebhook/fd9f5eff520344d9ba696ee25e8d8add/60245b62-7cb9-4ff5-a438-b6c4f473e8e6/V2JNV7Ee95rB7HVsX1SVGD5bEXCEd8ouAoX9NiBrM0STc1";
+
+    const folder = DriveApp.getFolderById(FOLDER_ID);
+    const dateStr = Utilities.formatDate(new Date(), "JST", "yyyyMMdd_HHmmss");
+
+    let imageUrl1 = "なし";
+    let imageUrl2 = "なし";
+
+    // --- 画像保存処理 ---
+    if (data.imageFile1 && data.imageFile1.data) {
+      const blob1 = Utilities.newBlob(Utilities.base64Decode(data.imageFile1.data), data.imageFile1.type, "order1_" + data.storeName + "_" + dateStr);
+      const file1 = folder.createFile(blob1);
+      file1.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+      imageUrl1 = file1.getUrl();
+    }
+    if (data.imageFile2 && data.imageFile2.data) {
+      const blob2 = Utilities.newBlob(Utilities.base64Decode(data.imageFile2.data), data.imageFile2.type, "order2_" + data.storeName + "_" + dateStr);
+      const file2 = folder.createFile(blob2);
+      file2.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+      imageUrl2 = file2.getUrl();
+    }
+
+    // --- スプレッドシート書き込み ---
+    let itemsText = "";
+    data.items.forEach(function(item) {
+      sheet.appendRow([timestamp, data.storeName, data.email, item.maker, item.partNo, item.quantity, data.comments, imageUrl1, imageUrl2]);
+      itemsText += "・" + item.maker + " / " + item.partNo + " : " + item.quantity + "個\n";
+    });
+
+    // --- 顧客メール ---
+    if (data.email) {
+      MailApp.sendEmail(data.email, "【受注控え】名古屋花き商事本部", data.storeName + " 様\n\nご注文を承りました。\n\n明細:\n" + itemsText + "\n備考:\n" + (data.comments || "なし"));
+    }
+
+    // --- 管理者メール ---
+    const adminBody = "受注通知\n\n店名: " + data.storeName + "\nメール: " + (data.email || "未入力") + "\n商品:\n" + itemsText + "\n備考: " + data.comments + "\n画像1: " + imageUrl1 + "\n画像2: " + imageUrl2 + "\n詳細シート: " + sheetUrl;
+    MailApp.sendEmail(adminEmail, "【受注】" + data.storeName, adminBody);
+
+    // --- Teams通知（エラー回避用シンプル版） ---
+    try {
+      const teamsMessage = {
+        "text": "### 【受注通知】\n\n" +
+                 "**店名**: " + data.storeName + "\n" +
+                 "**顧客メール**: " + (data.email || "未入力") + "\n" +
+                 "**商品**:\n" + itemsText.replace(/\n/g, "\n\n") + 
+                 "**画像1**: " + (imageUrl1 !== "なし" ? "[確認](" + imageUrl1 + ")" : "なし") + "\n" +
+                 "**画像2**: " + (imageUrl2 !== "なし" ? "[確認](" + imageUrl2 + ")" : "なし") + "\n\n" +
+                 "--- \n" +
+                 "**[シートを開く](" + sheetUrl + ")**"
+      };
+      UrlFetchApp.fetch(teamsUrl, {
+        "method": "post",
+        "contentType": "application/json",
+        "payload": JSON.stringify(teamsMessage)
+      });
+    } catch (teamsErr) {
+      console.error("Teams通知のみ失敗: " + teamsErr);
+      // Teamsが失敗しても、処理全体を止めないようにします
+    }
+
+    return ContentService.createTextOutput(JSON.stringify({status: 'success'})).setMimeType(ContentService.MimeType.JSON);
+  } catch (err) {
+    return ContentService.createTextOutput(JSON.stringify({status: 'error', message: err.toString()})).setMimeType(ContentService.MimeType.JSON);
+  }
+}
