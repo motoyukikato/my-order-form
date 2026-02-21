@@ -6,21 +6,33 @@
     <title>名古屋花き商事本部受注アプリ</title>
     <script charset="utf-8" src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
     <style>
-        body { font-family: sans-serif; padding: 15px; background-color: #f4f4f4; }
+     body { font-family: sans-serif; padding: 15px; background-color: #f4f4f4; }
         .container { max-width: 500px; margin: 0 auto; background: white; padding: 20px; border-radius: 12px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
         h2 { font-size: 20px; text-align: center; color: #2c3e50; margin-bottom: 20px; }
+        
+        /* 注文内容の見出しを送信ボタンと同じ緑に変更 */
+        h3 { color: #28a745; border-left: 5px solid #28a745; padding-left: 10px; }
+
         .input-group { margin-bottom: 15px; }
         label { display: block; font-weight: bold; margin-bottom: 5px; font-size: 14px; }
         select, input, textarea { width: 100%; padding: 10px; box-sizing: border-box; border: 1px solid #ddd; border-radius: 6px; font-size: 16px; }
         .item-card { background: #fdfdfd; padding: 15px; border: 1px solid #e0e0e0; border-radius: 8px; margin-bottom: 15px; position: relative; }
         .item-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; border-bottom: 1px solid #eee; padding-bottom: 5px; }
-        .item-label { font-weight: bold; color: #28a745; }
+        
+        /* 「商品」ラベルを黒（kuro）に変更 */
+        .item-label { font-weight: bold; color: #000; }
+
         .remove-btn { background: #ff4d4d; color: white; border: none; padding: 4px 10px; border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: bold; }
-        .add-btn { background: #007bff; color: white; border: none; padding: 12px; border-radius: 6px; cursor: pointer; width: 100%; font-weight: bold; margin-bottom: 20px; }
+        
+        /* 「商品を追加する」ボタンをグレーに変更 */
+        .add-btn { background: #888; color: white; border: none; padding: 12px; border-radius: 6px; cursor: pointer; width: 100%; font-weight: bold; margin-bottom: 20px; }
+        
         #sendBtn { width: 100%; padding: 15px; background: #28a745; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 18px; font-weight: bold; }
         .loading { display: none; text-align: center; margin-top: 10px; font-weight: bold; }
         .save-info { font-size: 11px; color: #666; margin-top: 5px; }
-        #userInfo { font-size: 12px; color: #28a745; text-align: right; margin-bottom: 10px; font-weight: bold; }
+        
+        /* ユーザー名を黒（kuro）に変更 */
+        #userInfo { font-size: 12px; color: #000; text-align: right; margin-bottom: 10px; font-weight: bold; }
         
         /* 履歴セクションのスタイル（グレーに変更） */
         .history-section { display: none; margin-bottom: 20px; border: 1px solid #999; border-radius: 8px; overflow: hidden; }
