@@ -21,13 +21,28 @@
         .loading { display: none; text-align: center; margin-top: 10px; font-weight: bold; }
         .save-info { font-size: 11px; color: #666; margin-top: 5px; }
         #userInfo { font-size: 12px; color: #28a745; text-align: right; margin-bottom: 10px; font-weight: bold; }
+        
+        /* 履歴セクションのスタイル */
+        .history-section { display: none; margin-bottom: 20px; border: 1px solid #007bff; border-radius: 8px; overflow: hidden; }
+        .history-header { background: #007bff; color: white; padding: 8px; font-size: 14px; font-weight: bold; }
+        .history-list { max-height: 200px; overflow-y: auto; background: #fff; }
+        .history-item { padding: 10px; border-bottom: 1px solid #eee; font-size: 13px; cursor: pointer; }
+        .history-item:hover { background: #f0f7ff; }
+        .history-date { color: #666; font-size: 11px; }
     </style>
 </head>
 <body>
 
 <div class="container">
     <h2>名古屋花き商事本部注文フォーム</h2>
-    <div id="userInfo"></div>
+    <div id="userInfo">LIFF初期化中...</div>
+
+    <div id="historySection" class="history-section">
+        <div class="history-header">過去の注文履歴 (タップで再注文)</div>
+        <div id="historyList" class="history-list">
+            <div style="padding:10px;">履歴を読み込んでいます...</div>
+        </div>
+    </div>
 
     <div class="input-group">
         <label>店名</label>
@@ -100,6 +115,7 @@
 
 <script>
     const gasUrl = "https://script.google.com/macros/s/AKfycbxmDEvq0INh-E3hIMAScUCpdDVR6NskMEIbEX9fDQoSoQwys3RhOFu_CHH1EZG2troC/exec";
+    let currentUserProfile = null;
 
     const allMakers = [
         "あいはらぼうえき:アイハラ貿易（ポリラフィア)", "あすかしょうかい:アスカ商会", "あずわん:アズワン（試験管）", 
@@ -107,7 +123,7 @@
         "あーてぃふぃしゃる:アーティフィシャル", "あおやまりぼん:青山リボン", "あさひわいやー:朝日ワイヤー", "べるで:ヴェルデ",
         "おおちのうえん:大地農園", "おおぐちさんぎょう:大口産業", "だいてつ:大鉄", "だいどうくらふと:大同クラフト", "いんたーりんく:インターリンク",
         "だいせん:大仙", "うぉるなっと:ウォルナット", "えこぜりー:エコゼリー", "えるこみゅーん:エルコミューン", "えすあーるさーびす:SRサービス(デコジャリ）",
-        "えいちつーおー:エイチツーオー", "かめやまきゃんどる:カメヤマキャンドル", "かるなっく:カルナック", "きゅーふら:Q-FLA",
+        "えいちつーおー:エイチツーオー", "かめやまきゃンドる:カメヤマキャンドル", "かるなっく:カルナック", "きゅーふら:Q-FLA",
         "くれい:クレイ", "くりざーる:クリザール", "くれえ:クレエ", "ぐりーんはうす:グリーンハウス", "きゃびのちぇ:キャビノチェ",
         "ぐりーんぽっと:グリーンポット", "ぐろーばるあろー:グローバルアロー", "こあとれーでぃんぐ:コアトレーディング", 
         "こべんとがーでん:コベントガーデン", "さかげん:坂源", "さんわとれーでぃんぐ:三和トレーディング", 
@@ -162,12 +178,46 @@
         });
     }
 
+    // 履歴を読み込む関数
+    async function loadHistory(userId) {
+        const historySection = document.getElementById('historySection');
+        const historyList = document.getElementById('historyList');
+        historySection.style.display = 'block';
+
+        try {
+            const response = await fetch(`${gasUrl}?userId=${userId}`);
+            const history = await response.json();
+
+            if (history.length === 0) {
+                historyList.innerHTML = '<div style="padding:10px;">過去の注文履歴はありません。</div>';
+                return;
+            }
+
+            historyList.innerHTML = history.map(h => `
+                <div class="history-item" onclick="applyHistory('${h.maker}', '${h.partNo}', '${h.quantity}')">
+                    <span class="history-date">${h.date}</span><br>
+                    <strong>${h.maker}</strong> / ${h.partNo} (数量: ${h.quantity})
+                </div>
+            `).join('');
+        } catch (e) {
+            historyList.innerHTML = '<div style="padding:10px; color:red;">履歴の取得に失敗しました。</div>';
+        }
+    }
+
+    // 履歴をフォームに反映する関数
+    function applyHistory(maker, partNo, quantity) {
+        if (!confirm(`${maker} の再注文をフォームに追加しますか？`)) return;
+        addNewItemWithData(maker, partNo, quantity);
+    }
+
     async function initLiff() {
         try {
             await liff.init({ liffId: "2008835052-zCjbE0pV" }); 
             if (liff.isLoggedIn()) {
-                const profile = await liff.getProfile();
-                document.getElementById('userInfo').textContent = "ユーザー: " + profile.displayName;
+                currentUserProfile = await liff.getProfile();
+                document.getElementById('userInfo').textContent = "ユーザー: " + currentUserProfile.displayName;
+                // 履歴の読み込みを実行
+                loadHistory(currentUserProfile.userId);
             } else {
                 liff.login();
             }
@@ -191,7 +241,29 @@
         container.appendChild(newCard);
     }
 
-    // 画像を圧縮してBase64にする関数（新規追加）
+    // データを指定して商品を追加する（履歴用）
+    function addNewItemWithData(maker, partNo, quantity) {
+        const container = document.getElementById('itemContainer');
+        const cards = container.querySelectorAll('.item-card');
+        
+        // 1件目かつ未入力の場合は1件目を上書き、そうでなければ新規追加
+        let targetCard;
+        if (cards.length === 1 && !cards[0].querySelector('.partNo-input').value) {
+            targetCard = cards[0];
+        } else {
+            addNewItem();
+            const updatedCards = container.querySelectorAll('.item-card');
+            targetCard = updatedCards[updatedCards.length - 1];
+        }
+
+        // 直接値をセット
+        targetCard.querySelector('.category-select').value = "その他";
+        const makerSelect = targetCard.querySelector('.maker-select');
+        makerSelect.innerHTML = `<option value="${maker}">${maker}</option>`;
+        targetCard.querySelector('.partNo-input').value = partNo;
+        targetCard.querySelector('.quantity-input').value = quantity;
+    }
+
     const getResizedBase64 = (file) => new Promise((resolve) => {
         const reader = new FileReader();
         reader.readAsDataURL(file);
@@ -200,19 +272,14 @@
             img.src = event.target.result;
             img.onload = () => {
                 const canvas = document.createElement('canvas');
-                const MAX_WIDTH = 1000; // 幅を1000pxに制限（高画質を保ちつつ容量削減）
+                const MAX_WIDTH = 1000;
                 let width = img.width;
                 let height = img.height;
-
-                if (width > MAX_WIDTH) {
-                    height *= MAX_WIDTH / width;
-                    width = MAX_WIDTH;
-                }
+                if (width > MAX_WIDTH) { height *= MAX_WIDTH / width; width = MAX_WIDTH; }
                 canvas.width = width;
                 canvas.height = height;
                 const ctx = canvas.getContext('2d');
                 ctx.drawImage(img, 0, 0, width, height);
-                // 0.7程度の画質で圧縮
                 const base64 = canvas.toDataURL('image/jpeg', 0.7);
                 resolve({ data: base64.split(',')[1], type: 'image/jpeg' });
             };
@@ -243,10 +310,8 @@
         try {
             let imageData1 = null;
             let imageData2 = null;
-
             const file1 = document.getElementById('imageFile1').files[0];
             if (file1) imageData1 = await getResizedBase64(file1);
-
             const file2 = document.getElementById('imageFile2').files[0];
             if (file2) imageData2 = await getResizedBase64(file2);
 
@@ -258,13 +323,14 @@
                     items: items,
                     comments: document.getElementById('comments').value,
                     imageFile1: imageData1,
-                    imageFile2: imageData2
+                    imageFile2: imageData2,
+                    userId: currentUserProfile ? currentUserProfile.userId : "anonymous" // ★userIdを送信
                 })
             });
             
             const res = await response.json();
             if (res.status === 'success') { 
-                alert('注文完了！控えメールを送信しました。'); 
+                alert(res.message || '注文完了しました！'); 
                 liff.closeWindow(); 
             } else {
                 alert('サーバーエラー: ' + res.message);
