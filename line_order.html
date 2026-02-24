@@ -328,11 +328,13 @@
             if (file2) imageData2 = await getResizedBase64(file2);
 
             // 送信処理（mode: 'cors' を明示し、エラーハンドリングを強化）
-            const response = await fetch(gasUrl, {
+          // --- ここから書き換え ---
+            // 返事を待たずに送信を実行 (no-cors)
+            fetch(gasUrl, {
                 method: 'POST',
-                mode: 'cors', // ブラウザとの通信許可を安定させる
+                mode: 'no-cors', 
                 headers: {
-                    'Content-Type': 'text/plain;charset=utf-8', // GASでJSONを受け取るためのコツ
+                    'Content-Type': 'text/plain;charset=utf-8',
                 },
                 body: JSON.stringify({
                     storeName: storeName,
@@ -344,14 +346,11 @@
                     userId: currentUserProfile ? currentUserProfile.userId : "anonymous"
                 })
             });
-            
-            const res = await response.json();
-            if (res.status === 'success') { 
-                alert(res.message || '注文完了しました！'); 
-                liff.closeWindow(); 
-            } else {
-                alert('サーバーエラー: ' + res.message);
-            }
+
+            // 送信ボタンを押した瞬間に完了メッセージを出して閉じる
+            alert('注文を送信しました！\n（画像の保存に時間がかかる場合がありますが、そのまま閉じて大丈夫です）');
+            liff.closeWindow(); 
+            // --- ここまで書き換え ---
         } catch (e) { 
             alert('送信エラーが発生しました。通信環境を確認してください。'); 
         } finally {
