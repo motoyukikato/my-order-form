@@ -327,8 +327,13 @@
             const file2 = document.getElementById('imageFile2').files[0];
             if (file2) imageData2 = await getResizedBase64(file2);
 
+            // 送信処理（mode: 'cors' を明示し、エラーハンドリングを強化）
             const response = await fetch(gasUrl, {
                 method: 'POST',
+                mode: 'cors', // ブラウザとの通信許可を安定させる
+                headers: {
+                    'Content-Type': 'text/plain;charset=utf-8', // GASでJSONを受け取るためのコツ
+                },
                 body: JSON.stringify({
                     storeName: storeName,
                     email: email,
@@ -336,7 +341,7 @@
                     comments: document.getElementById('comments').value,
                     imageFile1: imageData1,
                     imageFile2: imageData2,
-                    userId: currentUserProfile ? currentUserProfile.userId : "anonymous" // ★userIdを送信
+                    userId: currentUserProfile ? currentUserProfile.userId : "anonymous"
                 })
             });
             
