@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>商品価格チェッカー</title>
+  <title>商品価格チェッカー（爆速版）</title>
   <style>
     body { font-family: sans-serif; margin: 0; overflow: hidden; background: #000; }
     #preview { width: 100vw; height: 60vh; position: relative; }
@@ -12,65 +12,97 @@
                 width: 70%; height: 20%; border: 2px solid #0f0; box-shadow: 0 0 0 2000px rgba(0,0,0,0.5); z-index: 10; }
     .info-panel { height: 40vh; background: white; padding: 20px; text-align: center; border-top-left-radius: 20px; border-top-right-radius: 20px; position: relative; z-index: 20; }
     #result { font-size: 1.2rem; font-weight: bold; color: #333; margin-top: 10px; }
+    .loading-text { color: #f39c12; font-weight: bold; }
   </style>
 </head>
 <body>
   <div id="preview"><div class="viewport"></div></div>
   <div class="info-panel">
-    <div id="status">バーコードをスキャンしてください</div>
-    <div id="result">準備中...</div>
+    <div id="status" class="loading-text">データを読み込み中...</div>
+    <div id="result">準備しています</div>
   </div>
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/quagga/0.12.1/quagga.min.js"></script>
   <script>
     const resultDiv = document.getElementById('result');
     const statusDiv = document.getElementById('status');
+    // あなたのGASのURL（/execまで）
     const GAS_URL = "https://script.google.com/macros/s/AKfycbzWjmJZDeCqYzqLjVMTEvbVC9jpLLJHCtBr0_I7lP5J0PyDLXyq02Ht3kPmqV1NifV9/exec";
+    
+    let productDatabase = []; // スマホ内に保存する商品リスト
     let isLocked = false;
+
+    // 1. ページ読み込み時にGASから全データを一括取得
+    async function loadDatabase() {
+      try {
+        const response = await fetch(GAS_URL);
+        if (!response.ok) throw new Error("Network error");
+        productDatabase = await response.json();
+        
+        statusDiv.innerText = "同期完了";
+        statusDiv.className = "";
+        resultDiv.innerText = "スキャン待機中";
+        
+        initScanner(); // データ取得完了後にカメラ起動
+      } catch (err) {
+        console.error(err);
+        alert("データの取得に失敗しました。電波の良い場所で再試行してください。");
+      }
+    }
 
     function initScanner() {
       Quagga.init({
-        inputStream: { type: "LiveStream", target: document.querySelector('#preview'),
+        inputStream: { 
+          type: "LiveStream", 
+          target: document.querySelector('#preview'),
           constraints: { facingMode: "environment" }
         },
         decoder: { readers: ["ean_reader"] }
       }, function(err) {
         if (err) { alert("カメラエラー: " + err.name); return; }
+        
+        // iPhone/Safari強制再生対策
+        const video = document.querySelector('#preview video');
+        if (video) {
+          video.setAttribute('playsinline', 'true');
+          video.muted = true;
+          video.play();
+        }
+        
         Quagga.start();
-        resultDiv.innerText = "スキャン待機中";
       });
     }
 
+    // 2. スキャン検知時の処理（スマホ内検索なので一瞬！）
     Quagga.onDetected(function(data) {
       if (isLocked) return;
       const code = data.codeResult.code;
       if (code.length !== 13 && code.length !== 8) return;
 
+      // productDatabaseの中からJANコードが一致するものを探す
+      const product = productDatabase.find(item => item.jan === code);
+
       isLocked = true;
-      statusDiv.innerText = "検索中: " + code;
       if (navigator.vibrate) navigator.vibrate(100);
 
-      // GASにデータを問い合わせに行く
-      fetch(`${GAS_URL}?code=${code}`)
-        .then(response => response.json())
-        .then(res => {
-          if (res.found) {
-            resultDiv.innerHTML = `<span style="color:blue;">${res.name}</span><br><span style="font-size:2rem;">¥${res.price}</span>`;
-          } else {
-            resultDiv.innerHTML = `未登録: ${code}`;
-          }
-          setTimeout(() => { 
-            isLocked = false; 
-            statusDiv.innerText = "スキャンしてください";
-          }, 3000);
-        })
-        .catch(err => {
-          alert("通信エラー: " + err);
-          isLocked = false;
-        });
+      if (product) {
+        // 見つかった場合
+        resultDiv.innerHTML = `<span style="color:blue;">${product.name}</span><br><span style="font-size:2rem;">¥${product.price}</span>`;
+        statusDiv.innerText = "読み取り成功";
+      } else {
+        // 見つからなかった場合
+        resultDiv.innerHTML = `未登録<br><span style="color:red; font-size:1rem;">${code}</span>`;
+        statusDiv.innerText = "データがありません";
+      }
+
+      // 2秒後にロック解除（連続スキャン防止）
+      setTimeout(() => {
+        isLocked = false;
+        statusDiv.innerText = "スキャンしてください";
+      }, 2000);
     });
 
-    window.onload = initScanner;
+    window.onload = loadDatabase;
   </script>
 </body>
 </html>
