@@ -348,17 +348,74 @@
         const btn = document.getElementById('sendBtn');
         const storeName = document.getElementById('storeName').value;
         const email = document.getElementById('email').value;
+        
+        // 1. 未入力チェック
         if (!storeName) { alert('店名を入れてください'); return; }
 
         const items = [];
         document.querySelectorAll('.item-card').forEach(card => {
             const m = card.querySelector('.maker-select').value;
-            if (m) items.push({ maker: m, partNo: card.querySelector('.partNo-input').value, quantity: card.querySelector('.quantity-input').value });
+            if (m) items.push({ 
+                maker: m, 
+                partNo: card.querySelector('.partNo-input').value, 
+                quantity: card.querySelector('.quantity-input').value 
+            });
         });
 
         if (items.length === 0 && !document.getElementById('imageFile1').files.length) { 
             alert('注文内容を入力するか画像を添付してください'); return; 
         }
+
+        // --- 🟢 重要：ボタンを即座にロックする ---
+        btn.disabled = true; // ボタンを無効化
+        btn.innerText = "送信中..."; // 文字を変える
+        btn.style.backgroundColor = "#888"; // 色をグレーに変える
+        document.getElementById('loadingMsg').style.display = 'block';
+
+        localStorage.setItem('storeName', storeName);
+        localStorage.setItem('email', email);
+
+        try {
+            let imageData1 = null;
+            let imageData2 = null;
+            const file1 = document.getElementById('imageFile1').files[0];
+            if (file1) imageData1 = await getResizedBase64(file1);
+            const file2 = document.getElementById('imageFile2').files[0];
+            if (file2) imageData2 = await getResizedBase64(file2);
+
+            // 送信処理
+            await fetch(gasUrl, {
+                method: 'POST',
+                mode: 'no-cors', 
+                headers: {
+                    'Content-Type': 'text/plain;charset=utf-8',
+                },
+                body: JSON.stringify({
+                    storeName: storeName,
+                    email: email,
+                    items: items,
+                    comments: document.getElementById('comments').value,
+                    imageFile1: imageData1,
+                    imageFile2: imageData2,
+                    userId: currentUserProfile ? currentUserProfile.userId : "anonymous"
+                })
+            });
+
+            // 送信成功時：ボタンは無効のまま、アラートを出して即座に画面を閉じる
+            alert('ご注文ありがとうございます！\n送信が完了しました。');
+            liff.closeWindow(); 
+
+        } catch (e) { 
+            // 失敗したときだけボタンを復活させて、再送できるようにする
+            alert('送信エラーが発生しました。もう一度お試しください。'); 
+            btn.disabled = false;
+            btn.innerText = "注文を送信する";
+            btn.style.backgroundColor = "#28a745";
+            document.getElementById('loadingMsg').style.display = 'none';
+        }
+        // ※以前のコードにあった finally { btn.disabled = false; } は削除しました。
+        // これにより、成功した場合はボタンが復活する隙を与えません。
+    }
 
         btn.disabled = true;
         document.getElementById('loadingMsg').style.display = 'block';
