@@ -121,7 +121,53 @@
         <textarea id="comments" rows="3"></textarea>
     </div>
 
+    <div style="margin-top: 30px; padding-top: 20px; border-top: 2px dashed #eee;">
+        <button type="button" id="nyukaBtn" onclick="handleNyukaClick()" style="width: 100%; padding: 12px; background: #007bff; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 16px; font-weight: bold; margin-bottom: 10px;">
+            <span id="nyukaBtnText">📦 直近の入荷予定を確認</span>
+        </button>
+        <p style="font-size: 11px; color: #666; text-align: center; margin-bottom: 20px;">※ボタンを押すとLINEに入荷情報が届きます</p>
+    </div>
+
     <button id="sendBtn" onclick="sendOrder()">注文を送信する</button>
+    ```
+
+---
+
+### 2. JavaScript部分の追加
+次に、画面を一番下までスクロールして、最後の `</script>` の**一つ上の行**に、以下の「連打防止プログラム」を貼り付けてください。
+
+```javascript
+    // 入荷情報ボタンの連打防止ロジック
+    async function handleNyukaClick() {
+        const btn = document.getElementById('nyukaBtn');
+        const btnText = document.getElementById('nyukaBtnText');
+
+        // 1. ボタンを即座に無効化
+        btn.disabled = true;
+        btn.style.opacity = "0.5";
+        btnText.innerText = "取得中...";
+
+        try {
+            // 2. LINEのトーク画面に「入荷情報」と自動送信させる
+            await liff.sendMessages([{
+                type: 'text',
+                text: '入荷情報'
+            }]);
+            
+            alert('LINEに入荷情報を送信しました。\nこの画面を閉じてトーク画面を確認してください。');
+            
+        } catch (e) {
+            console.error(e);
+            alert('エラーが発生しました。トーク画面で直接「入荷情報」と入力してください。');
+        } finally {
+            // 3. 5秒間は再表示させない（連打防止のダメ押し）
+            setTimeout(() => {
+                btn.disabled = false;
+                btn.style.opacity = "1";
+                btnText.innerText = "📦 直近の入荷予定を確認";
+            }, 5000);
+        }
+    }
     <div id="loadingMsg" class="loading">送信中（画像圧縮含む）...</div>
 </div>
 
