@@ -19,7 +19,7 @@
         .remove-btn { background: #ff4d4d; color: white; border: none; padding: 4px 10px; border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: bold; }
         .add-btn { background: #888; color: white; border: none; padding: 12px; border-radius: 6px; cursor: pointer; width: 100%; font-weight: bold; margin-bottom: 20px; }
         #sendBtn { width: 100%; padding: 15px; background: #28a745; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 18px; font-weight: bold; }
-        .loading { display: none; text-align: center; margin-top: 10px; font-weight: bold; color: #d9534f; }
+        .loading { display: none; text-align: center; margin-top: 10px; font-weight: bold; }
         #userInfo { font-size: 12px; color: #000; text-align: right; margin-bottom: 10px; font-weight: bold; }
         .history-section { display: none; margin-bottom: 20px; border: 1px solid #999; border-radius: 8px; overflow: hidden; }
         .history-header { background: #777; color: white; padding: 8px; font-size: 14px; font-weight: bold; }
@@ -56,31 +56,20 @@
     
     <div id="itemContainer">
         <div class="item-card">
-            <div class="item-header">
-                <span class="item-label">商品</span>
-            </div>
+            <div class="item-header"><span class="item-label">商品</span></div>
             <div class="input-group">
                 <label>五十音インデックス</label>
                 <select class="category-select" onchange="updateMakerOptions(this)">
                     <option value="">▼ 行を選択</option>
-                    <option value="あ">あ行</option>
-                    <option value="か">か行</option>
-                    <option value="さ">さ行</option>
-                    <option value="た">た行</option>
-                    <option value="な">な行</option>
-                    <option value="は">は行</option>
-                    <option value="ま">ま行</option>
-                    <option value="や">や行</option>
-                    <option value="ら">ら行</option>
-                    <option value="わ">わ行</option>
-                    <option value="その他">その他</option>
+                    <option value="あ">あ行</option><option value="か">か行</option><option value="さ">さ行</option>
+                    <option value="た">た行</option><option value="な">な行</option><option value="は">は行</option>
+                    <option value="ま">ま行</option><option value="や">や行</option><option value="ら">ら行</option>
+                    <option value="わ">わ行</option><option value="その他">その他</option>
                 </select>
             </div>
             <div class="input-group">
                 <label>メーカー</label>
-                <select class="maker-select">
-                    <option value="">行を選んでください</option>
-                </select>
+                <select class="maker-select"><option value="">行を選んでください</option></select>
             </div>
             <div class="input-group">
                 <label>品番 / 数量</label>
@@ -92,35 +81,16 @@
 
     <button type="button" class="add-btn" onclick="addNewItem()">＋ 商品を追加する</button>
 
-    <div class="input-group">
-        <label>画像添付1</label>
-        <input type="file" id="imageFile1" accept="image/*">
-    </div>
-    <div class="input-group">
-        <label>画像添付2</label>
-        <input type="file" id="imageFile2" accept="image/*">
-    </div>
-
-    <div class="input-group">
-        <label>備考</label>
-        <textarea id="comments" rows="3"></textarea>
-    </div>
-
-    <div style="margin-top: 30px; padding-top: 20px; border-top: 2px dashed #eee;">
-        <button type="button" id="nyukaBtn" onclick="handleNyukaClick()" style="width: 100%; padding: 12px; background: #007bff; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 16px; font-weight: bold; margin-bottom: 10px;">
-            <span id="nyukaBtnText">📦 直近の入荷予定を確認</span>
-        </button>
-        <p style="font-size: 11px; color: #666; text-align: center; margin-bottom: 20px;">※ボタンを押すとLINEに入荷情報が届きます</p>
-    </div>
+    <div class="input-group"><label>画像添付1</label><input type="file" id="imageFile1" accept="image/*"></div>
+    <div class="input-group"><label>画像添付2</label><input type="file" id="imageFile2" accept="image/*"></div>
+    <div class="input-group"><label>備考</label><textarea id="comments" rows="3"></textarea></div>
 
     <button id="sendBtn" onclick="sendOrder()">注文を送信する</button>
-    <div id="loadingMsg" class="loading">送信中（画像圧縮含む）...</div>
+    <div id="loadingMsg" class="loading">送信中...</div>
 </div>
 
 <script>
-    // ★重要：ここをご自身のデプロイURLに書き換えてください
-    const gasUrl = "https://script.google.com/macros/s/AKfycbwvjpBJCyHy7UH11rM1Bt4Y7PisrQMGBX3CwrUMDRq7UbUNmgdz9p-duI4FZ48saUrz/exec";
-    
+    const gasUrl = "あなたの最新のデプロイURL"; // ★ここを必ず差し替えてください
     let currentUserProfile = null;
 
     const allMakers = [
@@ -138,7 +108,7 @@
         "とうきょうりぼん:東京リボン", "とうきょうかんかん:東京かんかん", "とすだいす:TOSSDICE", "だんぼーる:段ボール",
         "とうきょうどう:東京堂", "とーく:トーク", "どりーむふぁーむすずか:ドリームファームスズカ", "とうか:東花", "とうほうぼうえき:東方貿易",
         "ねいちゃーでざいんず:ネイチャーデザインズ", "ぱれすかがく:パレス化学", "ぱれ:パレ", "ぽっしゅりびんぐ:ポッシュリビング",
-        "ふぁーむ:FARM", "はなりんくす:花Links", "ふろーネット:flonet", "ほわいえ:ホワイエ", "は花のそのくぼた:花のそのくぼた",
+        "ふぁーむ:FARM", "はなりんくす:花Links", "ふろーネット:flonet", "ほわいえ:ホワイエ", "はなのそのくぼた:花のそのくぼた",
         "ふろーるえばー:フロールエバー", "ふらわーべーす:フラワーベース", "ぷらすがーでん:プラスガーデン", 
         "ぼぶくらふと:ボブクラフト", "まつむらこうげい:松村工芸", "ほしの:星野",
         "まぐねっと:マグネット", "まるこうせいとう:丸滉製陶", "まるまひらのとうきてん:丸又平野陶器店", 
@@ -167,16 +137,9 @@
         const row = catSelect.value;
         const makerSelect = catSelect.closest('.item-card').querySelector('.maker-select');
         makerSelect.innerHTML = '<option value="">選択してください</option>';
-        if (row === "その他") {
-            makerSelect.innerHTML = '<option value="備考に記入">備考に記入してください</option>';
-            return;
-        }
-        if (!row) {
-            makerSelect.innerHTML = '<option value="">行を選んでください</option>';
-            return;
-        }
-        const filtered = allMakers.filter(item => getKanaRow(item.split(':')[0]) === row);
-        filtered.forEach(item => {
+        if (row === "その他") { makerSelect.innerHTML = '<option value="備考に記入">備考に記入</option>'; return; }
+        if (!row) { makerSelect.innerHTML = '<option value="">行を選んでください</option>'; return; }
+        allMakers.filter(item => getKanaRow(item.split(':')[0]) === row).forEach(item => {
             const name = item.split(':')[1];
             const opt = document.createElement('option');
             opt.value = opt.textContent = name;
@@ -198,24 +161,16 @@
                         <strong>${h.maker}</strong> / ${h.partNo} (数量: ${h.quantity})
                     </div>
                 `).join('');
-            } else {
-                historySection.style.display = 'none';
-            }
-        } catch (e) { console.error("履歴取得失敗", e); }
+            } else { historySection.style.display = 'none'; }
+        } catch (e) { console.error("History Error", e); }
     }
 
     function applyHistory(maker, partNo, quantity) {
-        if (!confirm(`${maker} をフォームに追加しますか？`)) return;
+        if (!confirm(`${maker} を追加しますか？`)) return;
         const container = document.getElementById('itemContainer');
         const cards = container.querySelectorAll('.item-card');
-        let targetCard;
-        if (cards.length === 1 && !cards[0].querySelector('.partNo-input').value) {
-            targetCard = cards[0];
-        } else {
-            addNewItem();
-            const updatedCards = container.querySelectorAll('.item-card');
-            targetCard = updatedCards[updatedCards.length - 1];
-        }
+        let targetCard = (cards.length === 1 && !cards[0].querySelector('.partNo-input').value) ? cards[0] : null;
+        if (!targetCard) { addNewItem(); const uCards = container.querySelectorAll('.item-card'); targetCard = uCards[uCards.length - 1]; }
         targetCard.querySelector('.category-select').value = "その他";
         targetCard.querySelector('.maker-select').innerHTML = `<option value="${maker}">${maker}</option>`;
         targetCard.querySelector('.partNo-input').value = partNo;
@@ -233,105 +188,42 @@
         container.appendChild(newCard);
     }
 
-    async function handleNyukaClick() {
-        const btn = document.getElementById('nyukaBtn');
-        const btnText = document.getElementById('nyukaBtnText');
-        btn.disabled = true;
-        btnText.innerText = "送信中...";
-
-        try {
-            await liff.sendMessages([{ type: 'text', text: '入荷情報' }]);
-            alert('LINEに入荷情報を送信しました。\nこの画面を閉じてトーク画面を確認してください。');
-        } catch (e) {
-            alert('エラー: トーク画面で直接「入荷情報」と入力してください。');
-        } finally {
-            setTimeout(() => {
-                btn.disabled = false;
-                btnText.innerText = "📦 直近の入荷予定を確認";
-            }, 5000);
-        }
-    }
-
-    const getResizedBase64 = (file) => new Promise((resolve) => {
-        const reader = new FileReader();
-        reader.readAsDataURL(file);
-        reader.onload = (event) => {
-            const img = new Image();
-            img.src = event.target.result;
-            img.onload = () => {
-                const canvas = document.createElement('canvas');
-                const MAX_WIDTH = 1000;
-                let width = img.width, height = img.height;
-                if (width > MAX_WIDTH) { height *= MAX_WIDTH / width; width = MAX_WIDTH; }
-                canvas.width = width; canvas.height = height;
-                const ctx = canvas.getContext('2d');
-                ctx.drawImage(img, 0, 0, width, height);
-                resolve({ data: canvas.toDataURL('image/jpeg', 0.7).split(',')[1], type: 'image/jpeg' });
-            };
-        };
-    });
-
     async function sendOrder() {
         const btn = document.getElementById('sendBtn');
         const storeName = document.getElementById('storeName').value;
         if (!storeName) { alert('店名を入れてください'); return; }
-
         const items = [];
         document.querySelectorAll('.item-card').forEach(card => {
             const m = card.querySelector('.maker-select').value;
             if (m) items.push({ maker: m, partNo: card.querySelector('.partNo-input').value, quantity: card.querySelector('.quantity-input').value });
         });
-
-        btn.disabled = true;
-        btn.innerText = "送信中...";
-        document.getElementById('loadingMsg').style.display = 'block';
-
+        btn.disabled = true; btn.innerText = "送信中..."; document.getElementById('loadingMsg').style.display = 'block';
         try {
-            let img1 = null, img2 = null;
-            const f1 = document.getElementById('imageFile1').files[0];
-            const f2 = document.getElementById('imageFile2').files[0];
-            if (f1) img1 = await getResizedBase64(f1);
-            if (f2) img2 = await getResizedBase64(f2);
-
             await fetch(gasUrl, {
-                method: 'POST',
-                mode: 'no-cors',
+                method: 'POST', mode: 'no-cors',
                 body: JSON.stringify({
                     storeName: storeName,
                     email: document.getElementById('email').value,
                     items: items,
                     comments: document.getElementById('comments').value,
-                    imageFile1: img1,
-                    imageFile2: img2,
-                    userId: currentUserProfile ? currentUserProfile.userId : "anonymous"
+                    userId: currentUserProfile.userId
                 })
             });
-
             localStorage.setItem('storeName', storeName);
             localStorage.setItem('email', document.getElementById('email').value);
-            alert('注文を送信しました！');
-            liff.closeWindow();
-        } catch (e) {
-            alert('送信エラー');
-            btn.disabled = false;
-            btn.innerText = "注文を送信する";
-            document.getElementById('loadingMsg').style.display = 'none';
-        }
+            alert('注文を送信しました！'); liff.closeWindow();
+        } catch (e) { alert('送信エラー'); btn.disabled = false; btn.innerText = "注文を送信する"; }
     }
 
     async function initLiff() {
         try {
             await liff.init({ liffId: "2008835052-zCjbE0pV" });
-            if (!liff.isLoggedIn()) {
-                liff.login();
-            } else {
+            if (!liff.isLoggedIn()) { liff.login(); } else {
                 currentUserProfile = await liff.getProfile();
                 document.getElementById('userInfo').textContent = "ユーザー: " + currentUserProfile.displayName;
                 loadHistory(currentUserProfile.userId);
             }
-        } catch (error) {
-            document.getElementById('userInfo').textContent = "初期化失敗";
-        }
+        } catch (error) { document.getElementById('userInfo').textContent = "初期化失敗"; }
     }
 
     window.onload = function() {
