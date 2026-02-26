@@ -188,31 +188,51 @@
         container.appendChild(newCard);
     }
 
-    async function sendOrder() {
+   async function sendOrder() {
         const btn = document.getElementById('sendBtn');
         const storeName = document.getElementById('storeName').value;
         if (!storeName) { alert('店名を入れてください'); return; }
+
         const items = [];
         document.querySelectorAll('.item-card').forEach(card => {
             const m = card.querySelector('.maker-select').value;
-            if (m) items.push({ maker: m, partNo: card.querySelector('.partNo-input').value, quantity: card.querySelector('.quantity-input').value });
+            const p = card.querySelector('.partNo-input').value;
+            const q = card.querySelector('.quantity-input').value;
+            if (m) items.push({ maker: m, partNo: p, quantity: q });
         });
-        btn.disabled = true; btn.innerText = "送信中..."; document.getElementById('loadingMsg').style.display = 'block';
+
+        if (items.length === 0) { alert('注文商品を入力してください'); return; }
+
+        btn.disabled = true; 
+        btn.innerText = "送信中..."; 
+        document.getElementById('loadingMsg').style.display = 'block';
+
+        const orderData = {
+            storeName: storeName,
+            email: document.getElementById('email').value,
+            items: items,
+            comments: document.getElementById('comments').value,
+            userId: currentUserProfile ? currentUserProfile.userId : "unknown"
+        };
+
         try {
+            // ★ポイント：mode: 'no-cors' を削除し、headers を追加
             await fetch(gasUrl, {
-                method: 'POST', mode: 'no-cors',
-                body: JSON.stringify({
-                    storeName: storeName,
-                    email: document.getElementById('email').value,
-                    items: items,
-                    comments: document.getElementById('comments').value,
-                    userId: currentUserProfile.userId
-                })
+                method: 'POST',
+                headers: { 'Content-Type': 'text/plain' }, // GASで最も安定して受信できる設定です
+                body: JSON.stringify(orderData)
             });
+
             localStorage.setItem('storeName', storeName);
             localStorage.setItem('email', document.getElementById('email').value);
-            alert('注文を送信しました！'); liff.closeWindow();
-        } catch (e) { alert('送信エラー'); btn.disabled = false; btn.innerText = "注文を送信する"; }
+            alert('注文を送信しました！'); 
+            liff.closeWindow();
+        } catch (e) { 
+            console.error(e);
+            alert('送信に失敗しました。'); 
+            btn.disabled = false; 
+            btn.innerText = "注文を送信する"; 
+        }
     }
 
     async function initLiff() {
