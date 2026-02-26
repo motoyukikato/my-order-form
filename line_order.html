@@ -90,7 +90,6 @@
     <button id="sendBtn" onclick="sendOrder()">注文を送信する</button>
     <div id="loadingMsg" class="loading">送信中...</div>
 </div>
-
 <script>
     const gasUrl = "https://script.google.com/macros/s/AKfycbzhP0g5KldIuA1Iw7av8bdwvIfDSAQc67-cF9cQ0T3n_zScbHqGyGkca5f4BVGk8OyL/exec"; 
     let currentUserProfile = null;
@@ -149,14 +148,16 @@
         });
     }
 
-    // --- 履歴読み込み関数 ---
+    // --- 履歴読み込み関数（確実に動くように調整） ---
     async function loadHistory(userId) {
         const historySection = document.getElementById('historySection');
         const historyList = document.getElementById('historyList');
+        if(!userId) return;
 
         try {
-            const response = await fetch(`${gasUrl}?userId=${userId}`);
-            const history = await response.json(); // GASのdoGetから返る配列
+            // キャッシュ対策でタイムスタンプを付与
+            const response = await fetch(`${gasUrl}?userId=${userId}&t=${new Date().getTime()}`);
+            const history = await response.json();
 
             if (Array.isArray(history) && history.length > 0) {
                 historySection.style.display = 'block';
@@ -261,13 +262,18 @@
     async function initLiff() {
         try {
             await liff.init({ liffId: "2008835052-zCjbE0pV" });
-            if (!liff.isLoggedIn()) { liff.login(); } else {
+            if (!liff.isLoggedIn()) { 
+                liff.login(); 
+            } else {
                 currentUserProfile = await liff.getProfile();
                 document.getElementById('userInfo').textContent = "ユーザー: " + currentUserProfile.displayName;
-                // 履歴のみを読み込む
-                loadHistory(currentUserProfile.userId);
+                // 履歴を読み込む
+                await loadHistory(currentUserProfile.userId);
             }
-        } catch (e) { document.getElementById('userInfo').textContent = "初期化失敗"; }
+        } catch (e) { 
+            document.getElementById('userInfo').textContent = "初期化失敗"; 
+            console.error(e);
+        }
     }
 
     window.onload = function() {
@@ -276,5 +282,6 @@
         if (localStorage.getItem('email')) document.getElementById('email').value = localStorage.getItem('email');
     };
 </script>
+
 </body>
 </html>
