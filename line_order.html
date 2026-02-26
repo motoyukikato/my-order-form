@@ -81,8 +81,7 @@
 
     <button type="button" class="add-btn" onclick="addNewItem()">＋ 商品を追加する</button>
 
-    <div class="input-group"><label>画像添付1</label><input type="file" id="imageFile1" accept="image/*"></div>
-    <div class="input-group"><label>画像添付2</label><input type="file" id="imageFile2" accept="image/*"></div>
+    <div class="input-group"><label>画像添付</label><input type="file" id="imageFile1" accept="image/*"></div>
     <div class="input-group"><label>備考</label><textarea id="comments" rows="3"></textarea></div>
 
     <button id="sendBtn" onclick="sendOrder()">注文を送信する</button>
@@ -90,12 +89,12 @@
 </div>
 
 <script>
-    const gasUrl = "https://script.google.com/macros/s/AKfycbxyO900J3c7fk5h7uYT-kPtAK3bLodJXuzMaQiZKCbmRlCTJvqdCxDuN4nqXTCQNdBV/exec"; // ★ここを必ず差し替えてください
+    const gasUrl = "https://script.google.com/macros/s/AKfycbxyO900J3c7fk5h7uYT-kPtAK3bLodJXuzMaQiZKCbmRlCTJvqdCxDuN4nqXTCQNdBV/exec"; 
     let currentUserProfile = null;
 
     const allMakers = [
         "あいはらぼうえき:アイハラ貿易（ポリラフィア)", "あすかしょうかい:アスカ商会", "あずわん:アズワン（試験管）", 
-        "あもろーさ:アモローサ", "あむーるでふるーる:アムールデフルール", "あんこーぽれーしょん:アンコーポレーション", 
+        "あもろーさ:アムールデフルール", "あむーるでふるーる:アムールデフルール", "あんこーぽれーしょん:アンコーポレーション", 
         "あーてぃふぃしゃる:アーティフィシャル", "あおやまりぼん:青山リボン", "あさひわいやー:朝日ワイヤー", "べるで:ヴェルデ",
         "おおちのうえん:大地農園", "おおぐちさんぎょう:大口産業", "だいてつ:大鉄", "だいどうくらふと:大同クラフト", "いんたーりんく:インターリンク",
         "だいせん:大仙", "うぉるなっと:ウォルナット", "えこぜりー:エコゼリー", "えるこみゅーん:エルコミューン", "えすあーるさーびす:SRサービス(デコジャリ）",
@@ -108,7 +107,7 @@
         "とうきょうりぼん:東京リボン", "とうきょうかんかん:東京かんかん", "とすだいす:TOSSDICE", "だんぼーる:段ボール",
         "とうきょうどう:東京堂", "とーく:トーク", "どりーむふぁーむすずか:ドリームファームスズカ", "とうか:東花", "とうほうぼうえき:東方貿易",
         "ねいちゃーでざいんず:ネイチャーデザインズ", "ぱれすかがく:パレス化学", "ぱれ:パレ", "ぽっしゅりびんぐ:ポッシュリビング",
-        "ふぁーむ:FARM", "はなりんくす:花Links", "ふろーネット:flonet", "ほわいえ:ホワイエ", "はなのそのくぼた:花のそのくぼた",
+        "ふぁーむ:FARM", "はなりんくす:花Links", "ふろーネット:flonet", "ほわいえ:ホワイエ", "は花のそのくぼた:花のそのくぼた",
         "ふろーるえばー:フロールエバー", "ふらわーべーす:フラワーベース", "ぷらすがーでん:プラスガーデン", 
         "ぼぶくらふと:ボブクラフト", "まつむらこうげい:松村工芸", "ほしの:星野",
         "まぐねっと:マグネット", "まるこうせいとう:丸滉製陶", "まるまひらのとうきてん:丸又平野陶器店", 
@@ -188,7 +187,7 @@
         container.appendChild(newCard);
     }
 
-   async function sendOrder() {
+    async function sendOrder() {
         const btn = document.getElementById('sendBtn');
         const storeName = document.getElementById('storeName').value;
         if (!storeName) { alert('店名を入れてください'); return; }
@@ -207,31 +206,47 @@
         btn.innerText = "送信中..."; 
         document.getElementById('loadingMsg').style.display = 'block';
 
-        const orderData = {
-            storeName: storeName,
-            email: document.getElementById('email').value,
-            items: items,
-            comments: document.getElementById('comments').value,
-            userId: currentUserProfile ? currentUserProfile.userId : "unknown"
+        const fileInput = document.getElementById('imageFile1');
+        const file = fileInput.files[0];
+
+        const executePost = async (imageData = null, fileName = null) => {
+            const orderData = {
+                storeName: storeName,
+                email: document.getElementById('email').value,
+                items: items,
+                comments: document.getElementById('comments').value,
+                userId: currentUserProfile ? currentUserProfile.userId : "unknown",
+                imageData: imageData,
+                fileName: fileName
+            };
+
+            try {
+                await fetch(gasUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'text/plain' },
+                    body: JSON.stringify(orderData)
+                });
+                localStorage.setItem('storeName', storeName);
+                localStorage.setItem('email', document.getElementById('email').value);
+                alert('注文を送信しました！'); 
+                liff.closeWindow();
+            } catch (e) { 
+                console.error(e);
+                alert('送信に失敗しました。'); 
+                btn.disabled = false; 
+                btn.innerText = "注文を送信する"; 
+                document.getElementById('loadingMsg').style.display = 'none';
+            }
         };
 
-        try {
-            // ★ポイント：mode: 'no-cors' を削除し、headers を追加
-            await fetch(gasUrl, {
-                method: 'POST',
-                headers: { 'Content-Type': 'text/plain' }, // GASで最も安定して受信できる設定です
-                body: JSON.stringify(orderData)
-            });
-
-            localStorage.setItem('storeName', storeName);
-            localStorage.setItem('email', document.getElementById('email').value);
-            alert('注文を送信しました！'); 
-            liff.closeWindow();
-        } catch (e) { 
-            console.error(e);
-            alert('送信に失敗しました。'); 
-            btn.disabled = false; 
-            btn.innerText = "注文を送信する"; 
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = async function(e) {
+                await executePost(e.target.result, file.name);
+            };
+            reader.readAsDataURL(file);
+        } else {
+            await executePost();
         }
     }
 
