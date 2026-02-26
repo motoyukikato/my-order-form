@@ -81,7 +81,8 @@
 
     <button type="button" class="add-btn" onclick="addNewItem()">＋ 商品を追加する</button>
 
-    <div class="input-group"><label>画像添付</label><input type="file" id="imageFile1" accept="image/*"></div>
+   <div class="input-group"><label>画像添付1</label><input type="file" id="imageFile1" accept="image/*"></div>
+    <div class="input-group"><label>画像添付2</label><input type="file" id="imageFile2" accept="image/*"></div>
     <div class="input-group"><label>備考</label><textarea id="comments" rows="3"></textarea></div>
 
     <button id="sendBtn" onclick="sendOrder()">注文を送信する</button>
@@ -89,7 +90,7 @@
 </div>
 
 <script>
-    const gasUrl = "https://script.google.com/macros/s/AKfycbxyO900J3c7fk5h7uYT-kPtAK3bLodJXuzMaQiZKCbmRlCTJvqdCxDuN4nqXTCQNdBV/exec"; 
+    const gasUrl = "https://script.google.com/macros/s/AKfycbzXfHPBkdcAsojKe_dKC-XQ_PDHQyd5Zwo2IjLBQaWqxATOlEes5w5sUb5I-afITP33/exec"; 
     let currentUserProfile = null;
 
     const allMakers = [
@@ -186,7 +187,7 @@
         newCard.querySelector('.category-select').value = "";
         container.appendChild(newCard);
     }
-
+// --- ここからが画像2枚送信の重要な修正部分 ---
     async function sendOrder() {
         const btn = document.getElementById('sendBtn');
         const storeName = document.getElementById('storeName').value;
@@ -199,54 +200,53 @@
             const q = card.querySelector('.quantity-input').value;
             if (m) items.push({ maker: m, partNo: p, quantity: q });
         });
-
         if (items.length === 0) { alert('注文商品を入力してください'); return; }
 
         btn.disabled = true; 
         btn.innerText = "送信中..."; 
         document.getElementById('loadingMsg').style.display = 'block';
 
-        const fileInput = document.getElementById('imageFile1');
-        const file = fileInput.files[0];
-
-        const executePost = async (imageData = null, fileName = null) => {
-            const orderData = {
-                storeName: storeName,
-                email: document.getElementById('email').value,
-                items: items,
-                comments: document.getElementById('comments').value,
-                userId: currentUserProfile ? currentUserProfile.userId : "unknown",
-                imageData: imageData,
-                fileName: fileName
-            };
-
-            try {
-                await fetch(gasUrl, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'text/plain' },
-                    body: JSON.stringify(orderData)
-                });
-                localStorage.setItem('storeName', storeName);
-                localStorage.setItem('email', document.getElementById('email').value);
-                alert('注文を送信しました！'); 
-                liff.closeWindow();
-            } catch (e) { 
-                console.error(e);
-                alert('送信に失敗しました。'); 
-                btn.disabled = false; 
-                btn.innerText = "注文を送信する"; 
-                document.getElementById('loadingMsg').style.display = 'none';
-            }
+        // ファイル読み取り用補助関数
+        const readFile = (id) => {
+            const file = document.getElementById(id).files[0];
+            return new Promise((resolve) => {
+                if (!file) resolve(null);
+                else {
+                    const reader = new FileReader();
+                    reader.onload = (e) => resolve({ data: e.target.result, name: file.name });
+                    reader.readAsDataURL(file);
+                }
+            });
         };
 
-        if (file) {
-            const reader = new FileReader();
-            reader.onload = async function(e) {
-                await executePost(e.target.result, file.name);
-            };
-            reader.readAsDataURL(file);
-        } else {
-            await executePost();
+        // 2つのファイルを並列で読み込み
+        const [img1, img2] = await Promise.all([readFile('imageFile1'), readFile('imageFile2')]);
+        const images = [img1, img2].filter(i => i !== null); // 選択された画像だけを配列にする
+
+        const orderData = {
+            storeName: storeName,
+            email: document.getElementById('email').value,
+            items: items,
+            comments: document.getElementById('comments').value,
+            userId: currentUserProfile ? currentUserProfile.userId : "unknown",
+            images: images // 配列として送信
+        };
+
+        try {
+            await fetch(gasUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'text/plain' },
+                body: JSON.stringify(orderData)
+            });
+            localStorage.setItem('storeName', storeName);
+            localStorage.setItem('email', document.getElementById('email').value);
+            alert('注文を送信しました！'); 
+            liff.closeWindow();
+        } catch (e) {
+            alert('送信に失敗しました。');
+            btn.disabled = false;
+            btn.innerText = "注文を送信する";
+            document.getElementById('loadingMsg').style.display = 'none';
         }
     }
 
@@ -258,7 +258,7 @@
                 document.getElementById('userInfo').textContent = "ユーザー: " + currentUserProfile.displayName;
                 loadHistory(currentUserProfile.userId);
             }
-        } catch (error) { document.getElementById('userInfo').textContent = "初期化失敗"; }
+        } catch (e) { document.getElementById('userInfo').textContent = "初期化失敗"; }
     }
 
     window.onload = function() {
