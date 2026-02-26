@@ -6,35 +6,21 @@
     <title>名古屋花き商事本部受注アプリ</title>
     <script charset="utf-8" src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
     <style>
-     body { font-family: sans-serif; padding: 15px; background-color: #f4f4f4; }
+        body { font-family: sans-serif; padding: 15px; background-color: #f4f4f4; }
         .container { max-width: 500px; margin: 0 auto; background: white; padding: 20px; border-radius: 12px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
         h2 { font-size: 20px; text-align: center; color: #2c3e50; margin-bottom: 20px; }
-        
-        /* 注文内容の見出しを送信ボタンと同じ緑に変更 */
         h3 { color: #28a745; border-left: 5px solid #28a745; padding-left: 10px; }
-
         .input-group { margin-bottom: 15px; }
         label { display: block; font-weight: bold; margin-bottom: 5px; font-size: 14px; }
         select, input, textarea { width: 100%; padding: 10px; box-sizing: border-box; border: 1px solid #ddd; border-radius: 6px; font-size: 16px; }
         .item-card { background: #fdfdfd; padding: 15px; border: 1px solid #e0e0e0; border-radius: 8px; margin-bottom: 15px; position: relative; }
         .item-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; border-bottom: 1px solid #eee; padding-bottom: 5px; }
-        
-        /* 「商品」ラベルを黒（kuro）に変更 */
         .item-label { font-weight: bold; color: #000; }
-
         .remove-btn { background: #ff4d4d; color: white; border: none; padding: 4px 10px; border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: bold; }
-        
-        /* 「商品を追加する」ボタンをグレーに変更 */
         .add-btn { background: #888; color: white; border: none; padding: 12px; border-radius: 6px; cursor: pointer; width: 100%; font-weight: bold; margin-bottom: 20px; }
-        
         #sendBtn { width: 100%; padding: 15px; background: #28a745; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 18px; font-weight: bold; }
-        .loading { display: none; text-align: center; margin-top: 10px; font-weight: bold; }
-        .save-info { font-size: 11px; color: #666; margin-top: 5px; }
-        
-        /* ユーザー名を黒（kuro）に変更 */
+        .loading { display: none; text-align: center; margin-top: 10px; font-weight: bold; color: #d9534f; }
         #userInfo { font-size: 12px; color: #000; text-align: right; margin-bottom: 10px; font-weight: bold; }
-        
-        /* 履歴セクションのスタイル（グレーに変更） */
         .history-section { display: none; margin-bottom: 20px; border: 1px solid #999; border-radius: 8px; overflow: hidden; }
         .history-header { background: #777; color: white; padding: 8px; font-size: 14px; font-weight: bold; }
         .history-list { max-height: 200px; overflow-y: auto; background: #fff; }
@@ -63,7 +49,6 @@
     <div class="input-group">
         <label>メールアドレス</label>
         <input type="email" id="email" placeholder="控え送信先">
-        <p class="save-info">※店名とメールは自動で保存されます</p>
     </div>
 
     <hr>
@@ -129,50 +114,13 @@
     </div>
 
     <button id="sendBtn" onclick="sendOrder()">注文を送信する</button>
-    ```
-
----
-
-### 2. JavaScript部分の追加
-次に、画面を一番下までスクロールして、最後の `</script>` の**一つ上の行**に、以下の「連打防止プログラム」を貼り付けてください。
-
-```javascript
-    // 入荷情報ボタンの連打防止ロジック
-    async function handleNyukaClick() {
-        const btn = document.getElementById('nyukaBtn');
-        const btnText = document.getElementById('nyukaBtnText');
-
-        // 1. ボタンを即座に無効化
-        btn.disabled = true;
-        btn.style.opacity = "0.5";
-        btnText.innerText = "取得中...";
-
-        try {
-            // 2. LINEのトーク画面に「入荷情報」と自動送信させる
-            await liff.sendMessages([{
-                type: 'text',
-                text: '入荷情報'
-            }]);
-            
-            alert('LINEに入荷情報を送信しました。\nこの画面を閉じてトーク画面を確認してください。');
-            
-        } catch (e) {
-            console.error(e);
-            alert('エラーが発生しました。トーク画面で直接「入荷情報」と入力してください。');
-        } finally {
-            // 3. 5秒間は再表示させない（連打防止のダメ押し）
-            setTimeout(() => {
-                btn.disabled = false;
-                btn.style.opacity = "1";
-                btnText.innerText = "📦 直近の入荷予定を確認";
-            }, 5000);
-        }
-    }
     <div id="loadingMsg" class="loading">送信中（画像圧縮含む）...</div>
 </div>
 
 <script>
+    // ★重要：ここをご自身のデプロイURLに書き換えてください
     const gasUrl = "https://script.google.com/macros/s/AKfycbwvjpBJCyHy7UH11rM1Bt4Y7PisrQMGBX3CwrUMDRq7UbUNmgdz9p-duI4FZ48saUrz/exec";
+    
     let currentUserProfile = null;
 
     const allMakers = [
@@ -190,7 +138,7 @@
         "とうきょうりぼん:東京リボン", "とうきょうかんかん:東京かんかん", "とすだいす:TOSSDICE", "だんぼーる:段ボール",
         "とうきょうどう:東京堂", "とーく:トーク", "どりーむふぁーむすずか:ドリームファームスズカ", "とうか:東花", "とうほうぼうえき:東方貿易",
         "ねいちゃーでざいんず:ネイチャーデザインズ", "ぱれすかがく:パレス化学", "ぱれ:パレ", "ぽっしゅりびんぐ:ポッシュリビング",
-        "ふぁーむ:FARM", "はなりんくす:花Links", "ふろーネット:flonet", "ほわいえ:ホワイエ", "はなのそのくぼた:花のそのくぼた",
+        "ふぁーむ:FARM", "はなりんくす:花Links", "ふろーネット:flonet", "ほわいえ:ホワイエ", "は花のそのくぼた:花のそのくぼた",
         "ふろーるえばー:フロールエバー", "ふらわーべーす:フラワーベース", "ぷらすがーでん:プラスガーデン", 
         "ぼぶくらふと:ボブクラフト", "まつむらこうげい:松村工芸", "ほしの:星野",
         "まぐねっと:マグネット", "まるこうせいとう:丸滉製陶", "まるまひらのとうきてん:丸又平野陶器店", 
@@ -236,57 +184,43 @@
         });
     }
 
-    // 履歴を読み込む関数
     async function loadHistory(userId) {
         const historySection = document.getElementById('historySection');
         const historyList = document.getElementById('historyList');
-        historySection.style.display = 'block';
-
         try {
             const response = await fetch(`${gasUrl}?userId=${userId}`);
             const history = await response.json();
-
-            if (history.length === 0) {
-                historyList.innerHTML = '<div style="padding:10px;">過去の注文履歴はありません。</div>';
-                return;
-            }
-
-            historyList.innerHTML = history.map(h => `
-                <div class="history-item" onclick="applyHistory('${h.maker}', '${h.partNo}', '${h.quantity}')">
-                    <span class="history-date">${h.date}</span><br>
-                    <strong>${h.maker}</strong> / ${h.partNo} (数量: ${h.quantity})
-                </div>
-            `).join('');
-        } catch (e) {
-            historyList.innerHTML = '<div style="padding:10px; color:red;">履歴の取得に失敗しました。</div>';
-        }
-    }
-
-    // 履歴をフォームに反映する関数
-    function applyHistory(maker, partNo, quantity) {
-        if (!confirm(`${maker} の再注文をフォームに追加しますか？`)) return;
-        addNewItemWithData(maker, partNo, quantity);
-    }
-
-    async function initLiff() {
-        try {
-            await liff.init({ liffId: "2008835052-zCjbE0pV" }); 
-            if (liff.isLoggedIn()) {
-                currentUserProfile = await liff.getProfile();
-                document.getElementById('userInfo').textContent = "ユーザー: " + currentUserProfile.displayName;
-                // 履歴の読み込みを実行
-                loadHistory(currentUserProfile.userId);
+            if (history && history.length > 0) {
+                historySection.style.display = 'block';
+                historyList.innerHTML = history.map(h => `
+                    <div class="history-item" onclick="applyHistory('${h.maker}', '${h.partNo}', '${h.quantity}')">
+                        <span class="history-date">${h.date}</span><br>
+                        <strong>${h.maker}</strong> / ${h.partNo} (数量: ${h.quantity})
+                    </div>
+                `).join('');
             } else {
-                liff.login();
+                historySection.style.display = 'none';
             }
-        } catch (error) { console.error(error); }
+        } catch (e) { console.error("履歴取得失敗", e); }
     }
 
-    window.onload = function() {
-        initLiff();
-        if (localStorage.getItem('storeName')) document.getElementById('storeName').value = localStorage.getItem('storeName');
-        if (localStorage.getItem('email')) document.getElementById('email').value = localStorage.getItem('email');
-    };
+    function applyHistory(maker, partNo, quantity) {
+        if (!confirm(`${maker} をフォームに追加しますか？`)) return;
+        const container = document.getElementById('itemContainer');
+        const cards = container.querySelectorAll('.item-card');
+        let targetCard;
+        if (cards.length === 1 && !cards[0].querySelector('.partNo-input').value) {
+            targetCard = cards[0];
+        } else {
+            addNewItem();
+            const updatedCards = container.querySelectorAll('.item-card');
+            targetCard = updatedCards[updatedCards.length - 1];
+        }
+        targetCard.querySelector('.category-select').value = "その他";
+        targetCard.querySelector('.maker-select').innerHTML = `<option value="${maker}">${maker}</option>`;
+        targetCard.querySelector('.partNo-input').value = partNo;
+        targetCard.querySelector('.quantity-input').value = quantity;
+    }
 
     function addNewItem() {
         const container = document.getElementById('itemContainer');
@@ -299,27 +233,23 @@
         container.appendChild(newCard);
     }
 
-    // データを指定して商品を追加する（履歴用）
-    function addNewItemWithData(maker, partNo, quantity) {
-        const container = document.getElementById('itemContainer');
-        const cards = container.querySelectorAll('.item-card');
-        
-        // 1件目かつ未入力の場合は1件目を上書き、そうでなければ新規追加
-        let targetCard;
-        if (cards.length === 1 && !cards[0].querySelector('.partNo-input').value) {
-            targetCard = cards[0];
-        } else {
-            addNewItem();
-            const updatedCards = container.querySelectorAll('.item-card');
-            targetCard = updatedCards[updatedCards.length - 1];
-        }
+    async function handleNyukaClick() {
+        const btn = document.getElementById('nyukaBtn');
+        const btnText = document.getElementById('nyukaBtnText');
+        btn.disabled = true;
+        btnText.innerText = "送信中...";
 
-        // 直接値をセット
-        targetCard.querySelector('.category-select').value = "その他";
-        const makerSelect = targetCard.querySelector('.maker-select');
-        makerSelect.innerHTML = `<option value="${maker}">${maker}</option>`;
-        targetCard.querySelector('.partNo-input').value = partNo;
-        targetCard.querySelector('.quantity-input').value = quantity;
+        try {
+            await liff.sendMessages([{ type: 'text', text: '入荷情報' }]);
+            alert('LINEに入荷情報を送信しました。\nこの画面を閉じてトーク画面を確認してください。');
+        } catch (e) {
+            alert('エラー: トーク画面で直接「入荷情報」と入力してください。');
+        } finally {
+            setTimeout(() => {
+                btn.disabled = false;
+                btnText.innerText = "📦 直近の入荷予定を確認";
+            }, 5000);
+        }
     }
 
     const getResizedBase64 = (file) => new Promise((resolve) => {
@@ -331,15 +261,12 @@
             img.onload = () => {
                 const canvas = document.createElement('canvas');
                 const MAX_WIDTH = 1000;
-                let width = img.width;
-                let height = img.height;
+                let width = img.width, height = img.height;
                 if (width > MAX_WIDTH) { height *= MAX_WIDTH / width; width = MAX_WIDTH; }
-                canvas.width = width;
-                canvas.height = height;
+                canvas.width = width; canvas.height = height;
                 const ctx = canvas.getContext('2d');
                 ctx.drawImage(img, 0, 0, width, height);
-                const base64 = canvas.toDataURL('image/jpeg', 0.7);
-                resolve({ data: base64.split(',')[1], type: 'image/jpeg' });
+                resolve({ data: canvas.toDataURL('image/jpeg', 0.7).split(',')[1], type: 'image/jpeg' });
             };
         };
     });
@@ -347,120 +274,71 @@
     async function sendOrder() {
         const btn = document.getElementById('sendBtn');
         const storeName = document.getElementById('storeName').value;
-        const email = document.getElementById('email').value;
-        
-        // 1. 未入力チェック
         if (!storeName) { alert('店名を入れてください'); return; }
 
         const items = [];
         document.querySelectorAll('.item-card').forEach(card => {
             const m = card.querySelector('.maker-select').value;
-            if (m) items.push({ 
-                maker: m, 
-                partNo: card.querySelector('.partNo-input').value, 
-                quantity: card.querySelector('.quantity-input').value 
-            });
+            if (m) items.push({ maker: m, partNo: card.querySelector('.partNo-input').value, quantity: card.querySelector('.quantity-input').value });
         });
 
-        if (items.length === 0 && !document.getElementById('imageFile1').files.length) { 
-            alert('注文内容を入力するか画像を添付してください'); return; 
-        }
-
-        // --- 🟢 重要：ボタンを即座にロックする ---
-        btn.disabled = true; // ボタンを無効化
-        btn.innerText = "送信中..."; // 文字を変える
-        btn.style.backgroundColor = "#888"; // 色をグレーに変える
+        btn.disabled = true;
+        btn.innerText = "送信中...";
         document.getElementById('loadingMsg').style.display = 'block';
 
-        localStorage.setItem('storeName', storeName);
-        localStorage.setItem('email', email);
-
         try {
-            let imageData1 = null;
-            let imageData2 = null;
-            const file1 = document.getElementById('imageFile1').files[0];
-            if (file1) imageData1 = await getResizedBase64(file1);
-            const file2 = document.getElementById('imageFile2').files[0];
-            if (file2) imageData2 = await getResizedBase64(file2);
+            let img1 = null, img2 = null;
+            const f1 = document.getElementById('imageFile1').files[0];
+            const f2 = document.getElementById('imageFile2').files[0];
+            if (f1) img1 = await getResizedBase64(f1);
+            if (f2) img2 = await getResizedBase64(f2);
 
-            // 送信処理
             await fetch(gasUrl, {
                 method: 'POST',
-                mode: 'no-cors', 
-                headers: {
-                    'Content-Type': 'text/plain;charset=utf-8',
-                },
+                mode: 'no-cors',
                 body: JSON.stringify({
                     storeName: storeName,
-                    email: email,
+                    email: document.getElementById('email').value,
                     items: items,
                     comments: document.getElementById('comments').value,
-                    imageFile1: imageData1,
-                    imageFile2: imageData2,
+                    imageFile1: img1,
+                    imageFile2: img2,
                     userId: currentUserProfile ? currentUserProfile.userId : "anonymous"
                 })
             });
 
-            // 送信成功時：ボタンは無効のまま、アラートを出して即座に画面を閉じる
-            alert('ご注文ありがとうございます！\n送信が完了しました。');
-            liff.closeWindow(); 
-
-        } catch (e) { 
-            // 失敗したときだけボタンを復活させて、再送できるようにする
-            alert('送信エラーが発生しました。もう一度お試しください。'); 
+            localStorage.setItem('storeName', storeName);
+            localStorage.setItem('email', document.getElementById('email').value);
+            alert('注文を送信しました！');
+            liff.closeWindow();
+        } catch (e) {
+            alert('送信エラー');
             btn.disabled = false;
             btn.innerText = "注文を送信する";
-            btn.style.backgroundColor = "#28a745";
             document.getElementById('loadingMsg').style.display = 'none';
         }
-        // ※以前のコードにあった finally { btn.disabled = false; } は削除しました。
-        // これにより、成功した場合はボタンが復活する隙を与えません。
     }
 
-        btn.disabled = true;
-        document.getElementById('loadingMsg').style.display = 'block';
-        localStorage.setItem('storeName', storeName);
-        localStorage.setItem('email', email);
-
+    async function initLiff() {
         try {
-            let imageData1 = null;
-            let imageData2 = null;
-            const file1 = document.getElementById('imageFile1').files[0];
-            if (file1) imageData1 = await getResizedBase64(file1);
-            const file2 = document.getElementById('imageFile2').files[0];
-            if (file2) imageData2 = await getResizedBase64(file2);
-
-            // 送信処理（mode: 'cors' を明示し、エラーハンドリングを強化）
-          // --- ここから書き換え ---
-            // 返事を待たずに送信を実行 (no-cors)
-            fetch(gasUrl, {
-                method: 'POST',
-                mode: 'no-cors', 
-                headers: {
-                    'Content-Type': 'text/plain;charset=utf-8',
-                },
-                body: JSON.stringify({
-                    storeName: storeName,
-                    email: email,
-                    items: items,
-                    comments: document.getElementById('comments').value,
-                    imageFile1: imageData1,
-                    imageFile2: imageData2,
-                    userId: currentUserProfile ? currentUserProfile.userId : "anonymous"
-                })
-            });
-
-            // 送信ボタンを押した瞬間に完了メッセージを出して閉じる
-            alert('注文を送信しました！\n（画像の保存に時間がかかる場合がありますが、そのまま閉じて大丈夫です）');
-            liff.closeWindow(); 
-            // --- ここまで書き換え ---
-        } catch (e) { 
-            alert('送信エラーが発生しました。通信環境を確認してください。'); 
-        } finally {
-            btn.disabled = false;
-            document.getElementById('loadingMsg').style.display = 'none';
+            await liff.init({ liffId: "2008835052-zCjbE0pV" });
+            if (!liff.isLoggedIn()) {
+                liff.login();
+            } else {
+                currentUserProfile = await liff.getProfile();
+                document.getElementById('userInfo').textContent = "ユーザー: " + currentUserProfile.displayName;
+                loadHistory(currentUserProfile.userId);
+            }
+        } catch (error) {
+            document.getElementById('userInfo').textContent = "初期化失敗";
         }
     }
+
+    window.onload = function() {
+        initLiff();
+        if (localStorage.getItem('storeName')) document.getElementById('storeName').value = localStorage.getItem('storeName');
+        if (localStorage.getItem('email')) document.getElementById('email').value = localStorage.getItem('email');
+    };
 </script>
 </body>
 </html>
