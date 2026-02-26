@@ -22,11 +22,7 @@
         .loading { display: none; text-align: center; margin-top: 10px; font-weight: bold; }
         #userInfo { font-size: 12px; color: #000; text-align: right; margin-bottom: 10px; font-weight: bold; }
         
-        /* 入荷情報のデザイン */
-        .arrival-section { display: none; background: #fffde7; border: 1px solid #fbc02d; border-radius: 8px; margin-bottom: 20px; padding: 10px; }
-        .arrival-header { font-weight: bold; color: #f57f17; border-bottom: 1px dotted #fbc02d; margin-bottom: 5px; font-size: 14px; }
-        .arrival-item { font-size: 13px; color: #333; padding: 3px 0; border-bottom: 1px solid #eee; }
-        
+        /* 履歴セクションのデザイン */
         .history-section { display: none; margin-bottom: 20px; border: 1px solid #999; border-radius: 8px; overflow: hidden; }
         .history-header { background: #777; color: white; padding: 8px; font-size: 14px; font-weight: bold; }
         .history-list { max-height: 200px; overflow-y: auto; background: #fff; }
@@ -40,11 +36,6 @@
 <div class="container">
     <h2>名古屋花き商事本部注文フォーム</h2>
     <div id="userInfo">LIFF初期化中...</div>
-
-    <div id="arrivalSection" class="arrival-section">
-        <div class="arrival-header">🚚 直近1週間の入荷予定</div>
-        <div id="arrivalList"></div>
-    </div>
 
     <div id="historySection" class="history-section">
         <div class="history-header">過去の注文履歴 (タップで再注文)</div>
@@ -101,7 +92,6 @@
 </div>
 
 <script>
-    // ※必ず最新のデプロイURLに書き換えてください
     const gasUrl = "https://script.google.com/macros/s/AKfycbzhP0g5KldIuA1Iw7av8bdwvIfDSAQc67-cF9cQ0T3n_zScbHqGyGkca5f4BVGk8OyL/exec"; 
     let currentUserProfile = null;
 
@@ -159,37 +149,30 @@
         });
     }
 
-    // --- 【重要】データ読み込み関数を修正 ---
-    async function loadAppData(userId) {
-        const arrivalSection = document.getElementById('arrivalSection');
-        const arrivalList = document.getElementById('arrivalList');
+    // --- 履歴読み込み関数 ---
+    async function loadHistory(userId) {
         const historySection = document.getElementById('historySection');
         const historyList = document.getElementById('historyList');
 
         try {
             const response = await fetch(`${gasUrl}?userId=${userId}`);
-            const result = await response.json(); // { history: [], calendar: [] } が届く
+            const history = await response.json(); // GASのdoGetから返る配列
 
-            // 1. 入荷予定の表示
-            if (result.calendar && result.calendar.length > 0) {
-                arrivalSection.style.display = 'block';
-                arrivalList.innerHTML = result.calendar.map(c => `
-                    <div class="arrival-item">📅 ${c.date} : ${c.title}</div>
-                `).join('');
-            } else { arrivalSection.style.display = 'none'; }
-
-            // 2. 履歴の表示
-            if (result.history && result.history.length > 0) {
+            if (Array.isArray(history) && history.length > 0) {
                 historySection.style.display = 'block';
-                historyList.innerHTML = result.history.map(h => `
+                historyList.innerHTML = history.map(h => `
                     <div class="history-item" onclick="applyHistory('${h.maker}', '${h.partNo}', '${h.quantity}')">
                         <span class="history-date">${h.date}</span><br>
                         <strong>${h.maker}</strong> / ${h.partNo} (数量: ${h.quantity})
                     </div>
                 `).join('');
-            } else { historySection.style.display = 'none'; }
-
-        } catch (e) { console.error("Data Load Error", e); }
+            } else { 
+                historySection.style.display = 'none'; 
+            }
+        } catch (e) { 
+            console.error("History Load Error", e); 
+            historySection.style.display = 'none';
+        }
     }
 
     function applyHistory(maker, partNo, quantity) {
@@ -281,8 +264,8 @@
             if (!liff.isLoggedIn()) { liff.login(); } else {
                 currentUserProfile = await liff.getProfile();
                 document.getElementById('userInfo').textContent = "ユーザー: " + currentUserProfile.displayName;
-                // --- ここで loadAppData を呼ぶように修正 ---
-                loadAppData(currentUserProfile.userId);
+                // 履歴のみを読み込む
+                loadHistory(currentUserProfile.userId);
             }
         } catch (e) { document.getElementById('userInfo').textContent = "初期化失敗"; }
     }
