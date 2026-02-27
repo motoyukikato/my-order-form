@@ -24,6 +24,7 @@
         #send-btn:disabled { background-color: #ccc; }
         textarea { width: 100%; border: 1px solid #ddd; border-radius: 5px; padding: 10px; box-sizing: border-box; font-size: 16px; }
     </style>
+    <script src="https://unpkg.com/html5-qrcode"></script>
 </head>
 <body>
 
@@ -49,9 +50,19 @@
 </section>
 
 <section id="barcode" class="page-section">
-    <h2>スキャン</h2>
-    <div class="card" style="text-align: center;">
-        <button class="btn-scan" onclick="handleScan()"><i class="fa-solid fa-barcode"></i> 商品スキャン開始</button>
+    <h2>商品スキャン</h2>
+    <div class="card" style="text-align: center; padding: 10px;">
+        <div id="reader" style="width: 100%; min-height: 250px; background: #eee; border-radius: 8px; overflow: hidden;"></div>
+        
+        <div style="margin-top: 15px;">
+           <button id="start-btn" class="btn-scan" onclick="handleScan()">
+    <i class="fa-solid fa-camera"></i> スキャン開始
+</button>
+<button id="stop-btn" class="btn-scan" onclick="stopScanner()" style="background: #d9534f; display: none;">
+    スキャン停止
+</button>
+        </div>
+        <p id="scan-status" style="margin-top:10px; color:#666; font-size:14px;">カメラを起動してください</p>
     </div>
 </section>
 
@@ -101,13 +112,13 @@
 </nav>
 
 <script>
-    const GAS_URL = "https://script.google.com/macros/s/AKfycbxmUiT04STa3dZlsGH8-zzgfXn_H-NVfPauacs9lRIex7PcTWFBrJKdqr7V5ydXdzxx/exec"; 
+    const GAS_URL = "https://script.google.com/macros/s/AKfycbwBNb-yldduxbtsISP-oMCjXsCggIqZZsq0bVAtcCtTbWo9lezOTCRxgRbGWBXLfrff/exec"; 
     let cart = [];
     let allProducts = []; // 全商品を保持する配列
     let currentZip = ""; 
     let tempProduct = null;
 
-    // --- 1. アプリ起動時に商品データを一括取得 ---
+ 　// --- 1. アプリ起動時に商品データを一括取得 ---
     async function loadProductSuggestions() {
         console.log("商品リストを取得中...");
         try {
@@ -117,7 +128,6 @@
             });
             allProducts = await res.json();
             
-            // datalist（入力候補）の更新
             const datalist = document.getElementById('prod-list');
             if (datalist) {
                 datalist.innerHTML = allProducts.map(item => 
@@ -130,12 +140,11 @@
         }
     }
 
-    liff.init({ liffId: "2008942151-uuGiEYsf" })
-        .then(() => { 
-            console.log("LIFF Init OK");
-            loadProductSuggestions();
-        })
-        .catch((err) => { alert("LIFF初期化失敗: " + err); });
+    // ★重要★ ここをこの3行だけにします
+    window.onload = () => {
+        loadProductSuggestions();
+    };
+      
 
     function showPage(pageId) {
         document.querySelectorAll('.page-section').forEach(sec => sec.classList.remove('active'));
@@ -300,13 +309,80 @@
         const val = document.getElementById('cust-manual-input').value.trim();
         if (val) fetchCustomerData(val);
     }
-    function handleScan() { liff.scanCodeV2().then(res => { if (res.value) searchProductLocal(res.value); }); }
-    async function handleCustomerScan() {
-        try {
-            const res = await liff.scanCodeV2();
-            if (res.value) await fetchCustomerData(res.value);
-        } catch (e) { alert("スキャン失敗"); }
+   let html5QrCode = null;
+
+// --- 商品スキャン用（カメラ起動） ---
+async function handleScan() {
+    showPage('barcode'); // まずスキャン画面を表示
+    
+    const status = document.getElementById("scan-status");
+    if (!html5QrCode) {
+        html5QrCode = new Html5Qrcode("reader");
     }
+
+    // すでに動いていたら止める
+    if (html5QrCode.isScanning) {
+        await html5QrCode.stop();
+    }
+
+    document.getElementById("start-btn").style.display = "none";
+    document.getElementById("stop-btn").style.display = "block";
+    status.innerText = "バーコードを枠内に収めてください";
+
+    try {
+        await html5QrCode.start(
+            { facingMode: "environment" }, 
+            { fps: 15, qrbox: { width: 280, height: 150 } },
+            (decodedText) => {
+                // 成功時：商品検索へ
+                stopScanner(); 
+                searchProductLocal(decodedText); 
+            }
+        );
+    } catch (err) {
+        alert("カメラ起動失敗。権限を確認してください");
+        stopScanner();
+    }
+}
+
+// --- 顧客スキャン用（カメラ起動） ---
+async function handleCustomerScan() {
+    showPage('barcode'); // スキャン画面へ移動
+    
+    const status = document.getElementById("scan-status");
+    if (!html5QrCode) {
+        html5QrCode = new Html5Qrcode("reader");
+    }
+
+    document.getElementById("start-btn").style.display = "none";
+    document.getElementById("stop-btn").style.display = "block";
+    status.innerText = "顧客QRコードをスキャンしてください";
+
+    try {
+        await html5QrCode.start(
+            { facingMode: "environment" }, 
+            { fps: 15, qrbox: { width: 200, height: 200 } }, // 顧客用は正方形
+            (decodedText) => {
+                // 成功時：顧客検索へ
+                stopScanner();
+                fetchCustomerData(decodedText);
+                showPage('home'); // ホームに戻る
+            }
+        );
+    } catch (err) {
+        alert("カメラ起動失敗");
+        stopScanner();
+    }
+}
+
+// --- カメラを止める共通関数 ---
+async function stopScanner() {
+    if (html5QrCode && html5QrCode.isScanning) {
+        await html5QrCode.stop();
+    }
+    document.getElementById("start-btn").style.display = "block";
+    document.getElementById("stop-btn").style.display = "none";
+}
 </script>
 </body>
 </html>
