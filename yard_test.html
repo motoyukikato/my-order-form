@@ -515,6 +515,7 @@ async function loadHistory() {
                 <div style="margin-top:10px;">
                     数量: <input type="number" id="hist-qty-${item.rowNum}" value="${item.qty}" style="width:70px; font-size:16px;">
                     <button onclick="editOrderHistory(${item.rowNum})" style="background:#f0ad4e; color:white; border:none; padding:5px 10px; border-radius:5px; margin-left:10px;">訂正</button>
+<button onclick="deleteOrderHistory(${item.rowNum})" style="background:#d9534f; color:white; border:none; padding:5px 10px; border-radius:5px; margin-left:10px;">削除</button>
                 </div>
             </div>
         `).join('');
@@ -539,6 +540,26 @@ async function editOrderHistory(rowNum) {
             loadHistory(); // 一覧を再読み込み
         } else {
             alert("訂正に失敗しました: " + result.error);
+        }
+    } catch (e) {
+        alert("通信エラー: " + e.message);
+    }
+}
+    // 履歴の行を削除する
+async function deleteOrderHistory(rowNum) {
+    if (!confirm("この注文を完全に削除してもよろしいですか？")) return;
+
+    try {
+        const response = await fetch(GAS_URL, {
+            method: "POST",
+            body: JSON.stringify({ action: "deleteOrderLine", rowNum: rowNum })
+        });
+        const result = await response.json();
+        if (result.success) {
+            alert("削除が完了しました。");
+            loadHistory(); // 一覧を再読み込みして表示を更新
+        } else {
+            alert("削除に失敗しました: " + result.error);
         }
     } catch (e) {
         alert("通信エラー: " + e.message);
