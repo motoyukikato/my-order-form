@@ -363,10 +363,30 @@ function searchProductLocal(code) {
                 method: "POST",
                 body: JSON.stringify({ action: "orderSubmit", data: requestData })
             });
-            if (res.ok) {
+          if (res.ok) {
                 alert("注文を送信しました");
+                
+                // 1. カートの中身を空にする
                 cart = [];
                 updateCartUI();
+
+                // 2. 顧客表示をリセット（ここを追加）
+                document.getElementById("res-customer").innerText = "";
+                document.getElementById("res-address1").innerText = "";
+                document.getElementById("res-address2").innerText = "";
+                document.getElementById("res-tel").innerText = "";
+                document.getElementById("res-email").innerText = "";
+                document.getElementById("cust-manual-input").value = ""; // 入力欄も空に
+                
+                // 3. 「検索またはスキャンしてください」の文字を再表示
+                document.getElementById("cust-data").style.display = "none";
+                document.getElementById("cust-loading").innerText = "検索またはスキャンしてください";
+                document.getElementById("cust-loading").style.display = "block";
+
+                // 4. 備考欄（コメント）をリセット（ここを追加）
+                document.getElementById("order-comment").value = "";
+
+                // 5. ホーム画面に戻る
                 showPage('home');
             }
         } catch (e) { alert("送信エラー: " + e.message); }
