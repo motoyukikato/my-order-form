@@ -109,11 +109,18 @@
     </div>
     <button id="send-btn" onclick="sendOrder()">🛒 注文を確定する</button>
 </section>
+    <section id="history" class="page-section">
+    <h2 style="text-align:center; padding:10px;">注文履歴（訂正）</h2>
+    <div id="history-list">
+        <p style="text-align: center; color: #999;">読み込み中...</p>
+    </div>
+</section>
 
 <nav class="footer-menu">
     <button onclick="showPage('home')" id="nav-home" class="active-menu"><i class="fa-solid fa-house"></i>ホーム</button>
     <button onclick="showPage('barcode')" id="nav-barcode"><i class="fa-solid fa-camera"></i>スキャン</button>
     <button onclick="showPage('input')" id="nav-input"><i class="fa-solid fa-keyboard"></i>入力</button>
+    <button onclick="showPage('history')" id="nav-history"><i class="fa-solid fa-clock-rotate-left"></i>履歴</button>
     <button onclick="showPage('cart')" id="nav-cart"><i class="fa-solid fa-cart-shopping"></i>カート</button>
 </nav>
 
@@ -473,6 +480,60 @@ async function stopScanner() {
     }
     document.getElementById("start-btn").style.display = "block";
     document.getElementById("stop-btn").style.display = "none";
+}
+    // 履歴を読み込む
+async function loadHistory() {
+    const listDiv = document.getElementById("history-list");
+    listDiv.innerHTML = '<p style="text-align: center;">データを取得中...</p>';
+    
+    try {
+        const response = await fetch(GAS_URL, {
+            method: "POST",
+            body: JSON.stringify({ action: "getOrderHistory" })
+        });
+        const history = await response.json();
+        
+        if (!history || history.length === 0) {
+            listDiv.innerHTML = '<p style="text-align: center;">履歴はありません</p>';
+            return;
+        }
+
+        listDiv.innerHTML = history.map(item => `
+            <div class="item-card" style="border-left: 5px solid #007bff; position: relative;">
+                <small style="color:#666;">${item.date} / ${item.customerName} 様</small><br>
+                <b>${item.name}</b><br>
+                <small>品番: ${item.partNo}</small><br>
+                <div style="margin-top:10px;">
+                    数量: <input type="number" id="hist-qty-${item.rowNum}" value="${item.qty}" style="width:70px; font-size:16px;">
+                    <button onclick="editOrderHistory(${item.rowNum})" style="background:#f0ad4e; color:white; border:none; padding:5px 10px; border-radius:5px; margin-left:10px;">訂正</button>
+                </div>
+            </div>
+        `).join('');
+    } catch (e) {
+        listDiv.innerHTML = '<p style="text-align: center; color:red;">読み込みエラーが発生しました</p>';
+    }
+}
+
+// 履歴の数量を訂正する
+async function editOrderHistory(rowNum) {
+    const newQty = document.getElementById(`hist-qty-${rowNum}`).value;
+    if (!confirm("数量を " + newQty + " に変更してもよろしいですか？")) return;
+
+    try {
+        const response = await fetch(GAS_URL, {
+            method: "POST",
+            body: JSON.stringify({ action: "updateOrderLine", rowNum: rowNum, qty: newQty })
+        });
+        const result = await response.json();
+        if (result.success) {
+            alert("訂正が完了しました。");
+            loadHistory(); // 一覧を再読み込み
+        } else {
+            alert("訂正に失敗しました: " + result.error);
+        }
+    } catch (e) {
+        alert("通信エラー: " + e.message);
+    }
 }
 </script>
 </body>
