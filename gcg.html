@@ -33,7 +33,7 @@
     </div>
 
     <script>
-        const GAS_URL = "https://script.google.com/macros/s/AKfycbwBlIkz8GfAZ9NAVaCyt0MpvthauzVYvloj_kNBkfIL0MKY0fafH54wNQYzszOA2VOT0w/exec";
+        const GAS_URL = "https://script.google.com/macros/s/AKfycbxZOpKm3Y7V0DF_SS1PmBfCHu9GqzeFPW2cX9gE998HD0jSn7Cs_fw2KN6ecDIwh0zphw/exec";
         let clickCount = 0;
         let isRestockMode = false;
 
@@ -71,18 +71,39 @@
         async function loadItems() {
             try {
                 const res = await fetch(GAS_URL);
-                const items = await res.json();
+                const data = await res.json(); 
+                const items = data.items;      // 在庫マスタ
+                const monthly = data.monthly;  // 月別実績データ
+
                 const listDiv = document.getElementById('itemList');
                 listDiv.innerHTML = "";
                 const categories = {};
+                
+                // カテゴリー分けの処理
                 items.forEach(item => {
                     const cat = getCategory(item.id);
                     if (!categories[cat]) categories[cat] = [];
                     categories[cat].push(item);
                 });
+
                 for (const [catName, catItems] of Object.entries(categories)) {
                     listDiv.innerHTML += `<h3>${catName}</h3>`;
                     catItems.forEach(item => {
+                        // --- 月別実績のチップ(表示パーツ)を作成 ---
+                        let statsHtml = '<div style="font-size:11px; margin-top:5px; display:flex; gap:5px; flex-wrap:wrap;">';
+                        const itemMonthly = monthly[item.id] || {};
+                        // 直近3ヶ月分の実績を表示
+                        const months = Object.keys(itemMonthly).sort().reverse().slice(0, 3);
+                        if (months.length > 0) {
+                            months.forEach(m => {
+                                statsHtml += `<span style="background:#e0f2f1; color:#00796b; padding:1px 5px; border-radius:3px; border:1px solid #b2dfdb;">${m}: ${itemMonthly[m]}</span>`;
+                            });
+                        } else {
+                            statsHtml += `<span style="color:#ccc;">実績なし</span>`;
+                        }
+                        statsHtml += '</div>';
+                        // ---------------------------------------
+
                         let imgHtml = "";
                         if (item.imageJson) {
                             let fileId = "";
@@ -97,20 +118,24 @@
                             }
                         }
                         if (!imgHtml) imgHtml = `<div class="item-img" style="display:flex;align-items:center;justify-content:center;font-size:10px;color:#999;background:#eee;">No Image</div>`;
+                        
+                        // 画面への書き出し
                         listDiv.innerHTML += `
                             <div class="item-card">
                                 ${imgHtml}
                                 <div class="item-info">
                                     <div><strong>${item.name}</strong></div>
                                     <div style="font-size:0.8em; color:gray;">${item.id}<br>在庫: ${item.stock}${item.unit}</div>
+                                    ${statsHtml} 
                                 </div>
                                 <input type="number" class="qty-input" data-id="${item.id}" data-name="${item.name}" data-unit="${item.unit}" data-stock="${item.stock}" min="0" placeholder="0">
                             </div>`;
                     });
                 }
-            } catch (e) { document.getElementById('itemList').innerHTML = "読み込みエラー: " + e.message; }
+            } catch (e) { 
+                document.getElementById('itemList').innerHTML = "読み込みエラー: " + e.message; 
+            }
         }
-
         async function submitOrder() {
             const inputs = document.querySelectorAll('.qty-input');
             const colOrders = [];
