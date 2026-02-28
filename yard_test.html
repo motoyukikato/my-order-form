@@ -220,21 +220,49 @@
     }
 
     // スキャン時もローカル検索を利用
-    function searchProductLocal(code) {
-        if (!code) return;
-        const product = allProducts.find(item => 
-            String(item.partNo).toUpperCase() === String(code).toUpperCase() || String(item.jan) === String(code)
+function searchProductLocal(code) {
+    if (!code) return;
+    const product = allProducts.find(item => 
+        String(item.partNo).toUpperCase() === String(code).toUpperCase() || String(item.jan) === String(code)
+    );
+
+    if (product) {
+        tempProduct = product;
+        
+        // 数量はロット（規定値）または1とする
+        const qty = Number(product.lot || 1);
+        
+        // スキャン画面のまま、確認メッセージを出す
+        const ok = confirm(
+            "【商品】" + product.name + "\n" +
+            "【上代】" + (product.listPrice ? Number(product.listPrice).toLocaleString() : "---") + "円\n" +
+            "数量 " + qty + " で追加しますか？"
         );
-        if (product) {
-            // 見つかったらプレビュー画面へ飛ばして入力させる
-            tempProduct = product;
-            document.getElementById('manual-id').value = product.partNo;
-            handleSearchAndPreview();
-            showPage('input');
-        } else {
-            alert("商品マスタ登録なし: " + code);
+
+        if (ok) {
+            cart.push({
+                jan: product.jan,
+                partNo: product.partNo,
+                name: product.name,
+                price: Number(product.price),
+                listPrice: product.listPrice, // 上代を保存
+                quantity: qty,
+                lot: Number(product.lot || 1),
+                stock: product.stock,
+                maker: product.maker 
+            });
+            updateCartUI();
+            alert("カートに追加しました");
         }
+        
+        // ★ 画面を切り替えず、スキャンを再開する
+        handleScan(); 
+
+    } else {
+        alert("商品マスタ登録なし: " + code);
+        handleScan(); // 見つからなくてもスキャン再開
     }
+}
 
    function addPreviewToCart() {
         if (!tempProduct) return;
