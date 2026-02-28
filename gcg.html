@@ -6,230 +6,180 @@
     <title>ご注文アプリ</title>
     <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
     <style>
-        body { font-family: sans-serif; margin: 0; padding: 10px; background: #f4f4f4; }
+        body { font-family: sans-serif; margin: 0; padding: 10px; background: #f4f4f4; transition: 0.3s; }
         .item-card { background: white; border-radius: 8px; padding: 10px; margin-bottom: 10px; display: flex; align-items: center; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
-        /* 画像のスタイルを調整 */
         .item-img { width: 70px; height: 70px; object-fit: cover; margin-right: 15px; border-radius: 4px; background: #eee; }
         .item-info { flex-grow: 1; }
         .qty-input { width: 60px; padding: 8px; font-size: 16px; border: 1px solid #ccc; border-radius: 4px; }
-        .btn-submit { width: 100%; padding: 15px; background: #00b900; color: white; border: none; border-radius: 30px; font-size: 18px; font-weight: bold; margin-top: 20px; position: sticky; bottom: 10px; }
+        .btn-submit { width: 100%; padding: 15px; background: #00b900; color: white; border: none; border-radius: 30px; font-size: 18px; font-weight: bold; margin-top: 20px; position: sticky; bottom: 10px; cursor: pointer; }
         h3 { background:#f0f0f0; padding:10px; margin-top:20px; border-left:5px solid #00b900; position: sticky; top: 0; z-index: 5; }
-        /* 入荷モード時のスタイル（背景色を変えてミスを防ぐ） */
-.restock-mode { background: #fff3e0 !important; }
-.restock-mode .btn-submit { background: #ff9800 !important; }
-.admin-badge { 
-    display: none; font-size: 12px; background: #ff9800; color: white; 
-    padding: 2px 8px; border-radius: 10px; margin-left: 10px; vertical-align: middle;
-}
+        
+        /* 入荷モード時のスタイル */
+        .restock-mode { background: #fff3e0 !important; }
+        .restock-mode h3 { border-left-color: #ff9800; }
+        .admin-badge { 
+            display: none; font-size: 12px; background: #ff9800; color: white; 
+            padding: 2px 8px; border-radius: 10px; margin-left: 10px; vertical-align: middle;
+        }
     </style>
 </head>
 <body>
     <div id="app">
-        <h2 style="text-align: center; cursor: pointer;" onclick="enableRestockMode()">
-            商品一覧<span id="adminBadge" class="admin-badge" style="display:none; font-size:12px; background:#ff9800; color:white; padding:2px 8px; border-radius:10px; margin-left:10px;">入荷モード</span>
+        <h2 style="text-align: center; cursor: pointer; user-select: none;" onclick="enableRestockMode()">
+            商品一覧<span id="adminBadge" class="admin-badge">入荷モード</span>
         </h2>
         <div id="itemList">読み込み中...</div>
-        <button class="btn-submit" onclick="submitOrder()">注文を確定する</button>
+        <button id="submitBtn" class="btn-submit" onclick="submitOrder()">注文を確定する</button>
     </div>
 
     <script>
         const GAS_URL = "https://script.google.com/macros/s/AKfycbzSjSItLUekMV7SC0g4JvWH0sorC_Q0_EmkQnmYHjDqeIVGJaHmkUVZv38gDuoAtEWTcg/exec";
-// --- ここから追加 ---
-let clickCount = 0;
-let isRestockMode = false;
+        let clickCount = 0;
+        let isRestockMode = false;
 
-function enableRestockMode() {
-    clickCount++;
-    // 5秒以内に3回タップしないとリセットされる仕組み（誤作動防止）
-    setTimeout(() => { clickCount = 0; }, 5000);
-
-    if (clickCount >= 3) {
-        const pass = prompt("管理者パスワードを入力してください");
-        if (pass === "admin123") { // GAS側と合わせる
-            isRestockMode = true;
-            document.getElementById('adminBadge').style.display = 'inline';
-            document.querySelector('.btn-submit').innerText = "入荷を確定する";
-            document.querySelector('.btn-submit').style.background = "#ff9800";
-            alert("【管理者用】入荷モードに切り替わりました。数量を入れて確定してください。");
-        } else if (pass !== null) {
-            alert("パスワードが違います");
-        }
-        clickCount = 0;
-    }
-}
-// --- ここまで追加 ---
-// カテゴリー判定ロジック
-function getCategory(id) {
-    const frameItems = ["EDC-001-N", "EDC-002-N", "680-819-310", "680-824-310"];
-    if (frameItems.includes(id)) return "フレーム";
-
-    const sizaiItems = ["EDC-001-NG", "EDC-001-NA", "EDC-001-NB", "EDC-002-NG", "EDC-002-NA", "EDC-002-NB"];
-    if (sizaiItems.includes(id)) return "資材";
-
-    const glassItems = ["777-410-000", "777-431-000", "777-432-000"];
-    if (glassItems.includes(id)) return "ガラスドーム";
-
-    return "その他";
-}
-
-// ① 起動時に在庫データを取得（Googleドライブ画像対応版）
-async function loadItems() {
-    try {
-        const res = await fetch(GAS_URL);
-        const items = await res.json();
-        const listDiv = document.getElementById('itemList');
-        listDiv.innerHTML = "";
-
-        const categories = {};
-        items.forEach(item => {
-            const cat = getCategory(item.id);
-            if (!categories[cat]) categories[cat] = [];
-            categories[cat].push(item);
-        });
-
-        for (const [catName, catItems] of Object.entries(categories)) {
-            listDiv.innerHTML += `<h3>${catName}</h3>`;
-            
-            catItems.forEach(item => {
-                let imgHtml = "";
-                // --- 【決定版】URLからIDを抜き出すロジック ---
-                if (item.imageJson) {
-                    let fileId = "";
-                    const rawValue = item.imageJson.toString().replace(/\s+/g, ""); // スペース除去
-                    
-                    if (rawValue.includes("drive.google.com")) {
-                        // URL形式の場合： /d/ と /view の間を抜く
-                        const match = rawValue.match(/\/d\/(.+?)\//);
-                        fileId = match ? match[1] : "";
-                    } else {
-                        // すでにIDのみが入っている場合
-                        fileId = rawValue;
-                    }
-                    
-                    if (fileId) {
-                        // Googleドライブのサムネイル機能を使って表示を高速化
-                        const driveUrl = `https://drive.google.com/thumbnail?authuser=0&sz=w320&id=${fileId}`;
-                        imgHtml = `<img src="${driveUrl}" class="item-img" onerror="this.src='https://placehold.jp/24/cccccc/ffffff/200x200.png?text=No%20Image'">`;
-                    }
+        // タイトル3回タップで入荷モード切替
+        function enableRestockMode() {
+            clickCount++;
+            setTimeout(() => { clickCount = 0; }, 5000);
+            if (clickCount >= 3) {
+                const pass = prompt("管理者パスワードを入力してください");
+                if (pass === "admin123") {
+                    isRestockMode = true;
+                    document.body.classList.add('restock-mode');
+                    document.getElementById('adminBadge').style.display = 'inline';
+                    const btn = document.getElementById('submitBtn');
+                    btn.innerText = "入荷を確定する";
+                    btn.style.background = "#ff9800";
+                    alert("【管理者用】入荷モードに切り替わりました。数量を入れて確定してください。");
+                } else if (pass !== null) {
+                    alert("パスワードが違います");
                 }
-                
-                if (!imgHtml) {
-                    imgHtml = `<div class="item-img" style="display:flex;align-items:center;justify-content:center;font-size:10px;color:#999;background:#eee;">No Image</div>`;
-                }
-
-                listDiv.innerHTML += `
-                    <div class="item-card">
-                        ${imgHtml}
-                        <div class="item-info">
-                            <div><strong>${item.name}</strong></div>
-                            <div style="font-size:0.8em; color:gray;">${item.id}<br>在庫: ${item.stock}${item.unit}</div>
-                        </div>
-                        <input type="number" class="qty-input" 
-                            data-id="${item.id}" 
-                            data-name="${item.name}" 
-                            data-unit="${item.unit}" 
-                            data-stock="${item.stock}"
-                            min="0" placeholder="0">
-                    </div>`;
-            });
-        }
-    } catch (e) {
-        document.getElementById('itemList').innerHTML = "読み込みエラー: " + e.message;
-    }
-}
-// ② 注文確定ボタンの処理（変更なし）
-async function submitOrder() {
-    const inputs = document.querySelectorAll('.qty-input');
-    const colOrders = [];
-    inputs.forEach(input => {
-        const qty = parseInt(input.value);
-        if (qty > 0) {
-            colOrders.push({
-                ItemName: input.dataset.id,
-                品名: input.dataset.name,
-                Quantity: qty,
-                Unit: input.dataset.unit,
-                CurrentStock: parseInt(input.dataset.stock)
-            });
-        }
-    });
-
-    if (colOrders.length === 0) {
-        alert("数量を入力してください。");
-        return;
-    }
-
-    if (!confirm("注文を確定してもよろしいですか？")) return;
-
-    const btn = document.querySelector('.btn-submit');
-    btn.disabled = true;
-    btn.innerText = "送信中...";
-
-    const payload = {
-        type: isRestockMode ? "restock" : "order", // ★追加
-        pass: isRestockMode ? "admin123" : "",      // ★追加（GAS側のパスワードと一致させる）
-        colOrders: colOrders,
-        mailBody: createCustomerMail(colOrders),
-        ...
-        orderBody_Customer: createSupplierMail(colOrders, "customer"),
-        orderBody_Self: createSupplierMail(colOrders, "self")
-    };
-
-    try {
-        // GASへの送信
-        const response = await fetch(GAS_URL, {
-            method: "POST",
-            body: JSON.stringify(payload)
-        });
-
-        if (!response.ok) throw new Error('ネットワーク応答が正常ではありません。');
-
-        const result = await response.json();
-
-        if (result.status === "success") {
-            alert("確定されました。ありがとうございます。");
-            // LINEアプリ内の場合はウィンドウを閉じる、それ以外はリロード
-            if (liff.isInClient()) {
-                liff.closeWindow();
-            } else {
-                window.location.reload();
+                clickCount = 0;
             }
-        } else {
-            alert("エラーが発生しました: " + (result.message || "不明なエラー"));
-            btn.disabled = false;
-            btn.innerText = "注文を確定する";
         }
-    } catch (e) {
-        console.error(e);
-        // メールが届いているなら成功している可能性が高いので、その旨を通知
-        alert("送信完了の確認が取れませんでしたが、メールが届いていれば注文は完了しています。\n(エラー詳細: " + e.message + ")");
-        btn.disabled = false;
-        btn.innerText = "注文を確定する";
-    }
-}
 
-function createCustomerMail(orders) {
-    let rows = orders.map(o => `<tr><td>${o.ItemName}</td><td>${o.品名}</td><td>${o.Quantity} ${o.Unit}</td><td>${o.CurrentStock - o.Quantity}</td></tr>`).join('');
-    return `<div style='font-family:Meiryo;'><p>golden child garden 様</p><p>ご注文ありがとうございます。</p><table border='1' style='border-collapse:collapse;'><tr bgcolor='#eee'><th>品番</th><th>品名</th><th>数量</th><th>在庫残</th></tr>${rows}</table></div>`;
-}
+        function getCategory(id) {
+            const frameItems = ["EDC-001-N", "EDC-002-N", "680-819-310", "680-824-310"];
+            if (frameItems.includes(id)) return "フレーム";
+            const sizaiItems = ["EDC-001-NG", "EDC-001-NA", "EDC-001-NB", "EDC-002-NG", "EDC-002-NA", "EDC-002-NB"];
+            if (sizaiItems.includes(id)) return "資材";
+            const glassItems = ["777-410-000", "777-431-000", "777-432-000"];
+            if (glassItems.includes(id)) return "ガラスドーム";
+            return "その他";
+        }
 
-function createSupplierMail(orders, type) {
-    let filtered;
-    if (type === "customer") {
-        const targets = ["EDC-001-N","EDC-001-NG","EDC-001-NA","EDC-001-NB","EDC-002-N","EDC-002-NG","EDC-002-NA","EDC-002-NB","680-824-310"];
-        filtered = orders.filter(o => targets.includes(o.ItemName));
-    } else {
-        const thresholds = { "777-410-000": 24, "777-431-000": 24, "680-819-310": 15, "777-432-000": 12 };
-        filtered = orders.filter(o => o.CurrentStock - o.Quantity < (thresholds[o.ItemName] || 0));
-    }
-    if (filtered.length === 0) return null;
-    let rows = filtered.map(o => `<tr><td>${o.ItemName}</td><td>${o.Quantity} ${o.Unit}</td></tr>`).join('');
-    return `<div style='font-family:Meiryo;'><h3>発注書 (${type === "customer" ? "顧客納品" : "自社納品"})</h3><table border='1' style='border-collapse:collapse;'><tr><th>商品名</th><th>数量</th></tr>${rows}</table></div>`;
-}
+        async function loadItems() {
+            try {
+                const res = await fetch(GAS_URL);
+                const items = await res.json();
+                const listDiv = document.getElementById('itemList');
+                listDiv.innerHTML = "";
+                const categories = {};
+                items.forEach(item => {
+                    const cat = getCategory(item.id);
+                    if (!categories[cat]) categories[cat] = [];
+                    categories[cat].push(item);
+                });
+                for (const [catName, catItems] of Object.entries(categories)) {
+                    listDiv.innerHTML += `<h3>${catName}</h3>`;
+                    catItems.forEach(item => {
+                        let imgHtml = "";
+                        if (item.imageJson) {
+                            let fileId = "";
+                            const rawValue = item.imageJson.toString().replace(/\s+/g, "");
+                            if (rawValue.includes("drive.google.com")) {
+                                const match = rawValue.match(/\/d\/(.+?)\//);
+                                fileId = match ? match[1] : "";
+                            } else { fileId = rawValue; }
+                            if (fileId) {
+                                const driveUrl = `https://drive.google.com/thumbnail?authuser=0&sz=w320&id=${fileId}`;
+                                imgHtml = `<img src="${driveUrl}" class="item-img" onerror="this.src='https://placehold.jp/24/cccccc/ffffff/200x200.png?text=No%20Image'">`;
+                            }
+                        }
+                        if (!imgHtml) imgHtml = `<div class="item-img" style="display:flex;align-items:center;justify-content:center;font-size:10px;color:#999;background:#eee;">No Image</div>`;
+                        listDiv.innerHTML += `
+                            <div class="item-card">
+                                ${imgHtml}
+                                <div class="item-info">
+                                    <div><strong>${item.name}</strong></div>
+                                    <div style="font-size:0.8em; color:gray;">${item.id}<br>在庫: ${item.stock}${item.unit}</div>
+                                </div>
+                                <input type="number" class="qty-input" data-id="${item.id}" data-name="${item.name}" data-unit="${item.unit}" data-stock="${item.stock}" min="0" placeholder="0">
+                            </div>`;
+                    });
+                }
+            } catch (e) { document.getElementById('itemList').innerHTML = "読み込みエラー: " + e.message; }
+        }
 
-        liff.init({ liffId: "2008942151-9x7S0H52" }).then(() => {
-            loadItems();
-        });
+        async function submitOrder() {
+            const inputs = document.querySelectorAll('.qty-input');
+            const colOrders = [];
+            inputs.forEach(input => {
+                const qty = parseInt(input.value);
+                if (qty > 0) {
+                    colOrders.push({
+                        ItemName: input.dataset.id,
+                        品名: input.dataset.name,
+                        Quantity: qty,
+                        Unit: input.dataset.unit,
+                        CurrentStock: parseInt(input.dataset.stock)
+                    });
+                }
+            });
+
+            if (colOrders.length === 0) { alert("数量を入力してください。"); return; }
+            if (!confirm(isRestockMode ? "入荷を確定しますか？" : "注文を確定してもよろしいですか？")) return;
+
+            const btn = document.getElementById('submitBtn');
+            btn.disabled = true;
+            btn.innerText = "送信中...";
+
+            const payload = {
+                type: isRestockMode ? "restock" : "order",
+                pass: isRestockMode ? "admin123" : "",
+                colOrders: colOrders,
+                mailBody: createCustomerMail(colOrders),
+                orderBody_Customer: createSupplierMail(colOrders, "customer"),
+                orderBody_Self: createSupplierMail(colOrders, "self")
+            };
+
+            try {
+                const response = await fetch(GAS_URL, { method: "POST", body: JSON.stringify(payload) });
+                const result = await response.json();
+                if (result.status === "success") {
+                    alert(isRestockMode ? "在庫を更新しました。" : "確定されました。ありがとうございます。");
+                    if (liff.isInClient()) { liff.closeWindow(); } else { window.location.reload(); }
+                } else {
+                    alert("エラー: " + result.message);
+                    btn.disabled = false;
+                    btn.innerText = isRestockMode ? "入荷を確定する" : "注文を確定する";
+                }
+            } catch (e) {
+                alert("送信エラーが発生しました。");
+                btn.disabled = false;
+            }
+        }
+
+        function createCustomerMail(orders) {
+            let rows = orders.map(o => `<tr><td>${o.ItemName}</td><td>${o.品名}</td><td>${o.Quantity} ${o.Unit}</td><td>${isRestockMode ? o.CurrentStock + o.Quantity : o.CurrentStock - o.Quantity}</td></tr>`).join('');
+            return `<div style='font-family:Meiryo;'><p>golden child garden 様</p><p>${isRestockMode ? '在庫の入荷処理を行いました。' : 'ご注文ありがとうございます。'}</p><table border='1' style='border-collapse:collapse;'><tr bgcolor='#eee'><th>品番</th><th>品名</th><th>数量</th><th>在庫残</th></tr>${rows}</table></div>`;
+        }
+
+        function createSupplierMail(orders, type) {
+            let filtered;
+            if (type === "customer") {
+                const targets = ["EDC-001-N","EDC-001-NG","EDC-001-NA","EDC-001-NB","EDC-002-N","EDC-002-NG","EDC-002-NA","EDC-002-NB","680-824-310"];
+                filtered = orders.filter(o => targets.includes(o.ItemName));
+            } else {
+                const thresholds = { "777-410-000": 24, "777-431-000": 24, "680-819-310": 15, "777-432-000": 12 };
+                filtered = orders.filter(o => o.CurrentStock - o.Quantity < (thresholds[o.ItemName] || 0));
+            }
+            if (filtered.length === 0) return null;
+            let rows = filtered.map(o => `<tr><td>${o.ItemName}</td><td>${o.Quantity} ${o.Unit}</td></tr>`).join('');
+            return `<div style='font-family:Meiryo;'><h3>発注書 (${type === "customer" ? "顧客納品" : "自社納品"})</h3><table border='1' style='border-collapse:collapse;'><tr><th>商品名</th><th>数量</th></tr>${rows}</table></div>`;
+        }
+
+        liff.init({ liffId: "2008942151-9x7S0H52" }).then(() => { loadItems(); });
     </script>
 </body>
 </html>
