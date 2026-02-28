@@ -141,17 +141,33 @@ async function submitOrder() {
     };
 
     try {
+        // GASへの送信
         const response = await fetch(GAS_URL, {
             method: "POST",
             body: JSON.stringify(payload)
         });
+
+        if (!response.ok) throw new Error('ネットワーク応答が正常ではありません。');
+
         const result = await response.json();
+
         if (result.status === "success") {
             alert("確定されました。ありがとうございます。");
-            liff.closeWindow();
+            // LINEアプリ内の場合はウィンドウを閉じる、それ以外はリロード
+            if (liff.isInClient()) {
+                liff.closeWindow();
+            } else {
+                window.location.reload();
+            }
+        } else {
+            alert("エラーが発生しました: " + (result.message || "不明なエラー"));
+            btn.disabled = false;
+            btn.innerText = "注文を確定する";
         }
     } catch (e) {
-        alert("送信エラーが発生しました。");
+        console.error(e);
+        // メールが届いているなら成功している可能性が高いので、その旨を通知
+        alert("送信完了の確認が取れませんでしたが、メールが届いていれば注文は完了しています。\n(エラー詳細: " + e.message + ")");
         btn.disabled = false;
         btn.innerText = "注文を確定する";
     }
