@@ -220,6 +220,7 @@
     }
 
     // スキャン時もローカル検索を利用
+// スキャン時もローカル検索を利用
 function searchProductLocal(code) {
     if (!code) return;
     const product = allProducts.find(item => 
@@ -229,38 +230,50 @@ function searchProductLocal(code) {
     if (product) {
         tempProduct = product;
         
-        // 数量はロット（規定値）または1とする
-        const qty = Number(product.lot || 1);
+        // デフォルトの数量（ロットまたは1）を表示用の初期値にする
+        const defaultQty = Number(product.lot || 1);
         
-        // スキャン画面のまま、確認メッセージを出す
-        const ok = confirm(
+        // ★ 修正：confirmの代わりにpromptを使い、入力欄を出す
+        const inputQty = prompt(
             "【商品】" + product.name + "\n" +
             "【上代】" + (product.listPrice ? Number(product.listPrice).toLocaleString() : "---") + "円\n" +
-            "数量 " + qty + " で追加しますか？"
+            "数量を入力してください", 
+            defaultQty // 入力欄にあらかじめ入っている数字
         );
 
-        if (ok) {
+        // キャンセルボタンが押された場合は何もしない
+        if (inputQty === null) {
+            handleScan(); 
+            return;
+        }
+
+        // 入力された値を数値に変換
+        const qty = parseInt(inputQty);
+
+        if (!isNaN(qty) && qty > 0) {
             cart.push({
                 jan: product.jan,
                 partNo: product.partNo,
                 name: product.name,
                 price: Number(product.price),
-                listPrice: product.listPrice, // 上代を保存
-                quantity: qty,
+                listPrice: product.listPrice, // 上代
+                quantity: qty,                // 入力した数量
                 lot: Number(product.lot || 1),
                 stock: product.stock,
                 maker: product.maker 
             });
             updateCartUI();
-            alert("カートに追加しました");
+            alert(product.name + " を " + qty + " 個追加しました");
+        } else {
+            alert("正しい数量を入力してください。");
         }
         
-        // ★ 画面を切り替えず、スキャンを再開する
+        // スキャン画面を維持
         handleScan(); 
 
     } else {
         alert("商品マスタ登録なし: " + code);
-        handleScan(); // 見つからなくてもスキャン再開
+        handleScan(); 
     }
 }
 
