@@ -186,7 +186,7 @@
         } catch (e) { alert("顧客検索エラー: " + e.message); }
     }
 
-    // --- 3. 【重要】商品検索をローカル(allProducts)から行う（爆速化） ---
+  // --- 3. 【重要】商品検索をローカル(allProducts)から行う（爆速化） ---
     function handleSearchAndPreview() {
         const code = document.getElementById('manual-id').value.trim().toUpperCase();
         if (!code) { alert("品番を入力してください"); return; }
@@ -196,25 +196,23 @@
             String(item.partNo).toUpperCase() === code || String(item.jan) === code
         );
 
-        // handleSearchAndPreview 関数内
-if (product) {
-    tempProduct = product;
-    document.getElementById("preview-name").innerText = product.name;
-    document.getElementById("preview-partNo").innerText = product.partNo;
-    
-    // 上代の書き込み
-    const lpDisp = document.getElementById("preview-listPrice");
-    if (lpDisp) lpDisp.innerText = product.listPrice ? Number(product.listPrice).toLocaleString() : "---";
-    
-    document.getElementById("preview-price").innerText = Number(product.price).toLocaleString();
-    document.getElementById("preview-maker").innerText = product.maker || "未設定";
-    
-    // 在庫状況の書き込み（ここが重要です！）
-    document.getElementById("preview-stock").innerText = product.stock || "不明";
-    
-    document.getElementById("preview-qty").value = product.lot || 1;
-    document.getElementById("search-result-preview").style.display = "block";
-}
+        if (product) {
+            tempProduct = product;
+            document.getElementById("preview-name").innerText = product.name;
+            document.getElementById("preview-partNo").innerText = product.partNo;
+            
+            // 上代の書き込み
+            const lpDisp = document.getElementById("preview-listPrice");
+            if (lpDisp) lpDisp.innerText = product.listPrice ? Number(product.listPrice).toLocaleString() : "---";
+            
+            document.getElementById("preview-price").innerText = Number(product.price).toLocaleString();
+            document.getElementById("preview-maker").innerText = product.maker || "未設定";
+            
+            // 在庫状況の書き込み
+            document.getElementById("preview-stock").innerText = product.stock || "不明";
+            
+            document.getElementById("preview-qty").value = product.lot || 1;
+            document.getElementById("search-result-preview").style.display = "block";
         } else {
             alert("商品が見つかりませんでした");
             document.getElementById("search-result-preview").style.display = "none";
