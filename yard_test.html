@@ -237,18 +237,19 @@
     }
 
     function addPreviewToCart() {
-        if (!tempProduct) return;
-        const qty = parseInt(document.getElementById("preview-qty").value);
-        cart.push({
-            jan: tempProduct.jan,
-            partNo: tempProduct.partNo,
-            name: tempProduct.name,
-            price: Number(tempProduct.price),
-            quantity: qty,
-            lot: Number(tempProduct.lot || 1),
-            stock: tempProduct.stock,
-            maker: tempProduct.maker 
-        });
+    if (!tempProduct) return;
+    const qty = parseInt(document.getElementById("preview-qty").value);
+    cart.push({
+        jan: tempProduct.jan,
+        partNo: tempProduct.partNo,
+        name: tempProduct.name,
+        price: Number(tempProduct.price),
+        listPrice: tempProduct.listPrice, // ★これを追加
+        quantity: qty,
+        lot: Number(tempProduct.lot || 1),
+        stock: tempProduct.stock,
+        maker: tempProduct.maker 
+    });
         updateCartUI();
         document.getElementById("search-result-preview").style.display = "none";
         document.getElementById("manual-id").value = "";
