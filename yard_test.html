@@ -236,25 +236,31 @@
         }
     }
 
-    function addPreviewToCart() {
-    if (!tempProduct) return;
-    const qty = parseInt(document.getElementById("preview-qty").value);
-    cart.push({
-        jan: tempProduct.jan,
-        partNo: tempProduct.partNo,
-        name: tempProduct.name,
-        price: Number(tempProduct.price),
-        listPrice: tempProduct.listPrice, // ★これを追加
-        quantity: qty,
-        lot: Number(tempProduct.lot || 1),
-        stock: tempProduct.stock,
-        maker: tempProduct.maker 
-    });
+   function addPreviewToCart() {
+        if (!tempProduct) return;
+        const qty = parseInt(document.getElementById("preview-qty").value);
+        cart.push({
+            jan: tempProduct.jan,
+            partNo: tempProduct.partNo,
+            name: tempProduct.name,
+            price: Number(tempProduct.price),
+            listPrice: tempProduct.listPrice, // 上代
+            quantity: qty,
+            lot: Number(tempProduct.lot || 1),
+            stock: tempProduct.stock,
+            maker: tempProduct.maker 
+        });
         updateCartUI();
+        
+        // --- ここから下の処理を変更 ---
         document.getElementById("search-result-preview").style.display = "none";
         document.getElementById("manual-id").value = "";
-        alert("カートに追加しました");
-        showPage('cart');
+        
+        // カートへ飛ばさず、通知だけ出す（または無音で次へ）
+        alert(tempProduct.name + " をカートに追加しました"); 
+        
+        // showPage('cart'); // ★ここをコメントアウト（または削除）
+        document.getElementById("manual-id").focus(); // 次の入力のためにフォーカスを当てる
     }
 
     function updateCartUI() {
