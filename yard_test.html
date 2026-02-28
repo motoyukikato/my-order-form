@@ -160,12 +160,21 @@
       
 
     function showPage(pageId) {
+        // 全セクションを非表示にする
         document.querySelectorAll('.page-section').forEach(sec => sec.classList.remove('active'));
+        // 選択されたセクションを表示する
         document.getElementById(pageId).classList.add('active');
+        
+        // メニューの「色」をリセットして、選択されたものだけ色をつける
         document.querySelectorAll('.footer-menu button').forEach(btn => btn.classList.remove('active-menu'));
-        document.getElementById('nav-' + pageId).classList.add('active-menu');
-    }
+        const activeBtn = document.getElementById('nav-' + pageId);
+        if (activeBtn) activeBtn.classList.add('active-menu');
 
+        // ★ ここが重要：履歴ページを表示した瞬間に、GASからデータを取ってくる
+        if (pageId === 'history') {
+            loadHistory();
+        }
+    }
     // --- 2. 顧客検索（これは個別に通信が必要） ---
     async function fetchCustomerData(val) {
         if (!val) return;
