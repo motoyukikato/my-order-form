@@ -264,14 +264,24 @@
         let html = cart.map((item, i) => {
             const subtotal = item.price * item.quantity;
             total += subtotal;
+            
+            // ★ 上代の表示用テキストを作成
+            const displayListPrice = item.listPrice ? Number(item.listPrice).toLocaleString() + "円" : "---";
+
             return `
                 <div class="item-card" style="position: relative;">
                     <b>${item.name}</b><br>
                     <small>メーカー: ${item.maker || "未設定"} / 品番: ${item.partNo}</small><br>
+                    
                     <div style="background: #fff5f5; padding: 8px; border-radius: 5px; margin: 8px 0; border: 1px solid #ffcccc;">
                         <span style="color: #d9534f; font-weight: bold;">在庫状況: ${item.stock || "設定なし"}</span>
                     </div>
-                    単価: ${item.price.toLocaleString()}円<br>
+
+                    <div style="font-size: 0.9em; margin-bottom: 5px;">
+                        上代: ${displayListPrice}<br>
+                        単価: ${item.price.toLocaleString()}円
+                    </div>
+                    
                     数量: <input type="number" value="${item.quantity}" onchange="updateQty(${i}, this.value)" style="width:60px; font-size:16px;">
                     <button onclick="removeItem(${i})" style="position: absolute; top: 10px; right: 10px; color: #999; background: none; border: none; font-size: 1.2em;">
                         <i class="fa-solid fa-trash-can"></i>
@@ -281,7 +291,6 @@
         html += `<div style="text-align:right; margin-top: 10px;"><b>合計: ${total.toLocaleString()}円</b></div>`;
         list.innerHTML = html;
     }
-
     function updateQty(i, q) { if (q > 0) { cart[i].quantity = parseInt(q); updateCartUI(); } }
     function removeItem(i) { if (confirm("削除しますか？")) { cart.splice(i, 1); updateCartUI(); } }
 
