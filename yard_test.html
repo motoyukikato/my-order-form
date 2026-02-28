@@ -111,6 +111,11 @@
 </section>
     <section id="history" class="page-section">
     <h2 style="text-align:center; padding:10px;">注文履歴（訂正）</h2>
+    <div class="card" style="margin-bottom: 10px; padding: 10px;">
+        <input type="text" id="history-search" placeholder="名前・品番・商品名で検索..." 
+               style="width: 100%; padding: 12px; box-sizing: border-box; border: 1px solid #ddd; border-radius: 5px;"
+               oninput="filterHistory()">
+    </div>
     <div id="history-list">
         <p style="text-align: center; color: #999;">読み込み中...</p>
     </div>
@@ -565,6 +570,22 @@ async function deleteOrderHistory(rowNum) {
         alert("通信エラー: " + e.message);
     }
 }
+// 履歴をキーワードで絞り込む機能
+function filterHistory() {
+    const query = document.getElementById('history-search').value.toLowerCase();
+    const items = document.querySelectorAll('#history-list .item-card');
+
+    items.forEach(item => {
+        // カード内のテキスト（名前、品番、商品名など全部）を取得
+        const text = item.innerText.toLowerCase();
+        // 検索キーワードが含まれているかチェック
+        if (text.includes(query)) {
+            item.style.display = "block";  // 表示
+        } else {
+            item.style.display = "none";   // 非表示
+        }
+    });
+}    
 </script>
 </body>
 </html>
