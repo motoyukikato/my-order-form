@@ -231,37 +231,43 @@
     }
 
   // --- 3. 【重要】商品検索をローカル(allProducts)から行う（爆速化） ---
-    function handleSearchAndPreview() {
-        const code = document.getElementById('manual-id').value.trim().toUpperCase();
-        if (!code) { alert("品番を入力してください"); return; }
+ // --- 3. 商品検索（GASに直接聞きに行く） ---
+async function handleSearchAndPreview() {
+    const code = document.getElementById('manual-id').value.trim();
+    if (!code) { alert("品番またはJANを入力してください"); return; }
 
-        // 通信せずに手元のデータから探す
-        const product = allProducts.find(item => 
-            String(item.partNo).toUpperCase() === code || String(item.jan) === code
-        );
+    const btn = document.querySelector("#input .btn-blue");
+    btn.innerText = "検索中...";
+    btn.disabled = true;
+
+    try {
+        const res = await fetch(GAS_URL, {
+            method: "POST",
+            body: JSON.stringify({ action: "searchProduct", code: code })
+        });
+        const product = await res.json();
 
         if (product) {
             tempProduct = product;
             document.getElementById("preview-name").innerText = product.name;
             document.getElementById("preview-partNo").innerText = product.partNo;
-            
-            // 上代の書き込み
-            const lpDisp = document.getElementById("preview-listPrice");
-            if (lpDisp) lpDisp.innerText = product.listPrice ? Number(product.listPrice).toLocaleString() : "---";
-            
+            document.getElementById("preview-listPrice").innerText = product.listPrice ? Number(product.listPrice).toLocaleString() : "---";
             document.getElementById("preview-price").innerText = Number(product.price).toLocaleString();
             document.getElementById("preview-maker").innerText = product.maker || "未設定";
-            
-            // 在庫状況の書き込み
             document.getElementById("preview-stock").innerText = product.stock || "不明";
-            
             document.getElementById("preview-qty").value = product.lot || 1;
             document.getElementById("search-result-preview").style.display = "block";
         } else {
-            alert("商品が見つかりませんでした");
+            alert("商品が見つかりませんでした: " + code);
             document.getElementById("search-result-preview").style.display = "none";
         }
+    } catch (e) {
+        alert("検索エラー: " + e.message);
+    } finally {
+        btn.innerText = "検索";
+        btn.disabled = false;
     }
+}
 
     // スキャン時もローカル検索を利用
 // スキャン時もローカル検索を利用
