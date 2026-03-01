@@ -312,27 +312,45 @@
 
     async function sendOrder() {
         if (cart.length === 0) { alert("カートが空です"); return; }
+        
+        // HTMLの画面表示から確実に顧客名を取得
         const customerName = document.getElementById("res-customer").innerText;
         if (!customerName) { alert("顧客情報を検索してください"); return; }
+        
         const btn = document.getElementById('send-btn');
         btn.disabled = true; btn.innerText = "送信中...";
+
         try {
             const requestData = {
-                customerName: customerName, zip: currentZip,
+                customerName: customerName, 
+                zip: currentZip || "",
                 address1: document.getElementById("res-address1").innerText,
                 address2: document.getElementById("res-address2").innerText,
                 tel: document.getElementById("res-tel").innerText,
                 email: document.getElementById("res-email").innerText,
                 comment: document.getElementById("order-comment").value,
-                items: cart
+                // カート内の各商品データをGASの「saveOrder」が使いやすい形に整理して送る
+                items: cart.map(item => ({
+                    maker: item.maker || "",      // これがGASのrow[1]（B列）に入る
+                    partNo: item.partNo || "",    // これがGASのrow[9]（J列）に入る
+                    stock: item.stock || "",      // これがGASのrow[8]（I列）に入る
+                    jan: item.jan || "",
+                    name: item.name || "",
+                    quantity: item.quantity,
+                    price: item.price,
+                    listPrice: item.listPrice || 0
+                }))
             };
+
             const res = await fetch(GAS_URL, {
                 method: "POST",
                 body: JSON.stringify({ action: "orderSubmit", data: requestData })
             });
+
             if (res.ok) {
                 alert("注文を送信しました");
                 cart = []; updateCartUI();
+                // 送信後は入力をリセット
                 document.getElementById("res-customer").innerText = "";
                 document.getElementById("res-address1").innerText = "";
                 document.getElementById("res-address2").innerText = "";
@@ -344,8 +362,12 @@
                 document.getElementById("order-comment").value = "";
                 showPage('home');
             }
-        } catch (e) { alert("送信エラー: " + e.message); }
-        finally { btn.disabled = false; btn.innerText = "🛒 注文を確定する"; }
+        } catch (e) { 
+            alert("送信エラー: " + e.message); 
+        } finally { 
+            btn.disabled = false; 
+            btn.innerText = "🛒 注文を確定する"; 
+        }
     }
 
     function handleCustomerManualSearch() {
