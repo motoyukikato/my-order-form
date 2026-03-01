@@ -353,41 +353,88 @@
         if (val) fetchCustomerData(val);
     }
 
-    // --- スキャナー制御 ---
+    // --- スキャナー制御（リセット防止・安定化版） ---
     let html5QrCode = null;
+
+    // カメラの競合を防ぐための共通停止関数
+    async function safeStopScanner() {
+        if (html5QrCode && html5QrCode.isScanning) {
+            try {
+                await html5QrCode.stop();
+                console.log("Scanner stopped safely.");
+            } catch (err) {
+                console.warn("Stop error (can ignore):", err);
+            }
+        }
+        document.getElementById("start-btn").style.display = "block";
+        document.getElementById("stop-btn").style.display = "none";
+    }
+
     async function handleScan() {
         showPage('barcode');
         const status = document.getElementById("scan-status");
+        
+        // 1. 既存のスキャンを確実に止める
+        await safeStopScanner();
+        
         if (!html5QrCode) html5QrCode = new Html5Qrcode("reader");
-        if (html5QrCode.isScanning) await html5QrCode.stop();
+        
         document.getElementById("start-btn").style.display = "none";
         document.getElementById("stop-btn").style.display = "block";
         status.innerText = "バーコードを枠内に収めてください";
+
         try {
-            await html5QrCode.start({ facingMode: "environment" }, { fps: 15, qrbox: { width: 280, height: 150 } }, (decodedText) => {
-                stopScanner(); searchProductLocal(decodedText); 
-            });
-        } catch (err) { alert("カメラ起動失敗"); stopScanner(); }
+            // 解像度を ideal: 640 に制限してスマホの負荷を下げる
+            const config = { fps: 10, qrbox: { width: 280, height: 150 } };
+            await html5QrCode.start(
+                { facingMode: "environment" }, 
+                config, 
+                async (decodedText) => {
+                    // 成功時：まずカメラを止めてから、次の処理へ（リセット防止）
+                    await safeStopScanner();
+                    status.innerText = "読み取り成功！検索中...";
+                    searchProductLocal(decodedText); 
+                }
+            );
+        } catch (err) {
+            console.error("Camera start error:", err);
+            status.innerText = "カメラ起動失敗。ブラウザを更新してください。";
+            document.getElementById("start-btn").style.display = "block";
+        }
     }
 
     async function handleCustomerScan() {
         showPage('barcode');
         const status = document.getElementById("scan-status");
+        
+        await safeStopScanner();
+        
         if (!html5QrCode) html5QrCode = new Html5Qrcode("reader");
+        
         document.getElementById("start-btn").style.display = "none";
         document.getElementById("stop-btn").style.display = "block";
-        status.innerText = "顧客QRコードをスキャンしてください";
+        status.innerText = "顧客コードをスキャンしてください";
+
         try {
-            await html5QrCode.start({ facingMode: "environment" }, { fps: 15, qrbox: { width: 200, height: 200 } }, (decodedText) => {
-                stopScanner(); fetchCustomerData(decodedText); showPage('home');
-            });
-        } catch (err) { alert("カメラ起動失敗"); stopScanner(); }
+            await html5QrCode.start(
+                { facingMode: "environment" }, 
+                { fps: 10, qrbox: { width: 220, height: 220 } }, 
+                async (decodedText) => {
+                    await safeStopScanner();
+                    fetchCustomerData(decodedText);
+                    showPage('home');
+                }
+            );
+        } catch (err) {
+            status.innerText = "カメラ起動失敗";
+            document.getElementById("start-btn").style.display = "block";
+        }
     }
 
+    // 停止ボタン用
     async function stopScanner() {
-        if (html5QrCode && html5QrCode.isScanning) await html5QrCode.stop();
-        document.getElementById("start-btn").style.display = "block";
-        document.getElementById("stop-btn").style.display = "none";
+        await safeStopScanner();
+        document.getElementById("scan-status").innerText = "停止しました";
     }
 
     // --- 履歴管理機能 ---
