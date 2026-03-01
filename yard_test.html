@@ -242,33 +242,28 @@
 
     // スキャン時もローカル検索を利用
 // スキャン時もローカル検索を利用
-function searchProductLocal(code) {
+async function searchProductLocal(code) {
     if (!code) return;
-    const product = allProducts.find(item => 
-        String(item.partNo).toUpperCase() === String(code).toUpperCase() || String(item.jan) === String(code)
-    );
+    
+    // GASに「このコードの商品を教えて！」と問い合わせる
+    const res = await fetch(GAS_URL, {
+        method: "POST",
+        body: JSON.stringify({ action: "searchProduct", code: code })
+    });
+    const product = await res.json();
 
     if (product) {
         tempProduct = product;
-        
-        // デフォルトの数量（ロットまたは1）を表示用の初期値にする
         const defaultQty = Number(product.lot || 1);
-        
-        // ★ 修正：confirmの代わりにpromptを使い、入力欄を出す
         const inputQty = prompt(
+            "【メーカー】" + product.maker + "\n" +
             "【商品】" + product.name + "\n" +
             "【上代】" + (product.listPrice ? Number(product.listPrice).toLocaleString() : "---") + "円\n" +
             "数量を入力してください", 
-            defaultQty // 入力欄にあらかじめ入っている数字
+            defaultQty
         );
 
-        // キャンセルボタンが押された場合は何もしない
-        if (inputQty === null) {
-            handleScan(); 
-            return;
-        }
-
-        // 入力された値を数値に変換
+        if (inputQty === null) { handleScan(); return; }
         const qty = parseInt(inputQty);
 
         if (!isNaN(qty) && qty > 0) {
@@ -277,27 +272,21 @@ function searchProductLocal(code) {
                 partNo: product.partNo,
                 name: product.name,
                 price: Number(product.price),
-                listPrice: product.listPrice, // 上代
-                quantity: qty,                // 入力した数量
+                listPrice: product.listPrice,
+                quantity: qty,
                 lot: Number(product.lot || 1),
                 stock: product.stock,
                 maker: product.maker 
             });
             updateCartUI();
-            alert(product.name + " を " + qty + " 個追加しました");
-        } else {
-            alert("正しい数量を入力してください。");
+            alert(product.name + " を追加しました");
         }
-        
-        // スキャン画面を維持
         handleScan(); 
-
     } else {
-        alert("商品マスタ登録なし: " + code);
+        alert("マスタ未登録: " + code);
         handleScan(); 
     }
 }
-
    function addPreviewToCart() {
         if (!tempProduct) return;
         const qty = parseInt(document.getElementById("preview-qty").value);
