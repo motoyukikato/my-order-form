@@ -130,7 +130,30 @@
 </nav>
 
 <script>
-    const GAS_URL = "https://script.google.com/macros/s/AKfycbxqnioQ2bwf2i7lTq_9h51bwT3Pci7zkFD-RFBJ6gAQNjz8ZIN86zUoco4dFJbLT4IeQw/exec"; 
+    const GAS_URL = "function searchProductByCode(code) {
+  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("商品集約");
+  
+  // 【工夫1】完全一致(true)から部分一致(false)に変えて、前後のスペースを許容する
+  const finder = sheet.createTextFinder(code).matchEntireCell(false);
+  const range = finder.findNext();
+  
+  if (!range) return null;
+  
+  const rowNum = range.getRow();
+  // A列(1)からH列(8)まで取得
+  const rowData = sheet.getRange(rowNum, 1, 1, 8).getValues()[0];
+  
+  return {
+    partNo:    String(rowData[0]), // A列: 品番
+    name:      String(rowData[1]), // B列: 商品名
+    jan:       String(rowData[2]), // C列: JAN
+    price:     Number(rowData[3]), // D列: 単価
+    listPrice: Number(rowData[4]), // E列: 上代
+    maker:     String(rowData[5]), // F列: メーカー名 ★ここを5に修正
+    lot:       Number(rowData[6]), // G列: ロット
+    stock:     String(rowData[7])  // H列: 在庫
+  };
+}"; 
     let cart = [];
     let allProducts = []; // 全商品を保持する配列
     let currentZip = ""; 
