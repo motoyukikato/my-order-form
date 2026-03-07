@@ -405,6 +405,12 @@
     const PAGE_SIZE = 20;    
 
     // 履歴の初期読み込み
+    // --- 履歴関連の変数 ---
+    let allHistoryData = []; 
+    let currentPage = 1;     
+    const PAGE_SIZE = 20;    
+
+    // 履歴の初期読み込み
     async function loadHistory() {
         const listDiv = document.getElementById("history-list");
         const footer = document.getElementById("history-footer");
