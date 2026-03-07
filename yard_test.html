@@ -119,6 +119,12 @@
     <div id="history-list">
         <p style="text-align: center; color: #999;">読み込み中...</p>
     </div>
+    <div id="history-footer" style="text-align: center; padding: 20px 0 60px 0; display: none;">
+        <button onclick="renderNextPage()" id="load-more-btn"
+                style="padding: 12px 30px; background: #fff; border: 2px solid #3b5998; border-radius: 25px; color: #3b5998; font-weight: bold; width: 80%;">
+            さらに表示（あと <span id="remaining-count">0</span> 件）
+        </button>
+    </div>
 </section>
 
 <nav class="footer-menu">
@@ -393,100 +399,101 @@
         if (val) fetchCustomerData(val);
     }
 
-  async function loadHistory() {
+ // --- 履歴関連の変数 ---
+    let allHistoryData = []; 
+    let currentPage = 1;     
+    const PAGE_SIZE = 20;    
+
+    // 履歴の初期読み込み
+    async function loadHistory() {
         const listDiv = document.getElementById("history-list");
+        const footer = document.getElementById("history-footer");
+        const searchInput = document.getElementById("history-search");
+        
+        // 初期化
+        listDiv.innerHTML = '<p style="text-align: center; color: #999;">読み込み中...</p>';
+        if (footer) footer.style.display = "none";
+        if (searchInput) searchInput.value = ""; 
+        allHistoryData = [];
+        currentPage = 1;
+
         try {
             const res = await fetch(GAS_URL, { 
                 method: "POST", 
                 body: JSON.stringify({ action: "getOrderHistory" }) 
             });
-            const history = await res.json();
+            allHistoryData = await res.json();
             
-            if (!history || history.length === 0) {
+            listDiv.innerHTML = "";
+            
+            if (!allHistoryData || allHistoryData.length === 0) {
                 listDiv.innerHTML = '<p style="text-align: center; color: #999;">履歴はありません</p>';
                 return;
             }
 
-            listDiv.innerHTML = history.map(item => {
-                const safeData = btoa(unescape(encodeURIComponent(JSON.stringify(item))));
-                
-                return `
-                <div class="item-card" style="border-left: 5px solid #ffc107; margin-bottom: 10px; padding: 10px; background: #fff;">
-                    <div style="display: flex; justify-content: space-between; align-items: flex-start;">
-                        <div>
-                            <small>${item.date} / <b>${item.customerName}</b></small><br>
-                            <b style="font-size: 1.1em;">${item.name}</b><br>
-                            <small>品番: ${item.partNo} / 数量: ${item.qty}</small>
-                        </div>
-                        <div style="text-align: right;">
-                            <button onclick="editOrderHistory('${safeData}')" 
-                                    style="background: #ffc107; border: none; padding: 8px 12px; border-radius: 5px; font-weight: bold; margin-bottom: 10px; display: block; width: 80px;">
-                                修正
-                            </button>
-                            <button onclick="deleteOrderHistory(${item.rowNum})" 
-                                    style="background: none; border: none; color: #d9534f; font-size: 12px; cursor: pointer;">
-                                <i class="fa-solid fa-trash"></i> 削除
-                            </button>
-                        </div>
-                    </div>
-                </div>`;
-            }).join('');
+            renderNextPage(); // 最初の20件を表示
         } catch (e) { 
             listDiv.innerHTML = '<p style="text-align: center;">読み込みエラー</p>'; 
         }
     }
-async function editOrderHistory(safeData) {
-        const targetItem = JSON.parse(decodeURIComponent(escape(atob(safeData))));
+
+    // 次の20件を描画する
+    function renderNextPage() {
+        const listDiv = document.getElementById("history-list");
+        const footer = document.getElementById("history-footer");
+        const remainingSpan = document.getElementById("remaining-count");
+
+        const start = (currentPage - 1) * PAGE_SIZE;
+        const end = start + PAGE_SIZE;
+        const pagedData = allHistoryData.slice(start, end);
+
+        if (pagedData.length === 0) {
+            if (footer) footer.style.display = "none";
+            return;
+        }
+
+        const html = pagedData.map(item => createHistoryCard(item)).join('');
+        listDiv.insertAdjacentHTML('beforeend', html);
         
-        if (!confirm(`${targetItem.customerName}様の注文（${targetItem.date}）をすべてカートに読み込みますか？\n※現在のカート内容は上書きされます。`)) return;
-
-        // 一旦カートを空にする
-        cart = [];
-
-        try {
-            // 1. 最新の履歴一覧を取得
-            const res = await fetch(GAS_URL, { 
-                method: "POST", 
-                body: JSON.stringify({ action: "getOrderHistory" }) 
-            });
-            const allHistory = await res.json();
-
-            // 2. 同じ顧客名 ＆ 同じ日時の商品をすべて抽出
-            const relatedItems = allHistory.filter(item => 
-                item.customerName === targetItem.customerName && item.date === targetItem.date
-            );
-
-            // 3. 抽出した商品をすべてカートにコピー
-            relatedItems.forEach(item => {
-                cart.push({
-                    name: item.name,
-                    partNo: item.partNo,
-                    price: item.price || 0,
-                    quantity: parseInt(item.qty)
-                });
-            });
-
-            // 4. 顧客情報を画面に復元
-            document.getElementById("res-customer").innerText = targetItem.customerName;
-            document.getElementById("cust-loading").style.display = "none";
-            document.getElementById("cust-data").style.display = "block";
-
-            // 5. 表示を更新してカートへ
-            updateCartUI();
-            alert(`${relatedItems.length}件の商品をカートに読み込みました。\n内容を修正して、再度【注文確定】を押すと新しい注文として送信されます。`);
-            showPage('cart');
-
-        } catch (e) {
-            alert("読み込みエラーが発生しました。");
+        const remaining = allHistoryData.length - end;
+        if (remaining > 0) {
+            if (footer) footer.style.display = "block";
+            if (remainingSpan) remainingSpan.innerText = remaining;
+            currentPage++;
+        } else {
+            if (footer) footer.style.display = "none";
         }
     }
-    // 1. 履歴の検索（フィルタリング）機能
-  function filterHistory() {
+
+    // 履歴カードのHTML生成（共通パーツ）
+    function createHistoryCard(item) {
+        const safeData = btoa(unescape(encodeURIComponent(JSON.stringify(item))));
+        return `
+        <div class="item-card" style="border-left: 5px solid #ffc107; margin-bottom: 10px; padding: 10px; background: #fff;">
+            <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                <div>
+                    <small>${item.date} / <b>${item.customerName}</b></small><br>
+                    <b style="font-size: 1.1em;">${item.name}</b><br>
+                    <small>品番: ${item.partNo} / 数量: ${item.qty}</small>
+                </div>
+                <div style="text-align: right;">
+                    <button onclick="editOrderHistory('${safeData}')" 
+                            style="background: #ffc107; border: none; padding: 8px 12px; border-radius: 5px; font-weight: bold; margin-bottom: 10px; display: block; width: 80px;">修正</button>
+                    <button onclick="deleteOrderHistory(${item.rowNum})" 
+                            style="background: none; border: none; color: #d9534f; font-size: 12px; cursor: pointer;">
+                        <i class="fa-solid fa-trash"></i> 削除
+                    </button>
+                </div>
+            </div>
+        </div>`;
+    }
+
+    // 検索機能
+    function filterHistory() {
         const query = document.getElementById("history-search").value.toLowerCase();
         const listDiv = document.getElementById("history-list");
         const footer = document.getElementById("history-footer");
 
-        // 1. 検索ワードが空なら、ページ送りの表示に戻す
         if (!query) {
             currentPage = 1;
             listDiv.innerHTML = "";
@@ -494,61 +501,62 @@ async function editOrderHistory(safeData) {
             return;
         }
 
-        // 2. 全データからキーワードに一致するものを抽出
-        const filtered = allHistoryData.filter(item => {
-            return (
-                item.customerName.toLowerCase().includes(query) ||
-                item.name.toLowerCase().includes(query) ||
-                item.partNo.toLowerCase().includes(query)
-            );
-        });
+        const filtered = allHistoryData.filter(item => 
+            item.customerName.toLowerCase().includes(query) ||
+            item.name.toLowerCase().includes(query) ||
+            item.partNo.toLowerCase().includes(query)
+        );
 
-        // 3. 検索中は「もっと見る」ボタンを隠し、ヒットしたものを全表示
-        footer.style.display = "none";
-        
+        if (footer) footer.style.display = "none";
         if (filtered.length === 0) {
             listDiv.innerHTML = '<p style="text-align: center; color: #999;">一致する履歴はありません</p>';
             return;
         }
-
-        listDiv.innerHTML = filtered.map(item => {
-            const safeData = btoa(unescape(encodeURIComponent(JSON.stringify(item))));
-            return `
-            <div class="item-card" style="border-left: 5px solid #ffc107; margin-bottom: 10px; padding: 10px; background: #fff;">
-                <div style="display: flex; justify-content: space-between;">
-                    <div>
-                        <small>${item.date} / <b>${item.customerName}</b></small><br>
-                        <b>${item.name}</b><br>
-                        <small>品番: ${item.partNo} / 数量: ${item.qty}</small>
-                    </div>
-                    <div style="text-align: right;">
-                        <button onclick="editOrderHistory('${safeData}')" style="background: #ffc107; border: none; padding: 8px 12px; border-radius: 5px; font-weight: bold; width: 80px;">修正</button>
-                    </div>
-                </div>
-            </div>`;
-        }).join('');
+        listDiv.innerHTML = filtered.map(item => createHistoryCard(item)).join('');
     }
 
-    // 2. 履歴の削除機能（行指定）
+    // 修正・再注文
+    async function editOrderHistory(safeData) {
+        const targetItem = JSON.parse(decodeURIComponent(escape(atob(safeData))));
+        if (!confirm(`${targetItem.customerName}様の注文をカートに読み込みますか？`)) return;
+
+        cart = [];
+        const relatedItems = allHistoryData.filter(item => 
+            item.customerName === targetItem.customerName && item.date === targetItem.date
+        );
+
+        relatedItems.forEach(item => {
+            cart.push({
+                name: item.name,
+                partNo: item.partNo,
+                price: item.price || 0,
+                quantity: parseInt(item.qty)
+            });
+        });
+
+        document.getElementById("res-customer").innerText = targetItem.customerName;
+        document.getElementById("cust-loading").style.display = "none";
+        document.getElementById("cust-data").style.display = "block";
+
+        updateCartUI();
+        alert(`${relatedItems.length}件をカートに読み込みました。`);
+        showPage('cart');
+    }
+
+    // 削除
     async function deleteOrderHistory(rowNum) {
         if (!confirm("この行のデータを削除してもよろしいですか？")) return;
-
         try {
             const res = await fetch(GAS_URL, { 
                 method: "POST", 
                 body: JSON.stringify({ action: "deleteOrderLine", rowNum: rowNum }) 
             });
             const result = await res.json();
-            
             if (result.success) {
                 alert("削除しました");
-                loadHistory(); // 一覧を再読み込み
-            } else {
-                alert("削除に失敗しました: " + (result.error || "不明なエラー"));
+                loadHistory(); 
             }
-        } catch (e) {
-            alert("通信エラーにより削除できませんでした");
-        }
+        } catch (e) { alert("削除エラー"); }
     }
 </script>
 </body>
