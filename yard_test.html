@@ -438,9 +438,9 @@
             listDiv.innerHTML = '<p style="text-align: center;">履歴の取得に失敗しました</p>'; 
         }
     }
-    // 修正処理（エンコード対応版）
+    // 修正処理（履歴データをそのままカートへ復元する超安定版）
     async function editOrderHistory(safeData) {
-        if (!confirm("この注文を修正しますか？\n\n一旦履歴から削除し、顧客情報と内容をカートに戻します。")) return;
+        if (!confirm("この注文を修正しますか？\n\n一旦履歴から削除し、内容をカートに戻します。")) return;
 
         // データの復元（デコード）
         let item;
@@ -451,40 +451,35 @@
             return;
         }
 
-        // 1. シートから削除
+        // 1. シートから削除（rowNumを使ってピンポイント消去）
         try {
-            await fetch(GAS_URL, { 
+            const res = await fetch(GAS_URL, { 
                 method: "POST", 
                 body: JSON.stringify({ action: "deleteOrderLine", rowNum: item.rowNum }) 
             });
+            if (!res.ok) throw new Error();
         } catch (e) {
             alert("通信エラーにより修正を開始できませんでした");
             return;
         }
 
-        // 2. 顧客情報を復元
-        if (item.customerName) {
-            await fetchCustomerData(item.customerName); 
-        }
+        // 2. 顧客情報を画面に直接セット（再検索不要で確実）
+        document.getElementById("res-customer").innerText = item.customerName || "不明な顧客";
+        document.getElementById("cust-loading").style.display = "none";
+        document.getElementById("cust-data").style.display = "block";
+        // ※住所などは履歴に持っていないため空になりますが、名前があれば注文送信は可能です。
 
-        // 3. 商品情報をカートに復元
-        const result = await executeProductSearch(item.partNo);
-        const p = (result && result.items) ? result.items[0] : result;
-
-        if (p && p.name) {
-            cart.push({ ...p, quantity: parseInt(item.qty) });
-        } else {
-            cart.push({
-                name: item.name,
-                partNo: item.partNo,
-                price: item.price || 0,
-                quantity: parseInt(item.qty)
-            });
-        }
+        // 3. 商品情報をカートに直接復元（マスタ検索をせずitemの値をそのまま使う）
+        cart.push({
+            name: item.name,
+            partNo: item.partNo,
+            price: item.price || 0, // 履歴に単価があればそれを使う
+            quantity: parseInt(item.qty)
+        });
 
         // 4. 表示を更新してカート画面へ
         updateCartUI();
-        alert("顧客情報と商品をカートに戻しました。内容を修正して再送してください。");
+        alert("注文内容をカートに戻しました。数量などを修正して再送してください。");
         showPage('cart');
     }
 
