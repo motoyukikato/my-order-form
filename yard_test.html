@@ -361,22 +361,63 @@
         } catch (e) { alert("カメラ起動失敗"); }
     }
 
+    // 顧客スキャン（JAN/QR両対応・低負荷設定）
     async function handleCustomerScan() {
         showPage('barcode');
-        await safeStopScanner();
+        const status = document.getElementById("scan-status");
+        
+        await safeStopScanner(); // 二重起動を防ぎメモリを掃除
         if (!html5QrCode) html5QrCode = new Html5Qrcode("reader");
+
+        document.getElementById("start-btn").style.display = "none";
+        document.getElementById("stop-btn").style.display = "block";
+        if (status) status.innerText = "バーコード/QRを枠に入れてください";
+
+        // カメラの負荷を下げ、JANコードを認識しやすくする設定
+        const config = {
+            fps: 5, // フレームレートを下げてスマホの熱暴走とクラッシュを防止
+            qrbox: { width: 280, height: 180 }, // 横長のバーコードが入りやすい形
+            aspectRatio: 1.0,
+            formatsToSupport: [ 
+                Html5QrcodeSupportedFormats.EAN_13, 
+                Html5QrcodeSupportedFormats.EAN_8, 
+                Html5QrcodeSupportedFormats.QR_CODE 
+            ]
+        };
+
         try {
-            await html5QrCode.start({ facingMode: "environment" }, { fps: 10, qrbox: 250 }, 
-                async (text) => { await safeStopScanner(); fetchCustomerData(text); showPage('home'); }
+            await html5QrCode.start(
+                { facingMode: "environment" }, 
+                config, 
+                async (text) => { 
+                    // 読み取り成功したら即座に停止してメモリを逃がす
+                    await safeStopScanner(); 
+                    fetchCustomerData(text); 
+                    showPage('home'); 
+                }
             );
-        } catch (e) { alert("カメラ起動失敗"); }
+        } catch (e) { 
+            console.error(e);
+            alert("カメラの起動に失敗しました。ブラウザの設定でカメラを許可するか、一度タブを閉じてやり直してください。"); 
+        }
     }
 
-    async function stopScanner() { await safeStopScanner(); }
+    // 停止処理の統合
+    async function stopScanner() { 
+        await safeStopScanner(); 
+        if (document.getElementById("scan-status")) {
+            document.getElementById("scan-status").innerText = "カメラ停止中";
+        }
+    }
 
+    // 顧客の手入力検索
     function handleCustomerManualSearch() {
         const val = document.getElementById('cust-manual-input').value.trim();
-        if (val) fetchCustomerData(val);
+        if (val) {
+            fetchCustomerData(val);
+        } else {
+            alert("検索値を入力してください");
+        }
     }
 
     // --- 履歴管理 ---
