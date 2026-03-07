@@ -443,9 +443,9 @@
         loadHistory();
     }
 
-    // 修正処理（新しく追加：削除してからカートへ戻す）
+    // 修正処理（顧客情報も復元する版）
     async function editOrderHistory(item) {
-        if (!confirm("この注文を修正しますか？\n\n一旦履歴から削除し、内容をカートに戻します。")) return;
+        if (!confirm("この注文を修正しますか？\n\n一旦履歴から削除し、顧客情報と内容をカートに戻します。")) return;
 
         // 1. シートから削除
         try {
@@ -458,14 +458,18 @@
             return;
         }
 
-        // 2. 商品情報をカートに復元（マスタから最新情報を取得）
+        // 2. ★顧客情報を復元（履歴にある名前で再検索）
+        if (item.customerName) {
+            await fetchCustomerData(item.customerName); 
+        }
+
+        // 3. 商品情報をカートに復元
         const result = await executeProductSearch(item.partNo);
         const p = (result && result.items) ? result.items[0] : result;
 
         if (p && p.name) {
             cart.push({ ...p, quantity: parseInt(item.qty) });
         } else {
-            // マスタにない場合の予備
             cart.push({
                 name: item.name,
                 partNo: item.partNo,
@@ -474,20 +478,10 @@
             });
         }
 
-        // 3. 表示を更新してカート画面へ移動
+        // 4. 表示を更新してカート画面へ
         updateCartUI();
-        alert("履歴を削除し、カートに戻しました。修正して再送してください。");
+        alert("顧客情報と商品をカートに戻しました。内容を修正して再送してください。");
         showPage('cart');
-    }
-    // 履歴の絞り込み検索機能
-    function filterHistory() {
-        const query = document.getElementById("history-search").value.toLowerCase();
-        const items = document.querySelectorAll("#history-list .item-card");
-        
-        items.forEach(item => {
-            const text = item.innerText.toLowerCase();
-            item.style.display = text.includes(query) ? "block" : "none";
-        });
     }
 </script>
 </body>
