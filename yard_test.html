@@ -408,108 +408,61 @@
             }
 
             listDiv.innerHTML = history.map(item => {
-                // 商品名などに特殊文字があっても壊れないようにエンコード
                 const safeData = btoa(unescape(encodeURIComponent(JSON.stringify(item))));
                 
                 return `
-                <div class="item-card" style="border-left: 5px solid #ffc107;">
-                    <div style="display: flex; justify-content: space-between;">
+                <div class="item-card" style="border-left: 5px solid #ffc107; margin-bottom: 10px; padding: 10px; background: #fff;">
+                    <div style="display: flex; justify-content: space-between; align-items: flex-start;">
                         <div>
-                            <small>${item.date} / <span class="hist-cust">${item.customerName}</span></small><br>
-                            <b class="hist-name">${item.name}</b><br>
+                            <small>${item.date} / <b>${item.customerName}</b></small><br>
+                            <b style="font-size: 1.1em;">${item.name}</b><br>
                             <small>品番: ${item.partNo} / 数量: ${item.qty}</small>
                         </div>
                         <div style="text-align: right;">
                             <button onclick="editOrderHistory('${safeData}')" 
-                                    style="background: #ffc107; border: none; padding: 8px 12px; border-radius: 5px; font-weight: bold;">
+                                    style="background: #ffc107; border: none; padding: 8px 12px; border-radius: 5px; font-weight: bold; margin-bottom: 10px; display: block; width: 80px;">
                                 修正
+                            </button>
+                            <button onclick="deleteOrderHistory(${item.rowNum})" 
+                                    style="background: none; border: none; color: #d9534f; font-size: 12px; cursor: pointer;">
+                                <i class="fa-solid fa-trash"></i> 削除
                             </button>
                         </div>
                     </div>
                 </div>`;
             }).join('');
         } catch (e) { 
-            listDiv.innerHTML = '読み込みエラー'; 
+            listDiv.innerHTML = '<p style="text-align: center;">読み込みエラー</p>'; 
         }
     }
 
     async function editOrderHistory(safeData) {
         if (!confirm("この注文を修正しますか？\n一旦削除してカートに戻します。")) return;
 
-        // データの復元
         const item = JSON.parse(decodeURIComponent(escape(atob(safeData))));
 
-        // 1. GAS側の行削除を実行
+        // 1. シートから削除
         await fetch(GAS_URL, { 
             method: "POST", 
             body: JSON.stringify({ action: "deleteOrderLine", rowNum: item.rowNum }) 
         });
 
-        // 2. 顧客情報を画面に強制セット（これで「顧客が消える」を防ぎます）
+        // 2. 顧客情報を画面にセット
         document.getElementById("res-customer").innerText = item.customerName;
         document.getElementById("cust-loading").style.display = "none";
         document.getElementById("cust-data").style.display = "block";
 
-        // 3. 履歴のデータをそのままカートに突っ込む（再検索しないので undefined にならない）
+        // 3. 【最重要】履歴のデータをそのままカートへ
+        // undefinedにならないよう、itemの中身を直接使います
         cart.push({
-            name: item.name,
-            partNo: item.partNo,
-            price: item.price || 0, 
-            quantity: parseInt(item.qty)
+            name: item.name || "不明な商品名",
+            partNo: item.partNo || "不明な品番",
+            price: item.price || 0,
+            quantity: parseInt(item.qty) || 1
         });
 
         updateCartUI();
         alert("カートに戻しました。修正して再送してください。");
-        showPage('cart');
-    }
-    // 削除処理（既存のものを維持しつつ再読み込み）
-    async function deleteOrderHistory(rowNum) {
-        if (!confirm("削除しますか？")) return;
-        await fetch(GAS_URL, { 
-            method: "POST", 
-            body: JSON.stringify({ action: "deleteOrderLine", rowNum: rowNum }) 
-        });
-        loadHistory();
-    }
-
-    // 修正処理（顧客情報も復元する版）
-    async function editOrderHistory(item) {
-        if (!confirm("この注文を修正しますか？\n\n一旦履歴から削除し、顧客情報と内容をカートに戻します。")) return;
-
-        // 1. シートから削除
-        try {
-            await fetch(GAS_URL, { 
-                method: "POST", 
-                body: JSON.stringify({ action: "deleteOrderLine", rowNum: item.rowNum }) 
-            });
-        } catch (e) {
-            alert("通信エラーにより修正を開始できませんでした");
-            return;
-        }
-
-        // 2. ★顧客情報を復元（履歴にある名前で再検索）
-        if (item.customerName) {
-            await fetchCustomerData(item.customerName); 
-        }
-
-        // 3. 商品情報をカートに復元
-        const result = await executeProductSearch(item.partNo);
-        const p = (result && result.items) ? result.items[0] : result;
-
-        if (p && p.name) {
-            cart.push({ ...p, quantity: parseInt(item.qty) });
-        } else {
-            cart.push({
-                name: item.name,
-                partNo: item.partNo,
-                price: item.price || 0,
-                quantity: parseInt(item.qty)
-            });
-        }
-
-        // 4. 表示を更新してカート画面へ
-        updateCartUI();
-        alert("顧客情報と商品をカートに戻しました。内容を修正して再送してください。");
         showPage('cart');
     }
 </script>
