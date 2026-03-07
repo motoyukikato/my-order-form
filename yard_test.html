@@ -212,7 +212,8 @@
         try {
             const res = await fetch(GAS_URL, {
                 method: "POST",
-                body: JSON.stringify({ action: "searchProduct", code: code })
+                // GAS側の「else if (c.action === "productSearch") r = searchProductGas(c.jan);」に合わせます
+body: JSON.stringify({ action: "productSearch", jan: code })
             });
             const product = await res.json();
             if (product) {
@@ -238,7 +239,7 @@
         if (!code) return;
         const res = await fetch(GAS_URL, {
             method: "POST",
-            body: JSON.stringify({ action: "searchProduct", code: code })
+            body: JSON.stringify({ action: "productSearch", jan: code })
         });
         const product = await res.json();
         if (product) {
