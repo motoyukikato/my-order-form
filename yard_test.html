@@ -387,45 +387,36 @@
         } catch (e) { alert("カメラ起動失敗"); }
     }
 
-    // 顧客スキャン（QRコード専用・超軽量版）
+    // 顧客スキャン（QRコード・JAN共通・修正版）
     async function handleCustomerScan() {
         showPage('barcode');
         const status = document.getElementById("scan-status");
         
-        await safeStopScanner(); // 二重起動を防ぎメモリを掃除
+        await safeStopScanner(); 
         if (!html5QrCode) html5QrCode = new Html5Qrcode("reader");
 
         document.getElementById("start-btn").style.display = "none";
         document.getElementById("stop-btn").style.display = "block";
-        if (status) status.innerText = "顧客QRコードを枠に入れてください";
+        if (status) status.innerText = "コードを枠に入れてください";
 
+        // 設定は1回だけ定義します
         const config = {
-        fps: 20, // 処理速度を上げ、シャッターチャンスを逃さない
-        qrbox: { width: 280, height: 120 }, // 横長のバーコードに特化した細長い枠
-        aspectRatio: 1.0,
-        disableFlip: true, // 鏡像反転を無効化してCPU負荷を軽減
-        // JANコードのみに集中させる
-        formatsToSupport: [ 
-            Html5QrcodeSupportedFormats.EAN_13, 
-            Html5QrcodeSupportedFormats.EAN_8 
-        ]
-    };const config = {
-        fps: 20, // 処理速度を上げ、シャッターチャンスを逃さない
-        qrbox: { width: 280, height: 120 }, // 横長のバーコードに特化した細長い枠
-        aspectRatio: 1.0,
-        disableFlip: true, // 鏡像反転を無効化してCPU負荷を軽減
-        // JANコードのみに集中させる
-        formatsToSupport: [ 
-            Html5QrcodeSupportedFormats.EAN_13, 
-            Html5QrcodeSupportedFormats.EAN_8 
-        ]
-    };
+            fps: 20,
+            qrbox: { width: 280, height: 150 },
+            aspectRatio: 1.0,
+            disableFlip: true,
+            formatsToSupport: [ 
+                Html5QrcodeSupportedFormats.EAN_13, 
+                Html5QrcodeSupportedFormats.EAN_8,
+                Html5QrcodeSupportedFormats.QR_CODE 
+            ]
+        };
+
         try {
             await html5QrCode.start(
                 { facingMode: "environment" }, 
                 config, 
                 async (text) => { 
-                    // 読み取り成功したら即座に停止して画面遷移
                     await safeStopScanner(); 
                     fetchCustomerData(text); 
                     showPage('home'); 
@@ -433,7 +424,7 @@
             );
         } catch (e) { 
             console.error(e);
-            alert("カメラの起動に失敗しました。一度ブラウザのタブを閉じてやり直してください。"); 
+            alert("カメラの起動に失敗しました。"); 
         }
     }
 
