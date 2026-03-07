@@ -393,24 +393,101 @@
         if (val) fetchCustomerData(val);
     }
 
+   // --- 履歴管理（修正機能付きにアップデート） ---
     async function loadHistory() {
         const listDiv = document.getElementById("history-list");
         try {
-            const res = await fetch(GAS_URL, { method: "POST", body: JSON.stringify({ action: "getOrderHistory" }) });
+            const res = await fetch(GAS_URL, { 
+                method: "POST", 
+                body: JSON.stringify({ action: "getOrderHistory" }) 
+            });
             const history = await res.json();
+            
+            if (!history || history.length === 0) {
+                listDiv.innerHTML = '<p style="text-align: center; color: #999;">履歴はありません</p>';
+                return;
+            }
+
             listDiv.innerHTML = history.map(item => `
-                <div class="item-card">
-                    <small>${item.date} / ${item.customerName}</small><br>
-                    <b>${item.name}</b> (${item.qty})
-                    <button onclick="deleteOrderHistory(${item.rowNum})" style="float:right; color:red; border:none; background:none;">削除</button>
+                <div class="item-card" style="border-left: 5px solid #ffc107;">
+                    <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                        <div>
+                            <small>${item.date} / ${item.customerName}</small><br>
+                            <b>${item.name}</b><br>
+                            <small>品番: ${item.partNo} / 数量: ${item.qty}</small>
+                        </div>
+                        <div style="text-align: right;">
+                            <button onclick='editOrderHistory(${JSON.stringify(item)})' 
+                                    style="background: #ffc107; color: #000; border: none; padding: 6px 12px; border-radius: 5px; font-size: 13px; font-weight: bold; margin-bottom: 8px;">
+                                <i class="fa-solid fa-pen-to-square"></i> 修正
+                            </button><br>
+                            <button onclick="deleteOrderHistory(${item.rowNum})" 
+                                    style="color: #d9534f; border: none; background: none; font-size: 12px;">
+                                <i class="fa-solid fa-trash"></i> 削除
+                            </button>
+                        </div>
+                    </div>
                 </div>`).join('');
-        } catch (e) { listDiv.innerHTML = "履歴なし"; }
+        } catch (e) { 
+            listDiv.innerHTML = '<p style="text-align: center;">履歴の取得に失敗しました</p>'; 
+        }
     }
 
+    // 削除処理（既存のものを維持しつつ再読み込み）
     async function deleteOrderHistory(rowNum) {
         if (!confirm("削除しますか？")) return;
-        await fetch(GAS_URL, { method: "POST", body: JSON.stringify({ action: "deleteOrderLine", rowNum: rowNum }) });
+        await fetch(GAS_URL, { 
+            method: "POST", 
+            body: JSON.stringify({ action: "deleteOrderLine", rowNum: rowNum }) 
+        });
         loadHistory();
+    }
+
+    // 修正処理（新しく追加：削除してからカートへ戻す）
+    async function editOrderHistory(item) {
+        if (!confirm("この注文を修正しますか？\n\n一旦履歴から削除し、内容をカートに戻します。")) return;
+
+        // 1. シートから削除
+        try {
+            await fetch(GAS_URL, { 
+                method: "POST", 
+                body: JSON.stringify({ action: "deleteOrderLine", rowNum: item.rowNum }) 
+            });
+        } catch (e) {
+            alert("通信エラーにより修正を開始できませんでした");
+            return;
+        }
+
+        // 2. 商品情報をカートに復元（マスタから最新情報を取得）
+        const result = await executeProductSearch(item.partNo);
+        const p = (result && result.items) ? result.items[0] : result;
+
+        if (p && p.name) {
+            cart.push({ ...p, quantity: parseInt(item.qty) });
+        } else {
+            // マスタにない場合の予備
+            cart.push({
+                name: item.name,
+                partNo: item.partNo,
+                price: item.price || 0,
+                quantity: parseInt(item.qty)
+            });
+        }
+
+        // 3. 表示を更新してカート画面へ移動
+        updateCartUI();
+        alert("履歴を削除し、カートに戻しました。修正して再送してください。");
+        showPage('cart');
+    }
+    // 履歴の絞り込み検索機能
+    function filterHistory() {
+        const query = document.getElementById("history-search").value.toLowerCase();
+        const items = document.querySelectorAll("#history-list .item-card");
+        
+        items.forEach(item => {
+            const text = item.innerText.toLowerCase();
+            item.style.display = text.includes(query) ? "block" : "none";
+        });
     }
 </script>
 </body>
