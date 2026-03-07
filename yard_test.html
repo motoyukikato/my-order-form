@@ -393,9 +393,7 @@
         if (val) fetchCustomerData(val);
     }
 
-   // --- 履歴管理（修正機能付きにアップデート） ---
-   // --- 履歴管理（修正機能付き） ---
-   async function loadHistory() {
+  async function loadHistory() {
         const listDiv = document.getElementById("history-list");
         try {
             const res = await fetch(GAS_URL, { 
@@ -410,79 +408,60 @@
             }
 
             listDiv.innerHTML = history.map(item => {
-                // 【重要】データを安全に渡すためのエンコード処理
+                // 商品名などに特殊文字があっても壊れないようにエンコード
                 const safeData = btoa(unescape(encodeURIComponent(JSON.stringify(item))));
                 
                 return `
                 <div class="item-card" style="border-left: 5px solid #ffc107;">
-                    <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                    <div style="display: flex; justify-content: space-between;">
                         <div>
-                            <small>${item.date} / ${item.customerName}</small><br>
-                            <b>${item.name}</b><br>
+                            <small>${item.date} / <span class="hist-cust">${item.customerName}</span></small><br>
+                            <b class="hist-name">${item.name}</b><br>
                             <small>品番: ${item.partNo} / 数量: ${item.qty}</small>
                         </div>
                         <div style="text-align: right;">
                             <button onclick="editOrderHistory('${safeData}')" 
-                                    style="background: #ffc107; color: #000; border: none; padding: 8px 15px; border-radius: 5px; font-size: 14px; font-weight: bold; margin-bottom: 8px;">
-                                <i class="fa-solid fa-pen-to-square"></i> 修正
-                            </button><br>
-                            <button onclick="deleteOrderHistory(${item.rowNum})" 
-                                    style="color: #d9534f; border: none; background: none; font-size: 12px; padding: 5px;">
-                                <i class="fa-solid fa-trash"></i> 削除
+                                    style="background: #ffc107; border: none; padding: 8px 12px; border-radius: 5px; font-weight: bold;">
+                                修正
                             </button>
                         </div>
                     </div>
                 </div>`;
             }).join('');
         } catch (e) { 
-            listDiv.innerHTML = '<p style="text-align: center;">履歴の取得に失敗しました</p>'; 
+            listDiv.innerHTML = '読み込みエラー'; 
         }
     }
-    // 修正処理（履歴データをそのままカートへ復元する超安定版）
+
     async function editOrderHistory(safeData) {
-        if (!confirm("この注文を修正しますか？\n\n一旦履歴から削除し、内容をカートに戻します。")) return;
+        if (!confirm("この注文を修正しますか？\n一旦削除してカートに戻します。")) return;
 
-        // データの復元（デコード）
-        let item;
-        try {
-            item = JSON.parse(decodeURIComponent(escape(atob(safeData))));
-        } catch (e) {
-            alert("データの解析に失敗しました");
-            return;
-        }
+        // データの復元
+        const item = JSON.parse(decodeURIComponent(escape(atob(safeData))));
 
-        // 1. シートから削除（rowNumを使ってピンポイント消去）
-        try {
-            const res = await fetch(GAS_URL, { 
-                method: "POST", 
-                body: JSON.stringify({ action: "deleteOrderLine", rowNum: item.rowNum }) 
-            });
-            if (!res.ok) throw new Error();
-        } catch (e) {
-            alert("通信エラーにより修正を開始できませんでした");
-            return;
-        }
+        // 1. GAS側の行削除を実行
+        await fetch(GAS_URL, { 
+            method: "POST", 
+            body: JSON.stringify({ action: "deleteOrderLine", rowNum: item.rowNum }) 
+        });
 
-        // 2. 顧客情報を画面に直接セット（再検索不要で確実）
-        document.getElementById("res-customer").innerText = item.customerName || "不明な顧客";
+        // 2. 顧客情報を画面に強制セット（これで「顧客が消える」を防ぎます）
+        document.getElementById("res-customer").innerText = item.customerName;
         document.getElementById("cust-loading").style.display = "none";
         document.getElementById("cust-data").style.display = "block";
-        // ※住所などは履歴に持っていないため空になりますが、名前があれば注文送信は可能です。
 
-        // 3. 商品情報をカートに直接復元（マスタ検索をせずitemの値をそのまま使う）
+        // 3. 履歴のデータをそのままカートに突っ込む（再検索しないので undefined にならない）
         cart.push({
             name: item.name,
             partNo: item.partNo,
-            price: item.price || 0, // 履歴に単価があればそれを使う
+            price: item.price || 0, 
             quantity: parseInt(item.qty)
         });
 
-        // 4. 表示を更新してカート画面へ
         updateCartUI();
-        alert("注文内容をカートに戻しました。数量などを修正して再送してください。");
+        alert("カートに戻しました。修正して再送してください。");
         showPage('cart');
     }
-
     // 削除処理（既存のものを維持しつつ再読み込み）
     async function deleteOrderHistory(rowNum) {
         if (!confirm("削除しますか？")) return;
