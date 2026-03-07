@@ -481,21 +481,52 @@ async function editOrderHistory(safeData) {
         }
     }
     // 1. 履歴の検索（フィルタリング）機能
-    function filterHistory() {
+  function filterHistory() {
         const query = document.getElementById("history-search").value.toLowerCase();
-        // 履歴リスト内の各カードを取得
-        const items = document.querySelectorAll("#history-list .item-card");
+        const listDiv = document.getElementById("history-list");
+        const footer = document.getElementById("history-footer");
 
-        items.forEach(item => {
-            // カード内のテキスト（顧客名、商品名、品番）をすべて取得
-            const text = item.innerText.toLowerCase();
-            // 検索文字が含まれているかチェック
-            if (text.includes(query)) {
-                item.style.display = "block"; // 一致したら表示
-            } else {
-                item.style.display = "none";  // 一致しなければ非表示
-            }
+        // 1. 検索ワードが空なら、ページ送りの表示に戻す
+        if (!query) {
+            currentPage = 1;
+            listDiv.innerHTML = "";
+            renderNextPage(); 
+            return;
+        }
+
+        // 2. 全データからキーワードに一致するものを抽出
+        const filtered = allHistoryData.filter(item => {
+            return (
+                item.customerName.toLowerCase().includes(query) ||
+                item.name.toLowerCase().includes(query) ||
+                item.partNo.toLowerCase().includes(query)
+            );
         });
+
+        // 3. 検索中は「もっと見る」ボタンを隠し、ヒットしたものを全表示
+        footer.style.display = "none";
+        
+        if (filtered.length === 0) {
+            listDiv.innerHTML = '<p style="text-align: center; color: #999;">一致する履歴はありません</p>';
+            return;
+        }
+
+        listDiv.innerHTML = filtered.map(item => {
+            const safeData = btoa(unescape(encodeURIComponent(JSON.stringify(item))));
+            return `
+            <div class="item-card" style="border-left: 5px solid #ffc107; margin-bottom: 10px; padding: 10px; background: #fff;">
+                <div style="display: flex; justify-content: space-between;">
+                    <div>
+                        <small>${item.date} / <b>${item.customerName}</b></small><br>
+                        <b>${item.name}</b><br>
+                        <small>品番: ${item.partNo} / 数量: ${item.qty}</small>
+                    </div>
+                    <div style="text-align: right;">
+                        <button onclick="editOrderHistory('${safeData}')" style="background: #ffc107; border: none; padding: 8px 12px; border-radius: 5px; font-weight: bold; width: 80px;">修正</button>
+                    </div>
+                </div>
+            </div>`;
+        }).join('');
     }
 
     // 2. 履歴の削除機能（行指定）
