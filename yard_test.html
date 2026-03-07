@@ -461,7 +461,38 @@
         alert("カートに読み込みました。数量の調整が可能です。"); 
         showPage('cart');
     }
+async function updateHistoryQty(rowNum, delta) {
+    const qtyElement = document.getElementById(`qty-display-${rowNum}`);
+    const statusElement = document.getElementById(`status-${rowNum}`);
+    let newQty = parseInt(qtyElement.innerText) + delta;
 
+    if (newQty < 1) {
+        deleteOrderHistory(rowNum);
+        return;
+    }
+
+    // 表示を先に更新（サクサク感を出すため）
+    qtyElement.innerText = newQty;
+
+    // GASへ送信してシートを直接書き換える
+    try {
+        const res = await fetch(GAS_URL, {
+            method: "POST",
+            body: JSON.stringify({ 
+                action: "updateOrderQty", 
+                rowNum: rowNum, 
+                newQty: newQty 
+            })
+        });
+        const result = await res.json();
+        if (result.success) {
+            statusElement.style.display = "block";
+            setTimeout(() => { statusElement.style.display = "none"; }, 2000);
+        }
+    } catch (e) {
+        alert("通信エラー：修正が保存できませんでした");
+    }
+}
     async function deleteOrderHistory(rowNum) {
         if (!confirm("削除しますか？")) return;
         try {
