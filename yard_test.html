@@ -247,25 +247,51 @@
         btn.disabled = false;
     }
 
-    // スキャン後の自動検索用
+// スキャン後の自動検索用（修正版：GASの返却形式に対応）
     async function searchProductLocal(code) {
         if (!code) return;
-        const product = await executeProductSearch(code);
+        
+        // 1. スキャンしたコードを画面に表示（何が読み取られたか確認用）
+        const status = document.getElementById("scan-status");
+        if (status) status.innerText = "照合中: " + code;
 
-        if (product) {
-            tempProduct = product;
-            const defaultQty = Number(product.lot || 1);
-            const inputQty = prompt("【" + product.maker + "】\n" + product.name + "\n数量を入力してください", defaultQty);
+        // 2. GASに問い合わせ
+        const result = await executeProductSearch(code);
+
+        // 3. GASからのデータを取り出す（items[0] または 直接のデータ）
+        let p = null;
+        if (result && result.items && result.items.length > 0) {
+            p = result.items[0]; // 配列の1番目を取り出す
+        } else if (result && result.name) {
+            p = result; // 直接オブジェクトが返ってきた場合
+        }
+
+        // 4. 商品が見つかった場合の処理
+        if (p) {
+            tempProduct = p;
+            const defaultQty = Number(p.lot || 1);
+            
+            // 読み取った数字も表示に含めて、安心感を出す
+            const inputQty = prompt(
+                "【商品が見つかりました】\n" + 
+                "品名: " + p.name + "\n" +
+                "品番: " + p.partNo + "\n" +
+                "JAN: " + code + "\n\n" +
+                "数量を入力してください", defaultQty
+            );
+            
             if (inputQty === null) { handleScan(); return; }
+
             const qty = parseInt(inputQty);
             if (!isNaN(qty) && qty > 0) {
-                cart.push({ ...product, quantity: qty });
+                cart.push({ ...p, quantity: qty });
                 updateCartUI();
-                alert(product.name + " を追加しました");
+                alert(p.name + " を追加しました");
             }
-            handleScan(); 
+            handleScan(); // 次のスキャンへ
         } else {
-            alert("マスタ未登録: " + code);
+            // 5. 商品が見つからなかった場合
+            alert("⚠️マスタ未登録です\n読み取り値: " + code + "\n\nスプレッドシートの「商品マスタ」にこのJANコードがあるか確認してください。");
             handleScan(); 
         }
     }
