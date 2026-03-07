@@ -361,7 +361,7 @@
         } catch (e) { alert("カメラ起動失敗"); }
     }
 
-    // 顧客スキャン（JAN/QR両対応・低負荷設定）
+    // 顧客スキャン（QRコード専用・超軽量版）
     async function handleCustomerScan() {
         showPage('barcode');
         const status = document.getElementById("scan-status");
@@ -371,18 +371,14 @@
 
         document.getElementById("start-btn").style.display = "none";
         document.getElementById("stop-btn").style.display = "block";
-        if (status) status.innerText = "バーコード/QRを枠に入れてください";
+        if (status) status.innerText = "顧客QRコードを枠に入れてください";
 
-        // カメラの負荷を下げ、JANコードを認識しやすくする設定
         const config = {
-            fps: 5, // フレームレートを下げてスマホの熱暴走とクラッシュを防止
-            qrbox: { width: 280, height: 180 }, // 横長のバーコードが入りやすい形
+            fps: 10, // QR専用なら10程度でも安定します
+            qrbox: 250, // 顧客用は正方形の枠でOK
             aspectRatio: 1.0,
-            formatsToSupport: [ 
-                Html5QrcodeSupportedFormats.EAN_13, 
-                Html5QrcodeSupportedFormats.EAN_8, 
-                Html5QrcodeSupportedFormats.QR_CODE 
-            ]
+            // QRコードのみに絞ることで、読み取り速度と安定性を向上
+            formatsToSupport: [ Html5QrcodeSupportedFormats.QR_CODE ]
         };
 
         try {
@@ -390,7 +386,7 @@
                 { facingMode: "environment" }, 
                 config, 
                 async (text) => { 
-                    // 読み取り成功したら即座に停止してメモリを逃がす
+                    // 読み取り成功したら即座に停止して画面遷移
                     await safeStopScanner(); 
                     fetchCustomerData(text); 
                     showPage('home'); 
@@ -398,7 +394,7 @@
             );
         } catch (e) { 
             console.error(e);
-            alert("カメラの起動に失敗しました。ブラウザの設定でカメラを許可するか、一度タブを閉じてやり直してください。"); 
+            alert("カメラの起動に失敗しました。一度ブラウザのタブを閉じてやり直してください。"); 
         }
     }
 
@@ -416,10 +412,9 @@
         if (val) {
             fetchCustomerData(val);
         } else {
-            alert("検索値を入力してください");
+            alert("電話番号などを入力してください");
         }
     }
-
     // --- 履歴管理 ---
     async function loadHistory() {
         const listDiv = document.getElementById("history-list");
