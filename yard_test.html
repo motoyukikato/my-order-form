@@ -374,13 +374,26 @@
         if (status) status.innerText = "顧客QRコードを枠に入れてください";
 
         const config = {
-            fps: 10, // QR専用なら10程度でも安定します
-            qrbox: 250, // 顧客用は正方形の枠でOK
-            aspectRatio: 1.0,
-            // QRコードのみに絞ることで、読み取り速度と安定性を向上
-            formatsToSupport: [ Html5QrcodeSupportedFormats.QR_CODE ]
-        };
-
+        fps: 20, // 処理速度を上げ、シャッターチャンスを逃さない
+        qrbox: { width: 280, height: 120 }, // 横長のバーコードに特化した細長い枠
+        aspectRatio: 1.0,
+        disableFlip: true, // 鏡像反転を無効化してCPU負荷を軽減
+        // JANコードのみに集中させる
+        formatsToSupport: [ 
+            Html5QrcodeSupportedFormats.EAN_13, 
+            Html5QrcodeSupportedFormats.EAN_8 
+        ]
+    };const config = {
+        fps: 20, // 処理速度を上げ、シャッターチャンスを逃さない
+        qrbox: { width: 280, height: 120 }, // 横長のバーコードに特化した細長い枠
+        aspectRatio: 1.0,
+        disableFlip: true, // 鏡像反転を無効化してCPU負荷を軽減
+        // JANコードのみに集中させる
+        formatsToSupport: [ 
+            Html5QrcodeSupportedFormats.EAN_13, 
+            Html5QrcodeSupportedFormats.EAN_8 
+        ]
+    };
         try {
             await html5QrCode.start(
                 { facingMode: "environment" }, 
