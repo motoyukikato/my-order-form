@@ -169,27 +169,31 @@
     }
 
     // --- 2. 顧客・商品検索系 ---
-    async function fetchCustomerData(val) {
-        if (!val) return;
-        const loading = document.getElementById("cust-loading");
-        loading.innerText = "検索中...";
-        try {
-            const res = await fetch(GAS_URL, {
-                method: "POST",
-                body: JSON.stringify({ action: "customerSearch", val: val })
-            });
-            const data = await res.json();
-            if (data && data.customer) {
-                document.getElementById("res-customer").innerText = data.customer;
-                document.getElementById("res-address1").innerText = data.address1 || "";
-                document.getElementById("res-address2").innerText = data.address2 || "";
-                document.getElementById("res-tel").innerText = data.tel || "";
-                document.getElementById("res-email").innerText = data.email || "";
-                document.getElementById("cust-loading").style.display = "none";
-                document.getElementById("cust-data").style.display = "block";
-            } else { alert("顧客が見つかりません"); loading.innerText = "検索またはスキャンしてください"; }
-        } catch (e) { alert("顧客検索エラー"); }
+    function searchCustomerFromMaster(val) {
+  try {
+    const masterSheet = SpreadsheetApp.openById(MASTER_CUSTOMER_ID).getSheetByName("顧客マスタ");
+    const data = masterSheet.getDataRange().getValues();
+    const searchVal = String(val).replace(/-/g, ""); // ハイフン抜き
+
+    for (let i = 1; i < data.length; i++) {
+      const rowTel = String(data[i][5]).replace(/-/g, ""); // F列(5)が電話番号
+      const rowName = String(data[i][1]);                 // B列(1)が顧客名
+
+      if (rowTel === searchVal || rowName.includes(val)) {
+        return {
+          customer: data[i][1],      // B列: 顧客名
+          address1: (data[i][2] ? "〒" + data[i][2] + " " : "") + (data[i][3] || ""), // C列(郵便番号) + D列(住所1)
+          address2: data[i][4] || "", // E列: 住所2
+          tel:      data[i][5] || "", // F列: 電話番号
+          email:    data[i][10] || "" // K列: mail
+        };
+      }
     }
+    return { error: "該当なし" };
+  } catch (e) {
+    return { error: "マスタ参照エラー: " + e.message };
+  }
+}
 
     async function executeProductSearch(code) {
         try {
