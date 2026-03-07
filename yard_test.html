@@ -287,6 +287,10 @@
     // --- 注文送信（住所と電話番号を確実に含める） ---
     async function sendOrder() {
         const customerName = document.getElementById("res-customer").innerText;
+        
+        // --- ★ここを追加：画面に表示されているメールアドレスを取得する ---
+        const email = document.getElementById("res-email") ? document.getElementById("res-email").innerText : "";
+        
         if (!customerName || cart.length === 0) { alert("顧客選択とカート確認をしてください"); return; }
         
         const btn = document.getElementById('send-btn');
@@ -294,7 +298,7 @@
 
         const orderData = {
             customerName: customerName,
-            email: email, // ★ここを追加
+            email: email, // ここで取得したemailを使います
             tel: document.getElementById("res-tel").innerText,
             address1: document.getElementById("res-address1").innerText,
             address2: document.getElementById("res-address2").innerText,
@@ -312,7 +316,6 @@
         } catch (e) { alert("送信エラー"); }
         finally { btn.disabled = false; btn.innerText = "🛒 注文を確定する"; }
     }
-
     // --- スキャン関連 ---
     async function safeStopScanner() {
         if (html5QrCode && html5QrCode.isScanning) await html5QrCode.stop();
