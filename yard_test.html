@@ -436,35 +436,31 @@
         }
     }
 async function editOrderHistory(safeData) {
-    if (!confirm("この注文を修正しますか？\n一旦削除してカートに戻します。")) return;
+        // 「削除」の文字を消し、コピーするだけの案内に変えます
+        if (!confirm("この注文内容をカートにコピーしますか？\n（修正後、元の古い行は手動で削除してください）")) return;
 
-    // 1. データの復元（デコード）
-    const item = JSON.parse(decodeURIComponent(escape(atob(safeData))));
+        const item = JSON.parse(decodeURIComponent(escape(atob(safeData))));
 
-    // 2. GASに行削除を依頼
-    await fetch(GAS_URL, { 
-        method: "POST", 
-        body: JSON.stringify({ action: "deleteOrderLine", rowNum: item.rowNum }) 
-    });
+        // 1. 【変更】ここでは自動削除しない（通信エラーや2行消えるリスクを回避）
+        // console.log("行番号 " + item.rowNum + " は後で手動削除してください");
 
-    // 3. 【重要】顧客名を直接セット（これで顧客が消えない）
-    document.getElementById("res-customer").innerText = item.customerName;
-    document.getElementById("cust-loading").style.display = "none";
-    document.getElementById("cust-data").style.display = "block";
+        // 2. 顧客情報を画面にセット
+        document.getElementById("res-customer").innerText = item.customerName;
+        document.getElementById("cust-loading").style.display = "none";
+        document.getElementById("cust-data").style.display = "block";
 
-    // 4. 【重要】履歴のデータをそのままカートへ
-    // マスタ検索を使わず item の値を直接使うことで undefined を防ぎます
-    cart.push({
-        name: item.name,
-        partNo: item.partNo,
-        price: item.price || 0,
-        quantity: parseInt(item.qty)
-    });
+        // 3. 履歴のデータをカートへ追加（現在のカートに追加されるので、2アイテム目も戻せる）
+        cart.push({
+            name: item.name || "不明な商品名",
+            partNo: item.partNo || "不明な品番",
+            price: item.price || 0,
+            quantity: parseInt(item.qty) || 1
+        });
 
-    updateCartUI();
-    alert("注文内容をカートに戻しました。修正して再送してください。");
-    showPage('cart');
-}
+        updateCartUI();
+        alert("商品をカートに追加しました。\n2個目の商品がある場合は、続けて修正ボタンを押してください。");
+        showPage('cart');
+    }
 </script>
 </body>
 </html>
