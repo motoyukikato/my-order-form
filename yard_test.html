@@ -389,20 +389,29 @@
         } else { footer.style.display = "none"; }
     }
 
-    function createHistoryCard(item) {
-        const safeData = btoa(unescape(encodeURIComponent(JSON.stringify(item))));
-        return `
-        <div class="item-card" style="border-left: 5px solid #ffc107;">
-            <div style="display: flex; justify-content: space-between; align-items: flex-start;">
-                <div><small>${item.date} / <b>${item.customerName}</b></small><br><b>${item.name}</b><br><small>品番: ${item.partNo} / 数量: ${item.qty}</small></div>
-                <div style="text-align: right;">
-                    <button onclick="editOrderHistory('${safeData}')" style="background: #ffc107; border: none; padding: 8px 12px; border-radius: 5px; font-weight: bold; margin-bottom: 5px; display: block;">修正</button>
-                    <button onclick="deleteOrderHistory(${item.rowNum})" style="background: none; border: none; color: #d9534f; font-size: 12px;"><i class="fa-solid fa-trash"></i> 削除</button>
-                </div>
+   function createHistoryCard(item) {
+    return `
+    <div class="item-card" style="border-left: 5px solid #ffc107; padding: 15px;">
+        <div style="margin-bottom: 10px;">
+            <small>${item.date} / <b>${item.customerName}</b></small><br>
+            <b style="font-size: 1.1em;">${item.name}</b><br>
+            <small style="color: #666;">品番: ${item.partNo}</small>
+        </div>
+        
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+            <div style="display: flex; align-items: center; gap: 10px;">
+                <button onclick="updateHistoryQty(${item.rowNum}, -1)" style="width:35px; height:35px; border-radius:5px; border:1px solid #ddd;">-</button>
+                <b id="qty-display-${item.rowNum}" style="font-size: 1.2em; min-width: 25px; text-align: center;">${item.qty}</b>
+                <button onclick="updateHistoryQty(${item.rowNum}, 1)" style="width:35px; height:35px; border-radius:5px; border:1px solid #ddd;">+</button>
             </div>
-        </div>`;
-    }
-
+            
+            <button onclick="deleteOrderHistory(${item.rowNum})" style="background: none; border: none; color: #d9534f;">
+                <i class="fa-solid fa-trash-can"></i> 削除
+            </button>
+        </div>
+        <div id="status-${item.rowNum}" style="font-size: 10px; color: green; margin-top: 5px; text-align: right; display:none;">保存済み</div>
+    </div>`;
+}
     function filterHistory() {
         const query = document.getElementById("history-search").value.toLowerCase();
         const listDiv = document.getElementById("history-list");
