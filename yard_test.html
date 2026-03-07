@@ -204,12 +204,10 @@
     }
 
     // --- 3. 商品検索（基幹処理） ---
-    // 手入力とスキャンの両方から使われる共通の検索関数
     async function executeProductSearch(code) {
         try {
             const res = await fetch(GAS_URL, {
                 method: "POST",
-                // jan と code 両方の名前で送ることでGAS側の記述ミスをカバーします
                 body: JSON.stringify({ action: "productSearch", jan: code, code: code })
             });
             return await res.json();
@@ -219,7 +217,6 @@
         }
     }
 
-    // 手入力検索ボタン用
     async function handleSearchAndPreview() {
         const code = document.getElementById('manual-id').value.trim();
         if (!code) { alert("品番またはJANを入力してください"); return; }
@@ -227,17 +224,18 @@
         btn.innerText = "検索中...";
         btn.disabled = true;
 
-        const product = await executeProductSearch(code);
+        const result = await executeProductSearch(code);
+        const p = (result && result.items) ? result.items[0] : result;
 
-        if (product) {
-            tempProduct = product;
-            document.getElementById("preview-name").innerText = product.name;
-            document.getElementById("preview-partNo").innerText = product.partNo;
-            document.getElementById("preview-listPrice").innerText = product.listPrice ? Number(product.listPrice).toLocaleString() : "---";
-            document.getElementById("preview-price").innerText = Number(product.price).toLocaleString();
-            document.getElementById("preview-maker").innerText = product.maker || "未設定";
-            document.getElementById("preview-stock").innerText = product.stock || "不明";
-            document.getElementById("preview-qty").value = product.lot || 1;
+        if (p && p.name) {
+            tempProduct = p;
+            document.getElementById("preview-name").innerText = p.name;
+            document.getElementById("preview-partNo").innerText = p.partNo;
+            document.getElementById("preview-listPrice").innerText = p.listPrice ? Number(p.listPrice).toLocaleString() : "---";
+            document.getElementById("preview-price").innerText = Number(p.price).toLocaleString();
+            document.getElementById("preview-maker").innerText = p.maker || "未設定";
+            document.getElementById("preview-stock").innerText = p.stock || "不明";
+            document.getElementById("preview-qty").value = p.lot || 1;
             document.getElementById("search-result-preview").style.display = "block";
         } else {
             alert("商品が見つかりませんでした: " + code);
@@ -247,51 +245,27 @@
         btn.disabled = false;
     }
 
-// スキャン後の自動検索用（修正版：GASの返却形式に対応）
     async function searchProductLocal(code) {
         if (!code) return;
-        
-        // 1. スキャンしたコードを画面に表示（何が読み取られたか確認用）
         const status = document.getElementById("scan-status");
         if (status) status.innerText = "照合中: " + code;
 
-        // 2. GASに問い合わせ
         const result = await executeProductSearch(code);
+        const p = (result && result.items) ? result.items[0] : result;
 
-        // 3. GASからのデータを取り出す（items[0] または 直接のデータ）
-        let p = null;
-        if (result && result.items && result.items.length > 0) {
-            p = result.items[0]; // 配列の1番目を取り出す
-        } else if (result && result.name) {
-            p = result; // 直接オブジェクトが返ってきた場合
-        }
-
-        // 4. 商品が見つかった場合の処理
-        if (p) {
+        if (p && p.name) {
             tempProduct = p;
-            const defaultQty = Number(p.lot || 1);
-            
-            // 読み取った数字も表示に含めて、安心感を出す
-            const inputQty = prompt(
-                "【商品が見つかりました】\n" + 
-                "品名: " + p.name + "\n" +
-                "品番: " + p.partNo + "\n" +
-                "JAN: " + code + "\n\n" +
-                "数量を入力してください", defaultQty
-            );
-            
+            const inputQty = prompt("【" + p.name + "】\n数量を入力してください", p.lot || 1);
             if (inputQty === null) { handleScan(); return; }
-
             const qty = parseInt(inputQty);
             if (!isNaN(qty) && qty > 0) {
                 cart.push({ ...p, quantity: qty });
                 updateCartUI();
                 alert(p.name + " を追加しました");
             }
-            handleScan(); // 次のスキャンへ
+            handleScan(); 
         } else {
-            // 5. 商品が見つからなかった場合
-            alert("⚠️マスタ未登録です\n読み取り値: " + code + "\n\nスプレッドシートの「商品マスタ」にこのJANコードがあるか確認してください。");
+            alert("マスタ未登録: " + code);
             handleScan(); 
         }
     }
@@ -318,10 +292,7 @@
             return `
                 <div class="item-card" style="position: relative;">
                     <b>${item.name}</b><br>
-                    <small>メーカー: ${item.maker || "---"} / 品番: ${item.partNo}</small><br>
-                    <div style="background: #fff5f5; padding: 5px; border-radius: 5px; margin: 5px 0; border: 1px solid #ffcccc; color: #d9534f; font-weight: bold;">
-                        在庫: ${item.stock || "設定なし"}
-                    </div>
+                    <small>品番: ${item.partNo}</small><br>
                     単価: ${Number(item.price).toLocaleString()}円 / 数量: 
                     <input type="number" value="${item.quantity}" onchange="updateQty(${i}, this.value)" style="width:50px;">
                     <button onclick="removeItem(${i})" style="position: absolute; right: 10px; top: 10px; border:none; background:none; color:#ccc;"><i class="fa-solid fa-trash-can"></i></button>
@@ -341,22 +312,13 @@
         
         const btn = document.getElementById('send-btn');
         btn.disabled = true; btn.innerText = "送信中...";
-
-        const requestData = {
-            customerName: customerName, 
-            zip: currentZip,
-            address1: document.getElementById("res-address1").innerText,
-            address2: document.getElementById("res-address2").innerText,
-            tel: document.getElementById("res-tel").innerText,
-            email: document.getElementById("res-email").innerText,
-            comment: document.getElementById("order-comment").value,
-            items: cart
-        };
-
         try {
             await fetch(GAS_URL, {
                 method: "POST",
-                body: JSON.stringify({ action: "orderSubmit", data: requestData })
+                body: JSON.stringify({ 
+                    action: "orderSubmit", 
+                    data: { customerName, items: cart, comment: document.getElementById("order-comment").value } 
+                })
             });
             alert("注文を送信しました");
             cart = []; updateCartUI();
@@ -374,78 +336,63 @@
         document.getElementById("stop-btn").style.display = "none";
     }
 
+    // 商品スキャン（JAN高速設定）
     async function handleScan() {
         showPage('barcode');
         await safeStopScanner();
         if (!html5QrCode) html5QrCode = new Html5Qrcode("reader");
         document.getElementById("start-btn").style.display = "none";
         document.getElementById("stop-btn").style.display = "block";
+        
+        const config = {
+            fps: 20,
+            qrbox: { width: 280, height: 120 },
+            aspectRatio: 1.0,
+            formatsToSupport: [ Html5QrcodeSupportedFormats.EAN_13, Html5QrcodeSupportedFormats.EAN_8 ]
+        };
+
         try {
-            await html5QrCode.start({ facingMode: "environment" }, { fps: 10, qrbox: 250 }, 
+            await html5QrCode.start({ facingMode: "environment" }, config, 
                 async (text) => { await safeStopScanner(); searchProductLocal(text); }
             );
         } catch (e) { alert("カメラ起動失敗"); }
     }
 
-    // 顧客スキャン（QRコード・JAN共通・修正版）
+    // 顧客スキャン（QR/JAN対応）
     async function handleCustomerScan() {
         showPage('barcode');
-        const status = document.getElementById("scan-status");
-        
         await safeStopScanner(); 
         if (!html5QrCode) html5QrCode = new Html5Qrcode("reader");
-
         document.getElementById("start-btn").style.display = "none";
         document.getElementById("stop-btn").style.display = "block";
-        if (status) status.innerText = "コードを枠に入れてください";
 
-        // 設定は1回だけ定義します
         const config = {
             fps: 20,
             qrbox: { width: 280, height: 150 },
-            aspectRatio: 1.0,
-            disableFlip: true,
             formatsToSupport: [ 
                 Html5QrcodeSupportedFormats.EAN_13, 
-                Html5QrcodeSupportedFormats.EAN_8,
                 Html5QrcodeSupportedFormats.QR_CODE 
             ]
         };
 
         try {
-            await html5QrCode.start(
-                { facingMode: "environment" }, 
-                config, 
+            await html5QrCode.start({ facingMode: "environment" }, config, 
                 async (text) => { 
                     await safeStopScanner(); 
                     fetchCustomerData(text); 
                     showPage('home'); 
                 }
             );
-        } catch (e) { 
-            console.error(e);
-            alert("カメラの起動に失敗しました。"); 
-        }
+        } catch (e) { alert("カメラ起動失敗"); }
     }
 
-    // 停止処理の統合
-    async function stopScanner() { 
-        await safeStopScanner(); 
-        if (document.getElementById("scan-status")) {
-            document.getElementById("scan-status").innerText = "カメラ停止中";
-        }
-    }
+    async function stopScanner() { await safeStopScanner(); }
 
-    // 顧客の手入力検索
     function handleCustomerManualSearch() {
         const val = document.getElementById('cust-manual-input').value.trim();
-        if (val) {
-            fetchCustomerData(val);
-        } else {
-            alert("電話番号などを入力してください");
-        }
+        if (val) fetchCustomerData(val);
     }
-    // --- 履歴管理 ---
+
     async function loadHistory() {
         const listDiv = document.getElementById("history-list");
         try {
@@ -457,7 +404,7 @@
                     <b>${item.name}</b> (${item.qty})
                     <button onclick="deleteOrderHistory(${item.rowNum})" style="float:right; color:red; border:none; background:none;">削除</button>
                 </div>`).join('');
-        } catch (e) { listDiv.innerHTML = "履歴の取得に失敗しました"; }
+        } catch (e) { listDiv.innerHTML = "履歴なし"; }
     }
 
     async function deleteOrderHistory(rowNum) {
