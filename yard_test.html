@@ -435,36 +435,36 @@
             listDiv.innerHTML = '<p style="text-align: center;">読み込みエラー</p>'; 
         }
     }
+async function editOrderHistory(safeData) {
+    if (!confirm("この注文を修正しますか？\n一旦削除してカートに戻します。")) return;
 
-    async function editOrderHistory(safeData) {
-        if (!confirm("この注文を修正しますか？\n一旦削除してカートに戻します。")) return;
+    // 1. データの復元（デコード）
+    const item = JSON.parse(decodeURIComponent(escape(atob(safeData))));
 
-        const item = JSON.parse(decodeURIComponent(escape(atob(safeData))));
+    // 2. GASに行削除を依頼
+    await fetch(GAS_URL, { 
+        method: "POST", 
+        body: JSON.stringify({ action: "deleteOrderLine", rowNum: item.rowNum }) 
+    });
 
-        // 1. シートから削除
-        await fetch(GAS_URL, { 
-            method: "POST", 
-            body: JSON.stringify({ action: "deleteOrderLine", rowNum: item.rowNum }) 
-        });
+    // 3. 【重要】顧客名を直接セット（これで顧客が消えない）
+    document.getElementById("res-customer").innerText = item.customerName;
+    document.getElementById("cust-loading").style.display = "none";
+    document.getElementById("cust-data").style.display = "block";
 
-        // 2. 顧客情報を画面にセット
-        document.getElementById("res-customer").innerText = item.customerName;
-        document.getElementById("cust-loading").style.display = "none";
-        document.getElementById("cust-data").style.display = "block";
+    // 4. 【重要】履歴のデータをそのままカートへ
+    // マスタ検索を使わず item の値を直接使うことで undefined を防ぎます
+    cart.push({
+        name: item.name,
+        partNo: item.partNo,
+        price: item.price || 0,
+        quantity: parseInt(item.qty)
+    });
 
-        // 3. 【最重要】履歴のデータをそのままカートへ
-        // undefinedにならないよう、itemの中身を直接使います
-        cart.push({
-            name: item.name || "不明な商品名",
-            partNo: item.partNo || "不明な品番",
-            price: item.price || 0,
-            quantity: parseInt(item.qty) || 1
-        });
-
-        updateCartUI();
-        alert("カートに戻しました。修正して再送してください。");
-        showPage('cart');
-    }
+    updateCartUI();
+    alert("注文内容をカートに戻しました。修正して再送してください。");
+    showPage('cart');
+}
 </script>
 </body>
 </html>
