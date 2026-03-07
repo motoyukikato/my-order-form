@@ -480,6 +480,45 @@ async function editOrderHistory(safeData) {
             alert("読み込みエラーが発生しました。");
         }
     }
+    // 1. 履歴の検索（フィルタリング）機能
+    function filterHistory() {
+        const query = document.getElementById("history-search").value.toLowerCase();
+        // 履歴リスト内の各カードを取得
+        const items = document.querySelectorAll("#history-list .item-card");
+
+        items.forEach(item => {
+            // カード内のテキスト（顧客名、商品名、品番）をすべて取得
+            const text = item.innerText.toLowerCase();
+            // 検索文字が含まれているかチェック
+            if (text.includes(query)) {
+                item.style.display = "block"; // 一致したら表示
+            } else {
+                item.style.display = "none";  // 一致しなければ非表示
+            }
+        });
+    }
+
+    // 2. 履歴の削除機能（行指定）
+    async function deleteOrderHistory(rowNum) {
+        if (!confirm("この行のデータを削除してもよろしいですか？")) return;
+
+        try {
+            const res = await fetch(GAS_URL, { 
+                method: "POST", 
+                body: JSON.stringify({ action: "deleteOrderLine", rowNum: rowNum }) 
+            });
+            const result = await res.json();
+            
+            if (result.success) {
+                alert("削除しました");
+                loadHistory(); // 一覧を再読み込み
+            } else {
+                alert("削除に失敗しました: " + (result.error || "不明なエラー"));
+            }
+        } catch (e) {
+            alert("通信エラーにより削除できませんでした");
+        }
+    }
 </script>
 </body>
 </html>
