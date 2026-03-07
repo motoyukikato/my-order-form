@@ -419,25 +419,35 @@
         const target = JSON.parse(decodeURIComponent(escape(atob(safeData))));
         if (!confirm(`${target.customerName}様の注文をカートに戻しますか？`)) return;
 
-        // 顧客情報を復元（電話番号があれば再検索して住所も出す）
+        // 顧客情報の表示を復元
         document.getElementById("res-customer").innerText = target.customerName;
+        // 電話番号があれば、マスタから「メールアドレス」や「最新の住所」を再取得して画面に表示
         if(target.tel) {
             fetchCustomerData(target.tel); 
-        } else {
-            document.getElementById("cust-loading").style.display = "none";
-            document.getElementById("cust-data").style.display = "block";
         }
 
-        // カートに同じ時間の注文をすべて戻す
-        cart = allHistoryData.filter(item => item.customerName === target.customerName && item.date === target.date)
-                             .map(item => ({ 
-                                 name: item.name, 
-                                 partNo: item.partNo, 
-                                 price: Number(item.price) || 0, 
-                                 quantity: parseInt(item.qty),
-                                 jan: item.jan || "" 
-                             }));
+        // --- 履歴から同じ「顧客・日時」のアイテムをすべて抽出してカートへ ---
+        // promise.allを使って、全商品の「最新の在庫状況」や「単価」をマスタから再取得しながらカートを作ります
+        const itemsToRestore = allHistoryData.filter(item => item.customerName === target.customerName && item.date === target.date);
         
+        const restoredCart = [];
+        for (const item of itemsToRestore) {
+            // 商品情報を再検索して「在庫状況」や「最新単価」を取得
+            const prodResult = await executeProductSearch(item.partNo);
+            const p = (prodResult && prodResult.items) ? prodResult.items[0] : prodResult;
+
+            restoredCart.push({
+                name: item.name,
+                partNo: item.partNo,
+                price: p ? p.price : (Number(item.price) || 0), // マスタ優先、なければ履歴から
+                quantity: parseInt(item.qty) || 1,             // ★履歴の数量を確実にセット
+                jan: item.jan || (p ? p.jan : ""),
+                stock: p ? p.stock : "",                        // ★在庫状況を復元
+                maker: p ? p.maker : (item.maker || "YARD")
+            });
+        }
+        
+        cart = restoredCart;
         updateCartUI(); 
         alert("カートに読み込みました。数量の調整が可能です。"); 
         showPage('cart');
