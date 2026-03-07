@@ -293,7 +293,8 @@
                 const result = await executeProductSearch(text);
                 const p = (result && result.items) ? result.items[0] : result;
                 if (p && p.name) {
-                    const q = prompt(`【${p.name}】\n数量を入力`, p.lot || 1);
+                    // index.html 内の handleScan 関数の中身を修正
+const q = prompt(`【${p.name}】\n品番: ${p.partNo}\n数量を入力`, p.lot || 1);
                     if (q) { cart.push({ ...p, quantity: parseInt(q) }); updateCartUI(); alert("追加しました"); }
                 } else { alert("マスタ未登録: " + text); }
                 handleScan();
