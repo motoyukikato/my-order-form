@@ -240,33 +240,71 @@
         alert("追加しました");
     }
 
+   // --- カートUI更新（数量変更ボタンを追加） ---
     function updateCartUI() {
         const list = document.getElementById('cart-list');
         if (cart.length === 0) { list.innerHTML = '<p style="text-align: center;">空です</p>'; return; }
         let total = 0;
         list.innerHTML = cart.map((item, i) => {
-            total += item.price * item.quantity;
+            const itemTotal = (Number(item.price) || 0) * (Number(item.quantity) || 0);
+            total += itemTotal;
             return `
-                <div class="item-card" style="position: relative;">
+                <div class="item-card" style="position: relative; padding-bottom: 50px;">
                     <b>${item.name}</b><br>
                     <small>品番: ${item.partNo}</small><br>
-                    単価: ${Number(item.price).toLocaleString()}円 / 数量: ${item.quantity}
-                    <button onclick="removeItem(${i})" style="position: absolute; right: 10px; top: 10px; border:none; background:none; color:#ccc;"><i class="fa-solid fa-trash-can"></i></button>
+                    <small>単価: ${Number(item.price).toLocaleString()}円</small>
+                    
+                    <div style="position: absolute; bottom: 10px; left: 10px; display: flex; align-items: center; gap: 15px;">
+                        <button onclick="changeQty(${i}, -1)" style="width:35px; height:35px; border-radius:5px; border:1px solid #ddd; background:#f8f9fa; font-size:18px;">-</button>
+                        <b style="font-size: 1.2em; min-width: 25px; text-align: center;">${item.quantity}</b>
+                        <button onclick="changeQty(${i}, 1)" style="width:35px; height:35px; border-radius:5px; border:1px solid #ddd; background:#f8f9fa; font-size:18px;">+</button>
+                    </div>
+
+                    <div style="position: absolute; bottom: 15px; right: 10px; font-weight: bold;">
+                        ${itemTotal.toLocaleString()}円
+                    </div>
+
+                    <button onclick="removeItem(${i})" style="position: absolute; right: 10px; top: 10px; border:none; background:none; color:#ccc;">
+                        <i class="fa-solid fa-trash-can"></i>
+                    </button>
                 </div>`;
-        }).join('') + `<div style="text-align:right; font-weight:bold; padding:10px;">合計: ${total.toLocaleString()}円</div>`;
+        }).join('') + `<div style="text-align:right; font-weight:bold; padding:15px; font-size:1.2em; border-top:2px solid #3b5998;">合計: ${total.toLocaleString()}円</div>`;
+    }
+
+    // 数量変更用関数
+    function changeQty(index, delta) {
+        let q = Number(cart[index].quantity) + delta;
+        if (q < 1) {
+            removeItem(index);
+        } else {
+            cart[index].quantity = q;
+            updateCartUI();
+        }
     }
 
     function removeItem(i) { if (confirm("削除しますか？")) { cart.splice(i, 1); updateCartUI(); } }
 
+    // --- 注文送信（住所と電話番号を確実に含める） ---
     async function sendOrder() {
         const customerName = document.getElementById("res-customer").innerText;
         if (!customerName || cart.length === 0) { alert("顧客選択とカート確認をしてください"); return; }
+        
         const btn = document.getElementById('send-btn');
         btn.disabled = true; btn.innerText = "送信中...";
+
+        const orderData = {
+            customerName: customerName,
+            tel: document.getElementById("res-tel").innerText,
+            address1: document.getElementById("res-address1").innerText,
+            address2: document.getElementById("res-address2").innerText,
+            items: cart,
+            comment: document.getElementById("order-comment").value
+        };
+
         try {
             await fetch(GAS_URL, {
                 method: "POST",
-                body: JSON.stringify({ action: "orderSubmit", data: { customerName, items: cart, comment: document.getElementById("order-comment").value } })
+                body: JSON.stringify({ action: "orderSubmit", data: orderData })
             });
             alert("注文を送信しました");
             cart = []; updateCartUI(); showPage('home');
@@ -274,7 +312,7 @@
         finally { btn.disabled = false; btn.innerText = "🛒 注文を確定する"; }
     }
 
-    // スキャン関連
+    // --- スキャン関連 ---
     async function safeStopScanner() {
         if (html5QrCode && html5QrCode.isScanning) await html5QrCode.stop();
         document.getElementById("start-btn").style.display = "block";
@@ -293,8 +331,7 @@
                 const result = await executeProductSearch(text);
                 const p = (result && result.items) ? result.items[0] : result;
                 if (p && p.name) {
-                    // index.html 内の handleScan 関数の中身を修正
-const q = prompt(`【${p.name}】\n品番: ${p.partNo}\n数量を入力`, p.lot || 1);
+                    const q = prompt(`【${p.name}】\n品番: ${p.partNo}\n数量を入力`, p.lot || 1);
                     if (q) { cart.push({ ...p, quantity: parseInt(q) }); updateCartUI(); alert("追加しました"); }
                 } else { alert("マスタ未登録: " + text); }
                 handleScan();
@@ -317,7 +354,7 @@ const q = prompt(`【${p.name}】\n品番: ${p.partNo}\n数量を入力`, p.lot 
     }
     async function stopScanner() { await safeStopScanner(); }
 
-    // 履歴関連
+    // --- 履歴関連 ---
     async function loadHistory() {
         const listDiv = document.getElementById("history-list");
         const footer = document.getElementById("history-footer");
@@ -381,12 +418,29 @@ const q = prompt(`【${p.name}】\n品番: ${p.partNo}\n数量を入力`, p.lot 
     async function editOrderHistory(safeData) {
         const target = JSON.parse(decodeURIComponent(escape(atob(safeData))));
         if (!confirm(`${target.customerName}様の注文をカートに戻しますか？`)) return;
-        cart = allHistoryData.filter(item => item.customerName === target.customerName && item.date === target.date)
-                             .map(item => ({ name: item.name, partNo: item.partNo, price: item.price || 0, quantity: parseInt(item.qty) }));
+
+        // 顧客情報を復元（電話番号があれば再検索して住所も出す）
         document.getElementById("res-customer").innerText = target.customerName;
-        document.getElementById("cust-loading").style.display = "none";
-        document.getElementById("cust-data").style.display = "block";
-        updateCartUI(); alert("カートに読み込みました"); showPage('cart');
+        if(target.tel) {
+            fetchCustomerData(target.tel); 
+        } else {
+            document.getElementById("cust-loading").style.display = "none";
+            document.getElementById("cust-data").style.display = "block";
+        }
+
+        // カートに同じ時間の注文をすべて戻す
+        cart = allHistoryData.filter(item => item.customerName === target.customerName && item.date === target.date)
+                             .map(item => ({ 
+                                 name: item.name, 
+                                 partNo: item.partNo, 
+                                 price: Number(item.price) || 0, 
+                                 quantity: parseInt(item.qty),
+                                 jan: item.jan || "" 
+                             }));
+        
+        updateCartUI(); 
+        alert("カートに読み込みました。数量の調整が可能です。"); 
+        showPage('cart');
     }
 
     async function deleteOrderHistory(rowNum) {
