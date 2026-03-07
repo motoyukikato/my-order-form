@@ -129,20 +129,19 @@
 </nav>
 
 <script>
+    // ★GASのURLを最新のものにしてください
     const GAS_URL = "https://script.google.com/macros/s/AKfycbzTnWyAJNj0yMfBmCfcoz73NWKxOM3qFyJmZ9vydWx-EgFZCEutKEym8LuSYXouE5WoGQ/exec";
     
     let cart = [];
     let allProducts = []; 
-    let currentZip = ""; 
     let tempProduct = null;
     let html5QrCode = null;
-
-    // --- 履歴・表示管理用の変数 ---
     let allHistoryData = []; 
-    let currentPage = 1;     
+    let currentPage = 1;      
     const PAGE_SIZE = 20;    
 
-    // --- 1. アプリ起動時の処理 ---
+    window.onload = () => { loadProductSuggestions(); };
+
     async function loadProductSuggestions() {
         try {
             const res = await fetch(GAS_URL, {
@@ -157,8 +156,6 @@
         } catch (e) { console.error("データ取得失敗:", e); }
     }
 
-    window.onload = () => { loadProductSuggestions(); };
-
     function showPage(pageId) {
         document.querySelectorAll('.page-section').forEach(sec => sec.classList.remove('active'));
         document.getElementById(pageId).classList.add('active');
@@ -168,33 +165,43 @@
         if (pageId === 'history') loadHistory();
     }
 
-    // --- 2. 顧客・商品検索系 ---
-    function searchCustomerFromMaster(val) {
-  try {
-    const masterSheet = SpreadsheetApp.openById(MASTER_CUSTOMER_ID).getSheetByName("顧客マスタ");
-    const data = masterSheet.getDataRange().getValues();
-    const searchVal = String(val).replace(/-/g, ""); // ハイフン抜き
-
-    for (let i = 1; i < data.length; i++) {
-      const rowTel = String(data[i][5]).replace(/-/g, ""); // F列(5)が電話番号
-      const rowName = String(data[i][1]);                 // B列(1)が顧客名
-
-      if (rowTel === searchVal || rowName.includes(val)) {
-        return {
-          customer: data[i][1],      // B列: 顧客名
-          address1: (data[i][2] ? "〒" + data[i][2] + " " : "") + (data[i][3] || ""), // C列(郵便番号) + D列(住所1)
-          address2: data[i][4] || "", // E列: 住所2
-          tel:      data[i][5] || "", // F列: 電話番号
-          email:    data[i][10] || "" // K列: mail
-        };
-      }
+    // ★重要：顧客検索。GASに検索を依頼して結果をもらうだけにする
+    async function fetchCustomerData(val) {
+        if (!val) return;
+        const loading = document.getElementById("cust-loading");
+        loading.innerText = "検索中...";
+        
+        try {
+            const res = await fetch(GAS_URL, {
+                method: "POST",
+                body: JSON.stringify({ action: "customerSearch", val: val })
+            });
+            const data = await res.json();
+            
+            if (data && data.customer) {
+                document.getElementById("res-customer").innerText = data.customer;
+                document.getElementById("res-address1").innerText = data.address1 || "";
+                document.getElementById("res-address2").innerText = data.address2 || "";
+                document.getElementById("res-tel").innerText = data.tel || "";
+                document.getElementById("res-email").innerText = data.email || "";
+                document.getElementById("cust-loading").style.display = "none";
+                document.getElementById("cust-data").style.display = "block";
+            } else { 
+                alert("顧客が見つかりません"); 
+                loading.innerText = "検索またはスキャンしてください"; 
+            }
+        } catch (e) {
+            alert("検索エラーが発生しました");
+            loading.innerText = "エラー";
+        }
     }
-    return { error: "該当なし" };
-  } catch (e) {
-    return { error: "マスタ参照エラー: " + e.message };
-  }
-}
 
+    // 検索ボタンクリック時
+    function handleCustomerManualSearch() {
+        fetchCustomerData(document.getElementById('cust-manual-input').value.trim());
+    }
+
+    // 商品検索やカート処理、履歴処理などの残りのスクリプト（以下略・そのまま維持）
     async function executeProductSearch(code) {
         try {
             const res = await fetch(GAS_URL, {
@@ -223,7 +230,6 @@
         } else { alert("未登録の商品です"); }
     }
 
-    // --- 3. カート・送信系 ---
     function addPreviewToCart() {
         if (!tempProduct) return;
         const qty = parseInt(document.getElementById("preview-qty").value);
@@ -268,7 +274,7 @@
         finally { btn.disabled = false; btn.innerText = "🛒 注文を確定する"; }
     }
 
-    // --- 4. スキャン系 ---
+    // スキャン関連
     async function safeStopScanner() {
         if (html5QrCode && html5QrCode.isScanning) await html5QrCode.stop();
         document.getElementById("start-btn").style.display = "block";
@@ -309,9 +315,8 @@
         } catch (e) { alert("カメラ起動失敗"); }
     }
     async function stopScanner() { await safeStopScanner(); }
-    function handleCustomerManualSearch() { fetchCustomerData(document.getElementById('cust-manual-input').value.trim()); }
 
-    // --- 5. 履歴表示機能 ---
+    // 履歴関連
     async function loadHistory() {
         const listDiv = document.getElementById("history-list");
         const footer = document.getElementById("history-footer");
