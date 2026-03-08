@@ -157,46 +157,41 @@
     /**
      * お客様専用：特定の電話番号の履歴だけを読み込んで表示する
      */
-    function loadCustomerSpecificHistory(id) {
-      // 店員用の不要なメニューを非表示にする
-      const hideStyles = `
-        #home .card:nth-of-type(2), 
-        #home .btn-scan, 
-        #nav-barcode, 
-        #nav-input, 
-        #nav-cart { display: none !important; }
-      `;
-      const styleSheet = document.createElement("style");
-      styleSheet.innerText = hideStyles;
-      document.head.appendChild(styleSheet);
+   /**
+ * お客様専用：特定の電話番号の履歴だけを読み込んで表示する
+ */
+function loadCustomerSpecificHistory(id) {
+  // ★削除：const hideStyles = ... から styleSheet の追加処理までをすべて削りました
+  // これにより、店員用と同じボタン類（カメラ・入力等）が表示されたままになります
 
-      // 履歴ページへ切り替え（自動）
-      showPage('history'); 
+  // 1. 履歴ページへ自動切り替え
+  showPage('history'); 
 
-      // GASの getCustomerHistory を直接呼び出し
-      const listDiv = document.getElementById("history-list");
-      listDiv.innerHTML = '<p style="text-align: center; color: #999;">履歴を読み込み中...</p>';
+  // 2. 読み込み中表示
+  const listDiv = document.getElementById("history-list");
+  listDiv.innerHTML = '<p style="text-align: center; color: #999;">履歴を読み込み中...</p>';
 
-      google.script.run
-        .withSuccessHandler(data => {
-          if (data && data.error) {
-            listDiv.innerHTML = `<p style="text-align: center; color: red;">エラー: ${data.error}</p>`;
-            return;
-          }
-          allHistoryData = data;
-          listDiv.innerHTML = "";
-          if (!allHistoryData || allHistoryData.length === 0) {
-            listDiv.innerHTML = '<p style="text-align: center; color: #999;">ご注文履歴はありません</p>';
-            return;
-          }
-          renderNextPage(); 
-        })
-        .withFailureHandler(err => {
-          listDiv.innerHTML = `<p style="text-align: center; color: red;">通信失敗: ${err}</p>`;
-        })
-        .getCustomerHistory(id);
-    }
-
+  // 3. そのお客様のデータのみ取得
+  google.script.run
+    .withSuccessHandler(data => {
+      if (data && data.error) {
+        listDiv.innerHTML = `<p style="text-align: center; color: red;">エラー: ${data.error}</p>`;
+        return;
+      }
+      allHistoryData = data;
+      listDiv.innerHTML = "";
+      if (!allHistoryData || allHistoryData.length === 0) {
+        listDiv.innerHTML = '<p style="text-align: center; color: #999;">ご注文履歴はありません</p>';
+        return;
+      }
+      // 取得した「自分の履歴」を表示
+      renderNextPage(); 
+    })
+    .withFailureHandler(err => {
+      listDiv.innerHTML = `<p style="text-align: center; color: red;">通信失敗: ${err}</p>`;
+    })
+    .getCustomerHistory(id);
+}
     async function loadProductSuggestions() {
         try {
             const res = await fetch(GAS_URL, {
