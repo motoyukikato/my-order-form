@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>ご注文履歴確認</title>
+    <script src="https://unpkg.com/html5-qrcode"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; margin: 0; background: #f0f2f5; color: #1c1e21; }
+        header { background: #4267B2; color: white; text-align: center; padding: 15px; font-weight: bold; position: sticky; top: 0; z-index: 100; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .container { padding: 15px; max-width: 500px; margin: auto; }
+        .card { background: white; padding: 15px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); margin-bottom: 15px; }
+        #reader { width: 100%; border-radius: 12px; overflow: hidden; background: #000; }
+        .btn-scan { background: #28a745; color: white; border: none; width: 100%; padding: 16px; border-radius: 8px; font-size: 18px; font-weight: bold; margin-top: 10px; cursor: pointer; }
+        .order-item { border-bottom: 1px solid #eee; padding: 12px 0; display: flex; justify-content: space-between; align-items: center; }
+        .order-item:last-child { border-bottom: none; }
+        .total-box { background: #333; color: white; padding: 20px; border-radius: 12px; text-align: right; margin-top: 10px; }
+        .total-price { font-size: 1.4em; color: #ffeb3b; font-weight: bold; }
+        .loading { text-align: center; padding: 30px; display: none; }
+    </style>
+</head>
+<body>
+
+<header>ご注文内容の確認</header>
+
+<div class="container">
+    <div id="scan-view">
+        <div class="card">
+            <p style="text-align:center; margin-top:0;">お客様QRコードをスキャンしてください</p>
+            <div id="reader"></div>
+            <button id="start-btn" class="btn-scan" onclick="startScan()">
+                <i class="fa-solid fa-camera"></i> スキャン開始
+            </button>
+        </div>
+    </div>
+
+    <div id="loading" class="loading">
+        <i class="fa-solid fa-spinner fa-spin fa-2x"></i><br><br>データを読み込んでいます...
+    </div>
+
+    <div id="result-view" style="display:none;">
+        <div class="card" style="border-left: 5px solid #4267B2;">
+            <small style="color:#666;">お名前</small>
+            <div id="cust-name" style="font-size: 1.2em; font-weight: bold;">---</div>
+        </div>
+
+        <div id="history-list"></div>
+
+        <div class="total-box">
+            合計 <span class="total-price" id="total-amount">0</span> 円
+        </div>
+        
+        <button onclick="location.reload()" style="width:100%; margin-top:20px; padding:12px; border:1px solid #ccc; background:white; border-radius:8px; font-weight:bold;">別の方をスキャン</button>
+    </div>
+</div>
+
+<script>
+    // ★ここにあなたの新しいGASのデプロイURLを貼り付けてください
+    const GAS_URL = "https://script.google.com/macros/s/AKfycbzzYuv8LWTX5PpJ-ssPVgl3OuQkdcg6V_UbvnkxdolCBreEzw3OeIpuTPBVqpLwvpON/exec"; 
+
+    let html5QrCode = null;
+
+    async function startScan() {
+        html5QrCode = new Html5Qrcode("reader");
+        document.getElementById("start-btn").style.display = "none";
+        
+        try {
+            await html5QrCode.start(
+                { facingMode: "environment" }, 
+                { fps: 10, qrbox: { width: 250, height: 250 } },
+                async (decodedText) => {
+                    await html5QrCode.stop();
+                    fetchHistory(decodedText);
+                }
+            );
+        } catch (err) {
+            alert("カメラの許可が必要です。ブラウザの設定を確認してください。");
+            document.getElementById("start-btn").style.display = "block";
+        }
+    }
+
+    async function fetchHistory(id) {
+        document.getElementById("scan-view").style.display = "none";
+        document.getElementById("loading").style.display = "block";
+
+        try {
+            // doGetに対してクエリパラメータでIDを送る
+            const response = await fetch(`${GAS_URL}?id=${encodeURIComponent(id)}`);
+            const data = await response.json();
+            showResult(data);
+        } catch (e) {
+            alert("データ取得に失敗しました。");
+            location.reload();
+        }
+    }
+
+    function showResult(data) {
+        document.getElementById("loading").style.display = "none";
+        document.getElementById("result-view").style.display = "block";
+        
+        const listDiv = document.getElementById("history-list");
+        let total = 0;
+
+        if (data && data.length > 0) {
+            document.getElementById("cust-name").innerText = data[0].customerName + " 様";
+            listDiv.innerHTML = data.map(item => {
+                total += (item.subtotal || 0);
+                return `
+                    <div class="card">
+                        <div class="order-item">
+                            <div>
+                                <small style="color:#666;">${item.date}</small><br>
+                                <strong>${item.name}</strong><br>
+                                <small>単価: ¥${item.price.toLocaleString()} / 数量: ${item.qty}</small>
+                            </div>
+                            <div style="font-weight:bold;">
+                                ¥${item.subtotal.toLocaleString()}
+                            </div>
+                        </div>
+                    </div>`;
+            }).join('');
+            document.getElementById("total-amount").innerText = total.toLocaleString();
+        } else {
+            listDiv.innerHTML = '<div class="card" style="text-align:center; color:#999;">注文データが見つかりませんでした。</div>';
+        }
+    }
+</script>
+</body>
+</html>
