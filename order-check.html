@@ -7,65 +7,89 @@
     <script src="https://unpkg.com/html5-qrcode"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
-        body { font-family: -apple-system, sans-serif; margin: 0; background: #f0f2f5; color: #1c1e21; padding-bottom: 30px; }
-        header { background: #4267B2; color: white; text-align: center; padding: 15px; font-weight: bold; position: sticky; top: 0; z-index: 100; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
-        .container { padding: 15px; max-width: 500px; margin: auto; }
-        .card { background: white; padding: 15px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); margin-bottom: 15px; }
+        body { font-family: -apple-system, "Helvetica Neue", Arial, sans-serif; margin: 0; background: #f8f9fa; color: #333; line-height: 1.6; }
+        header { background: #4267B2; color: white; text-align: center; padding: 20px; font-weight: bold; font-size: 1.2em; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        .container { padding: 15px; max-width: 600px; margin: auto; }
+        .card { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); margin-bottom: 20px; }
         #reader { width: 100%; border-radius: 12px; overflow: hidden; background: #000; }
-        .btn-scan { background: #28a745; color: white; border: none; width: 100%; padding: 16px; border-radius: 8px; font-size: 18px; font-weight: bold; margin-top: 10px; cursor: pointer; }
-        .btn-email { background: #007bff; color: white; border: none; width: 100%; padding: 16px; border-radius: 8px; font-size: 18px; font-weight: bold; margin-top: 10px; cursor: pointer; display: none; }
-        .btn-email:disabled { background: #ccc; cursor: not-allowed; }
-        .order-item { border-bottom: 1px solid #eee; padding: 12px 0; display: flex; justify-content: space-between; align-items: center; }
-        .order-item:last-child { border-bottom: none; }
-        .total-box { background: #333; color: white; padding: 20px; border-radius: 12px; text-align: right; margin-top: 10px; }
-        .total-price { font-size: 1.4em; color: #ffeb3b; font-weight: bold; }
-        .loading { text-align: center; padding: 30px; display: none; }
+        
+        /* テーブルのスタイル */
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 0.9em; }
+        th { background: #f1f3f5; text-align: left; padding: 10px; border-bottom: 2px solid #dee2e6; color: #495057; }
+        td { padding: 12px 10px; border-bottom: 1px solid #eee; vertical-align: middle; }
+        .item-name { font-weight: bold; display: block; margin-bottom: 2px; }
+        .item-info { color: #666; font-size: 0.85em; }
+        .status-badge { display: inline-block; padding: 2px 8px; border-radius: 12px; font-size: 0.75em; font-weight: bold; background: #e9ecef; color: #495057; }
+        
+        .total-box { background: #343a40; color: white; padding: 20px; border-radius: 12px; text-align: right; margin-top: 15px; }
+        .total-label { font-size: 0.9em; opacity: 0.8; }
+        .total-price { font-size: 1.6em; color: #ffeb3b; font-weight: bold; margin-left: 10px; }
+        
+        .btn { border: none; width: 100%; padding: 16px; border-radius: 8px; font-size: 17px; font-weight: bold; cursor: pointer; transition: 0.2s; margin-top: 10px; }
+        .btn-scan { background: #28a745; color: white; }
+        .btn-email { background: #007bff; color: white; display: none; }
+        .btn-email:disabled { background: #adb5bd; }
+        .loading { text-align: center; padding: 40px; display: none; color: #4267B2; }
     </style>
 </head>
 <body>
 
-<header>ご注文履歴確認</header>
+<header>ご注文履歴・請書発行</header>
 
 <div class="container">
     <div id="scan-view">
         <div class="card">
-            <p style="text-align:center; margin-top:0;">お客様QRコードをスキャンしてください</p>
+            <p style="text-align:center; font-weight:bold;">お客様QRをスキャンしてください</p>
             <div id="reader"></div>
-            <button id="start-btn" class="btn-scan" onclick="startScan()">
+            <button id="start-btn" class="btn btn-scan" onclick="startScan()">
                 <i class="fa-solid fa-camera"></i> スキャン開始
             </button>
         </div>
     </div>
 
     <div id="loading" class="loading">
-        <i class="fa-solid fa-spinner fa-spin fa-2x"></i><br><br>読み込み中...
+        <i class="fa-solid fa-circle-notch fa-spin fa-3x"></i><br><br>データを照合中...
     </div>
 
     <div id="result-view" style="display:none;">
-        <div class="card" style="border-left: 5px solid #4267B2;">
-            <small style="color:#666;">お名前</small>
-            <div id="cust-name" style="font-size: 1.2em; font-weight: bold;">---</div>
+        <div class="card" style="border-left: 6px solid #4267B2; padding: 15px;">
+            <small style="color:#888;">ご担当者様</small>
+            <div id="cust-name" style="font-size: 1.3em; font-weight: bold;">---</div>
         </div>
 
-        <div id="history-list"></div>
+        <div class="card">
+            <h4 style="margin-top:0; border-bottom:1px solid #eee; padding-bottom:10px;">ご注文明細</h4>
+            <table>
+                <thead>
+                    <tr>
+                        <th>商品内容</th>
+                        <th style="text-align:right;">小計</th>
+                    </tr>
+                </thead>
+                <tbody id="history-table-body"></tbody>
+            </table>
 
-        <div class="total-box">
-            合計 <span class="total-price" id="total-amount">0</span> 円
+            <div class="total-box">
+                <span class="total-label">合計金額(税込)</span>
+                <span class="total-price">¥<span id="total-amount">0</span></span>
+            </div>
         </div>
 
-        <button id="email-btn" class="btn-email" onclick="requestEmail()">
-            <i class="fa-solid fa-paper-plane"></i> 請書を発行（メール送信）
+        <button id="email-btn" class="btn btn-email" onclick="requestEmail()">
+            <i class="fa-solid fa-paper-plane"></i> この内容で請書を発行
         </button>
         
-        <button onclick="location.reload()" style="width:100%; margin-top:20px; padding:12px; border:1px solid #ccc; background:white; border-radius:8px; font-weight:bold;">別の方をスキャン</button>
+        <button onclick="location.reload()" style="width:100%; margin-top:20px; padding:12px; background:none; border:1px solid #ccc; border-radius:8px; color:#666; font-size:14px;">
+            別のQRを読み取る
+        </button>
     </div>
 </div>
 
 <script>
-    // ★新しいGASのデプロイURLに書き換えてください
-    const GAS_URL = "https://script.google.com/macros/s/AKfycbw708e323GnzSdG1nq6wBlPggbLI7fyK_9ysyTGxWa_6P-nPDWVxpImt35Bcfw5LhVmUw/exec"; 
+    // ★最新のGAS URLに書き換えてください
+    const GAS_URL = "https://script.google.com/macros/s/AKfycbzzYuv8LWTX5PpJ-ssPVgl3OuQkdcg6V_UbvnkxdolCBreEzw3OeIpuTPBVqpLwvpON/exec"; 
 
-    let currentScannedId = ""; // スキャンした電話番号を保持
+    let currentScannedId = "";
 
     async function startScan() {
         const scanner = new Html5Qrcode("reader");
@@ -74,12 +98,12 @@
             await scanner.start({ facingMode: "environment" }, { fps: 10, qrbox: 250 }, 
                 async (text) => {
                     await scanner.stop();
-                    currentScannedId = text; // IDを保存
+                    currentScannedId = text;
                     fetchHistory(text);
                 }
             );
         } catch (err) {
-            alert("カメラの許可が必要です");
+            alert("カメラの起動に失敗しました");
             document.getElementById("start-btn").style.display = "block";
         }
     }
@@ -92,7 +116,7 @@
             const data = await response.json();
             showResult(data);
         } catch (e) {
-            alert("データ取得失敗");
+            alert("データが見つかりませんでした");
             location.reload();
         }
     }
@@ -100,43 +124,44 @@
     function showResult(data) {
         document.getElementById("loading").style.display = "none";
         document.getElementById("result-view").style.display = "block";
-        const listDiv = document.getElementById("history-list");
+        const tableBody = document.getElementById("history-table-body");
         let total = 0;
 
         if (data && data.length > 0) {
-            document.getElementById("email-btn").style.display = "block"; // ボタン表示
+            document.getElementById("email-btn").style.display = "block";
             document.getElementById("cust-name").innerText = data[0].customerName + " 様";
-            listDiv.innerHTML = data.map(item => {
+            
+            tableBody.innerHTML = data.map(item => {
                 total += item.subtotal;
                 return `
-                    <div class="card">
-                        <div class="order-item">
-                            <div>
-                                <strong>${item.name}</strong><br>
-                                <small>単価: ¥${item.price.toLocaleString()} / 数量: ${item.qty}</small>
-                            </div>
-                            <div style="font-weight:bold;">¥${item.subtotal.toLocaleString()}</div>
-                        </div>
-                    </div>`;
+                    <tr>
+                        <td>
+                            <span class="status-badge">${item.maker}</span> 
+                            <span class="status-badge" style="background:#fff3cd;">${item.stock}</span><br>
+                            <span class="item-name">${item.name}</span>
+                            <span class="item-info">¥${item.price.toLocaleString()} × ${item.qty}</span>
+                        </td>
+                        <td style="text-align:right; font-weight:bold; vertical-align:bottom;">
+                            ¥${item.subtotal.toLocaleString()}
+                        </td>
+                    </tr>`;
             }).join('');
             document.getElementById("total-amount").innerText = total.toLocaleString();
         } else {
-            listDiv.innerHTML = '<div class="card" style="text-align:center;">履歴がありません。</div>';
+            tableBody.innerHTML = '<tr><td colspan="2" style="text-align:center; padding:30px; color:#999;">履歴がありません。</td></tr>';
         }
     }
 
     async function requestEmail() {
-        if (!confirm("登録済みのメールアドレスに請書を送信します。よろしいですか？")) return;
+        if (!confirm("ご登録のメールアドレスに請書（PDF控え）を送信します。よろしいですか？")) return;
         
         const btn = document.getElementById("email-btn");
         btn.disabled = true;
         btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> 送信中...';
 
         try {
-            // action=sendEmail を付けてGASを叩く
             const response = await fetch(`${GAS_URL}?action=sendEmail&id=${encodeURIComponent(currentScannedId)}`);
             const result = await response.json();
-            
             if (result.success) {
                 alert("請書メールを送信しました！");
                 btn.style.background = "#6c757d";
@@ -144,7 +169,7 @@
             } else {
                 alert("送信失敗: " + result.message);
                 btn.disabled = false;
-                btn.innerHTML = '<i class="fa-solid fa-paper-plane"></i> 請書を発行（メール送信）';
+                btn.innerHTML = '<i class="fa-solid fa-paper-plane"></i> 請書を発行';
             }
         } catch (e) {
             alert("通信エラーが発生しました");
