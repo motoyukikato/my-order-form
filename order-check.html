@@ -3,16 +3,18 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>ご注文履歴確認</title>
+    <title>ご注文内容確認</title>
     <script src="https://unpkg.com/html5-qrcode"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
-        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; margin: 0; background: #f0f2f5; color: #1c1e21; }
+        body { font-family: -apple-system, sans-serif; margin: 0; background: #f0f2f5; color: #1c1e21; padding-bottom: 30px; }
         header { background: #4267B2; color: white; text-align: center; padding: 15px; font-weight: bold; position: sticky; top: 0; z-index: 100; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
         .container { padding: 15px; max-width: 500px; margin: auto; }
         .card { background: white; padding: 15px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); margin-bottom: 15px; }
         #reader { width: 100%; border-radius: 12px; overflow: hidden; background: #000; }
         .btn-scan { background: #28a745; color: white; border: none; width: 100%; padding: 16px; border-radius: 8px; font-size: 18px; font-weight: bold; margin-top: 10px; cursor: pointer; }
+        .btn-email { background: #007bff; color: white; border: none; width: 100%; padding: 16px; border-radius: 8px; font-size: 18px; font-weight: bold; margin-top: 10px; cursor: pointer; display: none; }
+        .btn-email:disabled { background: #ccc; cursor: not-allowed; }
         .order-item { border-bottom: 1px solid #eee; padding: 12px 0; display: flex; justify-content: space-between; align-items: center; }
         .order-item:last-child { border-bottom: none; }
         .total-box { background: #333; color: white; padding: 20px; border-radius: 12px; text-align: right; margin-top: 10px; }
@@ -22,7 +24,7 @@
 </head>
 <body>
 
-<header>ご注文内容の確認</header>
+<header>ご注文履歴確認</header>
 
 <div class="container">
     <div id="scan-view">
@@ -36,7 +38,7 @@
     </div>
 
     <div id="loading" class="loading">
-        <i class="fa-solid fa-spinner fa-spin fa-2x"></i><br><br>データを読み込んでいます...
+        <i class="fa-solid fa-spinner fa-spin fa-2x"></i><br><br>読み込み中...
     </div>
 
     <div id="result-view" style="display:none;">
@@ -50,32 +52,34 @@
         <div class="total-box">
             合計 <span class="total-price" id="total-amount">0</span> 円
         </div>
+
+        <button id="email-btn" class="btn-email" onclick="requestEmail()">
+            <i class="fa-solid fa-paper-plane"></i> 請書を発行（メール送信）
+        </button>
         
         <button onclick="location.reload()" style="width:100%; margin-top:20px; padding:12px; border:1px solid #ccc; background:white; border-radius:8px; font-weight:bold;">別の方をスキャン</button>
     </div>
 </div>
 
 <script>
-    // ★ここにあなたの新しいGASのデプロイURLを貼り付けてください
-    const GAS_URL = "https://script.google.com/macros/s/AKfycbzzYuv8LWTX5PpJ-ssPVgl3OuQkdcg6V_UbvnkxdolCBreEzw3OeIpuTPBVqpLwvpON/exec"; 
+    // ★新しいGASのデプロイURLに書き換えてください
+    const GAS_URL = "https://script.google.com/macros/s/AKfycbzQM5fU4AjZjQHLeM8nvWIvcs5SkVK76EX3MWW7BjtBnOqIlm8Pu9R5XMEDNo6KjUebrA/exec"; 
 
-    let html5QrCode = null;
+    let currentScannedId = ""; // スキャンした電話番号を保持
 
     async function startScan() {
-        html5QrCode = new Html5Qrcode("reader");
+        const scanner = new Html5Qrcode("reader");
         document.getElementById("start-btn").style.display = "none";
-        
         try {
-            await html5QrCode.start(
-                { facingMode: "environment" }, 
-                { fps: 10, qrbox: { width: 250, height: 250 } },
-                async (decodedText) => {
-                    await html5QrCode.stop();
-                    fetchHistory(decodedText);
+            await scanner.start({ facingMode: "environment" }, { fps: 10, qrbox: 250 }, 
+                async (text) => {
+                    await scanner.stop();
+                    currentScannedId = text; // IDを保存
+                    fetchHistory(text);
                 }
             );
         } catch (err) {
-            alert("カメラの許可が必要です。ブラウザの設定を確認してください。");
+            alert("カメラの許可が必要です");
             document.getElementById("start-btn").style.display = "block";
         }
     }
@@ -83,14 +87,12 @@
     async function fetchHistory(id) {
         document.getElementById("scan-view").style.display = "none";
         document.getElementById("loading").style.display = "block";
-
         try {
-            // doGetに対してクエリパラメータでIDを送る
             const response = await fetch(`${GAS_URL}?id=${encodeURIComponent(id)}`);
             const data = await response.json();
             showResult(data);
         } catch (e) {
-            alert("データ取得に失敗しました。");
+            alert("データ取得失敗");
             location.reload();
         }
     }
@@ -98,31 +100,55 @@
     function showResult(data) {
         document.getElementById("loading").style.display = "none";
         document.getElementById("result-view").style.display = "block";
-        
         const listDiv = document.getElementById("history-list");
         let total = 0;
 
         if (data && data.length > 0) {
+            document.getElementById("email-btn").style.display = "block"; // ボタン表示
             document.getElementById("cust-name").innerText = data[0].customerName + " 様";
             listDiv.innerHTML = data.map(item => {
-                total += (item.subtotal || 0);
+                total += item.subtotal;
                 return `
                     <div class="card">
                         <div class="order-item">
                             <div>
-                                <small style="color:#666;">${item.date}</small><br>
                                 <strong>${item.name}</strong><br>
                                 <small>単価: ¥${item.price.toLocaleString()} / 数量: ${item.qty}</small>
                             </div>
-                            <div style="font-weight:bold;">
-                                ¥${item.subtotal.toLocaleString()}
-                            </div>
+                            <div style="font-weight:bold;">¥${item.subtotal.toLocaleString()}</div>
                         </div>
                     </div>`;
             }).join('');
             document.getElementById("total-amount").innerText = total.toLocaleString();
         } else {
-            listDiv.innerHTML = '<div class="card" style="text-align:center; color:#999;">注文データが見つかりませんでした。</div>';
+            listDiv.innerHTML = '<div class="card" style="text-align:center;">履歴がありません。</div>';
+        }
+    }
+
+    async function requestEmail() {
+        if (!confirm("登録済みのメールアドレスに請書を送信します。よろしいですか？")) return;
+        
+        const btn = document.getElementById("email-btn");
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> 送信中...';
+
+        try {
+            // action=sendEmail を付けてGASを叩く
+            const response = await fetch(`${GAS_URL}?action=sendEmail&id=${encodeURIComponent(currentScannedId)}`);
+            const result = await response.json();
+            
+            if (result.success) {
+                alert("請書メールを送信しました！");
+                btn.style.background = "#6c757d";
+                btn.innerHTML = '<i class="fa-solid fa-check"></i> 送信完了';
+            } else {
+                alert("送信失敗: " + result.message);
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fa-solid fa-paper-plane"></i> 請書を発行（メール送信）';
+            }
+        } catch (e) {
+            alert("通信エラーが発生しました");
+            btn.disabled = false;
         }
     }
 </script>
