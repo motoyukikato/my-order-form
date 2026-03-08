@@ -276,34 +276,41 @@ function showPage(pageId) {
         fetchCustomerData(document.getElementById('cust-manual-input').value.trim());
     }
 
-    async function executeProductSearch(code) {
-        try {
-            const res = await fetch(GAS_URL, {
-                method: "POST",
-                body: JSON.stringify({ action: "productSearch", jan: code, code: code })
-            });
-            return await res.json();
-        } catch (e) { return null; }
-    }
+  // 【修正後】商品検索の実行部分
+async function executeProductSearch(code) {
+    try {
+        const res = await fetch(GAS_URL, {
+            method: "POST",
+            body: JSON.stringify({ action: "productSearch", val: code }) // 引数をvalに統一
+        });
+        return await res.json();
+    } catch (e) { return null; }
+}
 
-    async function handleSearchAndPreview() {
-        const code = document.getElementById('manual-id').value.trim();
-        if (!code) return;
-        const result = await executeProductSearch(code);
-        const p = (result && result.items) ? result.items[0] : result;
-        if (p && p.name) {
-            tempProduct = p;
-            document.getElementById("preview-name").innerText = p.name;
-            document.getElementById("preview-partNo").innerText = p.partNo;
-            document.getElementById("preview-listPrice").innerText = p.listPrice ? Number(p.listPrice).toLocaleString() : "---";
-            document.getElementById("preview-price").innerText = Number(p.price).toLocaleString();
-            document.getElementById("preview-maker").innerText = p.maker || "未設定";
-            document.getElementById("preview-stock").innerText = p.stock || "不明";
-            document.getElementById("preview-qty").value = p.lot || 1;
-            document.getElementById("search-result-preview").style.display = "block";
-        } else { alert("未登録の商品です"); }
+async function handleSearchAndPreview() {
+    const code = document.getElementById('manual-id').value.trim();
+    if (!code) return;
+    
+    // 検索中表示
+    document.getElementById("search-result-preview").style.display = "none";
+    
+    const p = await executeProductSearch(code);
+    
+    if (p && p.name) {
+        tempProduct = p;
+        document.getElementById("preview-name").innerText = p.name;
+        document.getElementById("preview-partNo").innerText = p.partNo;
+        // 上代の表示（もしGAS側に項目があれば）
+        document.getElementById("preview-listPrice").innerText = p.listPrice ? Number(p.listPrice).toLocaleString() : "---";
+        document.getElementById("preview-price").innerText = Number(p.price).toLocaleString();
+        document.getElementById("preview-maker").innerText = p.maker || "未設定";
+        document.getElementById("preview-stock").innerText = p.stock || "不明";
+        document.getElementById("preview-qty").value = p.lot || 1;
+        document.getElementById("search-result-preview").style.display = "block";
+    } else { 
+        alert("商品が見つかりません。品番またはJANコードを確認してください。"); 
     }
-
+}
     function addPreviewToCart() {
         if (!tempProduct) return;
         const qty = parseInt(document.getElementById("preview-qty").value);
@@ -460,20 +467,30 @@ function showPage(pageId) {
         } else { footer.style.display = "none"; }
     }
 
-    // index.html の中のこの関数を書き換え
+   // 【修正後】履歴カードに操作ボタンを追加
 function createHistoryCard(item) {
     return `
-    <div class="item-card" style="border-left: 5px solid #3b5998; padding: 15px;">
+    <div class="item-card" id="history-row-${item.rowNum}" style="border-left: 5px solid #3b5998; padding: 15px; position: relative;">
         <div style="margin-bottom: 5px;">
             <small>${item.date} / <b>${item.customerName}</b></small><br>
             <b style="font-size: 1.1em;">${item.name}</b><br>
             <small style="color: #666;">品番: ${item.partNo}</small>
         </div>
-        <div style="text-align: right; font-weight: bold; color: #3b5998;">
-            数量: ${item.qty}
+        
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 10px;">
+            <div style="display: flex; align-items: center; gap: 10px;">
+                <button onclick="updateHistoryQty(${item.rowNum}, -1)" style="width:30px; height:30px; border:1px solid #ddd; background:#eee;">-</button>
+                <b id="qty-display-${item.rowNum}" style="font-size: 1.2em; min-width: 20px; text-align: center;">${item.qty}</b>
+                <button onclick="updateHistoryQty(${item.rowNum}, 1)" style="width:30px; height:30px; border:1px solid #ddd; background:#eee;">+</button>
+                <small id="status-${item.rowNum}" style="color: green; display: none; margin-left: 5px;">保存済</small>
+            </div>
+            <button onclick="deleteOrderHistory(${item.rowNum})" style="border:none; background:none; color:#dc3545; padding: 5px 10px;">
+                <i class="fa-solid fa-trash-can"></i> 削除
+            </button>
         </div>
     </div>`;
 }
+
 
     function filterHistory() {
         const query = document.getElementById("history-search").value.toLowerCase();
