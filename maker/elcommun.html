@@ -143,54 +143,33 @@
     // ★修正ポイント: GASから渡された顧客ID（電話番号）
     const CUSTOMER_ID_FROM_URL = "<?= customerId ?>";
 
-    window.onload = () => {
-      // 1. 商品リストの読み込み
-      loadProductSuggestions();
+   window.onload = () => {
+  // 1. 商品リストの読み込み
+  loadProductSuggestions();
 
-      // 2. URLにID（電話番号）がついている場合は「お客様専用モード」で起動
-      if (CUSTOMER_ID_FROM_URL && CUSTOMER_ID_FROM_URL !== "") {
-        console.log("お客様専用モードで起動: " + CUSTOMER_ID_FROM_URL);
-        loadCustomerSpecificHistory(CUSTOMER_ID_FROM_URL);
-      }
-    };
+  // 2. お客様モードでも、まずは「home」を表示（勝手に飛ばさない）
+  showPage('home');
 
-    /**
-     * お客様専用：特定の電話番号の履歴だけを読み込んで表示する
-     */
-   /**
- * お客様専用：特定の電話番号の履歴だけを読み込んで表示する
+  // 3. URLにIDがある場合、裏でデータを「準備」しておく
+  if (CUSTOMER_ID_FROM_URL && CUSTOMER_ID_FROM_URL !== "") {
+    console.log("お客様専用モード準備完了: " + CUSTOMER_ID_FROM_URL);
+    prepareCustomerHistory(CUSTOMER_ID_FROM_URL);
+  }
+};
+
+/**
+ * お客様専用：裏でデータを読み込んでおく（画面は切り替えない）
  */
-function loadCustomerSpecificHistory(id) {
-  // ★削除：const hideStyles = ... から styleSheet の追加処理までをすべて削りました
-  // これにより、店員用と同じボタン類（カメラ・入力等）が表示されたままになります
-
-  // 1. 履歴ページへ自動切り替え
-  showPage('history'); 
-
-  // 2. 読み込み中表示
-  const listDiv = document.getElementById("history-list");
-  listDiv.innerHTML = '<p style="text-align: center; color: #999;">履歴を読み込み中...</p>';
-
-  // 3. そのお客様のデータのみ取得
+function prepareCustomerHistory(id) {
+  // 通信が止まらないよう、fetchではなくGASの実行関数を整理
   google.script.run
     .withSuccessHandler(data => {
-      if (data && data.error) {
-        listDiv.innerHTML = `<p style="text-align: center; color: red;">エラー: ${data.error}</p>`;
-        return;
+      if (data && !data.error) {
+        allHistoryData = data; // データを変数に保存（表示は履歴タブが押された時）
       }
-      allHistoryData = data;
-      listDiv.innerHTML = "";
-      if (!allHistoryData || allHistoryData.length === 0) {
-        listDiv.innerHTML = '<p style="text-align: center; color: #999;">ご注文履歴はありません</p>';
-        return;
-      }
-      // 取得した「自分の履歴」を表示
-      renderNextPage(); 
     })
-    .withFailureHandler(err => {
-      listDiv.innerHTML = `<p style="text-align: center; color: red;">通信失敗: ${err}</p>`;
-    })
-    .getCustomerHistory(id);
+    .withFailureHandler(err => console.error("初期読込失敗:", err))
+    .getCustomerSpecificHistory(id); // GAS側の関数名と合わせる
 }
     async function loadProductSuggestions() {
         try {
