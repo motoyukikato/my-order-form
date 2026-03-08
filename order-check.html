@@ -84,12 +84,11 @@
         </button>
     </div>
 </div>
-
 <script>
-    // ★最新のGAS URLに書き換えてください
-    const GAS_URL = "https://script.google.com/macros/s/AKfycbw708e323GnzSdG1nq6wBlPggbLI7fyK_9ysyTGxWa_6P-nPDWVxpImt35Bcfw5LhVmUw/exec"; 
+    const GAS_URL = "https://script.google.com/macros/s/AKfycbzNErdh7xlwyQBvYunIeCSDP4keATRTF_c1jLCSwNV7oziifIKEzE4r-y5a3R-A2IsUaQ/exec"; 
 
     let currentScannedId = "";
+    let lastFetchedData = []; // 取得したデータを一時保存する変数
 
     async function startScan() {
         const scanner = new Html5Qrcode("reader");
@@ -113,8 +112,8 @@
         document.getElementById("loading").style.display = "block";
         try {
             const response = await fetch(`${GAS_URL}?id=${encodeURIComponent(id)}`);
-            const data = await response.json();
-            showResult(data);
+            lastFetchedData = await response.json(); // データを変数に保存
+            showResult(lastFetchedData);
         } catch (e) {
             alert("データが見つかりませんでした");
             location.reload();
@@ -153,15 +152,25 @@
     }
 
     async function requestEmail() {
-        if (!confirm("ご登録のメールアドレスに請書（PDF控え）を送信します。よろしいですか？")) return;
+        // 保存しておいたデータからアドレスを取得（通信を待たないので速い！）
+        let currentEmail = (lastFetchedData.length > 0) ? lastFetchedData[0].email : "";
+
+        const newEmail = window.prompt("請書の送信先メールアドレスを確認してください。\n変更が必要な場合は書き換えて[OK]を押してください。", currentEmail);
         
+        if (newEmail === null) return; 
+        if (!newEmail.includes("@")) {
+            alert("有効なメールアドレスを入力してください。");
+            return;
+        }
+
         const btn = document.getElementById("email-btn");
         btn.disabled = true;
         btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> 送信中...';
 
         try {
-            const response = await fetch(`${GAS_URL}?action=sendEmail&id=${encodeURIComponent(currentScannedId)}`);
+            const response = await fetch(`${GAS_URL}?action=sendEmail&id=${encodeURIComponent(currentScannedId)}&email=${encodeURIComponent(newEmail)}`);
             const result = await response.json();
+            
             if (result.success) {
                 alert("請書メールを送信しました！");
                 btn.style.background = "#6c757d";
@@ -169,7 +178,7 @@
             } else {
                 alert("送信失敗: " + result.message);
                 btn.disabled = false;
-                btn.innerHTML = '<i class="fa-solid fa-paper-plane"></i> 請書を発行';
+                btn.innerHTML = '<i class="fa-solid fa-paper-plane"></i> この内容で請書を発行';
             }
         } catch (e) {
             alert("通信エラーが発生しました");
@@ -177,5 +186,6 @@
         }
     }
 </script>
+
 </body>
 </html>
