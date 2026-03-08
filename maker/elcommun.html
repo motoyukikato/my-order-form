@@ -159,44 +159,94 @@
 
 /**
  * お客様専用：裏でデータを読み込んでおく（画面は切り替えない）
+/**
+ * お客様専用：裏でデータを読み込んでおく（fetch方式に統一）
  */
-function prepareCustomerHistory(id) {
-  // 通信が止まらないよう、fetchではなくGASの実行関数を整理
-  google.script.run
-    .withSuccessHandler(data => {
-      if (data && !data.error) {
-        allHistoryData = data; // データを変数に保存（表示は履歴タブが押された時）
-      }
-    })
-    .withFailureHandler(err => console.error("初期読込失敗:", err))
-    .getCustomerSpecificHistory(id); // GAS側の関数名と合わせる
-}
-    async function loadProductSuggestions() {
-        try {
-            const res = await fetch(GAS_URL, {
-                method: "POST",
-                body: JSON.stringify({ action: "getAllProductNames" })
-            });
-            allProducts = await res.json();
-            const datalist = document.getElementById('prod-list');
-            if (datalist) {
-                datalist.innerHTML = allProducts.map(item => `<option value="${item.partNo}">${item.name}</option>`).join('');
-            }
-        } catch (e) { console.error("データ取得失敗:", e); }
-    }
-
-    function showPage(pageId) {
-        document.querySelectorAll('.page-section').forEach(sec => sec.classList.remove('active'));
-        document.getElementById(pageId).classList.add('active');
-        document.querySelectorAll('.footer-menu button').forEach(btn => btn.classList.remove('active-menu'));
-        const activeBtn = document.getElementById('nav-' + pageId);
-        if (activeBtn) activeBtn.classList.add('active-menu');
+async function prepareCustomerHistory(id) {
+    console.log("履歴取得を開始します ID:", id);
+    try {
+        const res = await fetch(GAS_URL, {
+            method: "POST",
+            body: JSON.stringify({ 
+                action: "getCustomerHistory", // GASのdoPost内の分岐名に合わせる
+                id: id 
+            })
+        });
+        const data = await res.json();
         
-        // ★修正: お客様モード（CUSTOMER_ID_FROM_URLがある時）は、通常のloadHistoryを走らせない
-        if (pageId === 'history' && (!CUSTOMER_ID_FROM_URL || CUSTOMER_ID_FROM_URL === "")) {
-            loadHistory();
+        if (data && !data.error) {
+            allHistoryData = data;
+            console.log("履歴の事前読み込み完了:", allHistoryData.length, "件");
+            
+            // もし既に「履歴」タブが開かれていたら、即座に表示を反映させる
+            const historyPage = document.getElementById('history');
+            if (historyPage && historyPage.classList.contains('active')) {
+                renderHistoryView();
+            }
+        } else {
+            console.warn("履歴データが空、またはエラー:", data.error);
+        }
+    } catch (e) {
+        console.error("履歴の事前読み込み失敗:", e);
+    }
+}
+
+/**
+ * 商品リストの読み込み（既存のものを整理）
+ */
+async function loadProductSuggestions() {
+    try {
+        const res = await fetch(GAS_URL, {
+            method: "POST",
+            body: JSON.stringify({ action: "getAllProductNames" })
+        });
+        allProducts = await res.json();
+        const datalist = document.getElementById('prod-list');
+        if (datalist && Array.isArray(allProducts)) {
+            datalist.innerHTML = allProducts
+                .map(item => `<option value="${item.partNo}">${item.name}</option>`)
+                .join('');
+        }
+    } catch (e) { 
+        console.error("商品マスタ取得失敗:", e); 
+    }
+}
+
+/**
+ * 履歴表示用ヘルパー（showPageから呼ばれる）
+ */
+function renderHistoryView() {
+    const listDiv = document.getElementById("history-list");
+    if (!listDiv) return;
+    
+    listDiv.innerHTML = ""; // 読み込み中をクリア
+    if (!allHistoryData || allHistoryData.length === 0) {
+        listDiv.innerHTML = '<p style="text-align: center; color: #999;">ご注文履歴はありません</p>';
+        return;
+    }
+    currentPage = 1;
+    renderNextPage(); 
+}
+
+    // ページ切り替えの制御
+function showPage(pageId) {
+    document.querySelectorAll('.page-section').forEach(sec => sec.classList.remove('active'));
+    document.getElementById(pageId).classList.add('active');
+    document.querySelectorAll('.footer-menu button').forEach(btn => btn.classList.remove('active-menu'));
+    const activeBtn = document.getElementById('nav-' + pageId);
+    if (activeBtn) activeBtn.classList.add('active-menu');
+    
+    // 履歴タブが押された時の処理
+    if (pageId === 'history') {
+        const listDiv = document.getElementById("history-list");
+        // もしお客様IDがあるのにデータがまだ空なら、再取得を試みる
+        if (CUSTOMER_ID_FROM_URL && (!allHistoryData || allHistoryData.length === 0)) {
+            prepareCustomerHistory(CUSTOMER_ID_FROM_URL);
+        } else {
+            renderHistoryView();
         }
     }
+}
 
     async function fetchCustomerData(val) {
         if (!val) return;
@@ -475,9 +525,16 @@ function prepareCustomerHistory(id) {
                 body: JSON.stringify({ action: "deleteOrderLine", rowNum: rowNum }) 
             });
             const result = await res.json();
-            if (result.success) { alert("削除しました"); if(CUSTOMER_ID_FROM_URL) { loadCustomerSpecificHistory(CUSTOMER_ID_FROM_URL); } else { loadHistory(); } }
-        } catch (e) { alert("削除エラー"); }
-    }
+     if (result.success) { 
+  alert("削除しました"); 
+  if(CUSTOMER_ID_FROM_URL && CUSTOMER_ID_FROM_URL !== "") { 
+    // お客様モード：再取得して表示を更新
+    prepareCustomerHistory(CUSTOMER_ID_FROM_URL); 
+  } else { 
+    // 店員モード：全件取得を再実行
+    loadHistory(); 
+  } 
+}
 </script>
 </body>
 </html>
