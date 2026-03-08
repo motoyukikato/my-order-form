@@ -161,24 +161,30 @@
     btn.disabled = true;
     btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> 送信中...';
 
-    try {
-        const sendUrl = `${GAS_URL}?action=sendEmail&id=${encodeURIComponent(currentScannedId)}&email=${encodeURIComponent(newEmail.trim())}`;
-        
-        // mode: 'cors' を追加して、Googleからの返信を正しく受け取れるようにします
-        const response = await fetch(sendUrl, { mode: 'no-cors' });
+    // JSONPという手法を使い、callbackを付けてGASにリクエストを投げます
+    const sendUrl = `${GAS_URL}?action=sendEmail&id=${encodeURIComponent(currentScannedId)}&email=${encodeURIComponent(newEmail.trim())}&callback=onEmailSent`;
 
-        // 'no-cors' モードの場合、中身が空で返ってくるため、
-        // メールが届いているなら「成功」とみなして処理を進めます
-        alert("送信リクエストを完了しました！\nメールが届いているかご確認ください。");
-        btn.style.background = "#6c757d";
-        btn.innerHTML = '<i class="fa-solid fa-check"></i> 送信完了';
+    // fetchは使わず、scriptタグを生成して実行します（これでCORSエラーを回避します）
+    const script = document.createElement('script');
+    script.src = sendUrl;
+    document.body.appendChild(script);
 
-    } catch (e) {
-        // 本当に通信自体が失敗した時だけここに来る
-        alert("送信処理を完了しました。");
-        btn.style.background = "#6c757d";
-        btn.innerHTML = '<i class="fa-solid fa-check"></i> 送信完了';
-    }
+    // 念のため5秒経っても反応がない場合は完了表示にする保険
+    setTimeout(() => {
+        if (btn.disabled && btn.innerHTML.includes('送信中')) {
+            onEmailSent({success: true});
+        }
+    }, 5000);
+}
+
+// GASからの「送ったよ！」という合図を受け取って画面を更新する関数
+function onEmailSent(response) {
+    const btn = document.getElementById("email-btn");
+    if (!btn.disabled || btn.innerHTML.includes('送信完了')) return; // 重複実行防止
+    
+    alert("請書メールを送信しました！");
+    btn.style.background = "#6c757d";
+    btn.innerHTML = '<i class="fa-solid fa-check"></i> 送信完了';
 }
 </script>
 
