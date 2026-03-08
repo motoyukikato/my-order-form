@@ -229,32 +229,21 @@ function renderHistoryView() {
 }
 
 // --- 修正後の showPage 関数 ---
+
+// ここにあった余分な } } を削除しました
 function showPage(pageId) {
     document.querySelectorAll('.page-section').forEach(sec => sec.classList.remove('active'));
     document.getElementById(pageId).classList.add('active');
     document.querySelectorAll('.footer-menu button').forEach(btn => btn.classList.remove('active-menu'));
+    
     const activeBtn = document.getElementById('nav-' + pageId);
     if (activeBtn) activeBtn.classList.add('active-menu');
-    
-    // 履歴タブが押された時の処理
+
+    // シンプルに履歴を読み込むだけに戻す
     if (pageId === 'history') {
-        const listDiv = document.getElementById("history-list");
-        
-        if (CUSTOMER_ID_FROM_URL && CUSTOMER_ID_FROM_URL !== "") {
-            // お客様ID（電話番号）がある場合は、その人の分だけ取得
-            if (!allHistoryData || allHistoryData.length === 0) {
-                prepareCustomerHistory(CUSTOMER_ID_FROM_URL);
-            } else {
-                renderHistoryView();
-            }
-        } else {
-            // お客様IDがない場合（スタッフなど）は、全件履歴を取得
-            loadHistory(); 
-        }
+        loadHistory(); 
     }
 }
-// ここにあった余分な } } を削除しました
-
     async function fetchCustomerData(val) {
         if (!val) return;
         const loading = document.getElementById("cust-loading");
