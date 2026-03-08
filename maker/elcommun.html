@@ -228,7 +228,7 @@ function renderHistoryView() {
     renderNextPage(); 
 }
 
-// ページ切り替えの制御
+// --- 修正後の showPage 関数 ---
 function showPage(pageId) {
     document.querySelectorAll('.page-section').forEach(sec => sec.classList.remove('active'));
     document.getElementById(pageId).classList.add('active');
@@ -240,7 +240,6 @@ function showPage(pageId) {
     if (pageId === 'history') {
         const listDiv = document.getElementById("history-list");
         
-        // --- ここから修正 ---
         if (CUSTOMER_ID_FROM_URL && CUSTOMER_ID_FROM_URL !== "") {
             // お客様ID（電話番号）がある場合は、その人の分だけ取得
             if (!allHistoryData || allHistoryData.length === 0) {
@@ -252,11 +251,9 @@ function showPage(pageId) {
             // お客様IDがない場合（スタッフなど）は、全件履歴を取得
             loadHistory(); 
         }
-        // --- ここまで修正 ---
     }
 }
-    }
-}
+// ここにあった余分な } } を削除しました
 
     async function fetchCustomerData(val) {
         if (!val) return;
