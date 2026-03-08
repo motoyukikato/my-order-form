@@ -517,7 +517,7 @@ function showPage(pageId) {
         } catch (e) { alert("通信エラー：修正が保存できませんでした"); }
     }
 
-    async function deleteOrderHistory(rowNum) {
+   async function deleteOrderHistory(rowNum) {
         if (!confirm("削除しますか？")) return;
         try {
             const res = await fetch(GAS_URL, { 
@@ -525,16 +525,20 @@ function showPage(pageId) {
                 body: JSON.stringify({ action: "deleteOrderLine", rowNum: rowNum }) 
             });
             const result = await res.json();
-     if (result.success) { 
-  alert("削除しました"); 
-  if(CUSTOMER_ID_FROM_URL && CUSTOMER_ID_FROM_URL !== "") { 
-    // お客様モード：再取得して表示を更新
-    prepareCustomerHistory(CUSTOMER_ID_FROM_URL); 
-  } else { 
-    // 店員モード：全件取得を再実行
-    loadHistory(); 
-  } 
-}
+            if (result.success) { 
+                alert("削除しました"); 
+                if(CUSTOMER_ID_FROM_URL && CUSTOMER_ID_FROM_URL !== "") { 
+                    // お客様モード：再取得して表示を更新
+                    prepareCustomerHistory(CUSTOMER_ID_FROM_URL); 
+                } else { 
+                    // 店員モード：全件取得を再実行
+                    loadHistory(); 
+                } 
+            }
+        } catch (e) { 
+            alert("削除エラー"); 
+        }
+    }
 </script>
 </body>
 </html>
