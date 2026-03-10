@@ -415,65 +415,70 @@ async function handleScan() {
     const stopBtn = document.getElementById("stop-btn");
     const statusText = document.getElementById("scan-status");
 
-    // 1. 起動前に「必ず」一度止めてクリアする
+    // 1. 前回の残骸を完全に掃除（Androidではこれが最重要）
     await safeStopScanner();
 
     startBtn.style.display = "none";
     stopBtn.style.display = "block";
-    statusText.innerText = "カメラを初期化中...";
+    statusText.innerText = "デバイスを確認中...";
 
-    // 新しいインスタンスで作り直す
+    // 2. インスタンス生成
     html5QrCode = new Html5Qrcode("reader");
 
-    const config = { 
-    fps: 20,          // フレーム数を上げて反応を速くする
-    qrbox: { width: 280, height: 160 },
-    aspectRatio: 1.777778, // 16:9を指定して歪みを防ぐ
-    disableFlip: true, // 鏡像反転を無効にして処理を軽くする
-    formatsToSupport: [ 
-        Html5QrcodeSupportedFormats.EAN_13, 
-        Html5QrcodeSupportedFormats.EAN_8, 
-        Html5QrcodeSupportedFormats.CODE_128 
-    ]
-};
-
     try {
+        // 3. 利用可能なカメラリストを直接取得
+        const devices = await Html5Qrcode.getCameras();
+        let targetCameraId = null;
+
+        if (devices && devices.length > 0) {
+            // 背面カメラ(Back/Rear/背面)という名前のデバイスを優先的に探す
+            const backCamera = devices.find(d => 
+                /back|rear|背面|out/i.test(d.label)
+            );
+            // 見つかればそのIDを、なければ一番最後のカメラ（通常は背面）を使用
+            targetCameraId = backCamera ? backCamera.id : devices[devices.length - 1].id;
+        } else {
+            // リストが取れない場合は汎用設定
+            targetCameraId = { facingMode: "environment" };
+        }
+
+        const config = { 
+            fps: 20, 
+            qrbox: { width: 260, height: 160 },
+            aspectRatio: 1.777778,
+            // Androidの相性問題を避けるための追加設定
+            videoConstraints: {
+                focusMode: "continuous",
+                whiteBalanceMode: "continuous"
+            }
+        };
+
+        // 4. 特定したIDで起動
         await html5QrCode.start(
-    { 
-        facingMode: "environment",
-        width: { ideal: 1280 },
-        height: { ideal: 720 } 
-    },
+            targetCameraId,
             config,
             async (text) => {
-                // 成功したらすぐ止める
                 await safeStopScanner();
                 if (navigator.vibrate) navigator.vibrate(50);
-                
-                statusText.innerText = "照会中...";
                 const result = await executeProductSearch(text);
                 const p = (result && result.items) ? result.items[0] : result;
-                
                 if (p && p.name) {
                     const q = prompt(`【${p.name}】\n品番: ${p.partNo}\n数量`, p.lot || 1);
-                    if (q) { 
-                        cart.push({ ...p, quantity: parseInt(q) }); 
-                        updateCartUI(); 
-                    }
-                } else { 
-                    alert("マスタ未登録: " + text); 
-                }
-                statusText.innerText = "スキャン完了";
+                    if (q) { cart.push({ ...p, quantity: parseInt(q) }); updateCartUI(); }
+                } else { alert("未登録: " + text); }
+                // スキャン後にボタンを戻す
+                startBtn.style.display = "block";
+                stopBtn.style.display = "none";
             }
         );
         statusText.innerText = "バーコードを枠に合わせてください";
     } catch (e) {
-        console.error("Camera Start Error:", e);
-        alert("カメラを起動できませんでした。iPhone/Androidの設定でブラウザのカメラ権限が許可されているか確認してください。");
+        console.error("Android Start Error:", e);
+        // ここでエラーが出た場合、物理的な権限設定画面へ誘導
+        alert("カメラの「使用権限」がブラウザ側で一時的にロックされています。\n\n対策：\n1. ブラウザを一度完全に閉じる\n2. アドレスバー左の鍵マークを押し「権限をリセット」して再読込する");
         await safeStopScanner();
     }
 }
-
 // スキャン停止ボタン用
 async function stopScanner() {
     await safeStopScanner();
