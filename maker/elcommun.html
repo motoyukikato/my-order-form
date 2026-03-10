@@ -426,18 +426,24 @@ async function handleScan() {
     html5QrCode = new Html5Qrcode("reader");
 
     const config = { 
-        fps: 10, 
-        qrbox: { width: 280, height: 160 },
-        formatsToSupport: [ 
-            Html5QrcodeSupportedFormats.EAN_13, 
-            Html5QrcodeSupportedFormats.EAN_8, 
-            Html5QrcodeSupportedFormats.CODE_128 
-        ]
-    };
+    fps: 20,          // フレーム数を上げて反応を速くする
+    qrbox: { width: 280, height: 160 },
+    aspectRatio: 1.777778, // 16:9を指定して歪みを防ぐ
+    disableFlip: true, // 鏡像反転を無効にして処理を軽くする
+    formatsToSupport: [ 
+        Html5QrcodeSupportedFormats.EAN_13, 
+        Html5QrcodeSupportedFormats.EAN_8, 
+        Html5QrcodeSupportedFormats.CODE_128 
+    ]
+};
 
     try {
         await html5QrCode.start(
-            { facingMode: "environment" },
+    { 
+        facingMode: "environment",
+        width: { ideal: 1280 },
+        height: { ideal: 720 } 
+    },
             config,
             async (text) => {
                 // 成功したらすぐ止める
