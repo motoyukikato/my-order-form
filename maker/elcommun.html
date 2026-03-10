@@ -34,6 +34,7 @@
 
 <section id="home" class="page-section active">
     <h2 style="text-align: center;">顧客情報</h2>
+    
     <div class="card" id="cust-display">
         <div id="cust-loading" style="text-align:center; color:#ccc; padding: 20px;">検索またはスキャンしてください</div>
         <div id="cust-data" style="display:none;">
@@ -44,11 +45,15 @@
             <span id="res-email"></span>
         </div>
     </div>
+
     <div class="card">
         <input type="tel" id="cust-manual-input" placeholder="電話番号を入力" style="width: 60%; padding: 10px;">
         <button class="btn-blue" onclick="handleCustomerManualSearch()">検索</button>
     </div>
-    <button class="btn-scan" onclick="handleCustomerScan()" style="background: #28a745;"><i class="fa-solid fa-qrcode"></i> 顧客スキャン</button>
+
+    <button id="customer-scan-btn" class="btn-scan" onclick="handleCustomerScan()" style="background: #28a745;">
+        <i class="fa-solid fa-qrcode"></i> 顧客スキャン
+    </button>
 </section>
 
 <section id="barcode" class="page-section">
@@ -447,14 +452,15 @@ async function handleScan() {
     statusText.innerText = "高精度モードで起動中...";
 
     // iPhoneのレンズぼけを防ぐ「高解像度 + 低FPS」設定
-    const config = {
-        fps: 15, // 処理負荷を下げて1枚ずつの画質を優先
-        qrbox: { width: 280, height: 180 }, // 枠を少し大きくして捉えやすくする
-        aspectRatio: 1.777778,
+ const config = {
+        fps: 5, // ★あえてガクガクにする（1枚の画像をじっくり解析させて誤読を防ぐ）
+        qrbox: { width: 250, height: 120 }, // ★枠を細長くして、バーコードだけを狙い撃ちする
+        aspectRatio: 1.0,
         videoConstraints: {
             facingMode: "environment",
-            width: { ideal: 1920 }, // フルHD画質を要求（これで細い線がくっきりします）
-            height: { ideal: 1080 }
+            // iPhoneで一番ボケにくい「少し引き」の画角を要求
+            width: { ideal: 1280 },
+            height: { ideal: 720 }
         }
     };
 
