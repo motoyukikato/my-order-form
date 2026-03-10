@@ -3,25 +3,29 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>注文システム</title>
+    <title>見本市注文システム</title>
     <script src="https://unpkg.com/html5-qrcode"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
-        body { font-family: sans-serif; margin: 0; padding-bottom: 90px; background: #f4f7f9; }
+        body { font-family: sans-serif; margin: 0; padding-bottom: 90px; background: #f4f7f9; color: #333; }
         header { background: #fff; text-align: center; padding: 12px; border-bottom: 3px solid #3b5998; font-weight: bold; }
-        .page-section { display: none; padding: 15px; }
+        .page-section { display: none; padding: 10px; }
         .active { display: block; }
-        .card { background: #fff; padding: 15px; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); margin-bottom: 12px; }
-        .btn-main { padding: 18px; border: none; border-radius: 10px; width: 100%; font-size: 1.1em; font-weight: bold; color: white; margin-bottom: 10px; cursor: pointer; }
-        .btn-cust { background: #28a745; }
-        .btn-order { background: #d9534f; margin-top: 20px; }
+        .card { background: #fff; padding: 12px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); margin-bottom: 10px; }
+        .btn-main { padding: 15px; border: none; border-radius: 8px; width: 100%; font-size: 1.1em; font-weight: bold; color: white; cursor: pointer; }
+        .btn-cust { background: #28a745; margin-bottom: 10px; }
+        .btn-order { background: #d9534f; font-size: 1.3em; margin-top: 15px; }
         #reader { width: 100% !important; border-radius: 10px; background: #000; overflow: hidden; }
-        .qty-ctrl { display: flex; align-items: center; gap: 15px; margin-top: 10px; padding-top: 10px; border-top: 1px solid #eee; }
-        .btn-q { width: 40px; height: 40px; border-radius: 50%; border: 1px solid #3b5998; background: #fff; font-size: 20px; color: #3b5998; }
+        .item-row { border-bottom: 1px solid #eee; padding: 10px 0; }
+        .item-info { display: flex; justify-content: space-between; font-size: 0.9em; margin-bottom: 4px; }
+        .price-text { color: #d9534f; font-weight: bold; }
+        .total-box { text-align: right; padding: 15px; font-size: 1.3em; color: #d9534f; font-weight: bold; background: #fff; border-radius: 12px; margin-top: 10px; }
         nav { position: fixed; bottom: 0; width: 100%; display: flex; background: #fff; border-top: 1px solid #ddd; padding: 10px 0; z-index: 100; }
         nav button { flex: 1; background: none; border: none; color: #888; font-size: 12px; }
         nav button.active-nav { color: #3b5998; font-weight: bold; }
-        .del-text { color: red; margin-left: auto; cursor: pointer; text-decoration: underline; font-size: 0.9em; }
+        .qty-ctrl { display: flex; align-items: center; gap: 10px; margin-top: 8px; }
+        .btn-q { width: 35px; height: 35px; border: 1px solid #3b5998; background: #fff; color: #3b5998; border-radius: 5px; font-weight: bold; }
+        .del-btn { color: #999; text-decoration: underline; font-size: 0.85em; margin-left: auto; cursor: pointer; }
     </style>
 </head>
 <body>
@@ -29,62 +33,63 @@
 <header>見本市注文システム</header>
 
 <section id="home" class="page-section active">
-    <div class="card">
-        <div id="c-status" style="text-align:center; color:#666;">顧客スキャンをしてください</div>
-        <div id="c-result" style="display:none;">
-            <b id="r-name" style="font-size:1.2em; color:#3b5998;"></b><br>
-            <span id="r-addr"></span>
+    <div class="card" id="customer-card">
+        <div id="c-none" style="text-align:center; color:#999;">顧客を選択してください</div>
+        <div id="c-detail" style="display:none;">
+            <b id="r-name" style="color:#3b5998; font-size:1.1em;"></b><br>
+            <small id="r-addr"></small><br>
+            <small id="r-email" style="color:#666;"></small>
         </div>
     </div>
-    <button class="btn-main btn-cust" onclick="startCamera('customer')">顧客スキャン</button>
+    <button class="btn-main btn-cust" onclick="startCamera('customer')"><i class="fas fa-user-plus"></i> 顧客スキャン</button>
     
-    <div id="cart-area" style="display:none; margin-top:20px;">
-        <h4 style="border-left:4px solid #3b5998; padding-left:10px;">カート</h4>
+    <div id="cart-area" style="display:none;">
+        <h4 style="margin: 15px 0 5px 5px; border-left: 4px solid #3b5998; padding-left: 10px;">現在のカート</h4>
         <div id="cart-list" class="card"></div>
+        <div class="total-box">合計: ¥<span id="cart-total">0</span></div>
         <button class="btn-main btn-order" onclick="submitFinalOrder()">注文を確定して送信</button>
     </div>
 </section>
 
 <section id="scanner-page" class="page-section">
-    <div id="mode-info" style="text-align:center; padding:10px; font-weight:bold;"></div>
     <div id="reader"></div>
     <button class="btn-main" style="background:#666; margin-top:15px;" onclick="stopCamera()">中止して戻る</button>
 </section>
 
 <section id="history" class="page-section">
-    <h3 style="text-align:center;">送信済み履歴（訂正・削除可）</h3>
+    <h3 style="text-align:center; font-size:1.1em;">注文履歴（訂正・削除）</h3>
     <div id="h-list"></div>
 </section>
 
 <nav>
     <button onclick="showPage('home')" id="n-home" class="active-nav"><i class="fas fa-shopping-cart"></i><br>カート</button>
     <button onclick="startCamera('product')"><i class="fas fa-barcode"></i><br>商品追加</button>
-    <button onclick="showPage('history')"><i class="fas fa-history"></i><br>履歴/修正</button>
+    <button onclick="showPage('history')"><i class="fas fa-history"></i><br>履歴修正</button>
 </nav>
 
 <script>
-    const GAS_URL = "https://script.google.com/macros/s/AKfycbxaQ78xA9mYnKgUJVt4Oz3Fmz-JbK747BaGiQDsVQpsC3oaoYKPMMh82pMEM1ix2D2c7w/exec";
+    const GAS_URL = "https://script.google.com/macros/s/AKfycbyPVoJ8rT2K3DD8A-9bP3K4FduD1YF0JjqI4YRR-THpSstjDrxcrW7ZHPYKvwLUCFnIzQ/exec";
     let html5QrCode = null;
-    let customerData = null;
+    let customer = null;
     let cart = [];
 
     async function startCamera(mode) {
-        if (mode === 'product' && !customerData) { alert("先に顧客をスキャンしてください"); return; }
+        if (mode === 'product' && !customer) { alert("先に顧客をスキャンしてください"); return; }
         showPage('scanner-page');
-        document.getElementById("mode-info").innerText = mode === 'customer' ? "【顧客ID】スキャン" : "【JAN】スキャン";
         
-        // 既存のスキャナーを完全に破棄して再起動
-        if (html5QrCode) {
-            try { await html5QrCode.stop(); await html5QrCode.clear(); } catch(e){}
-        }
+        if (html5QrCode) { try { await html5QrCode.stop(); await html5QrCode.clear(); } catch(e){} }
         html5QrCode = new Html5Qrcode("reader");
-        
-        html5QrCode.start({ facingMode: "environment" }, { fps: 20, qrbox: 250 }, (text) => {
-            if (navigator.vibrate) navigator.vibrate(50);
+
+        const config = { fps: 15, qrbox: { width: 250, height: 150 } };
+        html5QrCode.start({ facingMode: "environment" }, config, (text) => {
             stopCamera();
             if (mode === 'customer') fetchCustomer(text.trim());
             else fetchProduct(text.trim());
-        }).catch(err => alert("カメラが起動できません。"));
+        }).catch(err => {
+            console.error(err);
+            alert("カメラを起動できません。ブラウザの権限を確認するか、再読込してください。");
+            showPage('home');
+        });
     }
 
     async function stopCamera() {
@@ -96,61 +101,72 @@
         const res = await fetch(GAS_URL, { method: "POST", body: JSON.stringify({ action: "customerSearch", val: id }) });
         const d = await res.json();
         if (d.customer) {
-            customerData = d;
+            customer = d;
             document.getElementById("r-name").innerText = d.customer;
             document.getElementById("r-addr").innerText = d.address1 + (d.address2 || "");
-            document.getElementById("c-status").style.display = "none";
-            document.getElementById("c-result").style.display = "block";
+            document.getElementById("r-email").innerText = d.email || "メール未登録";
+            document.getElementById("c-none").style.display = "none";
+            document.getElementById("c-detail").style.display = "block";
             document.getElementById("cart-area").style.display = "block";
-        } else { alert("未登録顧客です"); }
+        } else { alert("顧客が見つかりません"); }
     }
 
     async function fetchProduct(code) {
         const res = await fetch(GAS_URL, { method: "POST", body: JSON.stringify({ action: "productSearch", val: code }) });
         const p = await res.json();
         if (p && p.name) {
-            const q = prompt(`【${p.name}】\n数量を入力`, 1);
-            if (q) {
-                cart.push({ ...p, quantity: parseInt(q), jan: code });
+            const q = prompt(`【${p.name}】\n単価: ¥${p.price.toLocaleString()}\n数量を入力`, 1);
+            if (q && !isNaN(q)) {
+                cart.push({ ...p, quantity: parseInt(q) });
                 renderCart();
             }
-        } else { alert("商品未登録: " + code); }
+        } else { alert("商品が見つかりません: " + code); }
     }
 
     function renderCart() {
         const list = document.getElementById("cart-list");
-        if (cart.length === 0) { list.innerHTML = "<p style='text-align:center; color:#999;'>カートは空です</p>"; return; }
-        list.innerHTML = cart.map((item, i) => `
-            <div style="border-bottom:1px solid #eee; padding:10px 0; display:flex; justify-content:space-between;">
-                <span>${item.name}</span>
-                <b>× ${item.quantity}</b>
-            </div>`).join('');
+        let total = 0;
+        if (cart.length === 0) { list.innerHTML = "<p style='text-align:center; color:#999;'>空です</p>"; return; }
+        
+        list.innerHTML = cart.map((item, i) => {
+            const sub = item.price * item.quantity;
+            total += sub;
+            return `
+            <div class="item-row">
+                <div class="item-info"><span>${item.name}</span> <b class="price-text">¥${sub.toLocaleString()}</b></div>
+                <div class="item-info"><small>品番: ${item.partNo}</small> <small>単価: ¥${item.price.toLocaleString()} × ${item.quantity}</small></div>
+                <div style="text-align:right"><span class="del-btn" onclick="cart.splice(${i},1);renderCart();">削除</span></div>
+            </div>`;
+        }).join('');
+        document.getElementById("cart-total").innerText = total.toLocaleString();
     }
 
     async function submitFinalOrder() {
         if (cart.length === 0) return;
-        const orderData = { ...customerData, items: cart };
-        await fetch(GAS_URL, { method: "POST", body: JSON.stringify({ action: "orderSubmit", data: orderData }) });
-        alert("送信完了！");
+        if (!confirm("この内容で注文を送信しますか？")) return;
+        await fetch(GAS_URL, { method: "POST", body: JSON.stringify({ action: "orderSubmit", data: { ...customer, items: cart } }) });
+        alert("送信しました！");
         cart = []; renderCart();
         showPage('history');
     }
 
     async function loadHistory() {
         const list = document.getElementById("h-list");
-        list.innerHTML = "読み込み中...";
+        list.innerHTML = "<p style='text-align:center;'>読込中...</p>";
         const res = await fetch(GAS_URL, { method: "POST", body: JSON.stringify({ action: "getOrderHistory" }) });
         const data = await res.json();
         list.innerHTML = data.map(item => `
             <div class="card">
                 <small>${item.date} / ${item.customerName}</small><br>
-                <b>${item.name}</b>
+                <b>${item.name}</b><br>
+                <small>品番: ${item.partNo} / 単価: ¥${item.price.toLocaleString()}</small>
                 <div class="qty-ctrl">
                     数量: <b id="q-${item.rowNum}">${item.qty}</b>
                     <button class="btn-q" onclick="updateQty(${item.rowNum}, 1)">＋</button>
                     <button class="btn-q" onclick="updateQty(${item.rowNum}, -1)">－</button>
-                    <span class="del-text" onclick="deleteLine(${item.rowNum})">削除</span>
+                    <b class="price-text" style="margin-left:auto;">¥${item.subtotal.toLocaleString()}</b>
                 </div>
+                <div style="text-align:right; margin-top:5px;"><span class="del-btn" onclick="deleteLine(${item.rowNum})">削除</span></div>
             </div>`).join('');
     }
 
@@ -164,7 +180,7 @@
     }
 
     async function deleteLine(row) {
-        if (!confirm("完全に削除しますか？")) return;
+        if (!confirm("履歴から削除しますか？")) return;
         await fetch(GAS_URL, { method: "POST", body: JSON.stringify({ action: "deleteOrderLine", rowNum: row }) });
         loadHistory();
     }
