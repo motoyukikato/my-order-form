@@ -393,64 +393,56 @@ async function handleSearchAndPreview() {
         
         document.getElementById("start-btn").style.display = "none";
         document.getElementById("stop-btn").style.display = "block";
-        document.getElementById("scan-status").innerText = "スキャン中...";
+        document.getElementById("scan-status").innerText = "バーコードを探しています...";
 
-        // バーコード読み取りに特化した高精度設定
         const config = { 
-            fps: 30, // 処理速度を最大に
-            qrbox: { width: 300, height: 150 }, // バーコード用の横長枠
-            aspectRatio: 1.0,
-            videoConstraints: {
-                facingMode: "environment",
-                width: { ideal: 1920 }, // フルHDで線をくっきりさせる
-                height: { ideal: 1080 }
-            }
+            fps: 20,
+            // 枠をさらに小さくして、解析範囲を絞ることでスピードを上げます
+            qrbox: { width: 250, height: 150 }, 
+            // 1Dバーコード（JAN/EAN）のみに限定して計算を速くする
+            formatsToSupport: [ 
+                Html5QrcodeSupportedFormats.EAN_13, 
+                Html5QrcodeSupportedFormats.EAN_8, 
+                Html5QrcodeSupportedFormats.CODE_128 
+            ]
         };
 
         try {
+            // Androidの相性問題を避けるため、あえて解像度を理想値(ideal)に留める
+            const constraints = {
+                facingMode: "environment",
+                width: { ideal: 1280 },
+                height: { ideal: 720 },
+                aspectRatio: { ideal: 1.777 }
+            };
+
             await html5QrCode.start(
-                { facingMode: "environment" }, 
+                constraints, 
                 config, 
                 async (text) => {
-                    // 読み取り成功時の処理
                     await safeStopScanner();
-                    if (navigator.vibrate) navigator.vibrate(50); // 成功を振動で通知
+                    if (navigator.vibrate) navigator.vibrate(50);
                     
                     const result = await executeProductSearch(text);
                     const p = (result && result.items) ? result.items[0] : result;
                     
                     if (p && p.name) {
-                        const q = prompt(`【${p.name}】\n品番: ${p.partNo}\n数量を入力`, p.lot || 1);
+                        const q = prompt(`【${p.name}】\n品番: ${p.partNo}\n数量`, p.lot || 1);
                         if (q) { 
                             cart.push({ ...p, quantity: parseInt(q) }); 
                             updateCartUI(); 
-                            alert("追加しました"); 
                         }
                     } else { 
                         alert("マスタ未登録: " + text); 
                     }
-                    // 続けてスキャンする場合は再度開始
-                    handleScan();
+                    handleScan(); // 次のスキャンへ
                 }
             );
 
-            // ★iPhone等のピント問題を解決するズーム処理（起動1秒後に実行）
-            setTimeout(() => {
-                const track = html5QrCode.getVideoTrack();
-                if (track) {
-                    const capabilities = track.getCapabilities();
-                    if (capabilities.zoom) {
-                        // 最小ズームに少し加算して、ピントが合いやすい距離（20cm〜）で撮れるようにする
-                        track.applyConstraints({
-                            advanced: [{ zoom: capabilities.zoom.min + 0.5 }] 
-                        });
-                    }
-                }
-            }, 1000);
-
+            // ズーム設定を一旦リセット（機種による挙動の差をなくすため）
         } catch (e) { 
             console.error(e);
-            alert("カメラ起動失敗。ブラウザのカメラ許可を確認してください。"); 
+            alert("カメラを起動できませんでした。"); 
             document.getElementById("start-btn").style.display = "block";
         }
     }
