@@ -22,9 +22,8 @@
         #send-btn { background-color: #28a745; color: white; border: none; width: 100%; padding: 15px; font-size: 18px; border-radius: 10px; margin-top: 20px; }
         #send-btn:disabled { background-color: #ccc; }
         textarea { width: 100%; border: 1px solid #ddd; border-radius: 5px; padding: 10px; box-sizing: border-box; font-size: 16px; }
-        /* reader（カメラ画面）の中のビデオがぼやけないように強制する */
-#reader video {
-    object-fit: cover !important;
+   #reader video {
+    object-fit: contain !important; /* 映像全体を表示させて歪みを防ぐ */
 }
     </style>
     <script src="https://unpkg.com/html5-qrcode"></script>
@@ -415,41 +414,38 @@ async function handleScan() {
     const stopBtn = document.getElementById("stop-btn");
     const statusText = document.getElementById("scan-status");
 
-    // --- 1. 徹底的なクリーンアップ（Android対策） ---
+    // 1. Androidのフリーズを防ぐための完全初期化
     if (html5QrCode) {
-        try {
-            await html5QrCode.stop();
-            await html5QrCode.clear();
-        } catch (e) {}
+        try { await html5QrCode.stop(); await html5QrCode.clear(); } catch (e) {}
     }
-    document.getElementById("reader").innerHTML = ""; 
-    await new Promise(r => setTimeout(r, 300)); // デバイス解放待ち
+    document.getElementById("reader").innerHTML = "";
+    await new Promise(r => setTimeout(r, 500)); // 0.5秒待機（これがAndroidには必須）
 
-    html5QrCode = new Html5Qrcode("reader");
+    // 2. インスタンス作成（ここが重要：JANコードを明示的に指定）
+    html5QrCode = new Html5Qrcode("reader", { 
+        verbose: false,
+        formatsToSupport: [ Html5QrcodeSupportedFormats.EAN_13, Html5QrcodeSupportedFormats.EAN_8 ]
+    });
 
     startBtn.style.display = "none";
     stopBtn.style.display = "block";
-    statusText.innerText = "カメラを最適化中...";
+    statusText.innerText = "カメラを起動しています...";
 
-    // --- 2. iPhone/Android共通の黄金設定 ---
+    // 3. iPhoneのピントを合わせ、Androidの起動エラーを防ぐ最小設定
     const config = {
-        fps: 25, // 読み取り速度向上のためフレーム数を上げる
-        qrbox: { width: 250, height: 150 }, // 読み取り範囲を絞ってフォーカスを集中
-        aspectRatio: 1.777778, 
-        experimentalFeatures: {
-            useBarCodeDetectorIfSupported: true // ブラウザ標準の高速デコーダーを使用
-        }
+        fps: 10, // あえて落とすことで処理を軽くし、起動率を上げる
+        qrbox: { width: 280, height: 150 }, // JANコードに合わせた横長の枠
+        aspectRatio: 1.0 // 標準的な比率に戻す
     };
 
-    // --- 3. カメラ呼び出し（制約を最小限にしてエラー回避） ---
     try {
         await html5QrCode.start(
-            { facingMode: "environment" }, // 背面カメラ指定のみ（ID指定はしない）
+            { facingMode: "environment" }, 
             config,
             async (text) => {
-                // 成功時は即停止して負荷を抑える
-                try { await html5QrCode.stop(); } catch(e){}
+                // 読み取り成功！
                 if (navigator.vibrate) navigator.vibrate(50);
+                await safeStopScanner(); // 成功したら即座に止める
                 
                 statusText.innerText = "照会中...";
                 const result = await executeProductSearch(text);
@@ -462,20 +458,16 @@ async function handleScan() {
                         updateCartUI(); 
                     }
                 } else { 
-                    alert("未登録: " + text); 
+                    alert("マスタ未登録: " + text); 
                 }
-                // 自動で再開せず、ボタンを戻して一呼吸置く
-                startBtn.style.display = "block";
-                stopBtn.style.display = "none";
                 statusText.innerText = "スキャン完了";
             }
         );
         statusText.innerText = "バーコードを枠に合わせてください";
     } catch (e) {
-        console.error("Camera Final Error:", e);
-        alert("カメラの起動に失敗しました。Androidの場合はブラウザの「設定」からカメラ権限を一度「オフ→オン」にしてみてください。");
-        startBtn.style.display = "block";
-        stopBtn.style.display = "none";
+        console.error("Camera Error:", e);
+        alert("カメラの起動に失敗しました。\nAndroidの方は、Chromeブラウザを一度「強制終了」してから開き直してください。");
+        await safeStopScanner();
     }
 }
     async function handleCustomerScan() {
