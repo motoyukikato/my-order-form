@@ -274,7 +274,18 @@ function showPage(pageId) {
             loading.innerText = "エラー";
         }
     }
-
+// QRコードから顧客情報を取得して表示する関数
+async function selectCustomerByQR(val) {
+    if (!val) return;
+    const loading = document.getElementById("cust-loading");
+    loading.innerText = "顧客を照会中...";
+    
+    // 既存の fetchCustomerData を再利用
+    await fetchCustomerData(val);
+    
+    // 成功したらホーム画面へ（スキャンページから戻る）
+    showPage('home');
+}
     function handleCustomerManualSearch() {
         fetchCustomerData(document.getElementById('cust-manual-input').value.trim());
     }
