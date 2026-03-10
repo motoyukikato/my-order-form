@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>見本市注文システム</title>
+    <title>注文システム</title>
     <script src="https://unpkg.com/html5-qrcode"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
@@ -12,18 +12,14 @@
         .page-section { display: none; padding: 15px; }
         .active { display: block; }
         .card { background: #fff; padding: 15px; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); margin-bottom: 12px; }
-        .btn-main { padding: 18px; border: none; border-radius: 10px; width: 100%; font-size: 1.1em; font-weight: bold; color: white; margin-bottom: 10px; }
+        .btn-main { padding: 18px; border: none; border-radius: 10px; width: 100%; font-size: 1.1em; font-weight: bold; color: white; margin-bottom: 10px; cursor: pointer; }
         .btn-cust { background: #28a745; }
-        .btn-prod { background: #3b5998; }
-        .btn-cancel { background: #666; }
         #reader { width: 100% !important; border-radius: 10px; background: #000; overflow: hidden; }
-        .qty-ctrl { display: flex; align-items: center; gap: 15px; margin-top: 10px; border-top: 1px solid #eee; padding-top: 10px; }
+        .qty-ctrl { display: flex; align-items: center; gap: 15px; margin-top: 10px; padding-top: 10px; border-top: 1px solid #eee; }
         .btn-q { width: 40px; height: 40px; border-radius: 50%; border: 1px solid #3b5998; background: #fff; font-size: 20px; color: #3b5998; }
-        .del-text { color: #d9534f; margin-left: auto; text-decoration: underline; font-size: 14px; cursor: pointer; }
         nav { position: fixed; bottom: 0; width: 100%; display: flex; background: #fff; border-top: 1px solid #ddd; padding: 10px 0; }
         nav button { flex: 1; background: none; border: none; color: #888; font-size: 12px; }
         nav button.active-nav { color: #3b5998; font-weight: bold; }
-        .mode-msg { text-align: center; font-weight: bold; padding: 10px; border-radius: 5px; margin-bottom: 10px; }
     </style>
 </head>
 <body>
@@ -32,9 +28,7 @@
 
 <section id="home" class="page-section active">
     <div class="card">
-        <div id="c-status" style="text-align:center; color:#666;">
-            <i class="fa-solid fa-user"></i> 顧客スキャンをしてください
-        </div>
+        <div id="c-status" style="text-align:center; color:#666;">顧客スキャンをしてください</div>
         <div id="c-result" style="display:none;">
             <b id="r-name" style="font-size:1.2em; color:#3b5998;"></b><br>
             <span id="r-addr1"></span><br>
@@ -46,13 +40,13 @@
 </section>
 
 <section id="scanner-page" class="page-section">
-    <div id="mode-info" class="mode-msg"></div>
+    <div id="mode-info" style="text-align:center; padding:10px; font-weight:bold;"></div>
     <div id="reader"></div>
-    <button class="btn-main btn-cancel" style="margin-top:15px;" onclick="stopCamera()">戻る</button>
+    <button class="btn-main" style="background:#666; margin-top:15px;" onclick="stopCamera()">中止して戻る</button>
 </section>
 
 <section id="history" class="page-section">
-    <h3 style="text-align:center;">注文履歴 (集計/メーカー連動)</h3>
+    <h3 style="text-align:center;">注文履歴</h3>
     <div id="h-list"></div>
 </section>
 
@@ -65,86 +59,58 @@
 <script>
     const GAS_URL = "https://script.google.com/macros/s/AKfycbyPVoJ8rT2K3DD8A-9bP3K4FduD1YF0JjqI4YRR-THpSstjDrxcrW7ZHPYKvwLUCFnIzQ/exec";
     let html5QrCode = null;
-    let currentCustomerName = "";
+    let customerData = null;
 
-    // 1. スキャナーの起動
     async function startCamera(mode) {
         showPage('scanner-page');
-        const info = document.getElementById("mode-info");
-        info.innerText = mode === 'customer' ? "【顧客ID】をスキャン" : "【商品JAN】をスキャン";
-        info.style.background = mode === 'customer' ? "#e2f3e7" : "#e7f0f7";
-
-        if (html5QrCode) {
-            await html5QrCode.stop().catch(() => {});
-            await html5QrCode.clear();
-        }
-
+        document.getElementById("mode-info").innerText = mode === 'customer' ? "【顧客ID】をスキャン" : "【JANコード】をスキャン";
+        if (html5QrCode) { await html5QrCode.stop().catch(()=>{}); await html5QrCode.clear(); }
         html5QrCode = new Html5Qrcode("reader");
-        const config = { 
-            fps: mode === 'product' ? 25 : 15, 
-            qrbox: mode === 'product' ? { width: 280, height: 160 } : 250 
-        };
-
-        html5QrCode.start({ facingMode: "environment" }, config, (text) => {
-            if (navigator.vibrate) navigator.vibrate(50);
+        html5QrCode.start({ facingMode: "environment" }, { fps: 20, qrbox: 250 }, (text) => {
             stopCamera();
             if (mode === 'customer') fetchCustomer(text.trim());
             else fetchProduct(text.trim());
-        }).catch(err => alert("カメラ起動エラー: ブラウザの設定を確認してください"));
+        }).catch(err => alert("カメラエラー"));
     }
 
     async function stopCamera() {
-        if (html5QrCode && html5QrCode.isScanning) {
-            await html5QrCode.stop();
-        }
+        if (html5QrCode && html5QrCode.isScanning) await html5QrCode.stop();
         showPage('home');
     }
 
-    // 2. GASとの通信（顧客検索）
     async function fetchCustomer(id) {
-        document.getElementById("c-status").innerText = "マスタ照合中...";
-        try {
-            const res = await fetch(GAS_URL, { method: "POST", body: JSON.stringify({ action: "customerSearch", val: id }) });
-            const d = await res.json();
-            if (d.customer) {
-                currentCustomerName = d.customer;
-                document.getElementById("r-name").innerText = d.customer;
-                document.getElementById("r-addr1").innerText = d.address1;
-                document.getElementById("r-addr2").innerText = d.address2 || ""; // 住所2を表示
-                document.getElementById("r-tel").innerText = d.tel;
-                document.getElementById("c-status").style.display = "none";
-                document.getElementById("c-result").style.display = "block";
-            } else { alert("未登録: " + id); }
-        } catch (e) { alert("通信失敗"); }
+        document.getElementById("c-status").innerText = "照合中...";
+        const res = await fetch(GAS_URL, { method: "POST", body: JSON.stringify({ action: "customerSearch", val: id }) });
+        const d = await res.json();
+        if (d.customer) {
+            customerData = d;
+            document.getElementById("r-name").innerText = d.customer;
+            document.getElementById("r-addr1").innerText = d.address1;
+            document.getElementById("r-addr2").innerText = d.address2 || "";
+            document.getElementById("r-tel").innerText = d.tel;
+            document.getElementById("c-status").style.display = "none";
+            document.getElementById("c-result").style.display = "block";
+        } else { alert("未登録: " + id); }
     }
 
-    // 3. 商品検索
     async function fetchProduct(code) {
-        if (!currentCustomerName) { alert("先に顧客をスキャンしてください"); return; }
+        if (!customerData) { alert("顧客を先にスキャンしてください"); return; }
         const res = await fetch(GAS_URL, { method: "POST", body: JSON.stringify({ action: "productSearch", val: code }) });
         const p = await res.json();
         if (p && p.name) {
-            const q = prompt(`【${p.name}】\n数量を入力してください`, 1);
-            if (q) {
-                // 注文確定（集計マスタへ送信）
-                const orderData = {
-                    customerName: currentCustomerName,
-                    address1: document.getElementById("r-addr1").innerText,
-                    address2: document.getElementById("r-addr2").innerText,
-                    tel: document.getElementById("r-tel").innerText,
-                    items: [{ ...p, quantity: q, jan: code }]
-                };
+            const q = prompt(`【${p.name}】\n数量を入力`, 1);
+            if (q && !isNaN(q)) {
+                const orderData = { customerName: customerData.customer, zip: customerData.zip, address1: customerData.address1, address2: customerData.address2, tel: customerData.tel, email: customerData.email, items: [{ ...p, quantity: parseInt(q) }] };
                 await fetch(GAS_URL, { method: "POST", body: JSON.stringify({ action: "orderSubmit", data: orderData }) });
-                alert("注文を追加しました");
+                alert("保存完了");
                 showPage('history');
             }
         } else { alert("商品未登録: " + code); }
     }
 
-    // 4. 履歴の表示・数量変更・削除
     async function loadHistory() {
         const list = document.getElementById("h-list");
-        list.innerHTML = "読込中...";
+        list.innerHTML = "読み込み中...";
         const res = await fetch(GAS_URL, { method: "POST", body: JSON.stringify({ action: "getOrderHistory" }) });
         const data = await res.json();
         list.innerHTML = data.map(item => `
@@ -155,23 +121,22 @@
                     数量: <b id="q-${item.rowNum}">${item.qty}</b>
                     <button class="btn-q" onclick="updateQty(${item.rowNum}, 1)">＋</button>
                     <button class="btn-q" onclick="updateQty(${item.rowNum}, -1)">－</button>
-                    <span class="del-text" onclick="deleteLine(${item.rowNum})">削除</span>
+                    <span style="color:red; margin-left:auto; cursor:pointer;" onclick="deleteLine(${item.rowNum})">削除</span>
                 </div>
             </div>`).join('');
     }
 
     async function updateQty(row, diff) {
         const el = document.getElementById("q-"+row);
-        const newQty = parseInt(el.innerText) + diff;
-        if (newQty < 1) return;
-        el.innerText = "...";
-        // GASのupdateOrderQtyを呼び出し（集計とメーカー両方更新）
-        await fetch(GAS_URL, { method: "POST", body: JSON.stringify({ action: "updateOrderQty", rowNum: row, newQty: newQty }) });
+        const next = parseInt(el.innerText) + diff;
+        if (next < 1) return;
+        el.innerText = "..";
+        await fetch(GAS_URL, { method: "POST", body: JSON.stringify({ action: "updateOrderQty", rowNum: row, newQty: next }) });
         loadHistory();
     }
 
     async function deleteLine(row) {
-        if (!confirm("メーカーファイルからも削除されます。よろしいですか？")) return;
+        if (!confirm("メーカー側も削除されます。よろしいですか？")) return;
         await fetch(GAS_URL, { method: "POST", body: JSON.stringify({ action: "deleteOrderLine", rowNum: row }) });
         loadHistory();
     }
