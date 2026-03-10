@@ -386,6 +386,7 @@ async function handleSearchAndPreview() {
 
     // --- 修正版：安全にカメラを停止・クリアする関数 ---
 async function safeStopScanner() {
+    // 1. 既存のインスタンスを徹底的に停止・破棄
     if (html5QrCode) {
         try {
             if (html5QrCode.isScanning) {
@@ -393,19 +394,21 @@ async function safeStopScanner() {
             }
             await html5QrCode.clear();
         } catch (e) {
-            console.log("Stop/Clear Error:", e);
+            console.warn("停止処理中の軽微なエラー:", e);
         }
+        html5QrCode = null; // インスタンスを空にする
     }
-    // カメラ表示エリアを物理的にリセット
-    document.getElementById("reader").innerHTML = "";
     
-    // UIをスキャン開始前の状態に戻す
+    // 2. 表示エリアを物理的に空にする（Androidのフリーズ対策）
+    const reader = document.getElementById("reader");
+    if (reader) reader.innerHTML = "";
+    
+    // 3. UIのリセット
     document.getElementById("start-btn").style.display = "block";
     document.getElementById("stop-btn").style.display = "none";
-    document.getElementById("scan-status").innerText = "カメラを停止しました";
     
-    // デバイス解放のために少しだけ待つ
-    await new Promise(r => setTimeout(r, 300));
+    // 4. ブラウザに「カメラを離す時間」を与える（重要！）
+    await new Promise(r => setTimeout(r, 400));
 }
 
 // --- 修正版：スキャン開始関数 ---
