@@ -414,28 +414,34 @@ async function handleScan() {
     const stopBtn = document.getElementById("stop-btn");
     const statusText = document.getElementById("scan-status");
 
-    // 1. Androidのフリーズを防ぐための完全初期化
-    if (html5QrCode) {
-        try { await html5QrCode.stop(); await html5QrCode.clear(); } catch (e) {}
-    }
+    await safeStopScanner();
     document.getElementById("reader").innerHTML = "";
-    await new Promise(r => setTimeout(r, 500)); // 0.5秒待機（これがAndroidには必須）
+    await new Promise(r => setTimeout(r, 500));
 
-    // 2. インスタンス作成（ここが重要：JANコードを明示的に指定）
+    // JANコード(EAN)に特化した解析エンジンを起動
     html5QrCode = new Html5Qrcode("reader", { 
         verbose: false,
-        formatsToSupport: [ Html5QrcodeSupportedFormats.EAN_13, Html5QrcodeSupportedFormats.EAN_8 ]
+        formatsToSupport: [ 
+            Html5QrcodeSupportedFormats.EAN_13, 
+            Html5QrcodeSupportedFormats.EAN_8,
+            Html5QrcodeSupportedFormats.CODE_128 // 念のため128も追加
+        ]
     });
 
     startBtn.style.display = "none";
     stopBtn.style.display = "block";
-    statusText.innerText = "カメラを起動しています...";
+    statusText.innerText = "高精度モードで起動中...";
 
-    // 3. iPhoneのピントを合わせ、Androidの起動エラーを防ぐ最小設定
+    // iPhoneのレンズぼけを防ぐ「高解像度 + 低FPS」設定
     const config = {
-        fps: 10, // あえて落とすことで処理を軽くし、起動率を上げる
-        qrbox: { width: 280, height: 150 }, // JANコードに合わせた横長の枠
-        aspectRatio: 1.0 // 標準的な比率に戻す
+        fps: 15, // 処理負荷を下げて1枚ずつの画質を優先
+        qrbox: { width: 280, height: 180 }, // 枠を少し大きくして捉えやすくする
+        aspectRatio: 1.777778,
+        videoConstraints: {
+            facingMode: "environment",
+            width: { ideal: 1920 }, // フルHD画質を要求（これで細い線がくっきりします）
+            height: { ideal: 1080 }
+        }
     };
 
     try {
@@ -443,9 +449,8 @@ async function handleScan() {
             { facingMode: "environment" }, 
             config,
             async (text) => {
-                // 読み取り成功！
                 if (navigator.vibrate) navigator.vibrate(50);
-                await safeStopScanner(); // 成功したら即座に止める
+                await safeStopScanner();
                 
                 statusText.innerText = "照会中...";
                 const result = await executeProductSearch(text);
@@ -453,21 +458,17 @@ async function handleScan() {
                 
                 if (p && p.name) {
                     const q = prompt(`【${p.name}】\n品番: ${p.partNo}\n数量`, p.lot || 1);
-                    if (q) { 
-                        cart.push({ ...p, quantity: parseInt(q) }); 
-                        updateCartUI(); 
-                    }
-                } else { 
-                    alert("マスタ未登録: " + text); 
-                }
-                statusText.innerText = "スキャン完了";
+                    if (q) { cart.push({ ...p, quantity: parseInt(q) }); updateCartUI(); }
+                } else { alert("未登録: " + text); }
+                startBtn.style.display = "block";
+                stopBtn.style.display = "none";
             }
         );
-        statusText.innerText = "バーコードを枠に合わせてください";
+        statusText.innerText = "15cmほど離して水平に構えてください";
     } catch (e) {
-        console.error("Camera Error:", e);
-        alert("カメラの起動に失敗しました。\nAndroidの方は、Chromeブラウザを一度「強制終了」してから開き直してください。");
-        await safeStopScanner();
+        console.error(e);
+        // 高解像度が通らない場合の予備起動
+        await html5QrCode.start({ facingMode: "environment" }, { fps: 10, qrbox: 250 }, async (text) => { /* ... */ });
     }
 }
     async function handleCustomerScan() {
