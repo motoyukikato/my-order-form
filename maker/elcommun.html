@@ -22,6 +22,10 @@
         #send-btn { background-color: #28a745; color: white; border: none; width: 100%; padding: 15px; font-size: 18px; border-radius: 10px; margin-top: 20px; }
         #send-btn:disabled { background-color: #ccc; }
         textarea { width: 100%; border: 1px solid #ddd; border-radius: 5px; padding: 10px; box-sizing: border-box; font-size: 16px; }
+        /* reader（カメラ画面）の中のビデオがぼやけないように強制する */
+#reader video {
+    object-fit: cover !important;
+}
     </style>
     <script src="https://unpkg.com/html5-qrcode"></script>
 </head>
@@ -388,18 +392,26 @@ async function handleSearchAndPreview() {
     }
 
    async function handleScan() {
-        await safeStopScanner();
-        if (!html5QrCode) html5QrCode = new Html5Qrcode("reader");
+        // 1. 既存のカメラを完全にクリーンアップ（二重起動によるエラー防止）
+        if (html5QrCode) {
+            try {
+                await html5QrCode.stop().catch(() => {});
+                await html5QrCode.clear();
+            } catch (e) { console.log("Cleanup error"); }
+        }
+        
+        // インスタンスを新しく作り直す
+        html5QrCode = new Html5Qrcode("reader");
         
         document.getElementById("start-btn").style.display = "none";
         document.getElementById("stop-btn").style.display = "block";
-        document.getElementById("scan-status").innerText = "バーコードを探しています...";
+        document.getElementById("scan-status").innerText = "カメラ起動中...";
 
         const config = { 
-            fps: 20,
-            // 枠をさらに小さくして、解析範囲を絞ることでスピードを上げます
-            qrbox: { width: 250, height: 150 }, 
-            // 1Dバーコード（JAN/EAN）のみに限定して計算を速くする
+            fps: 20, 
+            // 枠を横長（バーコード用）に絞り、解析範囲を限定して高速化
+            qrbox: { width: 280, height: 160 },
+            // JANコード等に限定
             formatsToSupport: [ 
                 Html5QrcodeSupportedFormats.EAN_13, 
                 Html5QrcodeSupportedFormats.EAN_8, 
@@ -408,21 +420,22 @@ async function handleSearchAndPreview() {
         };
 
         try {
-            // Androidの相性問題を避けるため、あえて解像度を理想値(ideal)に留める
+            // iPhone/Android両方で「ピントが合いやすい」標準解像度を指定
             const constraints = {
                 facingMode: "environment",
                 width: { ideal: 1280 },
-                height: { ideal: 720 },
-                aspectRatio: { ideal: 1.777 }
+                height: { ideal: 720 }
             };
 
             await html5QrCode.start(
                 constraints, 
                 config, 
                 async (text) => {
-                    await safeStopScanner();
+                    // 読み取り成功！一旦止めてバイブレーション
+                    await html5QrCode.stop().catch(() => {});
                     if (navigator.vibrate) navigator.vibrate(50);
                     
+                    document.getElementById("scan-status").innerText = "照会中...";
                     const result = await executeProductSearch(text);
                     const p = (result && result.items) ? result.items[0] : result;
                     
@@ -435,15 +448,17 @@ async function handleSearchAndPreview() {
                     } else { 
                         alert("マスタ未登録: " + text); 
                     }
-                    handleScan(); // 次のスキャンへ
+                    // 連続スキャンのために再起動
+                    handleScan();
                 }
             );
+            document.getElementById("scan-status").innerText = "バーコードを枠に合わせてください";
 
-            // ズーム設定を一旦リセット（機種による挙動の差をなくすため）
         } catch (e) { 
-            console.error(e);
-            alert("カメラを起動できませんでした。"); 
+            console.error("Camera Start Error:", e);
+            alert("カメラを起動できませんでした。ブラウザの再読み込みを試してください。"); 
             document.getElementById("start-btn").style.display = "block";
+            document.getElementById("stop-btn").style.display = "none";
         }
     }
     async function handleCustomerScan() {
