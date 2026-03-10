@@ -387,26 +387,73 @@ async function handleSearchAndPreview() {
         document.getElementById("stop-btn").style.display = "none";
     }
 
-    async function handleScan() {
+   async function handleScan() {
         await safeStopScanner();
         if (!html5QrCode) html5QrCode = new Html5Qrcode("reader");
+        
         document.getElementById("start-btn").style.display = "none";
         document.getElementById("stop-btn").style.display = "block";
-        const config = { fps: 20, qrbox: { width: 280, height: 120 } };
-        try {
-            await html5QrCode.start({ facingMode: "environment" }, config, async (text) => {
-                await safeStopScanner();
-                const result = await executeProductSearch(text);
-                const p = (result && result.items) ? result.items[0] : result;
-                if (p && p.name) {
-                    const q = prompt(`【${p.name}】\n品番: ${p.partNo}\n数量を入力`, p.lot || 1);
-                    if (q) { cart.push({ ...p, quantity: parseInt(q) }); updateCartUI(); alert("追加しました"); }
-                } else { alert("マスタ未登録: " + text); }
-                handleScan();
-            });
-        } catch (e) { alert("カメラ起動失敗"); }
-    }
+        document.getElementById("scan-status").innerText = "スキャン中...";
 
+        // バーコード読み取りに特化した高精度設定
+        const config = { 
+            fps: 30, // 処理速度を最大に
+            qrbox: { width: 300, height: 150 }, // バーコード用の横長枠
+            aspectRatio: 1.0,
+            videoConstraints: {
+                facingMode: "environment",
+                width: { ideal: 1920 }, // フルHDで線をくっきりさせる
+                height: { ideal: 1080 }
+            }
+        };
+
+        try {
+            await html5QrCode.start(
+                { facingMode: "environment" }, 
+                config, 
+                async (text) => {
+                    // 読み取り成功時の処理
+                    await safeStopScanner();
+                    if (navigator.vibrate) navigator.vibrate(50); // 成功を振動で通知
+                    
+                    const result = await executeProductSearch(text);
+                    const p = (result && result.items) ? result.items[0] : result;
+                    
+                    if (p && p.name) {
+                        const q = prompt(`【${p.name}】\n品番: ${p.partNo}\n数量を入力`, p.lot || 1);
+                        if (q) { 
+                            cart.push({ ...p, quantity: parseInt(q) }); 
+                            updateCartUI(); 
+                            alert("追加しました"); 
+                        }
+                    } else { 
+                        alert("マスタ未登録: " + text); 
+                    }
+                    // 続けてスキャンする場合は再度開始
+                    handleScan();
+                }
+            );
+
+            // ★iPhone等のピント問題を解決するズーム処理（起動1秒後に実行）
+            setTimeout(() => {
+                const track = html5QrCode.getVideoTrack();
+                if (track) {
+                    const capabilities = track.getCapabilities();
+                    if (capabilities.zoom) {
+                        // 最小ズームに少し加算して、ピントが合いやすい距離（20cm〜）で撮れるようにする
+                        track.applyConstraints({
+                            advanced: [{ zoom: capabilities.zoom.min + 0.5 }] 
+                        });
+                    }
+                }
+            }, 1000);
+
+        } catch (e) { 
+            console.error(e);
+            alert("カメラ起動失敗。ブラウザのカメラ許可を確認してください。"); 
+            document.getElementById("start-btn").style.display = "block";
+        }
+    }
     async function handleCustomerScan() {
         await safeStopScanner();
         if (!html5QrCode) html5QrCode = new Html5Qrcode("reader");
