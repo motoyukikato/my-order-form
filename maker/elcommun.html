@@ -32,7 +32,7 @@
 
 <section id="home" class="page-section active">
     <div class="card" id="customer-card">
-        <div id="c-none" style="text-align:center; color:#999;">顧客をスキャンしてください</div>
+        <div id="c-none" style="text-align:center; color:#999;">顧客IDまたは電話番号でスキャン</div>
         <div id="c-detail" style="display:none;">
             <b id="r-name" style="color:#3b5998; font-size:1.1em;"></b><br>
             <small id="r-addr"></small><br>
@@ -64,13 +64,13 @@
 </nav>
 
 <script>
-    const GAS_URL = "https://script.google.com/macros/s/AKfycbzIt4bdQ-N1No7Wrj08pp3AJJxtqVDh1eb50xMuUlKruRWn3BBY9-wdbB3tuEE911TyHw/exec";
+    const GAS_URL = "https://script.google.com/macros/s/AKfycbxWNcQkJzGoEy_lKLdOvFMunCP7tFil81SJX5y8kCX9SUyvHRscRG5IGFn6LQ69TIPT_w/exec";
     let html5QrCode = null;
     let customer = null;
     let cart = [];
 
     async function startCamera(mode) {
-        if (mode === 'product' && !customer) { alert("顧客が未選択です"); return; }
+        if (mode === 'product' && !customer) { alert("顧客を選択してください"); return; }
         showPage('scanner-page');
         document.getElementById("reader").innerHTML = ""; 
         if (html5QrCode) { try { await html5QrCode.stop(); } catch(e){} }
@@ -78,10 +78,11 @@
         const config = { fps: 10, qrbox: { width: 250, height: 180 } };
         html5QrCode.start({ facingMode: "environment" }, config, (text) => {
             stopCamera();
-            if (mode === 'customer') fetchCustomer(text.trim());
-            else fetchProduct(text.trim());
+            const cleanText = text.trim();
+            if (mode === 'customer') fetchCustomer(cleanText);
+            else fetchProduct(cleanText);
         }).catch(err => {
-            alert("カメラを起動できません。Chromeを使用してください。");
+            alert("カメラを起動できません。Chromeブラウザをご利用ください。");
             showPage('home');
         });
     }
@@ -102,19 +103,20 @@
             document.getElementById("c-none").style.display = "none";
             document.getElementById("c-detail").style.display = "block";
             document.getElementById("cart-area").style.display = "block";
-        } else { alert("顧客未登録"); }
+        } else { alert("顧客が見つかりません: " + id); }
     }
 
     async function fetchProduct(code) {
         const res = await fetch(GAS_URL, { method: "POST", body: JSON.stringify({ action: "productSearch", val: code }) });
         const p = await res.json();
         if (p && p.name) {
-            const q = prompt(`【${p.name}】\n数量`, 1);
+            const q = prompt(`【${p.name}】\n数量を入力してください`, 1);
             if (q) {
+                // p.jan がスプレッドシートへの記録に使われます
                 cart.push({ ...p, quantity: parseInt(q) });
                 renderCart();
             }
-        } else { alert("商品未登録: " + code); }
+        } else { alert("商品が見つかりません: " + code); }
     }
 
     function renderCart() {
@@ -125,7 +127,7 @@
             total += sub;
             return `<div class="item-row">
                 <b>${item.name}</b><br>
-                <small>JAN: ${item.jan} / ¥${item.price} × ${item.quantity}</small>
+                <small>JAN: ${item.jan} / ¥${item.price.toLocaleString()} × ${item.quantity}</small>
                 <div style="text-align:right"><span class="del-btn" onclick="cart.splice(${i},1);renderCart();">消去</span></div>
             </div>`;
         }).join('');
@@ -134,26 +136,20 @@
 
     async function submitFinalOrder() {
         if (cart.length === 0) return;
-        if (!confirm("送信しますか？")) return;
-        
+        if (!confirm("注文を送信しますか？")) return;
         await fetch(GAS_URL, { method: "POST", body: JSON.stringify({ action: "orderSubmit", data: { ...customer, items: cart } }) });
-        alert("送信完了！");
-        
-        // --- ここでリセット処理 ---
-        cart = [];
-        customer = null;
-        renderCart(); // カートと合計金額を空にする
+        alert("送信完了しました！");
+        cart = []; customer = null;
+        renderCart();
         document.getElementById("c-none").style.display = "block";
         document.getElementById("c-detail").style.display = "none";
         document.getElementById("cart-area").style.display = "none";
-        // -------------------------
-        
         showPage('history');
     }
 
     async function loadHistory() {
         const list = document.getElementById("h-list");
-        list.innerHTML = "読込中...";
+        list.innerHTML = "読み込み中...";
         const res = await fetch(GAS_URL, { method: "POST", body: JSON.stringify({ action: "getOrderHistory" }) });
         const data = await res.json();
         list.innerHTML = data.map(item => `
@@ -178,7 +174,7 @@
     }
 
     async function deleteLine(row) {
-        if (!confirm("削除しますか？")) return;
+        if (!confirm("この注文を削除しますか？")) return;
         await fetch(GAS_URL, { method: "POST", body: JSON.stringify({ action: "deleteOrderLine", rowNum: row }) });
         loadHistory();
     }
