@@ -135,160 +135,102 @@
     <button onclick="showPage('history')" id="nav-history"><i class="fa-solid fa-clock-rotate-left"></i>履歴</button>
     <button onclick="showPage('cart')" id="nav-cart"><i class="fa-solid fa-cart-shopping"></i>カート</button>
 </nav>
-
 <script>
     const GAS_URL = "https://script.google.com/macros/s/AKfycbyPVoJ8rT2K3DD8A-9bP3K4FduD1YF0JjqI4YRR-THpSstjDrxcrW7ZHPYKvwLUCFnIzQ/exec";
-    
-    let cart = [];
-    let allProducts = []; 
-    let tempProduct = null;
     let html5QrCode = null;
-    let allHistoryData = []; 
-    let currentPage = 1;      
-    const PAGE_SIZE = 20;    
-    const CUSTOMER_ID_FROM_URL = "<?= customerId ?>";
+    let scanMode = "product"; // "product" または "customer"
 
-    window.onload = () => {
-        loadProductSuggestions();
-        showPage('home');
-        if (CUSTOMER_ID_FROM_URL) prepareCustomerHistory(CUSTOMER_ID_FROM_URL);
-    };
-
-    // --- 【超重要】カメラを安全に殺して再起動する関数 ---
-    async function killAndResetScanner() {
+    // --- カメラを完全に終了させる関数（Androidフリーズ対策） ---
+    async function stopAndClearScanner() {
         if (html5QrCode) {
             try {
-                if (html5QrCode.isScanning) {
-                    await html5QrCode.stop();
-                }
+                if (html5QrCode.isScanning) await html5QrCode.stop();
                 await html5QrCode.clear();
-            } catch (e) { console.log("Reset info:", e); }
+            } catch (e) { console.warn(e); }
             html5QrCode = null;
         }
-        document.getElementById("reader").innerHTML = ""; 
-        await new Promise(r => setTimeout(r, 500)); // Androidのフリーズ防止用待機
+        const reader = document.getElementById("reader");
+        if (reader) reader.innerHTML = "";
+        await new Promise(r => setTimeout(r, 500)); 
     }
 
-    // --- 商品スキャン (JAN特化) ---
+    // --- 商品スキャンボタン ---
     async function handleScan() {
-        await killAndResetScanner();
-        const statusText = document.getElementById("scan-status");
-        
-        // iPhoneの誤読を防ぐために、JAN(EAN)のみに絞る
-        html5QrCode = new Html5Qrcode("reader", { 
-            formatsToSupport: [ Html5QrcodeSupportedFormats.EAN_13, Html5QrcodeSupportedFormats.EAN_8 ]
-        });
-
-        document.getElementById("start-btn").style.display = "none";
-        document.getElementById("stop-btn").style.display = "block";
-        statusText.innerText = "バーコードを認識中...";
-
-        try {
-            await html5QrCode.start(
-                { facingMode: "environment" },
-                { 
-                    fps: 10, 
-                    qrbox: { width: 280, height: 150 }, // 横長のバーコード用枠
-                    aspectRatio: 1.0,
-                    videoConstraints: { width: 1280, height: 720 } // iPhoneで最も安定する解像度
-                },
-                async (text) => {
-                    // 誤読防止：数字以外や桁違いを無視
-                    if (!/^\d+$/.test(text) || (text.length !== 13 && text.length !== 8)) return;
-                    
-                    if (navigator.vibrate) navigator.vibrate(50);
-                    await killAndResetScanner();
-                    
-                    const p = await executeProductSearch(text);
-                    if (p && p.name) {
-                        const q = prompt(`【${p.name}】\n品番: ${p.partNo}\n数量`, p.lot || 1);
-                        if (q) { cart.push({ ...p, quantity: parseInt(q) }); updateCartUI(); }
-                    } else { alert("未登録: " + text); }
-                    
-                    document.getElementById("start-btn").style.display = "block";
-                    document.getElementById("stop-btn").style.display = "none";
-                }
-            );
-        } catch (e) { alert("カメラ起動失敗。タブを閉じて開き直してください。"); }
+        scanMode = "product";
+        await startGeneralScanner([
+            Html5QrcodeSupportedFormats.EAN_13, 
+            Html5QrcodeSupportedFormats.EAN_8
+        ], "商品バーコードを読み取ります");
     }
 
-    // --- 顧客スキャン (QR特化) ---
+    // --- 顧客スキャンボタン ---
     async function handleCustomerScan() {
-        // ページ移動（もしスキャン画面にいないなら移動させる）
+        scanMode = "customer";
+        // 1. まず画面をスキャンページに切り替える
         showPage('barcode');
-        await killAndResetScanner();
-        
-        const statusText = document.getElementById("scan-status");
-        statusText.innerText = "顧客QRを読み取ります...";
+        // 2. カメラを起動する
+        await startGeneralScanner([
+            Html5QrcodeSupportedFormats.QR_CODE
+        ], "顧客QRコードを読み取ります");
+    }
 
-        html5QrCode = new Html5Qrcode("reader", { 
-            formatsToSupport: [ Html5QrcodeSupportedFormats.QR_CODE ]
-        });
+    // --- 共通カメラ起動エンジン (Android背面固定版) ---
+    async function startGeneralScanner(formats, msg) {
+        await stopAndClearScanner();
+        const statusText = document.getElementById("scan-status");
+        statusText.innerText = "カメラを準備中...";
+
+        // インスタンス作成
+        html5QrCode = new Html5Qrcode("reader", { formatsToSupport: formats });
+
+        const config = {
+            fps: 10,
+            qrbox: scanMode === "product" ? { width: 280, height: 150 } : { width: 250, height: 250 },
+            aspectRatio: 1.0,
+            // 背面カメラを強制指定（これでもインカメラになる場合はブラウザ設定）
+            videoConstraints: { facingMode: { exact: "environment" } } 
+        };
 
         try {
             await html5QrCode.start(
-                { facingMode: "environment" },
-                { fps: 15, qrbox: 250 },
-                async (decodedText) => {
+                { facingMode: "environment" }, // 予備の背面指定
+                config,
+                async (text) => {
                     if (navigator.vibrate) navigator.vibrate(50);
-                    await killAndResetScanner();
-                    
-                    // 顧客照会を実行
-                    await fetchCustomerData(decodedText);
-                    showPage('home'); // 成功したらホームへ戻る
+                    await stopAndClearScanner();
+
+                    if (scanMode === "customer") {
+                        await fetchCustomerData(text);
+                        showPage('home');
+                    } else {
+                        statusText.innerText = "商品照会中...";
+                        const p = await executeProductSearch(text);
+                        if (p && p.name) {
+                            const q = prompt(`【${p.name}】\n数量`, p.lot || 1);
+                            if (q) { cart.push({ ...p, quantity: parseInt(q) }); updateCartUI(); }
+                        } else { alert("未登録: " + text); }
+                    }
                 }
             );
-        } catch (e) { alert("顧客スキャン起動失敗"); }
+            statusText.innerText = msg;
+            document.getElementById("start-btn").style.display = "none";
+            document.getElementById("stop-btn").style.display = "block";
+        } catch (err) {
+            console.error(err);
+            // exact: environment で失敗した場合は、通常の environment でリトライ
+            alert("背面カメラの固定に失敗しました。標準モードで起動します。");
+            await html5QrCode.start({ facingMode: "environment" }, { fps: 10, qrbox: 250 }, async (text) => { /* 成功時処理 */ });
+        }
     }
 
-    // --- 既存の補助関数群 ---
-    async function fetchCustomerData(val) {
-        if (!val) return;
-        const loading = document.getElementById("cust-loading");
-        loading.innerText = "検索中...";
-        try {
-            const res = await fetch(GAS_URL, {
-                method: "POST",
-                body: JSON.stringify({ action: "customerSearch", val: val })
-            });
-            const data = await res.json();
-            if (data && data.customer) {
-                document.getElementById("res-customer").innerText = data.customer;
-                document.getElementById("res-address1").innerText = data.address1 || "";
-                document.getElementById("res-address2").innerText = data.address2 || "";
-                document.getElementById("res-tel").innerText = data.tel || "";
-                document.getElementById("res-email").innerText = data.email || "";
-                document.getElementById("cust-loading").style.display = "none";
-                document.getElementById("cust-data").style.display = "block";
-            } else { alert("顧客が見つかりません"); loading.innerText = "検索またはスキャンしてください"; }
-        } catch (e) { alert("通信エラー"); }
-    }
-
-    async function executeProductSearch(code) {
-        try {
-            const res = await fetch(GAS_URL, {
-                method: "POST",
-                body: JSON.stringify({ action: "productSearch", val: code })
-            });
-            return await res.json();
-        } catch (e) { return null; }
-    }
-
+    // --- ページ切り替え ---
     function showPage(pageId) {
         document.querySelectorAll('.page-section').forEach(sec => sec.classList.remove('active'));
         document.getElementById(pageId).classList.add('active');
-        document.querySelectorAll('.footer-menu button').forEach(btn => btn.classList.remove('active-menu'));
-        const activeBtn = document.getElementById('nav-' + pageId);
-        if (activeBtn) activeBtn.classList.add('active-menu');
-        if (pageId === 'history') loadHistory();
-        // カメラページ以外に移動したらカメラを殺す
-        if (pageId !== 'barcode') killAndResetScanner();
+        // カメラページ以外に移動したらカメラを止める
+        if (pageId !== 'barcode') stopAndClearScanner();
     }
-
-    // (その他のUI操作用関数は以前のものを維持してください)
-    function updateCartUI() { /* カート表示更新 */ }
-    function handleCustomerManualSearch() { fetchCustomerData(document.getElementById('cust-manual-input').value.trim()); }
-    async function loadProductSuggestions() { /* 商品リスト取得 */ }
 </script>
+
 </body>
 </html>
