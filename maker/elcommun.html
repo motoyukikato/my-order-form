@@ -474,19 +474,36 @@ async function handleScan() {
         await html5QrCode.start({ facingMode: "environment" }, { fps: 10, qrbox: 250 }, async (text) => { /* ... */ });
     }
 }
-    async function handleCustomerScan() {
-        await safeStopScanner();
-        if (!html5QrCode) html5QrCode = new Html5Qrcode("reader");
-        document.getElementById("start-btn").style.display = "none";
-        document.getElementById("stop-btn").style.display = "block";
-        try {
-            await html5QrCode.start({ facingMode: "environment" }, { fps: 20, qrbox: 250 }, async (text) => {
+ async function handleCustomerScan() {
+    const statusText = document.getElementById("scan-status");
+    
+    // 起動前に掃除
+    await safeStopScanner();
+
+    // 顧客QR用にインスタンス作成
+    html5QrCode = new Html5Qrcode("reader", { 
+        verbose: false,
+        formatsToSupport: [ Html5QrcodeSupportedFormats.QR_CODE ] // QRのみに絞る
+    });
+
+    try {
+        await html5QrCode.start(
+            { facingMode: "environment" },
+            { fps: 10, qrbox: 250 },
+            async (decodedText) => {
                 await safeStopScanner();
-                fetchCustomerData(text);
-                showPage('home');
-            });
-        } catch (e) { alert("カメラ起動失敗"); }
+                if (navigator.vibrate) navigator.vibrate(50);
+                
+                // 顧客検索の処理へ
+                await selectCustomerByQR(decodedText); 
+            }
+        );
+        statusText.innerText = "顧客のQRコードをかざしてください";
+    } catch (e) {
+        console.error(e);
+        alert("カメラの起動に失敗しました。一度ブラウザのタブをすべて閉じて、開き直してください。");
     }
+}
     async function stopScanner() { await safeStopScanner(); }
 
     async function loadHistory() {
