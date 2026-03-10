@@ -415,50 +415,65 @@ async function handleScan() {
     const stopBtn = document.getElementById("stop-btn");
     const statusText = document.getElementById("scan-status");
 
-    // 全てのリセット処理を同期的に行う
+    // --- 1. 徹底的なクリーンアップ（Android対策） ---
     if (html5QrCode) {
         try {
             await html5QrCode.stop();
             await html5QrCode.clear();
         } catch (e) {}
     }
-    document.getElementById("reader").innerHTML = "";
+    document.getElementById("reader").innerHTML = ""; 
+    await new Promise(r => setTimeout(r, 300)); // デバイス解放待ち
+
+    html5QrCode = new Html5Qrcode("reader");
 
     startBtn.style.display = "none";
     stopBtn.style.display = "block";
-    statusText.innerText = "カメラを強制呼び出し中...";
+    statusText.innerText = "カメラを最適化中...";
 
-    // 新規インスタンス作成
-    html5QrCode = new Html5Qrcode("reader");
+    // --- 2. iPhone/Android共通の黄金設定 ---
+    const config = {
+        fps: 25, // 読み取り速度向上のためフレーム数を上げる
+        qrbox: { width: 250, height: 150 }, // 読み取り範囲を絞ってフォーカスを集中
+        aspectRatio: 1.777778, 
+        experimentalFeatures: {
+            useBarCodeDetectorIfSupported: true // ブラウザ標準の高速デコーダーを使用
+        }
+    };
 
+    // --- 3. カメラ呼び出し（制約を最小限にしてエラー回避） ---
     try {
-        // デバイスのリスト取得を「あえて行わない」
-        // ブラウザの標準機能に丸投げして背面カメラを開かせる
         await html5QrCode.start(
-            { facingMode: "environment" }, 
-            { 
-                fps: 10, 
-                qrbox: { width: 250, height: 150 },
-                // 解像度指定をあえて外してエラー率を下げる
-            },
+            { facingMode: "environment" }, // 背面カメラ指定のみ（ID指定はしない）
+            config,
             async (text) => {
-                await html5QrCode.stop();
+                // 成功時は即停止して負荷を抑える
+                try { await html5QrCode.stop(); } catch(e){}
                 if (navigator.vibrate) navigator.vibrate(50);
+                
+                statusText.innerText = "照会中...";
                 const result = await executeProductSearch(text);
                 const p = (result && result.items) ? result.items[0] : result;
+                
                 if (p && p.name) {
                     const q = prompt(`【${p.name}】\n品番: ${p.partNo}\n数量`, p.lot || 1);
-                    if (q) { cart.push({ ...p, quantity: parseInt(q) }); updateCartUI(); }
-                } else { alert("未登録: " + text); }
+                    if (q) { 
+                        cart.push({ ...p, quantity: parseInt(q) }); 
+                        updateCartUI(); 
+                    }
+                } else { 
+                    alert("未登録: " + text); 
+                }
+                // 自動で再開せず、ボタンを戻して一呼吸置く
                 startBtn.style.display = "block";
                 stopBtn.style.display = "none";
+                statusText.innerText = "スキャン完了";
             }
         );
         statusText.innerText = "バーコードを枠に合わせてください";
     } catch (e) {
-        console.error("Critical Camera Error:", e);
-        // ここでエラーならOS側のロック確定
-        alert("端末側でカメラがロックされています。\n\n【解決手順】\n1. スマホの「設定」>「アプリ」>「Chrome」を強制停止する\n2. スマホを再起動する\n3. 他のタブを全て閉じてから開く");
+        console.error("Camera Final Error:", e);
+        alert("カメラの起動に失敗しました。Androidの場合はブラウザの「設定」からカメラ権限を一度「オフ→オン」にしてみてください。");
         startBtn.style.display = "block";
         stopBtn.style.display = "none";
     }
