@@ -392,26 +392,34 @@ async function handleSearchAndPreview() {
     }
 
    async function handleScan() {
-        // 1. 既存のカメラを完全にクリーンアップ（二重起動によるエラー防止）
+        const startBtn = document.getElementById("start-btn");
+        const stopBtn = document.getElementById("stop-btn");
+        const statusText = document.getElementById("scan-status");
+
+        // 1. 既存の停止・クリア処理を確実に行う
         if (html5QrCode) {
             try {
-                await html5QrCode.stop().catch(() => {});
+                if (html5QrCode.isScanning) {
+                    await html5QrCode.stop();
+                }
                 await html5QrCode.clear();
-            } catch (e) { console.log("Cleanup error"); }
+            } catch (e) {
+                console.log("Cleanup error:", e);
+            }
+        } else {
+            html5QrCode = new Html5Qrcode("reader");
         }
         
-        // インスタンスを新しく作り直す
-        html5QrCode = new Html5Qrcode("reader");
-        
-        document.getElementById("start-btn").style.display = "none";
-        document.getElementById("stop-btn").style.display = "block";
-        document.getElementById("scan-status").innerText = "カメラ起動中...";
+        startBtn.style.display = "none";
+        stopBtn.style.display = "block";
+        statusText.innerText = "カメラを初期化中...";
+
+        // 2. ほんの少し待機（カメラデバイスの解放を待つ）
+        await new Promise(resolve => setTimeout(resolve, 500));
 
         const config = { 
-            fps: 20, 
-            // 枠を横長（バーコード用）に絞り、解析範囲を限定して高速化
+            fps: 15, // 負荷を下げて安定させる
             qrbox: { width: 280, height: 160 },
-            // JANコード等に限定
             formatsToSupport: [ 
                 Html5QrcodeSupportedFormats.EAN_13, 
                 Html5QrcodeSupportedFormats.EAN_8, 
@@ -420,22 +428,15 @@ async function handleSearchAndPreview() {
         };
 
         try {
-            // iPhone/Android両方で「ピントが合いやすい」標準解像度を指定
-            const constraints = {
-                facingMode: "environment",
-                width: { ideal: 1280 },
-                height: { ideal: 720 }
-            };
-
             await html5QrCode.start(
-                constraints, 
+                { facingMode: "environment" }, // シンプルな指定に変更
                 config, 
                 async (text) => {
-                    // 読み取り成功！一旦止めてバイブレーション
-                    await html5QrCode.stop().catch(() => {});
+                    // 成功時：まずカメラを止める
+                    try { await html5QrCode.stop(); } catch(e){}
                     if (navigator.vibrate) navigator.vibrate(50);
                     
-                    document.getElementById("scan-status").innerText = "照会中...";
+                    statusText.innerText = "照会中...";
                     const result = await executeProductSearch(text);
                     const p = (result && result.items) ? result.items[0] : result;
                     
@@ -448,17 +449,17 @@ async function handleSearchAndPreview() {
                     } else { 
                         alert("マスタ未登録: " + text); 
                     }
-                    // 連続スキャンのために再起動
-                    handleScan();
+                    // 読み取り後、一拍置いてから再開
+                    setTimeout(() => { handleScan(); }, 800);
                 }
             );
-            document.getElementById("scan-status").innerText = "バーコードを枠に合わせてください";
-
+            statusText.innerText = "バーコードを枠に合わせてください";
         } catch (e) { 
             console.error("Camera Start Error:", e);
-            alert("カメラを起動できませんでした。ブラウザの再読み込みを試してください。"); 
-            document.getElementById("start-btn").style.display = "block";
-            document.getElementById("stop-btn").style.display = "none";
+            alert("カメラを起動できませんでした。一度「停止」ボタンを押すか、ページを再読み込みしてください。"); 
+            startBtn.style.display = "block";
+            stopBtn.style.display = "none";
+            statusText.innerText = "エラー: 再起動してください";
         }
     }
     async function handleCustomerScan() {
