@@ -415,64 +415,52 @@ async function handleScan() {
     const stopBtn = document.getElementById("stop-btn");
     const statusText = document.getElementById("scan-status");
 
+    // 1. 徹底的な初期化
     await safeStopScanner();
-
-    startBtn.style.display = "none";
-    stopBtn.style.display = "block";
-    statusText.innerText = "背面カメラを探しています...";
+    document.getElementById("reader").innerHTML = "";
+    await new Promise(r => setTimeout(r, 200));
 
     html5QrCode = new Html5Qrcode("reader");
 
+    startBtn.style.display = "none";
+    stopBtn.style.display = "block";
+    statusText.innerText = "背面カメラを呼び出し中...";
+
+    // 2. ブラウザに「背面カメラの標準スペック」を強制する設定
+    const config = {
+        fps: 20,
+        qrbox: { width: 280, height: 160 },
+        aspectRatio: 1.777778
+    };
+
+    // 3. Android/iPhone両方の標準ブラウザで最も安定する指定方法
+    const videoConstraints = {
+        facingMode: { exact: "environment" }, // 「必ず」背面を使えという強い命令
+        width: { ideal: 1280 },
+        height: { ideal: 720 }
+    };
+
     try {
-        const devices = await Html5Qrcode.getCameras();
-        let targetCameraId = null;
-
-        if (devices && devices.length > 0) {
-            // 1. ラベル名から背面カメラを徹底的に探す（Android/iPhone両対応）
-            // "back", "rear", "背面", "外側", "0", "1" などのキーワードを検索
-            const backCamera = devices.find(d => 
-                /back|rear|背面|外側|out|environment/i.test(d.label)
-            );
-
-            if (backCamera) {
-                targetCameraId = backCamera.id;
-                console.log("背面カメラを特定しました:", backCamera.label);
-            } else {
-                // 2. もし名前で見つからない場合、デバイスリストの「最後」を指定
-                // 多くの場合、0番目が前面、1番目以降が背面のため
-                targetCameraId = devices[devices.length - 1].id;
-                console.log("ラベル不明のため、最後のデバイスを選択しました");
-            }
-        } else {
-            // リストが取れない場合の最終手段
-            targetCameraId = { facingMode: "environment" };
-        }
-
-        const config = { 
-            fps: 20, 
-            qrbox: { width: 280, height: 160 },
-            aspectRatio: 1.777778,
-            // ズームやピントの干渉を防ぐ
-            videoConstraints: {
-                facingMode: "environment",
-                focusMode: "continuous"
-            }
-        };
-
         await html5QrCode.start(
-            targetCameraId,
+            videoConstraints,
             config,
             async (text) => {
                 await safeStopScanner();
                 if (navigator.vibrate) navigator.vibrate(50);
+                
+                statusText.innerText = "照会中...";
                 const result = await executeProductSearch(text);
                 const p = (result && result.items) ? result.items[0] : result;
+                
                 if (p && p.name) {
                     const q = prompt(`【${p.name}】\n品番: ${p.partNo}\n数量`, p.lot || 1);
-                    if (q) { cart.push({ ...p, quantity: parseInt(q) }); updateCartUI(); }
-                } else { alert("未登録: " + text); }
-                
-                // ボタンをリセット
+                    if (q) { 
+                        cart.push({ ...p, quantity: parseInt(q) }); 
+                        updateCartUI(); 
+                    }
+                } else { 
+                    alert("マスタ未登録: " + text); 
+                }
                 startBtn.style.display = "block";
                 stopBtn.style.display = "none";
             }
@@ -480,8 +468,14 @@ async function handleScan() {
         statusText.innerText = "バーコードを枠に合わせてください";
     } catch (e) {
         console.error("Camera Error:", e);
-        alert("背面カメラの起動に失敗しました。カメラ権限を確認してください。");
-        await safeStopScanner();
+        // 【重要】もし exact: "environment" でエラーが出た場合のフォールバック（予備）
+        console.log("exact指定で失敗したため、標準指定で再試行します...");
+        try {
+            await html5QrCode.start({ facingMode: "environment" }, config, async (text) => { /* 成功時処理は上記と同じ */ });
+        } catch (e2) {
+            alert("カメラを起動できません。ブラウザの設定でカメラを「許可」し、他のカメラ使用アプリ（カメラ、QRリーダー等）を完全に終了させてから再試行してください。");
+            await safeStopScanner();
+        }
     }
 }
     async function handleCustomerScan() {
