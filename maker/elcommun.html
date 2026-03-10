@@ -415,67 +415,52 @@ async function handleScan() {
     const stopBtn = document.getElementById("stop-btn");
     const statusText = document.getElementById("scan-status");
 
-    // 1. 徹底的な初期化
-    await safeStopScanner();
+    // 全てのリセット処理を同期的に行う
+    if (html5QrCode) {
+        try {
+            await html5QrCode.stop();
+            await html5QrCode.clear();
+        } catch (e) {}
+    }
     document.getElementById("reader").innerHTML = "";
-    await new Promise(r => setTimeout(r, 200));
-
-    html5QrCode = new Html5Qrcode("reader");
 
     startBtn.style.display = "none";
     stopBtn.style.display = "block";
-    statusText.innerText = "背面カメラを呼び出し中...";
+    statusText.innerText = "カメラを強制呼び出し中...";
 
-    // 2. ブラウザに「背面カメラの標準スペック」を強制する設定
-    const config = {
-        fps: 20,
-        qrbox: { width: 280, height: 160 },
-        aspectRatio: 1.777778
-    };
-
-    // 3. Android/iPhone両方の標準ブラウザで最も安定する指定方法
-    const videoConstraints = {
-        facingMode: { exact: "environment" }, // 「必ず」背面を使えという強い命令
-        width: { ideal: 1280 },
-        height: { ideal: 720 }
-    };
+    // 新規インスタンス作成
+    html5QrCode = new Html5Qrcode("reader");
 
     try {
+        // デバイスのリスト取得を「あえて行わない」
+        // ブラウザの標準機能に丸投げして背面カメラを開かせる
         await html5QrCode.start(
-            videoConstraints,
-            config,
+            { facingMode: "environment" }, 
+            { 
+                fps: 10, 
+                qrbox: { width: 250, height: 150 },
+                // 解像度指定をあえて外してエラー率を下げる
+            },
             async (text) => {
-                await safeStopScanner();
+                await html5QrCode.stop();
                 if (navigator.vibrate) navigator.vibrate(50);
-                
-                statusText.innerText = "照会中...";
                 const result = await executeProductSearch(text);
                 const p = (result && result.items) ? result.items[0] : result;
-                
                 if (p && p.name) {
                     const q = prompt(`【${p.name}】\n品番: ${p.partNo}\n数量`, p.lot || 1);
-                    if (q) { 
-                        cart.push({ ...p, quantity: parseInt(q) }); 
-                        updateCartUI(); 
-                    }
-                } else { 
-                    alert("マスタ未登録: " + text); 
-                }
+                    if (q) { cart.push({ ...p, quantity: parseInt(q) }); updateCartUI(); }
+                } else { alert("未登録: " + text); }
                 startBtn.style.display = "block";
                 stopBtn.style.display = "none";
             }
         );
         statusText.innerText = "バーコードを枠に合わせてください";
     } catch (e) {
-        console.error("Camera Error:", e);
-        // 【重要】もし exact: "environment" でエラーが出た場合のフォールバック（予備）
-        console.log("exact指定で失敗したため、標準指定で再試行します...");
-        try {
-            await html5QrCode.start({ facingMode: "environment" }, config, async (text) => { /* 成功時処理は上記と同じ */ });
-        } catch (e2) {
-            alert("カメラを起動できません。ブラウザの設定でカメラを「許可」し、他のカメラ使用アプリ（カメラ、QRリーダー等）を完全に終了させてから再試行してください。");
-            await safeStopScanner();
-        }
+        console.error("Critical Camera Error:", e);
+        // ここでエラーならOS側のロック確定
+        alert("端末側でカメラがロックされています。\n\n【解決手順】\n1. スマホの「設定」>「アプリ」>「Chrome」を強制停止する\n2. スマホを再起動する\n3. 他のタブを全て閉じてから開く");
+        startBtn.style.display = "block";
+        stopBtn.style.display = "none";
     }
 }
     async function handleCustomerScan() {
