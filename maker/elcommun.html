@@ -64,7 +64,7 @@
 </nav>
 
 <script>
-    const GAS_URL = "https://script.google.com/macros/s/AKfycbwpYs5PBt5CB4ZlSmI8nsPrHWh03usZM0StlTLv7CUt1OkY6Tk2n8FLnuPXsUe_tj0idQ/exec";
+    const GAS_URL = "https://script.google.com/macros/s/AKfycbyPVoJ8rT2K3DD8A-9bP3K4FduD1YF0JjqI4YRR-THpSstjDrxcrW7ZHPYKvwLUCFnIzQ/exec";
     let html5QrCode = null;
     let customer = null;
     let cart = [];
@@ -72,22 +72,16 @@
     async function startCamera(mode) {
         if (mode === 'product' && !customer) { alert("顧客が未選択です"); return; }
         showPage('scanner-page');
-        
-        // Android対応: 前のスキャナーが残っていると起動しないため、強制的にDOMをクリア
         document.getElementById("reader").innerHTML = ""; 
-        
         if (html5QrCode) { try { await html5QrCode.stop(); } catch(e){} }
         html5QrCode = new Html5Qrcode("reader");
-
-        // Android Chromeで安定する設定
         const config = { fps: 10, qrbox: { width: 250, height: 180 } };
-        
         html5QrCode.start({ facingMode: "environment" }, config, (text) => {
             stopCamera();
             if (mode === 'customer') fetchCustomer(text.trim());
             else fetchProduct(text.trim());
         }).catch(err => {
-            alert("カメラを起動できません。Chromeブラウザを使用し、カメラの使用を許可してください。");
+            alert("カメラを起動できません。Chromeを使用してください。");
             showPage('home');
         });
     }
@@ -117,7 +111,6 @@
         if (p && p.name) {
             const q = prompt(`【${p.name}】\n数量`, 1);
             if (q) {
-                // p.janには検索したコードが含まれています
                 cart.push({ ...p, quantity: parseInt(q) });
                 renderCart();
             }
@@ -141,9 +134,21 @@
 
     async function submitFinalOrder() {
         if (cart.length === 0) return;
+        if (!confirm("送信しますか？")) return;
+        
         await fetch(GAS_URL, { method: "POST", body: JSON.stringify({ action: "orderSubmit", data: { ...customer, items: cart } }) });
-        alert("送信完了");
-        cart = []; renderCart(); showPage('history');
+        alert("送信完了！");
+        
+        // --- ここでリセット処理 ---
+        cart = [];
+        customer = null;
+        renderCart(); // カートと合計金額を空にする
+        document.getElementById("c-none").style.display = "block";
+        document.getElementById("c-detail").style.display = "none";
+        document.getElementById("cart-area").style.display = "none";
+        // -------------------------
+        
+        showPage('history');
     }
 
     async function loadHistory() {
