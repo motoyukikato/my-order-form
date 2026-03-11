@@ -70,7 +70,7 @@
 </nav>
 
 <script>
-    const GAS_URL = "https://script.google.com/macros/s/AKfycbyPVoJ8rT2K3DD8A-9bP3K4FduD1YF0JjqI4YRR-THpSstjDrxcrW7ZHPYKvwLUCFnIzQ/exec";
+    const GAS_URL = "https://script.google.com/macros/s/AKfycbyt2ftqlabYppPMrgeM7yRYmJKrod-QSaTc2rlZaHauV8ALAOwrh1RvxWEQpNLnI1duEA/exec";
     let html5QrCode = null;
     let customer = null;
     let cart = [];
@@ -159,22 +159,48 @@
         showPage('history');
     }
 
+   // --- 履歴表示ロジックの修正 ---
     async function loadHistory() {
         const list = document.getElementById("h-list");
-        list.innerHTML = "読込中...";
-        const res = await fetch(GAS_URL, { method: "POST", body: JSON.stringify({ action: "getOrderHistory" }) });
-        const data = await res.json();
-        list.innerHTML = data.map(item => `
-            <div class="card">
-                <small>${item.date} / ${item.customerName}</small><br>
-                <b>${item.name}</b>
-                <div class="qty-ctrl">
-                    数量: <b id="q-${item.rowNum}">${item.qty}</b>
-                    <button class="btn-q" onclick="updateQty(${item.rowNum}, 1)">＋</button>
-                    <button class="btn-q" onclick="updateQty(${item.rowNum}, -1)">－</button>
-                    <span class="del-btn" onclick="deleteLine(${item.rowNum})">削除</span>
-                </div>
-            </div>`).join('');
+        list.innerHTML = "<div style='text-align:center; padding:20px;'>履歴を読み込み中...</div>";
+        
+        try {
+            const res = await fetch(GAS_URL, { method: "POST", body: JSON.stringify({ action: "getOrderHistory" }) });
+            const data = await res.json();
+            
+            if (data.length === 0) {
+                list.innerHTML = "<p style='text-align:center; color:#999;'>履歴はありません</p>";
+                return;
+            }
+
+            list.innerHTML = data.map(item => `
+                <div class="card" style="border-left: 5px solid #3b5998;">
+                    <div style="display:flex; justify-content:space-between; margin-bottom:5px;">
+                        <small style="color:#666;">${item.date}</small>
+                        <small style="font-weight:bold;">${item.maker}</small>
+                    </div>
+                    <b style="font-size:1.1em;">${item.customerName}</b><br>
+                    <div style="margin: 8px 0; font-size:0.9em; background:#f9f9f9; padding:5px; border-radius:4px;">
+                        <b>${item.name}</b><br>
+                        <small>品番: ${item.partNo} / JAN: ${item.jan}</small>
+                    </div>
+                    <div class="qty-ctrl">
+                        <span style="font-size:0.9em;">数量:</span>
+                        <b id="q-${item.rowNum}" style="font-size:1.2em; min-width:30px; text-align:center;">${item.qty}</b>
+                        <button class="btn-q" onclick="updateQty(${item.rowNum}, 1)">＋</button>
+                        <button class="btn-q" onclick="updateQty(${item.rowNum}, -1)">－</button>
+                        <div style="margin-left:auto; text-align:right;">
+                            <small>単価: ¥${item.price.toLocaleString()}</small><br>
+                            <b class="price-text">小計: ¥${item.subtotal.toLocaleString()}</b>
+                        </div>
+                    </div>
+                    <div style="text-align:right; margin-top:10px; border-top:1px dashed #eee; padding-top:5px;">
+                        <span class="del-btn" onclick="deleteLine(${item.rowNum})"><i class="fas fa-trash"></i> この行を削除</span>
+                    </div>
+                </div>`).join('');
+        } catch (e) {
+            list.innerHTML = "<p style='text-align:center; color:red;'>読込エラーが発生しました</p>";
+        }
     }
 
     async function updateQty(row, diff) {
