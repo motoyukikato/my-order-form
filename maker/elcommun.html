@@ -46,7 +46,7 @@
     <div id="cart-area" style="display:none;">
         <div id="cart-list" class="card"></div>
         <div class="total-box">合計: ¥<span id="cart-total">0</span></div>
-        <button class="btn-main btn-order" onclick="submitFinalOrder()">注文確定・送信</button>
+        <button class="btn-main btn-order" id="submit-btn" onclick="submitFinalOrder()">注文確定・送信</button>
     </div>
 </section>
 
@@ -56,7 +56,7 @@
 </section>
 
 <section id="history" class="page-section">
-    <h3 style="text-align:center; font-size:1.1em;">注文履歴（訂正・削除）</h3>
+    <h3 style="text-align:center; font-size:1.1em;">注文履歴</h3>
     <div id="h-list"></div>
 </section>
 
@@ -67,7 +67,7 @@
 </nav>
 
 <script>
-    const GAS_URL = "https://script.google.com/macros/s/AKfycbz38Ao0wOx_2XCq71-3-6MWluM_YswhHfH2fAbPlY81MELxlHYcPh_ypEBZ1B-ZfvHykg/exec";
+    const GAS_URL = "https://script.google.com/macros/s/AKfycbyPVoJ8rT2K3DD8A-9bP3K4FduD1YF0JjqI4YRR-THpSstjDrxcrW7ZHPYKvwLUCFnIzQ/exec";
     let html5QrCode = null;
     let customer = null;
     let cart = [];
@@ -101,7 +101,7 @@
         if (d.customer) {
             customer = d;
             document.getElementById("r-name").innerText = d.customer;
-            document.getElementById("r-addr").innerText = d.address1 + (d.address2 || "");
+            document.getElementById("r-addr").innerText = (d.zip || "") + " " + d.address1 + (d.address2 || "");
             document.getElementById("r-email").innerText = d.email || "";
             document.getElementById("c-none").style.display = "none";
             document.getElementById("c-detail").style.display = "block";
@@ -123,49 +123,56 @@
         let total = 0;
         list.innerHTML = cart.map((item, i) => {
             total += (item.price * item.quantity);
-            return `<div class="item-row"><b>${item.name}</b><br><small>品番:${item.partNo} / JAN:${item.jan} / ロット:${item.lot}</small><br>¥${item.price.toLocaleString()} × ${item.quantity}<div style="text-align:right"><span class="del-btn" onclick="cart.splice(${i},1);renderCart();">消去</span></div></div>`;
+            return `<div class="item-row"><b>${item.name}</b><br><small>品番:${item.partNo} / JAN:${item.jan}</small><br>¥${item.price.toLocaleString()} × ${item.quantity}<div style="text-align:right"><span class="del-btn" onclick="cart.splice(${i},1);renderCart();">消去</span></div></div>`;
         }).join('');
         document.getElementById("cart-total").innerText = total.toLocaleString();
     }
 
     async function submitFinalOrder() {
         if (cart.length === 0 || !confirm("送信しますか？")) return;
-        await fetch(GAS_URL, { method: "POST", body: JSON.stringify({ action: "orderSubmit", data: { ...customer, items: cart } }) });
-        alert("送信完了！");
-        cart = []; customer = null; renderCart();
-        document.getElementById("c-none").style.display = "block";
-        document.getElementById("c-detail").style.display = "none";
-        document.getElementById("cart-area").style.display = "none";
-        showPage('home');
+        const btn = document.getElementById("submit-btn");
+        btn.disabled = true; btn.innerText = "送信中...";
+        try {
+            await fetch(GAS_URL, { method: "POST", body: JSON.stringify({ action: "orderSubmit", data: { ...customer, items: cart } }) });
+            alert("送信完了！");
+            cart = []; customer = null; renderCart();
+            document.getElementById("c-none").style.display = "block";
+            document.getElementById("c-detail").style.display = "none";
+            document.getElementById("cart-area").style.display = "none";
+        } catch(e) { alert("送信エラー"); }
+        btn.disabled = false; btn.innerText = "注文確定・送信";
     }
 
     async function loadHistory() {
         const list = document.getElementById("h-list");
-        list.innerHTML = "読込中...";
-        const res = await fetch(GAS_URL, { method: "POST", body: JSON.stringify({ action: "getOrderHistory" }) });
-        const data = await res.json();
-        list.innerHTML = data.map(item => `
-            <div class="card">
-                <div style="display:flex; justify-content:space-between; font-size:0.8em; color:#666;">
-                    <span>${item.displayDate}</span><span>${item.maker}</span>
-                </div>
-                <b>${item.customerName}</b><br>
-                <div style="margin:5px 0; font-size:0.9em;">
-                    <b>${item.name}</b><br>
-                    <small>品番: ${item.partNo} / JAN: ${item.jan} / ロット: ${item.lot}</small>
-                </div>
-                <div style="display:flex; align-items:center; gap:10px; margin-top:10px;">
-                    <button class="btn-q" onclick="updateQty('${item.timestamp}', '${item.maker}', ${item.qty - 1})">－</button>
-                    <b style="font-size:1.2em; min-width:30px; text-align:center;">${item.qty}</b>
-                    <button class="btn-q" onclick="updateQty('${item.timestamp}', '${item.maker}', ${item.qty + 1})">＋</button>
-                    <div style="margin-left:auto; text-align:right;">
-                        <b style="color:#d9534f;">¥${item.subtotal.toLocaleString()}</b>
+        list.innerHTML = "<p style='text-align:center;'>読込中...</p>";
+        try {
+            const res = await fetch(GAS_URL, { method: "POST", body: JSON.stringify({ action: "getOrderHistory" }) });
+            const data = await res.json();
+            if (data.length === 0) { list.innerHTML = "<p style='text-align:center;color:#999;'>履歴はありません</p>"; return; }
+            list.innerHTML = data.map(item => `
+                <div class="card">
+                    <div style="display:flex; justify-content:space-between; font-size:0.8em; color:#666;">
+                        <span>${item.displayDate}</span><span>${item.maker}</span>
                     </div>
-                </div>
-                <div style="text-align:right; margin-top:10px; border-top:1px dashed #eee; padding-top:5px;">
-                    <span class="del-btn" onclick="deleteHistory('${item.timestamp}', '${item.maker}')"><i class="fas fa-trash"></i> 削除</span>
-                </div>
-            </div>`).join('');
+                    <b>${item.customerName}</b><br>
+                    <div style="margin:5px 0; font-size:0.9em;">
+                        <b>${item.name}</b><br>
+                        <small>品番: ${item.partNo} / JAN: ${item.jan} / ロット: ${item.lot}</small>
+                    </div>
+                    <div style="display:flex; align-items:center; gap:10px; margin-top:10px;">
+                        <button class="btn-q" onclick="updateQty('${item.timestamp}', '${item.maker}', ${item.qty - 1})">－</button>
+                        <b style="font-size:1.2em; min-width:30px; text-align:center;">${item.qty}</b>
+                        <button class="btn-q" onclick="updateQty('${item.timestamp}', '${item.maker}', ${item.qty + 1})">＋</button>
+                        <div style="margin-left:auto; text-align:right;">
+                            <b style="color:#d9534f;">¥${item.subtotal.toLocaleString()}</b>
+                        </div>
+                    </div>
+                    <div style="text-align:right; margin-top:10px; border-top:1px dashed #eee; padding-top:5px;">
+                        <span class="del-btn" onclick="deleteHistory('${item.timestamp}', '${item.maker}')"><i class="fas fa-trash"></i> 削除</span>
+                    </div>
+                </div>`).join('');
+        } catch(e) { list.innerHTML = "<p style='text-align:center;color:red;'>履歴の取得に失敗しました</p>"; }
     }
 
     async function updateQty(ts, maker, newQty) {
@@ -184,6 +191,8 @@
     function showPage(id) {
         document.querySelectorAll('.page-section').forEach(p => p.classList.remove('active'));
         document.getElementById(id).classList.add('active');
+        document.querySelectorAll('nav button').forEach(b => b.classList.remove('active-nav'));
+        if(id==='home') document.getElementById('n-home').classList.add('active-nav');
         if (id === 'history') loadHistory();
     }
 </script>
