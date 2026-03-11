@@ -96,7 +96,7 @@
 </nav>
 
 <script>
-    const GAS_URL = "https://script.google.com/macros/s/AKfycbyPVoJ8rT2K3DD8A-9bP3K4FduD1YF0JjqI4YRR-THpSstjDrxcrW7ZHPYKvwLUCFnIzQ/exec";
+    const GAS_URL = "https://script.google.com/macros/s/AKfycbzXEw1wWJ_a9rQ11shnw4k3Xz4Dmq8_N9ZJ-ynuu-ZgzK1F-95p8G3v7HQbg0uf2gNmHQ/exec";
     let html5QrCode = null, customer = null, cart = [], tempProduct = null, editTarget = null;
 
     function numIn(n) {
@@ -134,21 +134,23 @@
 
     // カメラ設定：高解像度を狙いつつ、特定のフォーカス制御をブラウザに任せる
     const config = { 
-        fps: 20, 
-        qrbox: { width: 280, height: 150 }, // スキャン枠を少し横長に
-        aspectRatio: 1.0
-    };
+    fps: 20, 
+    qrbox: { width: 280, height: 160 }, // 画像のような横長バーコードに合わせる
+    aspectRatio: 1.0
+};
 
-    // カメラを起動
-    await html5QrCode.start(
-        { facingMode: "environment" }, 
-        config, 
-        (text) => {
-            stopCamera();
+await html5QrCode.start(
+    { facingMode: "environment" }, 
+    config, 
+    (text) => {
+        // 認識した瞬間に停止して処理へ
+        html5QrCode.stop().then(() => {
+            showPage('home');
             if (mode === 'customer') fetchCustomer(text.trim());
             else fetchProduct(text.trim());
-        }
-    );
+        });
+    }
+);
 
     // ズーム機能の再接続
     const track = html5QrCode.getRunningTrack();
@@ -187,9 +189,10 @@
     const res = await fetch(GAS_URL, { method: "POST", body: JSON.stringify({ action: "productSearch", val: code }) });
     const p = await res.json();
     if (p && p.name) {
-        // マスタにない場合に備えて値をセット
-        p.jan = p.jan || code; 
+        // JAN, ロット, 在庫状況のバックアップ
+        p.jan = p.jan || code;
         p.lot = p.lot || "1";
+        p.stock = p.stock || "不明";
         openQtyModal(p);
     } else {
         alert("商品未登録: " + code);
