@@ -154,11 +154,12 @@
         showPage('history');
     }
 
-    async function loadHistory() {
+   async function loadHistory() {
         const list = document.getElementById("h-list");
         list.innerHTML = "読込中...";
         const res = await fetch(GAS_URL, { method: "POST", body: JSON.stringify({ action: "getOrderHistory" }) });
         const data = await res.json();
+        
         list.innerHTML = data.map(item => `
             <div class="card">
                 <div style="display:flex; justify-content:space-between; font-size:0.8em; color:#666;">
@@ -167,12 +168,29 @@
                 </div>
                 <b>${item.customerName}</b><br>
                 <small>${item.name} (JAN:${item.jan})</small><br>
-                <div style="display:flex; justify-content:space-between; margin-top:5px; align-items:center;">
-                    <span>数量: ${item.qty}</span>
-                    <b class="price-text">¥${item.subtotal.toLocaleString()}</b>
+                
+                <div class="qty-ctrl" style="display:flex; align-items:center; gap:10px; margin-top:10px;">
+                    <span style="font-size:0.9em;">数量:</span>
+                    <b style="font-size:1.2em; min-width:30px; text-align:center;">${item.qty}</b>
+                    <button class="btn-q" onclick="updateQty('${item.timestamp}', '${item.maker}', ${item.qty + 1})">＋</button>
+                    <button class="btn-q" onclick="updateQty('${item.timestamp}', '${item.maker}', ${item.qty - 1})">－</button>
+                    
+                    <div style="margin-left:auto; text-align:right;">
+                        <b style="color:#d9534f;">¥${item.subtotal.toLocaleString()}</b>
+                    </div>
+                </div>
+                
+                <div style="text-align:right; margin-top:10px; border-top:1px dashed #eee; padding-top:5px;">
                     <span class="del-btn" onclick="deleteHistory('${item.timestamp}', '${item.maker}')"><i class="fas fa-trash"></i> 削除</span>
                 </div>
             </div>`).join('');
+    }
+
+    async function updateQty(ts, maker, newQty) {
+        if (newQty < 1) return;
+        // 即座にボタンを無効化するなどの処理を入れるとより安全ですが、一旦シンプルに
+        await fetch(GAS_URL, { method: "POST", body: JSON.stringify({ action: "updateOrderQty", timestamp: ts, maker: maker, newQty: newQty }) });
+        loadHistory();
     }
 
     async function deleteHistory(ts, maker) {
