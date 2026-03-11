@@ -85,7 +85,7 @@
     </div>
 </div>
 <script>
-    const GAS_URL = "https://script.google.com/macros/s/AKfycbyC8B5ovlhd4rV8kBW6XmBgl2xhlJDfOvXFP3V3SCAhTiLBAFMGFsEB9NRYwHlrLzgbrw/exec"; 
+    const GAS_URL = "https://script.google.com/macros/s/AKfycbxjjZASEOgtLd_G-I1BavDct1jFpn2pX1uISy3OOcG-B4oyMKWSz07-e1mHMxe79yzZOA/exec"; 
 
     let currentScannedId = "";
     let lastFetchedData = []; // 取得したデータを一時保存する変数
@@ -120,7 +120,7 @@
         }
     }
 
-    function showResult(data) {
+  function showResult(data) {
         document.getElementById("loading").style.display = "none";
         document.getElementById("result-view").style.display = "block";
         const tableBody = document.getElementById("history-table-body");
@@ -128,6 +128,7 @@
 
         if (data && data.length > 0) {
             document.getElementById("email-btn").style.display = "block";
+            // 顧客名の取得（GAS側で D列:customerName として返される）
             document.getElementById("cust-name").innerText = data[0].customerName + " 様";
             
             tableBody.innerHTML = data.map(item => {
@@ -136,7 +137,7 @@
                     <tr>
                         <td>
                             <span class="status-badge">${item.maker}</span> 
-                            <span class="status-badge" style="background:#fff3cd;">${item.stock}</span><br>
+                            <span class="status-badge" style="background:#fff3cd;">${item.stock || '通常'}</span><br>
                             <span class="item-name">${item.name}</span>
                             <span class="item-info">¥${item.price.toLocaleString()} × ${item.qty}</span>
                         </td>
@@ -147,9 +148,9 @@
             }).join('');
             document.getElementById("total-amount").innerText = total.toLocaleString();
         } else {
-            tableBody.innerHTML = '<tr><td colspan="2" style="text-align:center; padding:30px; color:#999;">履歴がありません。</td></tr>';
+            tableBody.innerHTML = '<tr><td colspan="2" style="text-align:center; padding:30px; color:#999;">履歴がありません。<br><small>IDが正しいか、または注文が完了しているか確認してください。</small></td></tr>';
         }
-    }
+    } 
 
  async function requestEmail() {
     let currentEmail = (lastFetchedData && lastFetchedData.length > 0) ? lastFetchedData[0].email : "";
