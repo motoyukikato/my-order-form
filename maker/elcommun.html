@@ -22,8 +22,8 @@
         nav { position: fixed; bottom: 0; width: 100%; display: flex; background: #fff; border-top: 1px solid #ddd; padding: 10px 0; z-index: 100; }
         nav button { flex: 1; background: none; border: none; color: #888; font-size: 12px; }
         nav button.active-nav { color: #3b5998; font-weight: bold; }
-        .btn-q { width: 40px; height: 40px; border: 1px solid #3b5998; background: #fff; color: #3b5998; border-radius: 5px; font-weight: bold; font-size: 1.2em; }
-        .del-btn { color: #d9534f; text-decoration: underline; font-size: 0.9em; cursor: pointer; }
+        .btn-q { width: 44px; height: 44px; border: 1px solid #3b5998; background: #fff; color: #3b5998; border-radius: 5px; font-weight: bold; font-size: 1.3em; }
+        .del-btn { color: #d9534f; text-decoration: underline; font-size: 0.9em; cursor: pointer; padding: 5px; }
     </style>
 </head>
 <body>
@@ -56,7 +56,7 @@
 </section>
 
 <section id="history" class="page-section">
-    <h3 style="text-align:center; font-size:1.1em;">注文履歴（訂正・削除）</h3>
+    <h3 style="text-align:center; font-size:1.1em;">注文履歴</h3>
     <div id="h-list"></div>
 </section>
 
@@ -67,7 +67,7 @@
 </nav>
 
 <script>
-    const GAS_URL = "https://script.google.com/macros/s/AKfycbz_vQOxVVp5LGE0zHq5tqAV_ogZjodOBW4bpLdSU-oo8IA6d03kDGvuRGNmeZQQhZ_9kQ/exec";
+    const GAS_URL = "https://script.google.com/macros/s/AKfycbyPVoJ8rT2K3DD8A-9bP3K4FduD1YF0JjqI4YRR-THpSstjDrxcrW7ZHPYKvwLUCFnIzQ/exec";
     let html5QrCode = null;
     let customer = null;
     let cart = [];
@@ -123,7 +123,7 @@
         let total = 0;
         list.innerHTML = cart.map((item, i) => {
             total += (item.price * item.quantity);
-            return `<div class="item-row"><b>${item.name}</b><br><small>品番:${item.partNo} / JAN:${item.jan}</small><br>¥${item.price.toLocaleString()} × ${item.quantity}<div style="text-align:right"><span class="del-btn" onclick="cart.splice(${i},1);renderCart();">消去</span></div></div>`;
+            return `<div class="item-row"><b>${item.name}</b><br><small>品番:${item.partNo} / JAN:${item.jan} / ロット:${item.lot}</small><br>¥${item.price.toLocaleString()} × ${item.quantity}<div style="text-align:right"><span class="del-btn" onclick="cart.splice(${i},1);renderCart();">消去</span></div></div>`;
         }).join('');
         document.getElementById("cart-total").innerText = total.toLocaleString();
     }
@@ -146,10 +146,10 @@
 
     async function loadHistory() {
         const list = document.getElementById("h-list");
-        list.innerHTML = "読込中...";
+        list.innerHTML = "<p style='text-align:center;'>読込中...</p>";
         const res = await fetch(GAS_URL, { method: "POST", body: JSON.stringify({ action: "getOrderHistory" }) });
         const data = await res.json();
-        if (data.length === 0) { list.innerHTML = "履歴はありません"; return; }
+        if (data.length === 0) { list.innerHTML = "<p style='text-align:center;'>履歴はありません</p>"; return; }
         
         list.innerHTML = data.map(item => `
             <div class="card">
@@ -170,7 +170,7 @@
                     </div>
                 </div>
                 <div style="text-align:right; margin-top:10px; border-top:1px dashed #eee; padding-top:5px;">
-                    <span class="del-btn" onclick="deleteHistory('${item.timestamp}', '${item.maker}')"><i class="fas fa-trash"></i> 削除</span>
+                    <span class="del-btn" onclick="deleteHistory('${item.timestamp}', '${item.maker}')"><i class="fas fa-trash"></i> この履歴を削除</span>
                 </div>
             </div>`).join('');
     }
@@ -182,7 +182,7 @@
     }
 
     async function deleteHistory(ts, maker) {
-        if (!confirm("この行を完全に削除しますか？")) return;
+        if (!confirm("完全に削除してよろしいですか？")) return;
         await fetch(GAS_URL, { method: "POST", body: JSON.stringify({ action: "deleteOrderLine", timestamp: ts, maker: maker }) });
         loadHistory();
     }
