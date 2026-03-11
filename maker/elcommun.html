@@ -126,45 +126,37 @@
         closeQtyModal();
     }
 
-   async function startCamera(mode) {
+  async function startCamera(mode) {
     if (mode === 'product' && !customer) { alert("顧客を選択してください"); return; }
     
     showPage('scanner-page');
     
-    // 1. 既存のカメラを完全に破棄してリセット（起動エラー対策）
-    if (html5QrCode) {
+    // 1. 以前のインスタンスが残っていれば停止・リセット
+    if (html5QrCode && html5QrCode.isScanning) {
         try {
             await html5QrCode.stop();
-            html5QrCode.clear(); 
         } catch (e) {
-            // すでに停止している場合は無視
-            console.log("Cleanup handled");
+            console.log("Stop handled");
         }
     }
     
-    // 2. インスタンスの再生成
+    // インスタンスの生成（毎回新しく作ることでエラーを防止）
     html5QrCode = new Html5Qrcode("reader");
 
     const config = { 
-        fps: 20, 
-        qrbox: { width: 280, height: 160 },
+        fps: 25, 
+        qrbox: { width: 280, height: 160 }, // 画像のバーコード形状に合わせた横長枠
         aspectRatio: 1.0
     };
 
     try {
-        // 3. 起動実行
+        // 2. カメラを起動。成功してからズームの設定へ進む
         await html5QrCode.start(
             { facingMode: "environment" }, 
             config, 
             (text) => {
-                // 読み取り成功
+                // 読み取り成功時の処理
                 html5QrCode.stop().then(() => {
-                    html5QrCode.clear();
-                    showPage('home');
-                    if (mode === 'customer') fetchCustomer(text.trim());
-                    else fetchProduct(text.trim());
-                }).catch(err => {
-                    // 停止に失敗しても処理は進める
                     showPage('home');
                     if (mode === 'customer') fetchCustomer(text.trim());
                     else fetchProduct(text.trim());
@@ -172,24 +164,45 @@
             }
         );
 
-        // 4. ズーム設定（以前と同様）
-        const track = html5QrCode.getRunningTrack();
-        const capabilities = track.getCapabilities();
-        const slider = document.getElementById("zoom-slider");
-        if (capabilities.zoom) {
-            slider.style.display = "block";
-            slider.min = capabilities.zoom.min;
-            slider.max = capabilities.zoom.max;
-            slider.step = capabilities.zoom.step;
-            slider.oninput = () => { track.applyConstraints({advanced: [{zoom: parseFloat(slider.value)}]}); };
-        } else {
-            slider.style.display = "none";
-        }
+        // 3. カメラが正常に起動した「後」でズーム機能をチェック（重要！）
+        setTimeout(() => {
+            try {
+                // html5QrCodeの状態を確認してから実行
+                const scannerVideo = document.querySelector("#reader video");
+                if (!scannerVideo) return;
+
+                const track = html5QrCode.getRunningTrack();
+                if (!track) return; // トラックが取得できなければ終了
+
+                const capabilities = track.getCapabilities();
+                const slider = document.getElementById("zoom-slider");
+
+                if (capabilities.zoom) {
+                    slider.style.display = "block";
+                    slider.min = capabilities.zoom.min;
+                    slider.max = capabilities.zoom.max;
+                    slider.step = capabilities.zoom.step;
+                    
+                    // 初期値を少しズームさせる（ピントが合いやすくなる）
+                    const defaultZoom = capabilities.zoom.min + (capabilities.zoom.max - capabilities.zoom.min) * 0.1;
+                    slider.value = defaultZoom;
+                    track.applyConstraints({advanced: [{zoom: parseFloat(slider.value)}]});
+
+                    slider.oninput = () => {
+                        track.applyConstraints({advanced: [{zoom: parseFloat(slider.value)}]});
+                    };
+                } else {
+                    slider.style.display = "none";
+                }
+            } catch (zoomErr) {
+                // ズーム設定でエラーが出てもカメラ自体は止めない
+                console.warn("Zoom not supported: ", zoomErr);
+                document.getElementById("zoom-slider").style.display = "none";
+            }
+        }, 800); // カメラ起動完了まで少し待機
 
     } catch (err) {
-        // エラーが出た場合の詳細表示
-        console.error(err);
-        alert("カメラを起動できませんでした。ブラウザの再読み込みを試してください。\nエラー詳細: " + err);
+        alert("カメラの起動に失敗しました。ページを再読み込みしてください。\n詳細: " + err);
         showPage('home');
     }
 }
