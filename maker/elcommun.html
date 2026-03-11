@@ -36,7 +36,7 @@
         <div id="c-detail" style="display:none;">
             <b id="r-name" style="color:#3b5998; font-size:1.1em;"></b><br>
             <small id="r-addr"></small><br>
-            <small id="r-email" style="color:#666;"></small>
+            <small id="r-tel"></small>
         </div>
     </div>
     <div style="display: flex; gap: 10px;">
@@ -56,7 +56,7 @@
 </section>
 
 <section id="history" class="page-section">
-    <h3 style="text-align:center; font-size:1.1em;">注文履歴</h3>
+    <h3 style="text-align:center; font-size:1.1em;">注文履歴（訂正・削除）</h3>
     <div id="h-list"></div>
 </section>
 
@@ -67,7 +67,7 @@
 </nav>
 
 <script>
-    const GAS_URL = "https://script.google.com/macros/s/AKfycbxHI1u4DcOFeveIQtpyPlfiExTvXsRL8Al00CUO_wv7f-tPaneVS_OW7L9br2PBSu6uDQ/exec";
+    const GAS_URL = "https://script.google.com/macros/s/AKfycbz_vQOxVVp5LGE0zHq5tqAV_ogZjodOBW4bpLdSU-oo8IA6d03kDGvuRGNmeZQQhZ_9kQ/exec";
     let html5QrCode = null;
     let customer = null;
     let cart = [];
@@ -101,8 +101,8 @@
         if (d.customer) {
             customer = d;
             document.getElementById("r-name").innerText = d.customer;
-            document.getElementById("r-addr").innerText = (d.zip || "") + " " + d.address1 + (d.address2 || "");
-            document.getElementById("r-email").innerText = d.email || "";
+            document.getElementById("r-addr").innerText = d.address1 + (d.address2 || "");
+            document.getElementById("r-tel").innerText = "TEL: " + d.tel;
             document.getElementById("c-none").style.display = "none";
             document.getElementById("c-detail").style.display = "block";
             document.getElementById("cart-area").style.display = "block";
@@ -139,40 +139,40 @@
             document.getElementById("c-none").style.display = "block";
             document.getElementById("c-detail").style.display = "none";
             document.getElementById("cart-area").style.display = "none";
+            showPage('home');
         } catch(e) { alert("送信エラー"); }
         btn.disabled = false; btn.innerText = "注文確定・送信";
     }
 
     async function loadHistory() {
         const list = document.getElementById("h-list");
-        list.innerHTML = "<p style='text-align:center;'>読込中...</p>";
-        try {
-            const res = await fetch(GAS_URL, { method: "POST", body: JSON.stringify({ action: "getOrderHistory" }) });
-            const data = await res.json();
-            if (data.length === 0) { list.innerHTML = "<p style='text-align:center;color:#999;'>履歴はありません</p>"; return; }
-            list.innerHTML = data.map(item => `
-                <div class="card">
-                    <div style="display:flex; justify-content:space-between; font-size:0.8em; color:#666;">
-                        <span>${item.displayDate}</span><span>${item.maker}</span>
+        list.innerHTML = "読込中...";
+        const res = await fetch(GAS_URL, { method: "POST", body: JSON.stringify({ action: "getOrderHistory" }) });
+        const data = await res.json();
+        if (data.length === 0) { list.innerHTML = "履歴はありません"; return; }
+        
+        list.innerHTML = data.map(item => `
+            <div class="card">
+                <div style="display:flex; justify-content:space-between; font-size:0.8em; color:#666;">
+                    <span>${item.displayDate}</span><span>${item.maker}</span>
+                </div>
+                <b>${item.customerName}</b><br>
+                <div style="margin:5px 0; font-size:0.9em;">
+                    <b>${item.name}</b><br>
+                    <small>品番: ${item.partNo} / JAN: ${item.jan} / ロット: ${item.lot}</small>
+                </div>
+                <div style="display:flex; align-items:center; gap:10px; margin-top:10px;">
+                    <button class="btn-q" onclick="updateQty('${item.timestamp}', '${item.maker}', ${item.qty - 1})">－</button>
+                    <b style="font-size:1.2em; min-width:30px; text-align:center;">${item.qty}</b>
+                    <button class="btn-q" onclick="updateQty('${item.timestamp}', '${item.maker}', ${item.qty + 1})">＋</button>
+                    <div style="margin-left:auto; text-align:right;">
+                        <b style="color:#d9534f;">¥${item.subtotal.toLocaleString()}</b>
                     </div>
-                    <b>${item.customerName}</b><br>
-                    <div style="margin:5px 0; font-size:0.9em;">
-                        <b>${item.name}</b><br>
-                        <small>品番: ${item.partNo} / JAN: ${item.jan} / ロット: ${item.lot}</small>
-                    </div>
-                    <div style="display:flex; align-items:center; gap:10px; margin-top:10px;">
-                        <button class="btn-q" onclick="updateQty('${item.timestamp}', '${item.maker}', ${item.qty - 1})">－</button>
-                        <b style="font-size:1.2em; min-width:30px; text-align:center;">${item.qty}</b>
-                        <button class="btn-q" onclick="updateQty('${item.timestamp}', '${item.maker}', ${item.qty + 1})">＋</button>
-                        <div style="margin-left:auto; text-align:right;">
-                            <b style="color:#d9534f;">¥${item.subtotal.toLocaleString()}</b>
-                        </div>
-                    </div>
-                    <div style="text-align:right; margin-top:10px; border-top:1px dashed #eee; padding-top:5px;">
-                        <span class="del-btn" onclick="deleteHistory('${item.timestamp}', '${item.maker}')"><i class="fas fa-trash"></i> 削除</span>
-                    </div>
-                </div>`).join('');
-        } catch(e) { list.innerHTML = "<p style='text-align:center;color:red;'>履歴の取得に失敗しました</p>"; }
+                </div>
+                <div style="text-align:right; margin-top:10px; border-top:1px dashed #eee; padding-top:5px;">
+                    <span class="del-btn" onclick="deleteHistory('${item.timestamp}', '${item.maker}')"><i class="fas fa-trash"></i> 削除</span>
+                </div>
+            </div>`).join('');
     }
 
     async function updateQty(ts, maker, newQty) {
@@ -182,10 +182,9 @@
     }
 
     async function deleteHistory(ts, maker) {
-        if (confirm("削除しますか？")) {
-            await fetch(GAS_URL, { method: "POST", body: JSON.stringify({ action: "deleteOrderLine", timestamp: ts, maker: maker }) });
-            loadHistory();
-        }
+        if (!confirm("この行を完全に削除しますか？")) return;
+        await fetch(GAS_URL, { method: "POST", body: JSON.stringify({ action: "deleteOrderLine", timestamp: ts, maker: maker }) });
+        loadHistory();
     }
 
     function showPage(id) {
