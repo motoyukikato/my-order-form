@@ -96,7 +96,7 @@
 </nav>
 
 <script>
-    const GAS_URL = "https://script.google.com/macros/s/AKfycbzXEw1wWJ_a9rQ11shnw4k3Xz4Dmq8_N9ZJ-ynuu-ZgzK1F-95p8G3v7HQbg0uf2gNmHQ/exec";
+    const GAS_URL = "https://script.google.com/macros/s/AKfycbwRWTfdaBlcZ9z9Zwbr2FxwhVtHvztYu4-7uRD0TVhbe25vNRAfIHzKeiZmsxgliICp/exec";
     let html5QrCode = null, customer = null, cart = [], tempProduct = null, editTarget = null;
 
     function numIn(n) {
@@ -144,10 +144,10 @@
     html5QrCode = new Html5Qrcode("reader");
 
     const config = { 
-        fps: 25, 
-        qrbox: { width: 280, height: 160 }, // 画像のバーコード形状に合わせた横長枠
-        aspectRatio: 1.0
-    };
+    fps: 25, 
+    qrbox: { width: 320, height: 120 }, // さらに平べったい枠にして横長バーコードを狙いやすく
+    aspectRatio: 1.0
+};
 
     try {
         // 2. カメラを起動。成功してからズームの設定へ進む
