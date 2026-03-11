@@ -15,7 +15,9 @@
         .btn-main { padding: 15px; border: none; border-radius: 8px; width: 100%; font-size: 1.1em; font-weight: bold; color: white; cursor: pointer; }
         .btn-cust { background: #28a745; margin-bottom: 10px; }
         .btn-order { background: #d9534f; font-size: 1.3em; margin-top: 15px; }
-        #reader { width: 100% !important; min-height: 250px; background: #000; border-radius: 10px; }
+        /* カメラ表示エリアの調整 */
+        #reader { width: 100% !important; border-radius: 12px; overflow: hidden; background: #000; box-shadow: 0 4px 12px rgba(0,0,0,0.2); }
+        #reader video { object-fit: cover !important; }
         .item-row { border-bottom: 1px solid #eee; padding: 10px 0; }
         .total-box { text-align: right; padding: 15px; font-size: 1.3em; color: #d9534f; font-weight: bold; background: #fff; border-radius: 12px; margin-top: 10px; }
         nav { position: fixed; bottom: 0; width: 100%; display: flex; background: #fff; border-top: 1px solid #ddd; padding: 10px 0; z-index: 100; }
@@ -32,9 +34,6 @@
         .modal-btns { display: flex; gap: 10px; margin-top: 20px; }
         .btn-cancel { background: #ccc; flex: 1; }
         .btn-confirm { background: #3b5998; flex: 2; color: white; }
-
-        .btn-q { width: 44px; height: 44px; border: 1px solid #3b5998; background: #fff; color: #3b5998; border-radius: 5px; font-weight: bold; font-size: 1.3em; }
-        .del-btn { color: #d9534f; text-decoration: underline; font-size: 0.9em; cursor: pointer; padding: 5px; }
     </style>
 </head>
 <body>
@@ -80,7 +79,8 @@
 
 <section id="scanner-page" class="page-section">
     <div id="reader"></div>
-    <button class="btn-main" style="background:#666; margin-top:15px;" onclick="stopCamera()">戻る</button>
+    <p style="text-align:center; color:#666; font-size:0.8em;">バーコード/QRを枠内に収めてください</p>
+    <button class="btn-main" style="background:#666; margin-top:15px;" onclick="stopCamera()">キャンセル</button>
 </section>
 
 <section id="history" class="page-section">
@@ -90,7 +90,7 @@
 
 <nav>
     <button onclick="showPage('home')" id="n-home" class="active-nav"><i class="fas fa-shopping-cart"></i><br>カート</button>
-    <button onclick="startCamera('product')"><i class="fas fa-barcode"></i><br>追加</button>
+    <button onclick="startCamera('product')"><i class="fas fa-barcode"></i><br>スキャン</button>
     <button onclick="showPage('history')"><i class="fas fa-history"></i><br>履歴</button>
 </nav>
 
@@ -120,16 +120,42 @@
     async function startCamera(mode) {
         if (mode === 'product' && !customer) { alert("顧客を選択してください"); return; }
         showPage('scanner-page');
+        
         if (html5QrCode) { try { await html5QrCode.stop(); } catch(e){} }
         html5QrCode = new Html5Qrcode("reader");
-        html5QrCode.start({ facingMode: "environment" }, { fps: 10, qrbox: 250 }, (text) => {
+
+        const config = {
+            fps: 20, // フレームレートを上げてスキャン頻度アップ
+            qrbox: { width: 280, height: 200 }, // スキャンエリアを最適化
+            aspectRatio: 1.0,
+            // 精度向上のためのビデオパラメータ
+            videoConstraints: {
+                facingMode: "environment",
+                width: { min: 1280, ideal: 1920, max: 2560 }, // 高解像度を要求
+                height: { min: 720, ideal: 1080, max: 1440 },
+                focusMode: "continuous" // 継続的なオートフォーカス
+            }
+        };
+
+        html5QrCode.start({ facingMode: "environment" }, config, (text) => {
             stopCamera();
             if (mode === 'customer') fetchCustomer(text.trim());
             else fetchProduct(text.trim());
-        }).catch(() => { alert("カメラ失敗"); showPage('home'); });
+        }).catch((err) => {
+            console.error(err);
+            alert("カメラの起動に失敗しました。ブラウザのカメラ許可を確認してください。");
+            showPage('home');
+        });
     }
-    function stopCamera() { if(html5QrCode) html5QrCode.stop(); showPage('home'); }
 
+    async function stopCamera() {
+        if (html5QrCode && html5QrCode.isScanning) {
+            await html5QrCode.stop();
+        }
+        showPage('home');
+    }
+
+    // --- 以下、前回のロジックを継続 ---
     async function fetchCustomer(val) {
         const res = await fetch(GAS_URL, { method: "POST", body: JSON.stringify({ action: "customerSearch", val: val }) });
         const d = await res.json();
@@ -143,14 +169,12 @@
             document.getElementById("cart-area").style.display = "block";
         } else { alert("未登録"); }
     }
-
     async function fetchProduct(code) {
         const res = await fetch(GAS_URL, { method: "POST", body: JSON.stringify({ action: "productSearch", val: code }) });
         const p = await res.json();
         if (p && p.name) openQtyModal(p);
         else alert("商品未登録: " + code);
     }
-
     function renderCart() {
         const list = document.getElementById("cart-list");
         let total = 0;
@@ -160,7 +184,6 @@
         }).join('');
         document.getElementById("cart-total").innerText = total.toLocaleString();
     }
-
     async function submitFinalOrder() {
         if (cart.length === 0 || !confirm("送信しますか？")) return;
         const btn = document.getElementById("submit-btn");
@@ -176,7 +199,6 @@
         } catch(e) { alert("送信エラー"); }
         btn.disabled = false; btn.innerText = "注文確定・送信";
     }
-
     async function loadHistory() {
         const list = document.getElementById("h-list");
         list.innerHTML = "読込中...";
@@ -193,21 +215,13 @@
                     <small>品番: ${item.partNo} / ロット: ${item.lot}</small>
                 </div>
                 <div style="display:flex; align-items:center; gap:10px; margin-top:10px;">
-                    <button class="btn-q" onclick="updateQty('${item.timestamp}', '${item.maker}', ${item.qty - 1})">－</button>
-                    <b style="font-size:1.2em; min-width:30px; text-align:center;">${item.qty}</b>
-                    <button class="btn-q" onclick="updateQty('${item.timestamp}', '${item.maker}', ${item.qty + 1})">＋</button>
-                    <div style="margin-left:auto; text-align:right;">
-                        <b style="color:#d9534f;">¥${item.subtotal.toLocaleString()}</b>
-                    </div>
-                </div>
-                <div style="text-align:right; margin-top:10px; border-top:1px dashed #eee; padding-top:5px;">
-                    <span class="del-btn" onclick="deleteHistory('${item.timestamp}', '${item.maker}')">削除</span>
+                    <button style="width:40px;height:40px;" onclick="updateQty('${item.timestamp}', '${item.maker}', ${item.qty - 1})">－</button>
+                    <b>${item.qty}</b>
+                    <button style="width:40px;height:40px;" onclick="updateQty('${item.timestamp}', '${item.maker}', ${item.qty + 1})">＋</button>
+                    <div style="margin-left:auto;"><b>¥${item.subtotal.toLocaleString()}</b></div>
                 </div>
             </div>`).join('');
     }
-
-    async function updateQty(ts, maker, newQty) { if (newQty < 1) return; await fetch(GAS_URL, { method: "POST", body: JSON.stringify({ action: "updateOrderQty", timestamp: ts, maker: maker, newQty: newQty }) }); loadHistory(); }
-    async function deleteHistory(ts, maker) { if (!confirm("削除しますか？")) return; await fetch(GAS_URL, { method: "POST", body: JSON.stringify({ action: "deleteOrderLine", timestamp: ts, maker: maker }) }); loadHistory(); }
     function showPage(id) {
         document.querySelectorAll('.page-section').forEach(p => p.classList.remove('active'));
         document.getElementById(id).classList.add('active');
