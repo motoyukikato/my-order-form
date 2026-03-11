@@ -127,43 +127,43 @@
     }
 
     async function startCamera(mode) {
-        if (mode === 'product' && !customer) { alert("顧客を選択してください"); return; }
-        showPage('scanner-page');
-        if (html5QrCode) { try { await html5QrCode.stop(); } catch(e){} }
-        html5QrCode = new Html5Qrcode("reader");
+    if (mode === 'product' && !customer) { alert("顧客を選択してください"); return; }
+    showPage('scanner-page');
+    if (html5QrCode) { try { await html5QrCode.stop(); } catch(e){} }
+    html5QrCode = new Html5Qrcode("reader");
 
-        // カメラ設定の強化（オートフォーカスと解像度）
-        const config = { 
-            fps: 25, 
-            qrbox: { width: 300, height: 150 }, 
-            aspectRatio: 1.0,
-            videoConstraints: { 
-                facingMode: "environment", 
-                width: { ideal: 1920 }, 
-                height: { ideal: 1080 },
-                focusMode: "continuous" // オートフォーカス優先
-            }
-        };
+    // カメラ設定：高解像度を狙いつつ、特定のフォーカス制御をブラウザに任せる
+    const config = { 
+        fps: 20, 
+        qrbox: { width: 280, height: 150 }, // スキャン枠を少し横長に
+        aspectRatio: 1.0
+    };
 
-        await html5QrCode.start({ facingMode: "environment" }, config, (text) => {
+    // カメラを起動
+    await html5QrCode.start(
+        { facingMode: "environment" }, 
+        config, 
+        (text) => {
             stopCamera();
             if (mode === 'customer') fetchCustomer(text.trim());
             else fetchProduct(text.trim());
-        });
+        }
+    );
 
-        const track = html5QrCode.getRunningTrack();
-        const capabilities = track.getCapabilities();
-        const slider = document.getElementById("zoom-slider");
-        if (capabilities.zoom) {
-            slider.min = capabilities.zoom.min; slider.max = capabilities.zoom.max; slider.step = capabilities.zoom.step;
-            slider.oninput = () => { track.applyConstraints({advanced: [ {zoom: slider.value} ]}); };
-        } else { slider.style.display = "none"; }
-
-        // タップで強制再フォーカス
-        document.getElementById("reader").onclick = () => {
-            if (capabilities.focusMode) track.applyConstraints({advanced: [{focusMode: "continuous"}]});
-        };
+    // ズーム機能の再接続
+    const track = html5QrCode.getRunningTrack();
+    const capabilities = track.getCapabilities();
+    const slider = document.getElementById("zoom-slider");
+    if (capabilities.zoom) {
+        slider.style.display = "block";
+        slider.min = capabilities.zoom.min;
+        slider.max = capabilities.zoom.max;
+        slider.value = capabilities.zoom.min;
+        slider.oninput = () => { track.applyConstraints({advanced: [{zoom: slider.value}]}); };
+    } else {
+        slider.style.display = "none";
     }
+}
 
     function stopCamera() { if (html5QrCode && html5QrCode.isScanning) html5QrCode.stop(); showPage('home'); }
 
@@ -184,12 +184,17 @@
     }
 
     async function fetchProduct(code) {
-        const res = await fetch(GAS_URL, { method: "POST", body: JSON.stringify({ action: "productSearch", val: code }) });
-        const p = await res.json();
-        if (p && p.name) openQtyModal(p);
-        else alert("商品未登録: " + code);
+    const res = await fetch(GAS_URL, { method: "POST", body: JSON.stringify({ action: "productSearch", val: code }) });
+    const p = await res.json();
+    if (p && p.name) {
+        // マスタにない場合に備えて値をセット
+        p.jan = p.jan || code; 
+        p.lot = p.lot || "1";
+        openQtyModal(p);
+    } else {
+        alert("商品未登録: " + code);
     }
-
+}
     function renderCart() {
         const list = document.getElementById("cart-list");
         let total = 0;
