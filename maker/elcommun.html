@@ -67,7 +67,7 @@
 </nav>
 
 <script>
-    const GAS_URL = "https://script.google.com/macros/s/AKfycbxBGXkrLi9AZk7LwtHcDoSy-9rPcA4bbC8TxtTIHSApzI1x5riZzK8u-Pr_-kENGN83Dw/exec";
+    const GAS_URL = "https://script.google.com/macros/s/AKfycbyPVoJ8rT2K3DD8A-9bP3K4FduD1YF0JjqI4YRR-THpSstjDrxcrW7ZHPYKvwLUCFnIzQ/exec";
     let html5QrCode = null;
     let customer = null;
     let cart = [];
@@ -113,7 +113,7 @@
         const res = await fetch(GAS_URL, { method: "POST", body: JSON.stringify({ action: "productSearch", val: code }) });
         const p = await res.json();
         if (p && p.name) {
-            const q = prompt(`【${p.name}】\n品番: ${p.partNo}\n数量を入力`, 1);
+            const q = prompt(`【${p.name}】\n品番: ${p.partNo}\nロット: ${p.lot}\n数量を入力`, 1);
             if (q) { cart.push({ ...p, quantity: parseInt(q) }); renderCart(); }
         } else { alert("商品未登録: " + code); }
     }
@@ -123,7 +123,7 @@
         let total = 0;
         list.innerHTML = cart.map((item, i) => {
             total += (item.price * item.quantity);
-            return `<div class="item-row"><b>${item.name}</b><br><small>品番:${item.partNo} / JAN:${item.jan}</small><br>¥${item.price.toLocaleString()} × ${item.quantity}<div style="text-align:right"><span class="del-btn" onclick="cart.splice(${i},1);renderCart();">消去</span></div></div>`;
+            return `<div class="item-row"><b>${item.name}</b><br><small>品番:${item.partNo} / JAN:${item.jan} / ロット:${item.lot}</small><br>¥${item.price.toLocaleString()} × ${item.quantity}<div style="text-align:right"><span class="del-btn" onclick="cart.splice(${i},1);renderCart();">消去</span></div></div>`;
         }).join('');
         document.getElementById("cart-total").innerText = total.toLocaleString();
     }
@@ -136,7 +136,7 @@
         document.getElementById("c-none").style.display = "block";
         document.getElementById("c-detail").style.display = "none";
         document.getElementById("cart-area").style.display = "none";
-        showPage('history');
+        showPage('home');
     }
 
     async function loadHistory() {
@@ -152,10 +152,9 @@
                 <b>${item.customerName}</b><br>
                 <div style="margin:5px 0; font-size:0.9em;">
                     <b>${item.name}</b><br>
-                    <small>品番: ${item.partNo} / JAN: ${item.jan}</small>
+                    <small>品番: ${item.partNo} / JAN: ${item.jan} / ロット: ${item.lot}</small>
                 </div>
                 <div style="display:flex; align-items:center; gap:10px; margin-top:10px;">
-                    <span>数量:</span>
                     <button class="btn-q" onclick="updateQty('${item.timestamp}', '${item.maker}', ${item.qty - 1})">－</button>
                     <b style="font-size:1.2em; min-width:30px; text-align:center;">${item.qty}</b>
                     <button class="btn-q" onclick="updateQty('${item.timestamp}', '${item.maker}', ${item.qty + 1})">＋</button>
