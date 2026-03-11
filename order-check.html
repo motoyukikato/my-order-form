@@ -12,19 +12,15 @@
         .container { padding: 15px; max-width: 600px; margin: auto; }
         .card { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); margin-bottom: 20px; }
         #reader { width: 100%; border-radius: 12px; overflow: hidden; background: #000; }
-        
-        /* テーブルのスタイル */
         table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 0.9em; }
         th { background: #f1f3f5; text-align: left; padding: 10px; border-bottom: 2px solid #dee2e6; color: #495057; }
         td { padding: 12px 10px; border-bottom: 1px solid #eee; vertical-align: middle; }
         .item-name { font-weight: bold; display: block; margin-bottom: 2px; }
         .item-info { color: #666; font-size: 0.85em; }
         .status-badge { display: inline-block; padding: 2px 8px; border-radius: 12px; font-size: 0.75em; font-weight: bold; background: #e9ecef; color: #495057; }
-        
         .total-box { background: #343a40; color: white; padding: 20px; border-radius: 12px; text-align: right; margin-top: 15px; }
         .total-label { font-size: 0.9em; opacity: 0.8; }
         .total-price { font-size: 1.6em; color: #ffeb3b; font-weight: bold; margin-left: 10px; }
-        
         .btn { border: none; width: 100%; padding: 16px; border-radius: 8px; font-size: 17px; font-weight: bold; cursor: pointer; transition: 0.2s; margin-top: 10px; }
         .btn-scan { background: #28a745; color: white; }
         .btn-email { background: #007bff; color: white; display: none; }
@@ -84,20 +80,22 @@
         </button>
     </div>
 </div>
+
 <script>
-    const GAS_URL = "https://script.google.com/macros/s/AKfycbxjjZASEOgtLd_G-I1BavDct1jFpn2pX1uISy3OOcG-B4oyMKWSz07-e1mHMxe79yzZOA/exec"; 
+    // 【重要】GASで新しいデプロイを行ったら、URLを最新のものに差し替えてください
+    const GAS_URL = "https://script.google.com/macros/s/AKfycbzUvLRDDBgsajKylKMLfQOLn9BsYIUSxMhfZBFt-Fhh2Q07oa5F6-cPGXjx0swJeOqhcw/exec"; 
 
     let currentScannedId = "";
-    let lastFetchedData = []; // 取得したデータを一時保存する変数
+    let lastFetchedData = [];
 
     async function startScan() {
         const scanner = new Html5Qrcode("reader");
         document.getElementById("start-btn").style.display = "none";
         try {
-            await scanner.start({ facingMode: "environment" }, { fps: 10, qrbox: 250 }, 
+            await scanner.start({ facingMode: "environment" }, { fps: 15, qrbox: 250 }, 
                 async (text) => {
                     await scanner.stop();
-                    currentScannedId = text;
+                    currentScannedId = text; // ここに顧客IDが入る
                     fetchHistory(text);
                 }
             );
@@ -107,86 +105,76 @@
         }
     }
 
-    async function fetchHistory(id) {
+    // 履歴取得 (JSONP方式)
+    function fetchHistory(id) {
         document.getElementById("scan-view").style.display = "none";
         document.getElementById("loading").style.display = "block";
-        try {
-            const response = await fetch(`${GAS_URL}?id=${encodeURIComponent(id)}`);
-            lastFetchedData = await response.json(); // データを変数に保存
-            showResult(lastFetchedData);
-        } catch (e) {
-            alert("データが見つかりませんでした");
-            location.reload();
-        }
+        
+        // callback=showResult を指定してGASを叩く
+        const script = document.createElement('script');
+        script.src = `${GAS_URL}?id=${encodeURIComponent(id)}&callback=showResult`;
+        document.body.appendChild(script);
     }
 
-  function showResult(data) {
+    // GASからのデータを受け取って表示
+    function showResult(data) {
         document.getElementById("loading").style.display = "none";
         document.getElementById("result-view").style.display = "block";
         const tableBody = document.getElementById("history-table-body");
         let total = 0;
+        lastFetchedData = data;
 
         if (data && data.length > 0) {
             document.getElementById("email-btn").style.display = "block";
-            // 顧客名の取得（GAS側で D列:customerName として返される）
             document.getElementById("cust-name").innerText = data[0].customerName + " 様";
             
             tableBody.innerHTML = data.map(item => {
-                total += item.subtotal;
+                total += Number(item.subtotal || 0);
                 return `
                     <tr>
                         <td>
                             <span class="status-badge">${item.maker}</span> 
                             <span class="status-badge" style="background:#fff3cd;">${item.stock || '通常'}</span><br>
                             <span class="item-name">${item.name}</span>
-                            <span class="item-info">¥${item.price.toLocaleString()} × ${item.qty}</span>
+                            <span class="item-info">¥${Number(item.price).toLocaleString()} × ${item.qty}</span>
                         </td>
                         <td style="text-align:right; font-weight:bold; vertical-align:bottom;">
-                            ¥${item.subtotal.toLocaleString()}
+                            ¥${Number(item.subtotal).toLocaleString()}
                         </td>
                     </tr>`;
             }).join('');
             document.getElementById("total-amount").innerText = total.toLocaleString();
         } else {
-            tableBody.innerHTML = '<tr><td colspan="2" style="text-align:center; padding:30px; color:#999;">履歴がありません。<br><small>IDが正しいか、または注文が完了しているか確認してください。</small></td></tr>';
+            tableBody.innerHTML = '<tr><td colspan="2" style="text-align:center; padding:30px; color:#999;">履歴がありません。<br><small>(ID: ' + currentScannedId + ')</small></td></tr>';
+            document.getElementById("email-btn").style.display = "none";
         }
-    } 
+    }
 
- async function requestEmail() {
-    let currentEmail = (lastFetchedData && lastFetchedData.length > 0) ? lastFetchedData[0].email : "";
-    const newEmail = window.prompt("請書の送信先を確認・修正してください。", currentEmail);
-    
-    if (newEmail === null || !newEmail.trim()) return;
+    async function requestEmail() {
+        let currentEmail = (lastFetchedData && lastFetchedData.length > 0) ? lastFetchedData[0].email : "";
+        const newEmail = window.prompt("請書の送信先を確認・修正してください。", currentEmail);
+        if (newEmail === null || !newEmail.trim()) return;
 
-    const btn = document.getElementById("email-btn");
-    btn.disabled = true;
-    btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> 送信中...';
+        const btn = document.getElementById("email-btn");
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> 送信中...';
 
-    // JSONPという手法を使い、callbackを付けてGASにリクエストを投げます
-    const sendUrl = `${GAS_URL}?action=sendEmail&id=${encodeURIComponent(currentScannedId)}&email=${encodeURIComponent(newEmail.trim())}&callback=onEmailSent`;
+        const script = document.createElement('script');
+        script.src = `${GAS_URL}?action=sendEmail&id=${encodeURIComponent(currentScannedId)}&email=${encodeURIComponent(newEmail.trim())}&callback=onEmailSent`;
+        document.body.appendChild(script);
 
-    // fetchは使わず、scriptタグを生成して実行します（これでCORSエラーを回避します）
-    const script = document.createElement('script');
-    script.src = sendUrl;
-    document.body.appendChild(script);
+        setTimeout(() => {
+            if (btn.disabled && btn.innerHTML.includes('送信中')) onEmailSent({success: true});
+        }, 5000);
+    }
 
-    // 念のため5秒経っても反応がない場合は完了表示にする保険
-    setTimeout(() => {
-        if (btn.disabled && btn.innerHTML.includes('送信中')) {
-            onEmailSent({success: true});
-        }
-    }, 5000);
-}
-
-// GASからの「送ったよ！」という合図を受け取って画面を更新する関数
-function onEmailSent(response) {
-    const btn = document.getElementById("email-btn");
-    if (!btn.disabled || btn.innerHTML.includes('送信完了')) return; // 重複実行防止
-    
-    alert("請書メールを送信しました！");
-    btn.style.background = "#6c757d";
-    btn.innerHTML = '<i class="fa-solid fa-check"></i> 送信完了';
-}
+    function onEmailSent(response) {
+        const btn = document.getElementById("email-btn");
+        if (!btn.disabled || btn.innerHTML.includes('送信完了')) return;
+        alert("請書メールを送信しました！");
+        btn.style.background = "#6c757d";
+        btn.innerHTML = '<i class="fa-solid fa-check"></i> 送信完了';
+    }
 </script>
 
 </body>
