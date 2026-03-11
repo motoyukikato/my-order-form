@@ -128,59 +128,71 @@
 
    async function startCamera(mode) {
     if (mode === 'product' && !customer) { alert("顧客を選択してください"); return; }
+    
     showPage('scanner-page');
-    if (html5QrCode) { try { await html5QrCode.stop(); } catch(e){} }
+    
+    // 1. 既存のカメラを完全に破棄してリセット（起動エラー対策）
+    if (html5QrCode) {
+        try {
+            await html5QrCode.stop();
+            html5QrCode.clear(); 
+        } catch (e) {
+            // すでに停止している場合は無視
+            console.log("Cleanup handled");
+        }
+    }
+    
+    // 2. インスタンスの再生成
     html5QrCode = new Html5Qrcode("reader");
 
-    // カメラ設定：特定の制約を最小限にし、ブラウザの自動調整に任せる
     const config = { 
-        fps: 25, // フレームレートを上げて認識チャンスを増やす
-        qrbox: function(viewfinderWidth, viewfinderHeight) {
-            // スキャン枠を画面の横幅いっぱいに広げ、横長バーコードを捉えやすくする
-            let width = viewfinderWidth * 0.8;
-            let height = 120; // バーコードに合わせた細長い枠
-            return { width: width, height: height };
-        },
+        fps: 20, 
+        qrbox: { width: 280, height: 160 },
         aspectRatio: 1.0
     };
 
     try {
+        // 3. 起動実行
         await html5QrCode.start(
             { facingMode: "environment" }, 
             config, 
             (text) => {
-                // 読み取り成功時の処理
-                const audio = new Audio('https://www.soundjay.com/button/beep-07.mp3'); // 確認音
-                audio.play();
-                stopCamera();
-                if (mode === 'customer') fetchCustomer(text.trim());
-                else fetchProduct(text.trim());
+                // 読み取り成功
+                html5QrCode.stop().then(() => {
+                    html5QrCode.clear();
+                    showPage('home');
+                    if (mode === 'customer') fetchCustomer(text.trim());
+                    else fetchProduct(text.trim());
+                }).catch(err => {
+                    // 停止に失敗しても処理は進める
+                    showPage('home');
+                    if (mode === 'customer') fetchCustomer(text.trim());
+                    else fetchProduct(text.trim());
+                });
             }
         );
 
-        // ズーム機能の制御（これが最重要！）
+        // 4. ズーム設定（以前と同様）
         const track = html5QrCode.getRunningTrack();
         const capabilities = track.getCapabilities();
         const slider = document.getElementById("zoom-slider");
-
         if (capabilities.zoom) {
             slider.style.display = "block";
             slider.min = capabilities.zoom.min;
             slider.max = capabilities.zoom.max;
             slider.step = capabilities.zoom.step;
-            // 初期値を少しズーム(1.5倍〜2倍)に設定するとピントが合いやすくなります
-            slider.value = capabilities.zoom.min + (capabilities.zoom.max - capabilities.zoom.min) * 0.2;
-            track.applyConstraints({advanced: [{zoom: slider.value}]});
-            
-            slider.oninput = () => {
-                track.applyConstraints({advanced: [{zoom: parseFloat(slider.value)}]});
-            };
+            slider.oninput = () => { track.applyConstraints({advanced: [{zoom: parseFloat(slider.value)}]}); };
+        } else {
+            slider.style.display = "none";
         }
+
     } catch (err) {
-        alert("カメラ起動エラー: " + err);
+        // エラーが出た場合の詳細表示
+        console.error(err);
+        alert("カメラを起動できませんでした。ブラウザの再読み込みを試してください。\nエラー詳細: " + err);
+        showPage('home');
     }
 }
-
     function stopCamera() { if (html5QrCode && html5QrCode.isScanning) html5QrCode.stop(); showPage('home'); }
 
     async function fetchCustomer(val) {
