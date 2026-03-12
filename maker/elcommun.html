@@ -321,6 +321,7 @@
         ${item.note ? `<div style="margin-top: 10px; padding-top: 5px; border-top: 1px dotted #ccc; font-size: 0.8em; color: #555;">備考: ${item.note}</div>` : ''}
     </div>
 `).join('');  
+        } // ←ここに「 } 」を追加して loadHistory を終わらせる！
 // ★ここに changeQty を貼り付ける！
     async function changeQty(ts, maker, newQty) {
         if (newQty < 1) {
