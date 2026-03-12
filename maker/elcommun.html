@@ -274,19 +274,37 @@
         list.innerHTML = "読込中...";
         const res = await fetch(GAS_URL, { method: "POST", body: JSON.stringify({ action: "getOrderHistory" }) });
         const data = await res.json();
-        list.innerHTML = data.map(item => `
-            <div class="card">
-                <small>${item.displayDate} - ${item.maker}</small><br>
-                <b>${item.customerName}</b><br>
-                ${item.name}<br>
-                <small>備考: ${item.note || "-"}</small><br>
-                下代: ¥${item.price.toLocaleString()} × <b>${item.qty}</b> (計¥${item.subtotal.toLocaleString()})
-                <div style="text-align:right; margin-top:10px;">
-                    <span class="edit-btn" onclick='openQtyModal(${JSON.stringify(item)}, true)'>数量訂正</span>
-                    <span class="del-btn" onclick="deleteHistory('${item.timestamp}', '${item.maker}')">削除</span>
+       list.innerHTML = data.map(item => `
+    <div class="card" style="padding: 15px; border-left: 5px solid #4267B2; margin-bottom: 10px;">
+        <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+            <div>
+                <span class="status-badge">${item.maker}</span>
+                <span class="status-badge" style="background:#fff3cd;">${item.stock || '通常'}</span>
+                
+                <div style="font-size: 1.2em; font-weight: bold; color: #000; margin-top: 5px;">
+                    ${item.partNo || '品番なし'}
                 </div>
-            </div>`).join('');
-    }
+                
+                <div style="font-size: 0.9em; color: #666; margin-bottom: 8px;">
+                    ${item.name}
+                </div>
+                
+                <div style="font-size: 0.85em; color: #444;">
+                    ¥${Number(item.price).toLocaleString()} × ${item.qty}
+                </div>
+            </div>
+            
+            <div style="text-align: right;">
+                <div style="font-size: 0.8em; color: #888;">${item.displayDate}</div>
+                <div style="font-size: 1.2em; font-weight: bold; color: #d9534f; margin-top: 15px;">
+                    ¥${Number(item.subtotal).toLocaleString()}
+                </div>
+            </div>
+        </div>
+        
+        ${item.note ? `<div style="margin-top: 10px; padding-top: 5px; border-top: 1px dotted #ccc; font-size: 0.8em; color: #555;">備考: ${item.note}</div>` : ''}
+    </div>
+`).join('');
 
     async function deleteHistory(ts, maker) {
         if (!confirm("完全に削除しますか？")) return;
