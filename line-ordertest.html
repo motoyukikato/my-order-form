@@ -3,151 +3,117 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Nagoya Kaki - Fresh Order</title>
+    <title>Nagoya Kaki - Smart Order</title>
     <script charset="utf-8" src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <style>
         :root {
-            /* さわやかなカラーパレット */
-            --main-bg: #f8fafb;
-            --card-bg: #ffffff;
-            --accent-green: #4db6ac; /* ミント系 */
-            --accent-blue: #64b5f6; /* 空色 */
-            --text-dark: #37474f;
-            --text-light: #90a4ae;
-            --border-color: #e0e6ed;
-            --shadow: 0 4px 12px rgba(0,0,0,0.05);
+            --primary-blue: #007aff;
+            --soft-blue: #e3f2fd;
+            --bg-color: #f0f4f8;
+            --text-main: #2c3e50;
+            --text-sub: #7f8c8d;
+            --white: #ffffff;
         }
 
         body { 
-            font-family: "Helvetica Neue", Arial, "Hiragino Kaku Gothic ProN", "Hiragino Sans", sans-serif;
-            background-color: var(--main-bg);
-            color: var(--text-dark);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-main);
             margin: 0; padding: 0;
-            line-height: 1.6;
+            -webkit-tap-highlight-color: transparent;
         }
 
-        .container { max-width: 500px; margin: 0 auto; padding: 20px 15px 120px; }
+        .container { max-width: 500px; margin: 0 auto; padding: 20px 15px 140px; }
 
-        /* ヘッダー：透過感のあるデザイン */
-        .app-header {
-            background: rgba(255,255,255,0.8);
-            backdrop-filter: blur(10px);
-            padding: 20px;
-            text-align: center;
-            border-bottom: 1px solid var(--border-color);
-            position: sticky; top: 0; z-index: 100;
-        }
-        .app-header h1 { 
-            font-size: 1.1rem; margin: 0; color: var(--accent-green); 
-            letter-spacing: 0.1em; font-weight: bold;
-        }
+        /* ヘッダー */
+        .header { text-align: center; padding: 30px 0 10px; }
+        .header h1 { font-size: 1.2rem; font-weight: 600; color: var(--primary-blue); letter-spacing: 0.05em; margin: 0; }
+        .user-badge { font-size: 0.7rem; color: var(--text-sub); margin-top: 5px; }
 
-        /* 配送オプション：軽やかなタブ形式 */
-        .delivery-selection {
-            display: flex; background: #eee; padding: 4px;
-            border-radius: 50px; margin: 25px 0;
+        /* 配送スピード選択 */
+        .delivery-toggle {
+            display: flex; background: #dce4ec; padding: 3px;
+            border-radius: 12px; margin: 20px 0;
         }
-        .delivery-tab {
-            flex: 1; text-align: center; padding: 10px;
-            font-size: 0.85rem; border-radius: 50px; cursor: pointer;
-            transition: 0.3s; color: var(--text-light);
+        .toggle-item {
+            flex: 1; text-align: center; padding: 12px;
+            font-size: 0.85rem; border-radius: 10px; cursor: pointer;
+            transition: all 0.2s; color: var(--text-sub);
         }
-        .delivery-tab.active {
-            background: #fff; color: var(--accent-green);
-            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-            font-weight: bold;
+        .toggle-item.active {
+            background: var(--white); color: var(--primary-blue);
+            font-weight: bold; box-shadow: 0 2px 6px rgba(0,0,0,0.1);
         }
 
-        /* セクションカード */
+        /* カードデザイン */
         .card {
-            background: var(--card-bg);
-            border-radius: 16px;
-            padding: 20px;
-            margin-bottom: 20px;
-            box-shadow: var(--shadow);
-            border: 1px solid var(--border-color);
+            background: var(--white); border-radius: 16px; padding: 20px;
+            margin-bottom: 20px; box-shadow: 0 2px 10px rgba(0,0,0,0.03);
         }
+        .card-title { font-size: 0.8rem; font-weight: bold; color: var(--primary-blue); margin-bottom: 15px; display: block; }
 
-        .label-group { font-size: 0.75rem; color: var(--accent-green); font-weight: bold; margin-bottom: 15px; display: block; }
-
-        /* 入力エリア */
-        input[type="date"], input[type="text"], input[type="email"], select, textarea {
-            width: 100%; border: 1px solid var(--border-color);
-            padding: 12px; border-radius: 8px; font-size: 1rem;
-            box-sizing: border-box; outline: none; transition: 0.3s;
-            background: #fdfdfd; color: var(--text-dark);
+        /* 入力フォーム */
+        input[type="text"], input[type="email"], input[type="date"], input[type="number"], select, textarea {
+            width: 100%; border: 1px solid #edf2f7; background: #f8fafc;
+            padding: 12px; border-radius: 8px; font-size: 1rem; box-sizing: border-box; outline: none;
+            color: var(--text-main); transition: 0.2s;
         }
-        input:focus { border-color: var(--accent-blue); background: #fff; }
+        input:focus { border-color: var(--primary-blue); background: var(--white); }
 
         /* 商品項目 */
-        .item-row { 
-            padding: 15px 0; border-bottom: 1px solid #f0f4f8; position: relative;
-        }
-        .item-row:last-child { border-bottom: none; }
-        
-        .remove-icon {
-            position: absolute; right: 0; top: 15px;
-            color: #ffab91; font-size: 0.8rem; cursor: pointer;
-        }
+        .item-unit { padding: 15px 0; border-bottom: 1px solid #f1f5f9; position: relative; }
+        .item-unit:last-child { border-bottom: none; }
+        .remove-link { position: absolute; right: 0; top: 0; color: #ff3b30; font-size: 0.75rem; text-decoration: none; }
 
         /* ボタン */
-        .btn-add {
-            width: 100%; padding: 12px; background: none;
-            border: 1px dashed var(--accent-blue); color: var(--accent-blue);
-            border-radius: 8px; font-weight: bold; cursor: pointer; margin-top: 10px;
+        .add-btn {
+            width: 100%; padding: 12px; background: var(--soft-blue); color: var(--primary-blue);
+            border: none; border-radius: 8px; font-weight: bold; cursor: pointer; margin-top: 10px;
         }
 
-        /* フッター送信エリア */
-        .footer-fixed {
-            position: fixed; bottom: 0; left: 0; right: 0;
-            padding: 20px; background: rgba(255,255,255,0.9);
-            border-top: 1px solid var(--border-color); backdrop-filter: blur(10px);
+        .footer {
+            position: fixed; bottom: 0; left: 0; right: 0; padding: 25px 20px;
+            background: rgba(255,255,255,0.85); backdrop-filter: blur(15px);
+            border-top: 1px solid #eee;
         }
         #sendBtn {
-            width: 100%; padding: 16px; 
-            background: linear-gradient(135deg, var(--accent-green), var(--accent-blue));
-            color: white; border: none; border-radius: 30px;
-            font-size: 1rem; font-weight: bold; cursor: pointer;
-            box-shadow: 0 4px 15px rgba(77, 182, 172, 0.3);
+            width: 100%; padding: 16px; background: var(--primary-blue); color: var(--white);
+            border: none; border-radius: 30px; font-size: 1.1rem; font-weight: bold; cursor: pointer;
+            box-shadow: 0 8px 20px rgba(0,122,255,0.25);
         }
-        #sendBtn:active { transform: scale(0.98); }
-
-        .note { font-size: 0.7rem; color: var(--text-light); margin-top: 8px; text-align: center; }
     </style>
 </head>
 <body>
 
-<div class="app-header">
-    <h1><i class="fas fa-leaf"></i> NAGOYA KAKI ORDER</h1>
-</div>
-
 <div class="container">
-    
-    <div class="delivery-selection">
-        <div class="delivery-tab active" id="tab-fast" onclick="updateDelivery('fast')">
-            運賃かけて早く
-        </div>
-        <div class="delivery-tab" id="tab-normal" onclick="updateDelivery('normal')">
-            注文時に同梱
-        </div>
+    <div class="header">
+        <h1>Nagoya Kaki Order</h1>
+        <div id="userInfo" class="user-badge">Authenticating...</div>
+    </div>
+
+    <div class="delivery-toggle">
+        <div class="toggle-item active" id="type-fast" onclick="setDelivery('fast')">運賃かけて早く</div>
+        <div class="toggle-item" id="type-normal" onclick="setDelivery('normal')">注文時に同梱</div>
     </div>
     <input type="hidden" id="deliveryType" value="運賃かけて早くほしい">
 
     <div class="card">
-        <span class="label-group"><i class="far fa-calendar-check"></i> 希望の渡し日</span>
+        <span class="card-title">DELIVERY DATE</span>
         <input type="date" id="desiredDate">
-        <p class="note">※別途、送料が発生する場合がございます。</p>
-
-        <span class="label-group" style="margin-top:25px;"><i class="far fa-user"></i> お取引先情報</span>
-        <input type="text" id="storeName" placeholder="店名（必須）" style="margin-bottom:12px;">
-        <input type="email" id="email" placeholder="メールアドレス（控え送付先）">
+        
+        <div style="margin-top: 20px;">
+            <span class="card-title">STORE INFO</span>
+            <input type="text" id="storeName" placeholder="店名（必須）" style="margin-bottom:10px;">
+            <input type="email" id="email" placeholder="控え用メールアドレス">
+            <div style="font-size: 0.65rem; color: var(--text-sub); margin-top: 8px;">※一度入力すると次回から自動表示されます</div>
+        </div>
     </div>
 
     <div class="card">
-        <span class="label-group"><i class="fas fa-shopping-cart"></i> 注文内容</span>
+        <span class="card-title">ORDER ITEMS</span>
         <div id="itemContainer">
-            <div class="item-row">
+            <div class="item-unit">
                 <div style="display:flex; gap:10px; margin-bottom:10px;">
                     <div style="flex:1">
                         <select class="category-select" onchange="updateMakerOptions(this)">
@@ -159,98 +125,91 @@
                         </select>
                     </div>
                     <div style="flex:2">
-                        <select class="maker-select"><option value="">メーカー選択</option></select>
+                        <select class="maker-select"><option value="">メーカー</option></select>
                     </div>
                 </div>
                 <div style="display:flex; gap:10px;">
-                    <div style="flex:2">
-                        <input type="text" class="partNo-input" placeholder="品番">
-                    </div>
-                    <div style="flex:1">
-                        <input type="number" class="quantity-input" value="1" min="1">
-                    </div>
+                    <div style="flex:2"><input type="text" class="partNo-input" placeholder="品番"></div>
+                    <div style="flex:1"><input type="number" class="quantity-input" value="1" min="1"></div>
                 </div>
             </div>
         </div>
-        <button class="btn-add" onclick="addNewItem()"><i class="fas fa-plus"></i> 商品を追加</button>
+        <button class="add-btn" onclick="addNewItem()"><i class="fas fa-plus"></i> 商品を追加</button>
     </div>
 
     <div class="card">
-        <span class="label-group"><i class="far fa-comment-dots"></i> 備考・伝達事項</span>
-        <textarea id="comments" rows="3" placeholder="ご要望があればこちらへ"></textarea>
+        <span class="card-title">REMARKS</span>
+        <textarea id="comments" rows="3" placeholder="伝達事項があれば入力"></textarea>
     </div>
-
 </div>
 
-<div class="footer-fixed">
+<div class="footer">
     <button id="sendBtn" onclick="sendOrder()">注文を確定する</button>
 </div>
 
 <script>
-    function updateDelivery(type) {
-        const fast = document.getElementById('tab-fast');
-        const normal = document.getElementById('tab-normal');
-        const input = document.getElementById('deliveryType');
-        
-        if(type === 'fast') {
-            fast.classList.add('active'); normal.classList.remove('active');
-            input.value = "運賃かけて早くほしい";
+    let lineUserId = "";
+
+    // 配送切替
+    function setDelivery(val) {
+        const f = document.getElementById('type-fast');
+        const n = document.getElementById('type-normal');
+        const hidden = document.getElementById('deliveryType');
+        if(val === 'fast') {
+            f.classList.add('active'); n.classList.remove('active');
+            hidden.value = "運賃かけて早くほしい";
         } else {
-            normal.classList.add('active'); fast.classList.remove('active');
-            input.value = "注文するタイミングで入れてほしい";
+            n.classList.add('active'); f.classList.remove('active');
+            hidden.value = "注文するタイミングで入れてほしい";
         }
     }
 
+    // 商品追加
     function addNewItem() {
         const container = document.getElementById('itemContainer');
-        const firstRow = container.querySelector('.item-row');
-        const newRow = firstRow.cloneNode(true);
-        newRow.innerHTML += '<div class="remove-icon" onclick="this.parentElement.remove()"><i class="fas fa-times-circle"></i></div>';
-        newRow.querySelectorAll('input').forEach(i => i.value = (i.type === 'number' ? 1 : ''));
-        container.appendChild(newRow);
+        const unit = container.querySelector('.item-unit').cloneNode(true);
+        unit.innerHTML += '<a href="#" class="remove-link" onclick="this.parentElement.remove(); return false;">削除</a>';
+        unit.querySelectorAll('input').forEach(i => i.value = (i.type === 'number' ? 1 : ''));
+        container.appendChild(unit);
     }
 
-    // --- ロジック部分は機能維持 ---
-    const allMakers = ["あいはらぼうえき:アイハラ貿易（ポリラフィア)", "あすかしょうかい:アスカ商会", "あずわん:アズワン（試験管）", "あもろーさ:アムールデフルール", "あんこーぽれーしょん:アンコーポレーション", "あーてぃふぃしゃる:アーティフィシャル", "あおやまりぼん:青山リボン", "あさひわいやー:朝日ワイヤー", "べるで:ヴェルデ", "おおちのうえん:大地農園", "おおぐちさんぎょう:大口産業", "だいてつ:大鉄", "だいどうくらふと:大同クラフト", "いんたーりんく:インターリンク", "だいせん:大仙", "うぉるなっと:ウォルナット", "えこぜりー:エコゼリー", "えるこみゅーん:エルコミューン", "えすあーるさーびす:SRサービス(デコジャリ）", "えいちつーおー:エイチツーオー", "かめやまきゃンドる:カメヤマキャンドル", "かるなっく:カルナック", "きゅーふら:Q-FLA", "くれい:クレイ", "くりざーる:クリザール", "くれえ:クレエ", "ぐりーんはうす:グリーンハウス", "きゃびのちぇ:キャビノチェ", "ぐりーんぽっと:グリーンポット", "ぐろーばるあろー:グローバルアロー", "こあとれーでぃんぐ:コアトレーディング", "こべんとがーでん:コベントガーデン", "さかげん:坂源", "さんわとれーでぃんぐ:三和トレーディング", "しもじま:シモジマ", "しせいはんぱい:志成販売", "すみざーずおあしす:スミザーズオアシス", "とやまはもの:外山刃物", "たなかとうき:田中陶器", "だるとん:ダルトン", "でるき:デルキ", "とうきょうりぼん:東京リボン", "とうきょうかんかん:東京かんかん", "とすだいす:TOSSDICE", "だんぼーる:段ボール", "とうきょうどう:東京堂", "とーく:トーク", "どりーむふぁーむすずか:ドリームファームスズカ", "とうか:東花", "とうほうぼうえき:東方貿易", "ねいちゃーでざいんず:ネイチャーデザインズ", "ぱれすかがく:パレス化学", "ぱれ:パレ", "ぽっしゅりびんぐ:ポッシュリビング", "ふぁーむ:FARM", "はなりんくす:花Links", "ふろーネット:flonet", "ほわいえ:ホワイエ", "は花のそのくぼた:花のそのくぼた", "ふろーるえばー:フロールエバー", "ふらわーべーす:フラワーベース", "ぷらすがーでん:プラスガーデン", "ぼぶくらふと:ボブクラフト", "まつむらこうげい:松村工芸", "ほしの:星野", "まぐねっと:マグネット", "まるこうせいとう:丸滉製陶", "まるまひらのとうきてん:丸又平野陶器店", "まるわぼうえき:丸和貿易", "みゅーるみる:ミュールミル", "むらたやさんぎょう:村田屋産業", "ものいんたーなしょなる:モノ・インターナショナル", "やまてー:ヤマテー", "やーど:yard", "ゆうぜん:友膳", "よこはまでぃすぷれいみゅーじあむ:横浜ディスプレイミュージアム", "ららいわんと:ラライワント", "りぶきゅりえいと:Lib curate", "りーどしょうじ:リード商事", "わさら:WASARA", "わんだーぞーん:ワンダーゾーン", "わこうかがく:和光化学"];
-
-    function getKanaRow(kana) {
-        const first = kana.charAt(0);
-        if (/[あ-お]/.test(first)) return "あ";
-        if (/[か-こが-ご]/.test(first)) return "か";
-        if (/[さ-そざ-ぞ]/.test(first)) return "さ";
-        if (/[た-とだ-ど]/.test(first)) return "た";
-        if (/[な-の]/.test(first)) return "な";
-        if (/[は-ほば-ぼぱ-ぽ]/.test(first)) return "は";
-        if (/[ま-も]/.test(first)) return "ま";
-        if (/[や-よ]/.test(first)) return "や";
-        if (/[ら-ろ]/.test(first)) return "ら";
-        if (/[わ-ん]/.test(first)) return "わ";
-        return "その他";
-    }
-
-    function updateMakerOptions(catSelect) {
-        const row = catSelect.value;
-        const makerSelect = catSelect.closest('.item-row').querySelector('.maker-select');
-        makerSelect.innerHTML = '<option value="">メーカー選択</option>';
-        if (row === "その他") { makerSelect.innerHTML = '<option value="備考に記入">備考に記入</option>'; return; }
-        allMakers.filter(item => getKanaRow(item.split(':')[0]) === row).forEach(item => {
-            const name = item.split(':')[1];
-            const opt = document.createElement('option');
-            opt.value = opt.textContent = name;
-            makerSelect.appendChild(opt);
-        });
+    // --- ロジック：自動保存とID取得 ---
+    async function initLiff() {
+        try {
+            await liff.init({ liffId: "2008835052-zCjbE0pV" });
+            if (!liff.isLoggedIn()) {
+                liff.login();
+            } else {
+                const profile = await liff.getProfile();
+                lineUserId = profile.userId;
+                document.getElementById('userInfo').innerText = "Logged in as: " + profile.displayName;
+                
+                // 【自動入力】保存されている店名などを読み込む
+                if(localStorage.getItem('savedStoreName')) {
+                    document.getElementById('storeName').value = localStorage.getItem('savedStoreName');
+                }
+                if(localStorage.getItem('savedEmail')) {
+                    document.getElementById('email').value = localStorage.getItem('savedEmail');
+                }
+            }
+        } catch (e) { console.error(e); }
     }
 
     async function sendOrder() {
         const storeName = document.getElementById('storeName').value;
-        if (!storeName) { alert('店名をご入力ください'); return; }
-        
+        const email = document.getElementById('email').value;
+        if (!storeName) { alert('店名を入力してください'); return; }
+
+        // 【保存】入力をスマホに記憶
+        localStorage.setItem('savedStoreName', storeName);
+        localStorage.setItem('savedEmail', email);
+
         const btn = document.getElementById('sendBtn');
         btn.disabled = true;
         btn.innerText = "送信中...";
 
         const items = [];
-        document.querySelectorAll('.item-row').forEach(row => {
+        document.querySelectorAll('.item-unit').forEach(row => {
             const m = row.querySelector('.maker-select').value;
             const p = row.querySelector('.partNo-input').value;
             const q = row.querySelector('.quantity-input').value;
@@ -258,8 +217,9 @@
         });
 
         const data = {
+            userId: lineUserId, // LINE IDを送信
             storeName: storeName,
-            email: document.getElementById('email').value,
+            email: email,
             deliveryType: document.getElementById('deliveryType').value,
             desiredDate: document.getElementById('desiredDate').value,
             items: items,
@@ -269,7 +229,7 @@
         try {
             const gasUrl = "https://script.google.com/macros/s/AKfycbyDMUsoLiBW26V0m6BBq7S5rIlhaCQXOPdG_2__V9E9aoFqyWEZikDuEE1K0Gc8r6d-/exec";
             await fetch(gasUrl, { method: 'POST', headers: {'Content-Type': 'text/plain'}, body: JSON.stringify(data) });
-            alert('送信完了しました。');
+            alert('注文が完了しました。');
             liff.closeWindow();
         } catch (e) {
             alert('送信エラー');
@@ -278,10 +238,23 @@
         }
     }
 
-    window.onload = async function() {
-        await liff.init({ liffId: "2008835052-zCjbE0pV" });
-        if (!liff.isLoggedIn()) liff.login();
-    };
+    // メーカー選択ロジック（以下共通）
+    const allMakers = ["あいはらぼうえき:アイハラ貿易（ポリラフィア)", "あすかしょうかい:アスカ商会", "あずわん:アズワン（試験管）", "あもろーさ:アムールデフルール", "あんこーぽれーしょん:アンコーポレーション", "あーてぃふぃしゃる:アーティフィシャル", "あおやまりぼん:青山リボン", "あさひわいやー:朝日ワイヤー", "べるで:ヴェルデ", "おおちのうえん:大地農園", "おおぐちさんぎょう:大口産業", "だいてつ:大鉄", "だいどうくらふと:大同クラフト", "いんたーりんく:インターリンク", "だいせん:大仙", "うぉるなっと:ウォルナット", "えこぜりー:エコゼリー", "えるこみゅーん:エルコミューン", "えすあーるさーびす:SRサービス(デコジャリ）", "えいちつーおー:エイチツーオー", "かめやまきゃンドる:カメヤマキャンドル", "かるなっく:カルナック", "きゅーふら:Q-FLA", "くれい:クレイ", "くりざーる:クリザール", "くれえ:クレエ", "ぐりーんはうす:グリーンハウス", "きゃびのちぇ:キャビノチェ", "ぐりーんぽっと:グリーンポット", "ぐろーばるあろー:グローバルアロー", "こあとれーでぃんぐ:コアトレーディング", "こべんとがーでん:コベントガーデン", "さかげん:坂源", "さんわとれーでぃんぐ:三和トレーディング", "しもじま:シモジマ", "しせいはんぱい:志成販売", "すみざーずおあしす:スミザーズオアシス", "とやまはもの:外山刃物", "たなかとうき:田中陶器", "だるとん:ダルトン", "でるき:デルキ", "とうきょうりぼん:東京リボン", "とうきょうかんかん:東京かんかん", "とすだいす:TOSSDICE", "だんぼーる:段ボール", "とうきょうどう:東京堂", "とーく:トーク", "どりーむふぁーむすずか:ドリームファームスズカ", "とうか:東花", "とうほうぼうえき:東方貿易", "ねいちゃーでざいんず:ネイチャーデザインズ", "ぱれすかがく:パレス化学", "ぱれ:パレ", "ぽっしゅりびんぐ:ポッシュリビング", "ふぁーむ:FARM", "はなりんくす:花Links", "ふろーネット:flonet", "ほわいえ:ホワイエ", "は花のそのくぼた:花のそのくぼた", "ふろーるえばー:フロールエバー", "ふらわーべーす:フラワーベース", "ぷらすがーでん:プラスガーデン", "ぼぶくらふと:ボブクラフト", "まつむらこうげい:松村工芸", "ほしの:星野", "まぐねっと:マグネット", "まるこうせいとう:丸滉製陶", "まるまひらのとうきてん:丸又平野陶器店", "まるわぼうえき:丸和貿易", "みゅーるみる:ミュールミル", "むらたやさんぎょう:村田屋産業", "ものいんたーなしょなる:モノ・インターナショナル", "やまてー:ヤマテー", "やーど:yard", "ゆうぜん:友膳", "よこはまでぃすぷれいみゅーじあむ:横浜ディスプレイミュージアム", "ららいわんと:ラライワント", "りぶきゅりえいと:Lib curate", "りーどしょうじ:リード商事", "わさら:WASARA", "わんだーぞーん:ワンダーゾーン", "わこうかがく:和光化学"];
+    function getKanaRow(kana){ const first=kana.charAt(0); if(/[あ-お]/.test(first))return "あ"; if(/[か-こが-ご]/.test(first))return "か"; if(/[さ-そざ-ぞ]/.test(first))return "さ"; if(/[た-とだ-ど]/.test(first))return "た"; if(/[な-の]/.test(first))return "な"; if(/[は-ほば-ぼぱ-ぽ]/.test(first))return "は"; if(/[ま-も]/.test(first))return "ま"; if(/[や-よ]/.test(first))return "や"; if(/[ら-ろ]/.test(first))return "ら"; if(/[わ-ん]/.test(first))return "わ"; return "その他"; }
+    function updateMakerOptions(catSelect) {
+        const row = catSelect.value;
+        const makerSelect = catSelect.closest('.item-unit').querySelector('.maker-select');
+        makerSelect.innerHTML = '<option value="">メーカー</option>';
+        if (row === "その他") { makerSelect.innerHTML = '<option value="備考に記入">備考に記入</option>'; return; }
+        allMakers.filter(item => getKanaRow(item.split(':')[0]) === row).forEach(item => {
+            const name = item.split(':')[1];
+            const opt = document.createElement('option');
+            opt.value = opt.textContent = name;
+            makerSelect.appendChild(opt);
+        });
+    }
+
+    window.onload = initLiff;
 </script>
 </body>
 </html>
