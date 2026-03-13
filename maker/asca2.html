@@ -283,10 +283,34 @@
         } catch(e) { list.innerHTML = "履歴の読み込みに失敗しました。"; }
     }
 
-    async function changeQty(ts, maker, newQty) {
-        if (newQty < 1) { deleteHistory(ts, maker); return; }
-        await fetch(GAS_URL, { method: "POST", body: JSON.stringify({ action: "updateOrderQty", timestamp: ts, maker: maker, newQty: newQty }) });
-        loadHistory();
+   async function changeQty(ts, maker, newQty) {
+        // 1未満になる場合は削除処理へ
+        if (newQty < 1) { 
+            deleteHistory(ts, maker); 
+            return; 
+        }
+
+        try {
+            // fetchに await をつけて、処理が終わるのを待つ
+            const response = await fetch(GAS_URL, { 
+                method: "POST", 
+                body: JSON.stringify({ 
+                    action: "updateOrderQty", 
+                    timestamp: ts, 
+                    maker: maker, 
+                    newQty: Number(newQty) // 確実に数値として送る
+                }) 
+            });
+
+            if (!response.ok) throw new Error('通信失敗');
+
+            // サーバー側の書き換えが終わってから履歴を再読み込み
+            await loadHistory(); 
+            
+        } catch (e) {
+            console.error(e);
+            alert("数量の更新に失敗しました。電波状況を確認してください。");
+        }
     }
 
     async function deleteHistory(ts, maker) {
