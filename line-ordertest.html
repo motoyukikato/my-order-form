@@ -10,10 +10,11 @@
         :root {
             --primary-blue: #007aff;
             --soft-blue: #e3f2fd;
-            --bg-color: #f0f4f8;
+            --bg-color: #f5f7fa;
             --text-main: #2c3e50;
             --text-sub: #7f8c8d;
             --white: #ffffff;
+            --border: #e2e8f0;
         }
 
         body { 
@@ -21,66 +22,67 @@
             background-color: var(--bg-color);
             color: var(--text-main);
             margin: 0; padding: 0;
-            -webkit-tap-highlight-color: transparent;
         }
 
         .container { max-width: 500px; margin: 0 auto; padding: 20px 15px 140px; }
 
-        /* ヘッダー */
-        .header { text-align: center; padding: 30px 0 10px; }
-        .header h1 { font-size: 1.2rem; font-weight: 600; color: var(--primary-blue); letter-spacing: 0.05em; margin: 0; }
-        .user-badge { font-size: 0.7rem; color: var(--text-sub); margin-top: 5px; }
-
-        /* 配送スピード選択 */
+        .header { text-align: center; padding: 20px 0; }
+        .header h1 { font-size: 1.1rem; color: var(--primary-blue); letter-spacing: 0.1em; margin: 0; }
+        
+        /* 配送設定タブ */
         .delivery-toggle {
-            display: flex; background: #dce4ec; padding: 3px;
+            display: flex; background: #e2e8f0; padding: 3px;
             border-radius: 12px; margin: 20px 0;
         }
         .toggle-item {
             flex: 1; text-align: center; padding: 12px;
             font-size: 0.85rem; border-radius: 10px; cursor: pointer;
-            transition: all 0.2s; color: var(--text-sub);
+            transition: 0.3s; color: var(--text-sub);
         }
         .toggle-item.active {
             background: var(--white); color: var(--primary-blue);
-            font-weight: bold; box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+            font-weight: bold; box-shadow: 0 2px 5px rgba(0,0,0,0.05);
         }
 
-        /* カードデザイン */
+        /* セクションカード */
         .card {
             background: var(--white); border-radius: 16px; padding: 20px;
-            margin-bottom: 20px; box-shadow: 0 2px 10px rgba(0,0,0,0.03);
+            margin-bottom: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.02);
+            border: 1px solid var(--border);
         }
-        .card-title { font-size: 0.8rem; font-weight: bold; color: var(--primary-blue); margin-bottom: 15px; display: block; }
+        .card-label { font-size: 0.75rem; font-weight: bold; color: var(--primary-blue); margin-bottom: 12px; display: block; }
 
         /* 入力フォーム */
         input[type="text"], input[type="email"], input[type="date"], input[type="number"], select, textarea {
-            width: 100%; border: 1px solid #edf2f7; background: #f8fafc;
+            width: 100%; border: 1px solid var(--border); background: #fcfdfe;
             padding: 12px; border-radius: 8px; font-size: 1rem; box-sizing: border-box; outline: none;
-            color: var(--text-main); transition: 0.2s;
         }
         input:focus { border-color: var(--primary-blue); background: var(--white); }
 
         /* 商品項目 */
         .item-unit { padding: 15px 0; border-bottom: 1px solid #f1f5f9; position: relative; }
-        .item-unit:last-child { border-bottom: none; }
-        .remove-link { position: absolute; right: 0; top: 0; color: #ff3b30; font-size: 0.75rem; text-decoration: none; }
+        .remove-btn { position: absolute; right: 0; top: 15px; color: #ff3b30; font-size: 0.7rem; cursor: pointer; }
 
-        /* ボタン */
         .add-btn {
             width: 100%; padding: 12px; background: var(--soft-blue); color: var(--primary-blue);
             border: none; border-radius: 8px; font-weight: bold; cursor: pointer; margin-top: 10px;
         }
 
+        /* 添付ファイル */
+        .file-input-wrapper {
+            margin-top: 10px; font-size: 0.9rem;
+        }
+
+        /* フッター */
         .footer {
-            position: fixed; bottom: 0; left: 0; right: 0; padding: 25px 20px;
-            background: rgba(255,255,255,0.85); backdrop-filter: blur(15px);
-            border-top: 1px solid #eee;
+            position: fixed; bottom: 0; left: 0; right: 0; padding: 20px;
+            background: rgba(255,255,255,0.9); backdrop-filter: blur(10px);
+            border-top: 1px solid var(--border);
         }
         #sendBtn {
             width: 100%; padding: 16px; background: var(--primary-blue); color: var(--white);
-            border: none; border-radius: 30px; font-size: 1.1rem; font-weight: bold; cursor: pointer;
-            box-shadow: 0 8px 20px rgba(0,122,255,0.25);
+            border: none; border-radius: 30px; font-size: 1rem; font-weight: bold; cursor: pointer;
+            box-shadow: 0 10px 20px rgba(0,122,255,0.2);
         }
     </style>
 </head>
@@ -88,8 +90,8 @@
 
 <div class="container">
     <div class="header">
-        <h1>Nagoya Kaki Order</h1>
-        <div id="userInfo" class="user-badge">Authenticating...</div>
+        <h1>NAGOYA KAKI ORDER</h1>
+        <div id="userInfo" style="font-size: 0.7rem; color: #999; margin-top:5px;">Loading Profile...</div>
     </div>
 
     <div class="delivery-toggle">
@@ -99,19 +101,19 @@
     <input type="hidden" id="deliveryType" value="運賃かけて早くほしい">
 
     <div class="card">
-        <span class="card-title">DELIVERY DATE</span>
+        <span class="card-label"><i class="far fa-calendar-alt"></i> 希望の渡し日</span>
         <input type="date" id="desiredDate">
-        
-        <div style="margin-top: 20px;">
-            <span class="card-title">STORE INFO</span>
+        <p style="font-size: 0.65rem; color: #999; margin-top: 5px;">※送料が発生する場合がございます</p>
+
+        <div style="margin-top: 25px;">
+            <span class="card-label"><i class="far fa-user"></i> ご注文者様情報</span>
             <input type="text" id="storeName" placeholder="店名（必須）" style="margin-bottom:10px;">
-            <input type="email" id="email" placeholder="控え用メールアドレス">
-            <div style="font-size: 0.65rem; color: var(--text-sub); margin-top: 8px;">※一度入力すると次回から自動表示されます</div>
+            <input type="email" id="email" placeholder="メールアドレス（控え用）">
         </div>
     </div>
 
     <div class="card">
-        <span class="card-title">ORDER ITEMS</span>
+        <span class="card-label"><i class="fas fa-shopping-basket"></i> 注文内容</span>
         <div id="itemContainer">
             <div class="item-unit">
                 <div style="display:flex; gap:10px; margin-bottom:10px;">
@@ -125,7 +127,7 @@
                         </select>
                     </div>
                     <div style="flex:2">
-                        <select class="maker-select"><option value="">メーカー</option></select>
+                        <select class="maker-select"><option value="">メーカー選択</option></select>
                     </div>
                 </div>
                 <div style="display:flex; gap:10px;">
@@ -138,13 +140,16 @@
     </div>
 
     <div class="card">
-        <span class="card-title">REMARKS</span>
-        <textarea id="comments" rows="3" placeholder="伝達事項があれば入力"></textarea>
+        <span class="card-label"><i class="fas fa-paperclip"></i> 補足情報・画像添付</span>
+        <div class="file-input-wrapper">
+            <input type="file" id="imageFile1" accept="image/*">
+        </div>
+        <textarea id="comments" rows="3" placeholder="備考・伝達事項" style="margin-top:15px;"></textarea>
     </div>
 </div>
 
 <div class="footer">
-    <button id="sendBtn" onclick="sendOrder()">注文を確定する</button>
+    <button id="sendBtn" onclick="sendOrder()">注文を送信する</button>
 </div>
 
 <script>
@@ -168,12 +173,12 @@
     function addNewItem() {
         const container = document.getElementById('itemContainer');
         const unit = container.querySelector('.item-unit').cloneNode(true);
-        unit.innerHTML += '<a href="#" class="remove-link" onclick="this.parentElement.remove(); return false;">削除</a>';
+        unit.innerHTML += '<div class="remove-btn" onclick="this.parentElement.remove()">削除</div>';
         unit.querySelectorAll('input').forEach(i => i.value = (i.type === 'number' ? 1 : ''));
         container.appendChild(unit);
     }
 
-    // --- ロジック：自動保存とID取得 ---
+    // 起動時の処理（ID取得 ＆ 保存データ呼び出し）
     async function initLiff() {
         try {
             await liff.init({ liffId: "2008835052-zCjbE0pV" });
@@ -182,25 +187,24 @@
             } else {
                 const profile = await liff.getProfile();
                 lineUserId = profile.userId;
-                document.getElementById('userInfo').innerText = "Logged in as: " + profile.displayName;
+                document.getElementById('userInfo').innerText = "User: " + profile.displayName;
                 
-                // 【自動入力】保存されている店名などを読み込む
-                if(localStorage.getItem('savedStoreName')) {
-                    document.getElementById('storeName').value = localStorage.getItem('savedStoreName');
-                }
-                if(localStorage.getItem('savedEmail')) {
-                    document.getElementById('email').value = localStorage.getItem('savedEmail');
-                }
+                // 【超重要】保存されている店名とメールを表示
+                const savedName = localStorage.getItem('savedStoreName');
+                const savedEmail = localStorage.getItem('savedEmail');
+                if (savedName) document.getElementById('storeName').value = savedName;
+                if (savedEmail) document.getElementById('email').value = savedEmail;
             }
         } catch (e) { console.error(e); }
     }
 
+    // 送信処理
     async function sendOrder() {
         const storeName = document.getElementById('storeName').value;
         const email = document.getElementById('email').value;
         if (!storeName) { alert('店名を入力してください'); return; }
 
-        // 【保存】入力をスマホに記憶
+        // 入力をスマホに記憶する（次回のため）
         localStorage.setItem('savedStoreName', storeName);
         localStorage.setItem('savedEmail', email);
 
@@ -216,14 +220,31 @@
             if (m) items.push({ maker: m, partNo: p, quantity: q });
         });
 
+        // 画像処理
+        let fileData = null;
+        const fileInput = document.getElementById('imageFile1');
+        if (fileInput.files.length > 0) {
+            const file = fileInput.files[0];
+            const reader = new FileReader();
+            fileData = await new Promise((resolve) => {
+                reader.onload = () => resolve({
+                    base64: reader.result.split(',')[1],
+                    type: file.type,
+                    name: file.name
+                });
+                reader.readAsDataURL(file);
+            });
+        }
+
         const data = {
-            userId: lineUserId, // LINE IDを送信
+            userId: lineUserId,
             storeName: storeName,
             email: email,
             deliveryType: document.getElementById('deliveryType').value,
             desiredDate: document.getElementById('desiredDate').value,
             items: items,
-            comments: document.getElementById('comments').value
+            comments: document.getElementById('comments').value,
+            imageData: fileData
         };
 
         try {
@@ -232,19 +253,19 @@
             alert('注文が完了しました。');
             liff.closeWindow();
         } catch (e) {
-            alert('送信エラー');
+            alert('送信に失敗しました');
             btn.disabled = false;
-            btn.innerText = "注文を確定する";
+            btn.innerText = "注文を送信する";
         }
     }
 
-    // メーカー選択ロジック（以下共通）
+    // メーカーデータロジック
     const allMakers = ["あいはらぼうえき:アイハラ貿易（ポリラフィア)", "あすかしょうかい:アスカ商会", "あずわん:アズワン（試験管）", "あもろーさ:アムールデフルール", "あんこーぽれーしょん:アンコーポレーション", "あーてぃふぃしゃる:アーティフィシャル", "あおやまりぼん:青山リボン", "あさひわいやー:朝日ワイヤー", "べるで:ヴェルデ", "おおちのうえん:大地農園", "おおぐちさんぎょう:大口産業", "だいてつ:大鉄", "だいどうくらふと:大同クラフト", "いんたーりんく:インターリンク", "だいせん:大仙", "うぉるなっと:ウォルナット", "えこぜりー:エコゼリー", "えるこみゅーん:エルコミューン", "えすあーるさーびす:SRサービス(デコジャリ）", "えいちつーおー:エイチツーオー", "かめやまきゃンドる:カメヤマキャンドル", "かるなっく:カルナック", "きゅーふら:Q-FLA", "くれい:クレイ", "くりざーる:クリザール", "くれえ:クレエ", "ぐりーんはうす:グリーンハウス", "きゃびのちぇ:キャビノチェ", "ぐりーんぽっと:グリーンポット", "ぐろーばるあろー:グローバルアロー", "こあとれーでぃんぐ:コアトレーディング", "こべんとがーでん:コベントガーデン", "さかげん:坂源", "さんわとれーでぃんぐ:三和トレーディング", "しもじま:シモジマ", "しせいはんぱい:志成販売", "すみざーずおあしす:スミザーズオアシス", "とやまはもの:外山刃物", "たなかとうき:田中陶器", "だるとん:ダルトン", "でるき:デルキ", "とうきょうりぼん:東京リボン", "とうきょうかんかん:東京かんかん", "とすだいす:TOSSDICE", "だんぼーる:段ボール", "とうきょうどう:東京堂", "とーく:トーク", "どりーむふぁーむすずか:ドリームファームスズカ", "とうか:東花", "とうほうぼうえき:東方貿易", "ねいちゃーでざいんず:ネイチャーデザインズ", "ぱれすかがく:パレス化学", "ぱれ:パレ", "ぽっしゅりびんぐ:ポッシュリビング", "ふぁーむ:FARM", "はなりんくす:花Links", "ふろーネット:flonet", "ほわいえ:ホワイエ", "は花のそのくぼた:花のそのくぼた", "ふろーるえばー:フロールエバー", "ふらわーべーす:フラワーベース", "ぷらすがーでん:プラスガーデン", "ぼぶくらふと:ボブクラフト", "まつむらこうげい:松村工芸", "ほしの:星野", "まぐねっと:マグネット", "まるこうせいとう:丸滉製陶", "まるまひらのとうきてん:丸又平野陶器店", "まるわぼうえき:丸和貿易", "みゅーるみる:ミュールミル", "むらたやさんぎょう:村田屋産業", "ものいんたーなしょなる:モノ・インターナショナル", "やまてー:ヤマテー", "やーど:yard", "ゆうぜん:友膳", "よこはまでぃすぷれいみゅーじあむ:横浜ディスプレイミュージアム", "ららいわんと:ラライワント", "りぶきゅりえいと:Lib curate", "りーどしょうじ:リード商事", "わさら:WASARA", "わんだーぞーん:ワンダーゾーン", "わこうかがく:和光化学"];
     function getKanaRow(kana){ const first=kana.charAt(0); if(/[あ-お]/.test(first))return "あ"; if(/[か-こが-ご]/.test(first))return "か"; if(/[さ-そざ-ぞ]/.test(first))return "さ"; if(/[た-とだ-ど]/.test(first))return "た"; if(/[な-の]/.test(first))return "な"; if(/[は-ほば-ぼぱ-ぽ]/.test(first))return "は"; if(/[ま-も]/.test(first))return "ま"; if(/[や-よ]/.test(first))return "や"; if(/[ら-ろ]/.test(first))return "ら"; if(/[わ-ん]/.test(first))return "わ"; return "その他"; }
     function updateMakerOptions(catSelect) {
         const row = catSelect.value;
         const makerSelect = catSelect.closest('.item-unit').querySelector('.maker-select');
-        makerSelect.innerHTML = '<option value="">メーカー</option>';
+        makerSelect.innerHTML = '<option value="">メーカー選択</option>';
         if (row === "その他") { makerSelect.innerHTML = '<option value="備考に記入">備考に記入</option>'; return; }
         allMakers.filter(item => getKanaRow(item.split(':')[0]) === row).forEach(item => {
             const name = item.split(':')[1];
