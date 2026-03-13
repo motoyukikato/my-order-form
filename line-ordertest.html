@@ -3,208 +3,214 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Nagoya Kaki - Order System</title>
+    <title>Nagoya Kaki - Fresh Order</title>
     <script charset="utf-8" src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <style>
         :root {
-            /* 上品なパレット：漆黒、消炭色、シャンパンベージュ */
-            --base-black: #0f0f0f;
-            --surface-gray: #1a1a1a;
-            --border-muted: #2c2c2c;
-            --accent-beige: #c5b358; /* 落ち着いたアンティークゴールド */
-            --text-main: #e8e8e8;
-            --text-sub: #8c8c8c;
+            /* さわやかなカラーパレット */
+            --main-bg: #f8fafb;
+            --card-bg: #ffffff;
+            --accent-green: #4db6ac; /* ミント系 */
+            --accent-blue: #64b5f6; /* 空色 */
+            --text-dark: #37474f;
+            --text-light: #90a4ae;
+            --border-color: #e0e6ed;
+            --shadow: 0 4px 12px rgba(0,0,0,0.05);
         }
 
         body { 
-            font-family: "Yu Mincho", "YuMincho", "Hiragino Mincho ProN", serif; /* 繊細な明朝体 */
-            background-color: var(--base-black);
-            color: var(--text-main);
+            font-family: "Helvetica Neue", Arial, "Hiragino Kaku Gothic ProN", "Hiragino Sans", sans-serif;
+            background-color: var(--main-bg);
+            color: var(--text-dark);
             margin: 0; padding: 0;
-            line-height: 1.8;
-            letter-spacing: 0.08em;
+            line-height: 1.6;
         }
 
-        .container { max-width: 500px; margin: 0 auto; padding: 40px 20px 140px; }
+        .container { max-width: 500px; margin: 0 auto; padding: 20px 15px 120px; }
 
-        /* ロゴヘッダー */
-        .brand-header { text-align: center; margin-bottom: 50px; }
-        .brand-header h1 { 
-            font-size: 1.1rem; font-weight: 300; margin: 0; color: var(--accent-beige);
-            border-top: 1px solid var(--border-muted);
-            border-bottom: 1px solid var(--border-muted);
-            padding: 15px 0; display: inline-block; width: 100%;
+        /* ヘッダー：透過感のあるデザイン */
+        .app-header {
+            background: rgba(255,255,255,0.8);
+            backdrop-filter: blur(10px);
+            padding: 20px;
+            text-align: center;
+            border-bottom: 1px solid var(--border-color);
+            position: sticky; top: 0; z-index: 100;
         }
-
-        /* セクション共通 */
-        .section-label { 
-            font-size: 0.75rem; color: var(--accent-beige); margin-bottom: 15px; 
-            display: block; font-weight: bold; text-align: left;
-        }
-
-        /* 配送オプション：カード型ではなく、静かなリスト型に */
-        .option-group { margin-bottom: 40px; }
-        .option-row {
-            display: flex; gap: 8px; background: var(--surface-gray);
-            padding: 4px; border-radius: 4px;
-        }
-        .option-cell {
-            flex: 1; text-align: center; padding: 12px 5px;
-            font-size: 0.8rem; border-radius: 2px; cursor: pointer;
-            transition: 0.4s ease; color: var(--text-sub);
-        }
-        .option-cell.active {
-            background: var(--base-black); color: var(--accent-beige);
-            box-shadow: 0 2px 10px rgba(0,0,0,0.5);
+        .app-header h1 { 
+            font-size: 1.1rem; margin: 0; color: var(--accent-green); 
+            letter-spacing: 0.1em; font-weight: bold;
         }
 
-        /* 入力フォーム：境界線を目立たせず、アンダーライン中心に */
-        .input-box { background: var(--surface-gray); padding: 25px; border-radius: 4px; margin-bottom: 30px; }
+        /* 配送オプション：軽やかなタブ形式 */
+        .delivery-selection {
+            display: flex; background: #eee; padding: 4px;
+            border-radius: 50px; margin: 25px 0;
+        }
+        .delivery-tab {
+            flex: 1; text-align: center; padding: 10px;
+            font-size: 0.85rem; border-radius: 50px; cursor: pointer;
+            transition: 0.3s; color: var(--text-light);
+        }
+        .delivery-tab.active {
+            background: #fff; color: var(--accent-green);
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            font-weight: bold;
+        }
+
+        /* セクションカード */
+        .card {
+            background: var(--card-bg);
+            border-radius: 16px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: var(--shadow);
+            border: 1px solid var(--border-color);
+        }
+
+        .label-group { font-size: 0.75rem; color: var(--accent-green); font-weight: bold; margin-bottom: 15px; display: block; }
+
+        /* 入力エリア */
         input[type="date"], input[type="text"], input[type="email"], select, textarea {
-            width: 100%; background: transparent; border: none; 
-            border-bottom: 1px solid var(--border-muted); padding: 10px 0;
-            color: white; font-size: 0.95rem; box-sizing: border-box; outline: none;
-            font-family: sans-serif; /* 入力文字は読みやすさ優先 */
+            width: 100%; border: 1px solid var(--border-color);
+            padding: 12px; border-radius: 8px; font-size: 1rem;
+            box-sizing: border-box; outline: none; transition: 0.3s;
+            background: #fdfdfd; color: var(--text-dark);
         }
-        input:focus { border-bottom: 1px solid var(--accent-beige); }
+        input:focus { border-color: var(--accent-blue); background: #fff; }
 
         /* 商品項目 */
-        .item-card { 
-            border-bottom: 1px solid var(--border-muted); padding: 25px 0; 
-            position: relative; animation: fadeIn 0.5s ease;
+        .item-row { 
+            padding: 15px 0; border-bottom: 1px solid #f0f4f8; position: relative;
         }
-        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-
-        .remove-btn { 
-            position: absolute; right: 0; top: 25px; font-size: 0.7rem;
-            background: none; border: 1px solid #444; color: #666; padding: 2px 8px; cursor: pointer;
+        .item-row:last-child { border-bottom: none; }
+        
+        .remove-icon {
+            position: absolute; right: 0; top: 15px;
+            color: #ffab91; font-size: 0.8rem; cursor: pointer;
         }
 
         /* ボタン */
-        .add-btn {
-            width: 100%; padding: 15px; background: transparent; 
-            border: 1px solid var(--border-muted); color: var(--text-sub);
-            font-size: 0.8rem; cursor: pointer; margin-top: 20px;
+        .btn-add {
+            width: 100%; padding: 12px; background: none;
+            border: 1px dashed var(--accent-blue); color: var(--accent-blue);
+            border-radius: 8px; font-weight: bold; cursor: pointer; margin-top: 10px;
         }
-        .add-btn:hover { border-color: var(--accent-beige); color: var(--accent-beige); }
 
-        /* 固定フッターボタン：派手なグラデーションをやめ、ソリッドなベージュに */
-        .footer { 
-            position: fixed; bottom: 0; left: 0; right: 0; padding: 30px 20px;
-            background: rgba(15, 15, 15, 0.95); border-top: 1px solid var(--border-muted);
-            backdrop-filter: blur(10px);
+        /* フッター送信エリア */
+        .footer-fixed {
+            position: fixed; bottom: 0; left: 0; right: 0;
+            padding: 20px; background: rgba(255,255,255,0.9);
+            border-top: 1px solid var(--border-color); backdrop-filter: blur(10px);
         }
         #sendBtn {
-            width: 100%; max-width: 400px; margin: 0 auto; display: block;
-            padding: 18px; background: var(--accent-beige); color: #000;
-            border: none; border-radius: 2px; font-size: 0.95rem; 
-            font-weight: bold; cursor: pointer; letter-spacing: 0.2em;
+            width: 100%; padding: 16px; 
+            background: linear-gradient(135deg, var(--accent-green), var(--accent-blue));
+            color: white; border: none; border-radius: 30px;
+            font-size: 1rem; font-weight: bold; cursor: pointer;
+            box-shadow: 0 4px 15px rgba(77, 182, 172, 0.3);
         }
+        #sendBtn:active { transform: scale(0.98); }
 
-        .small-note { font-size: 0.7rem; color: var(--text-sub); margin-top: 10px; text-align: center; }
+        .note { font-size: 0.7rem; color: var(--text-light); margin-top: 8px; text-align: center; }
     </style>
 </head>
 <body>
 
-<div class="container">
-    <div class="brand-header">
-        <h1>NAGOYA KAKI ORDER</h1>
-    </div>
-
-    <div class="option-group">
-        <span class="section-label">DELIVERY OPTION</span>
-        <div class="option-row">
-            <div class="option-cell active" id="opt-fast" onclick="selectDelivery('fast')">
-                運賃かけて早く
-            </div>
-            <div class="option-cell" id="opt-normal" onclick="selectDelivery('normal')">
-                注文時に同梱
-            </div>
-        </div>
-        <input type="hidden" id="deliveryType" value="運賃かけて早くほしい">
-    </div>
-
-    <div class="input-box">
-        <span class="section-label">REQUESTED DATE</span>
-        <input type="date" id="desiredDate">
-        <p class="small-note">※送料が発生する場合がございます</p>
-
-        <span class="section-label" style="margin-top:40px;">STORE INFORMATION</span>
-        <input type="text" id="storeName" placeholder="貴店名（必須）">
-        <input type="email" id="email" placeholder="メールアドレス" style="margin-top:15px;">
-    </div>
-
-    <span class="section-label">ORDER LIST</span>
-    <div id="itemContainer">
-        <div class="item-card">
-            <div style="display:flex; gap:20px;">
-                <div style="flex:1">
-                    <span class="section-label" style="font-size:0.6rem;">行</span>
-                    <select class="category-select" onchange="updateMakerOptions(this)">
-                        <option value="">▼</option>
-                        <option value="あ">あ</option><option value="か">か</option><option value="さ">さ</option>
-                        <option value="た">た</option><option value="な">な</option><option value="は">は</option>
-                        <option value="ま">ま</option><option value="や">や</option><option value="ら">ら</option>
-                        <option value="わ">わ</option><option value="その他">他</option>
-                    </select>
-                </div>
-                <div style="flex:2">
-                    <span class="section-label" style="font-size:0.6rem;">メーカー</span>
-                    <select class="maker-select"><option value="">-</option></select>
-                </div>
-            </div>
-            <div style="display:flex; gap:20px; margin-top:15px;">
-                <div style="flex:2">
-                    <span class="section-label" style="font-size:0.6rem;">品番</span>
-                    <input type="text" class="partNo-input">
-                </div>
-                <div style="flex:1">
-                    <span class="section-label" style="font-size:0.6rem;">数量</span>
-                    <input type="number" class="quantity-input" value="1" min="1">
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <button class="add-btn" onclick="addNewItem()">+ 追加</button>
-
-    <div class="input-box" style="margin-top:50px;">
-        <span class="section-label">REMARKS</span>
-        <textarea id="comments" rows="3" placeholder="ご要望などございましたらご記入ください"></textarea>
-    </div>
+<div class="app-header">
+    <h1><i class="fas fa-leaf"></i> NAGOYA KAKI ORDER</h1>
 </div>
 
-<div class="footer">
-    <button id="sendBtn" onclick="sendOrder()">SEND ORDER</button>
+<div class="container">
+    
+    <div class="delivery-selection">
+        <div class="delivery-tab active" id="tab-fast" onclick="updateDelivery('fast')">
+            運賃かけて早く
+        </div>
+        <div class="delivery-tab" id="tab-normal" onclick="updateDelivery('normal')">
+            注文時に同梱
+        </div>
+    </div>
+    <input type="hidden" id="deliveryType" value="運賃かけて早くほしい">
+
+    <div class="card">
+        <span class="label-group"><i class="far fa-calendar-check"></i> 希望の渡し日</span>
+        <input type="date" id="desiredDate">
+        <p class="note">※別途、送料が発生する場合がございます。</p>
+
+        <span class="label-group" style="margin-top:25px;"><i class="far fa-user"></i> お取引先情報</span>
+        <input type="text" id="storeName" placeholder="店名（必須）" style="margin-bottom:12px;">
+        <input type="email" id="email" placeholder="メールアドレス（控え送付先）">
+    </div>
+
+    <div class="card">
+        <span class="label-group"><i class="fas fa-shopping-cart"></i> 注文内容</span>
+        <div id="itemContainer">
+            <div class="item-row">
+                <div style="display:flex; gap:10px; margin-bottom:10px;">
+                    <div style="flex:1">
+                        <select class="category-select" onchange="updateMakerOptions(this)">
+                            <option value="">行</option>
+                            <option value="あ">あ</option><option value="か">か</option><option value="さ">さ</option>
+                            <option value="た">た</option><option value="な">な</option><option value="は">は</option>
+                            <option value="ま">ま</option><option value="や">や</option><option value="ら">ら</option>
+                            <option value="わ">わ</option><option value="その他">他</option>
+                        </select>
+                    </div>
+                    <div style="flex:2">
+                        <select class="maker-select"><option value="">メーカー選択</option></select>
+                    </div>
+                </div>
+                <div style="display:flex; gap:10px;">
+                    <div style="flex:2">
+                        <input type="text" class="partNo-input" placeholder="品番">
+                    </div>
+                    <div style="flex:1">
+                        <input type="number" class="quantity-input" value="1" min="1">
+                    </div>
+                </div>
+            </div>
+        </div>
+        <button class="btn-add" onclick="addNewItem()"><i class="fas fa-plus"></i> 商品を追加</button>
+    </div>
+
+    <div class="card">
+        <span class="label-group"><i class="far fa-comment-dots"></i> 備考・伝達事項</span>
+        <textarea id="comments" rows="3" placeholder="ご要望があればこちらへ"></textarea>
+    </div>
+
+</div>
+
+<div class="footer-fixed">
+    <button id="sendBtn" onclick="sendOrder()">注文を確定する</button>
 </div>
 
 <script>
-    // 配送オプション
-    function selectDelivery(type) {
-        const f = document.getElementById('opt-fast');
-        const n = document.getElementById('opt-normal');
+    function updateDelivery(type) {
+        const fast = document.getElementById('tab-fast');
+        const normal = document.getElementById('tab-normal');
         const input = document.getElementById('deliveryType');
         
-        if (type === 'fast') {
-            f.classList.add('active'); n.classList.remove('active');
+        if(type === 'fast') {
+            fast.classList.add('active'); normal.classList.remove('active');
             input.value = "運賃かけて早くほしい";
         } else {
-            n.classList.add('active'); f.classList.remove('active');
+            normal.classList.add('active'); fast.classList.remove('active');
             input.value = "注文するタイミングで入れてほしい";
         }
     }
 
-    // 商品追加
     function addNewItem() {
         const container = document.getElementById('itemContainer');
-        const firstCard = container.querySelector('.item-card');
-        const newCard = firstCard.cloneNode(true);
-        newCard.innerHTML += '<button class="remove-btn" onclick="this.parentElement.remove()">REMOVE</button>';
-        newCard.querySelectorAll('input').forEach(i => i.value = (i.type === 'number' ? 1 : ''));
-        container.appendChild(newCard);
+        const firstRow = container.querySelector('.item-row');
+        const newRow = firstRow.cloneNode(true);
+        newRow.innerHTML += '<div class="remove-icon" onclick="this.parentElement.remove()"><i class="fas fa-times-circle"></i></div>';
+        newRow.querySelectorAll('input').forEach(i => i.value = (i.type === 'number' ? 1 : ''));
+        container.appendChild(newRow);
     }
 
-    // メーカー更新などのロジック（機能維持）
+    // --- ロジック部分は機能維持 ---
     const allMakers = ["あいはらぼうえき:アイハラ貿易（ポリラフィア)", "あすかしょうかい:アスカ商会", "あずわん:アズワン（試験管）", "あもろーさ:アムールデフルール", "あんこーぽれーしょん:アンコーポレーション", "あーてぃふぃしゃる:アーティフィシャル", "あおやまりぼん:青山リボン", "あさひわいやー:朝日ワイヤー", "べるで:ヴェルデ", "おおちのうえん:大地農園", "おおぐちさんぎょう:大口産業", "だいてつ:大鉄", "だいどうくらふと:大同クラフト", "いんたーりんく:インターリンク", "だいせん:大仙", "うぉるなっと:ウォルナット", "えこぜりー:エコゼリー", "えるこみゅーん:エルコミューン", "えすあーるさーびす:SRサービス(デコジャリ）", "えいちつーおー:エイチツーオー", "かめやまきゃンドる:カメヤマキャンドル", "かるなっく:カルナック", "きゅーふら:Q-FLA", "くれい:クレイ", "くりざーる:クリザール", "くれえ:クレエ", "ぐりーんはうす:グリーンハウス", "きゃびのちぇ:キャビノチェ", "ぐりーんぽっと:グリーンポット", "ぐろーばるあろー:グローバルアロー", "こあとれーでぃんぐ:コアトレーディング", "こべんとがーでん:コベントガーデン", "さかげん:坂源", "さんわとれーでぃんぐ:三和トレーディング", "しもじま:シモジマ", "しせいはんぱい:志成販売", "すみざーずおあしす:スミザーズオアシス", "とやまはもの:外山刃物", "たなかとうき:田中陶器", "だるとん:ダルトン", "でるき:デルキ", "とうきょうりぼん:東京リボン", "とうきょうかんかん:東京かんかん", "とすだいす:TOSSDICE", "だんぼーる:段ボール", "とうきょうどう:東京堂", "とーく:トーク", "どりーむふぁーむすずか:ドリームファームスズカ", "とうか:東花", "とうほうぼうえき:東方貿易", "ねいちゃーでざいんず:ネイチャーデザインズ", "ぱれすかがく:パレス化学", "ぱれ:パレ", "ぽっしゅりびんぐ:ポッシュリビング", "ふぁーむ:FARM", "はなりんくす:花Links", "ふろーネット:flonet", "ほわいえ:ホワイエ", "は花のそのくぼた:花のそのくぼた", "ふろーるえばー:フロールエバー", "ふらわーべーす:フラワーベース", "ぷらすがーでん:プラスガーデン", "ぼぶくらふと:ボブクラフト", "まつむらこうげい:松村工芸", "ほしの:星野", "まぐねっと:マグネット", "まるこうせいとう:丸滉製陶", "まるまひらのとうきてん:丸又平野陶器店", "まるわぼうえき:丸和貿易", "みゅーるみる:ミュールミル", "むらたやさんぎょう:村田屋産業", "ものいんたーなしょなる:モノ・インターナショナル", "やまてー:ヤマテー", "やーど:yard", "ゆうぜん:友膳", "よこはまでぃすぷれいみゅーじあむ:横浜ディスプレイミュージアム", "ららいわんと:ラライワント", "りぶきゅりえいと:Lib curate", "りーどしょうじ:リード商事", "わさら:WASARA", "わんだーぞーん:ワンダーゾーン", "わこうかがく:和光化学"];
 
     function getKanaRow(kana) {
@@ -224,8 +230,8 @@
 
     function updateMakerOptions(catSelect) {
         const row = catSelect.value;
-        const makerSelect = catSelect.closest('.item-card').querySelector('.maker-select');
-        makerSelect.innerHTML = '<option value="">-</option>';
+        const makerSelect = catSelect.closest('.item-row').querySelector('.maker-select');
+        makerSelect.innerHTML = '<option value="">メーカー選択</option>';
         if (row === "その他") { makerSelect.innerHTML = '<option value="備考に記入">備考に記入</option>'; return; }
         allMakers.filter(item => getKanaRow(item.split(':')[0]) === row).forEach(item => {
             const name = item.split(':')[1];
@@ -241,13 +247,13 @@
         
         const btn = document.getElementById('sendBtn');
         btn.disabled = true;
-        btn.innerText = "...SENDING";
+        btn.innerText = "送信中...";
 
         const items = [];
-        document.querySelectorAll('.item-card').forEach(card => {
-            const m = card.querySelector('.maker-select').value;
-            const p = card.querySelector('.partNo-input').value;
-            const q = card.querySelector('.quantity-input').value;
+        document.querySelectorAll('.item-row').forEach(row => {
+            const m = row.querySelector('.maker-select').value;
+            const p = row.querySelector('.partNo-input').value;
+            const q = row.querySelector('.quantity-input').value;
             if (m) items.push({ maker: m, partNo: p, quantity: q });
         });
 
@@ -263,12 +269,12 @@
         try {
             const gasUrl = "https://script.google.com/macros/s/AKfycbyDMUsoLiBW26V0m6BBq7S5rIlhaCQXOPdG_2__V9E9aoFqyWEZikDuEE1K0Gc8r6d-/exec";
             await fetch(gasUrl, { method: 'POST', headers: {'Content-Type': 'text/plain'}, body: JSON.stringify(data) });
-            alert('オーダーを承りました。');
+            alert('送信完了しました。');
             liff.closeWindow();
         } catch (e) {
-            alert('エラーが発生しました');
+            alert('送信エラー');
             btn.disabled = false;
-            btn.innerText = "SEND ORDER";
+            btn.innerText = "注文を確定する";
         }
     }
 
