@@ -68,10 +68,16 @@
             border: none; border-radius: 8px; font-weight: bold; cursor: pointer; margin-top: 10px;
         }
 
-        /* 添付ファイル */
-        .file-input-wrapper {
-            margin-top: 10px; font-size: 0.9rem;
+        /* 添付ファイルエリア */
+        .file-section {
+            display: flex; flex-direction: column; gap: 10px; margin-top: 10px;
         }
+        .file-row {
+            display: flex; align-items: center; gap: 10px;
+            background: #f8fafc; padding: 8px; border-radius: 8px; border: 1px solid var(--border);
+        }
+        .file-row span { font-size: 0.7rem; color: var(--text-sub); flex: 1; }
+        input[type="file"] { font-size: 0.75rem; color: var(--text-sub); max-width: 180px; }
 
         /* フッター */
         .footer {
@@ -140,9 +146,16 @@
     </div>
 
     <div class="card">
-        <span class="card-label"><i class="fas fa-paperclip"></i> 補足情報・画像添付</span>
-        <div class="file-input-wrapper">
-            <input type="file" id="imageFile1" accept="image/*">
+        <span class="card-label"><i class="fas fa-paperclip"></i> 画像添付（最大2枚）</span>
+        <div class="file-section">
+            <div class="file-row">
+                <span>画像1:</span>
+                <input type="file" id="imageFile1" accept="image/*">
+            </div>
+            <div class="file-row">
+                <span>画像2:</span>
+                <input type="file" id="imageFile2" accept="image/*">
+            </div>
         </div>
         <textarea id="comments" rows="3" placeholder="備考・伝達事項" style="margin-top:15px;"></textarea>
     </div>
@@ -155,7 +168,6 @@
 <script>
     let lineUserId = "";
 
-    // 配送切替
     function setDelivery(val) {
         const f = document.getElementById('type-fast');
         const n = document.getElementById('type-normal');
@@ -169,7 +181,6 @@
         }
     }
 
-    // 商品追加
     function addNewItem() {
         const container = document.getElementById('itemContainer');
         const unit = container.querySelector('.item-unit').cloneNode(true);
@@ -178,7 +189,6 @@
         container.appendChild(unit);
     }
 
-    // 起動時の処理（ID取得 ＆ 保存データ呼び出し）
     async function initLiff() {
         try {
             await liff.init({ liffId: "2008835052-zCjbE0pV" });
@@ -189,7 +199,7 @@
                 lineUserId = profile.userId;
                 document.getElementById('userInfo').innerText = "User: " + profile.displayName;
                 
-                // 【超重要】保存されている店名とメールを表示
+                // 自動入力（ローカルストレージから読み込み）
                 const savedName = localStorage.getItem('savedStoreName');
                 const savedEmail = localStorage.getItem('savedEmail');
                 if (savedName) document.getElementById('storeName').value = savedName;
@@ -198,13 +208,27 @@
         } catch (e) { console.error(e); }
     }
 
-    // 送信処理
+    async function getFileData(id) {
+        const fileInput = document.getElementById(id);
+        if (fileInput.files.length === 0) return null;
+        const file = fileInput.files[0];
+        const reader = new FileReader();
+        return new Promise((resolve) => {
+            reader.onload = () => resolve({
+                base64: reader.result.split(',')[1],
+                type: file.type,
+                name: file.name
+            });
+            reader.readAsDataURL(file);
+        });
+    }
+
     async function sendOrder() {
         const storeName = document.getElementById('storeName').value;
         const email = document.getElementById('email').value;
         if (!storeName) { alert('店名を入力してください'); return; }
 
-        // 入力をスマホに記憶する（次回のため）
+        // 入力を記憶
         localStorage.setItem('savedStoreName', storeName);
         localStorage.setItem('savedEmail', email);
 
@@ -220,21 +244,9 @@
             if (m) items.push({ maker: m, partNo: p, quantity: q });
         });
 
-        // 画像処理
-        let fileData = null;
-        const fileInput = document.getElementById('imageFile1');
-        if (fileInput.files.length > 0) {
-            const file = fileInput.files[0];
-            const reader = new FileReader();
-            fileData = await new Promise((resolve) => {
-                reader.onload = () => resolve({
-                    base64: reader.result.split(',')[1],
-                    type: file.type,
-                    name: file.name
-                });
-                reader.readAsDataURL(file);
-            });
-        }
+        // 2つの画像データを取得
+        const image1 = await getFileData('imageFile1');
+        const image2 = await getFileData('imageFile2');
 
         const data = {
             userId: lineUserId,
@@ -244,7 +256,8 @@
             desiredDate: document.getElementById('desiredDate').value,
             items: items,
             comments: document.getElementById('comments').value,
-            imageData: fileData
+            imageData1: image1,
+            imageData2: image2
         };
 
         try {
@@ -259,7 +272,7 @@
         }
     }
 
-    // メーカーデータロジック
+    // メーカー選択ロジック
     const allMakers = ["あいはらぼうえき:アイハラ貿易（ポリラフィア)", "あすかしょうかい:アスカ商会", "あずわん:アズワン（試験管）", "あもろーさ:アムールデフルール", "あんこーぽれーしょん:アンコーポレーション", "あーてぃふぃしゃる:アーティフィシャル", "あおやまりぼん:青山リボン", "あさひわいやー:朝日ワイヤー", "べるで:ヴェルデ", "おおちのうえん:大地農園", "おおぐちさんぎょう:大口産業", "だいてつ:大鉄", "だいどうくらふと:大同クラフト", "いんたーりんく:インターリンク", "だいせん:大仙", "うぉるなっと:ウォルナット", "えこぜりー:エコゼリー", "えるこみゅーん:エルコミューン", "えすあーるさーびす:SRサービス(デコジャリ）", "えいちつーおー:エイチツーオー", "かめやまきゃンドる:カメヤマキャンドル", "かるなっく:カルナック", "きゅーふら:Q-FLA", "くれい:クレイ", "くりざーる:クリザール", "くれえ:クレエ", "ぐりーんはうす:グリーンハウス", "きゃびのちぇ:キャビノチェ", "ぐりーんぽっと:グリーンポット", "ぐろーばるあろー:グローバルアロー", "こあとれーでぃんぐ:コアトレーディング", "こべんとがーでん:コベントガーデン", "さかげん:坂源", "さんわとれーでぃんぐ:三和トレーディング", "しもじま:シモジマ", "しせいはんぱい:志成販売", "すみざーずおあしす:スミザーズオアシス", "とやまはもの:外山刃物", "たなかとうき:田中陶器", "だるとん:ダルトン", "でるき:デルキ", "とうきょうりぼん:東京リボン", "とうきょうかんかん:東京かんかん", "とすだいす:TOSSDICE", "だんぼーる:段ボール", "とうきょうどう:東京堂", "とーく:トーク", "どりーむふぁーむすずか:ドリームファームスズカ", "とうか:東花", "とうほうぼうえき:東方貿易", "ねいちゃーでざいんず:ネイチャーデザインズ", "ぱれすかがく:パレス化学", "ぱれ:パレ", "ぽっしゅりびんぐ:ポッシュリビング", "ふぁーむ:FARM", "はなりんくす:花Links", "ふろーネット:flonet", "ほわいえ:ホワイエ", "は花のそのくぼた:花のそのくぼた", "ふろーるえばー:フロールエバー", "ふらわーべーす:フラワーベース", "ぷらすがーでん:プラスガーデン", "ぼぶくらふと:ボブクラフト", "まつむらこうげい:松村工芸", "ほしの:星野", "まぐねっと:マグネット", "まるこうせいとう:丸滉製陶", "まるまひらのとうきてん:丸又平野陶器店", "まるわぼうえき:丸和貿易", "みゅーるみる:ミュールミル", "むらたやさんぎょう:村田屋産業", "ものいんたーなしょなる:モノ・インターナショナル", "やまてー:ヤマテー", "やーど:yard", "ゆうぜん:友膳", "よこはまでぃすぷれいみゅーじあむ:横浜ディスプレイミュージアム", "ららいわんと:ラライワント", "りぶきゅりえいと:Lib curate", "りーどしょうじ:リード商事", "わさら:WASARA", "わんだーぞーん:ワンダーゾーン", "わこうかがく:和光化学"];
     function getKanaRow(kana){ const first=kana.charAt(0); if(/[あ-お]/.test(first))return "あ"; if(/[か-こが-ご]/.test(first))return "か"; if(/[さ-そざ-ぞ]/.test(first))return "さ"; if(/[た-とだ-ど]/.test(first))return "た"; if(/[な-の]/.test(first))return "な"; if(/[は-ほば-ぼぱ-ぽ]/.test(first))return "は"; if(/[ま-も]/.test(first))return "ま"; if(/[や-よ]/.test(first))return "や"; if(/[ら-ろ]/.test(first))return "ら"; if(/[わ-ん]/.test(first))return "わ"; return "その他"; }
     function updateMakerOptions(catSelect) {
