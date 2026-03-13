@@ -250,7 +250,7 @@
         btn.disabled = false; btn.innerText = "注文確定・送信";
     }
 
-    async function loadHistory() {
+  async function loadHistory() {
         const list = document.getElementById("h-list");
         list.innerHTML = "読込中...";
         try {
@@ -258,9 +258,12 @@
             const data = await res.json();
             list.innerHTML = data.map(item => `
                 <div class="card" style="padding: 15px; border-left: 5px solid #4267B2; margin-bottom: 10px;">
-                    <div style="display: flex; justify-content: space-between;">
+                    <div style="display: flex; justify-content: space-between; align-items: flex-start;">
                         <div style="flex: 1;">
                             <span class="status-badge">${item.maker}</span>
+                            <div style="font-size: 0.9em; font-weight: bold; color: #3b5998; margin-top: 5px;">
+                                <i class="fas fa-user"></i> ${item.customerName || '不明'} 様
+                            </div>
                             <div style="font-size: 1.1em; font-weight: bold; margin-top: 5px;">${item.partNo}</div>
                             <div style="font-size: 0.9em; color: #666;">${item.name}</div>
                             <div style="display: flex; align-items: center; margin-top: 10px;">
