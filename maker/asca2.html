@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>商事本部立売注文システム</title>
+    <title>商事本部立ち売り受注システム</title>
     <script src="https://unpkg.com/html5-qrcode"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
@@ -28,12 +28,12 @@
         .numpad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
         .numpad button { padding: 15px; font-size: 1.5em; border: 1px solid #ddd; border-radius: 8px; background: #f9f9f9; }
         .del-btn { color: #d9534f; text-decoration: underline; font-size: 0.9em; cursor: pointer; margin-left:10px; }
-        .edit-btn { color: #3b5998; text-decoration: underline; font-size: 0.9em; cursor: pointer; }
+        .status-badge { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 0.75em; background: #e9ecef; }
     </style>
 </head>
 <body>
 
-<header>見本市注文システム</header>
+<header>商事本部立ち売り受注システム</header>
 
 <div id="qty-modal">
     <div class="modal-content">
@@ -63,10 +63,16 @@
             <small id="r-email" style="color:#666;"></small>
         </div>
     </div>
-    <div style="display: flex; gap: 10px; margin-bottom:15px;">
+
+    <div style="display: flex; gap: 10px; margin-bottom:10px;">
         <button class="btn-main" style="background:#28a745; flex: 2;" onclick="startCamera('customer')"><i class="fas fa-qrcode"></i> 顧客スキャン</button>
         <button class="btn-main" style="background:#6c757d; flex: 1;" onclick="inputTel()">手入力</button>
     </div>
+
+    <div id="product-input-area" style="display:none; margin-bottom:15px;">
+        <button class="btn-main" style="background:#3b5998;" onclick="inputPartNo()"><i class="fas fa-keyboard"></i> 品番・JANを手入力</button>
+    </div>
+
     <div id="cart-area" style="display:none;">
         <div id="cart-list" class="card"></div>
         <div class="total-box">合計: ¥<span id="cart-total">0</span></div>
@@ -99,6 +105,7 @@
     const GAS_URL = "https://script.google.com/macros/s/AKfycbxEzZM2hqxpwRiDsmR4jDi6RUeJHO0Ke4OaoZK0u6x3p7lIqWdUsvHvyXSVPRISjFkJow/exec";
     let html5QrCode = null, customer = null, cart = [], tempProduct = null, editTarget = null;
 
+    // 数値入力（テンキー）
     function numIn(n) {
         let v = document.getElementById("qty-val");
         if(n==='C') v.innerText = "1";
@@ -109,7 +116,7 @@
     function openQtyModal(p, isEdit = false) {
         tempProduct = p; editTarget = isEdit ? p : null;
         document.getElementById("modal-p-name").innerText = p.name;
-        document.getElementById("qty-val").innerText = isEdit ? p.qty : "1";
+        document.getElementById("qty-val").innerText = isEdit ? (p.qty || p.quantity) : "1";
         document.getElementById("qty-modal").style.display = "flex";
     }
 
@@ -126,88 +133,43 @@
         closeQtyModal();
     }
 
-  async function startCamera(mode) {
-    if (mode === 'product' && !customer) { alert("顧客を選択してください"); return; }
-    
-    showPage('scanner-page');
-    
-    // 1. 以前のインスタンスが残っていれば停止・リセット
-    if (html5QrCode && html5QrCode.isScanning) {
-        try {
-            await html5QrCode.stop();
-        } catch (e) {
-            console.log("Stop handled");
+    // カメラ制御
+    async function startCamera(mode) {
+        if (mode === 'product' && !customer) { alert("顧客を選択してください"); return; }
+        showPage('scanner-page');
+        if (html5QrCode && html5QrCode.isScanning) {
+            try { await html5QrCode.stop(); } catch (e) {}
         }
-    }
-    
-    // インスタンスの生成（毎回新しく作ることでエラーを防止）
-    html5QrCode = new Html5Qrcode("reader");
-
-    const config = { 
-    fps: 25, 
-    qrbox: { width: 320, height: 120 }, // さらに平べったい枠にして横長バーコードを狙いやすく
-    aspectRatio: 1.0
-};
-
-    try {
-        // 2. カメラを起動。成功してからズームの設定へ進む
-        await html5QrCode.start(
-            { facingMode: "environment" }, 
-            config, 
-            (text) => {
-                // 読み取り成功時の処理
+        html5QrCode = new Html5Qrcode("reader");
+        const config = { fps: 25, qrbox: { width: 320, height: 120 }, aspectRatio: 1.0 };
+        try {
+            await html5QrCode.start({ facingMode: "environment" }, config, (text) => {
                 html5QrCode.stop().then(() => {
                     showPage('home');
                     if (mode === 'customer') fetchCustomer(text.trim());
                     else fetchProduct(text.trim());
                 });
-            }
-        );
-
-        // 3. カメラが正常に起動した「後」でズーム機能をチェック（重要！）
-        setTimeout(() => {
-            try {
-                // html5QrCodeの状態を確認してから実行
-                const scannerVideo = document.querySelector("#reader video");
-                if (!scannerVideo) return;
-
-                const track = html5QrCode.getRunningTrack();
-                if (!track) return; // トラックが取得できなければ終了
-
-                const capabilities = track.getCapabilities();
-                const slider = document.getElementById("zoom-slider");
-
-                if (capabilities.zoom) {
-                    slider.style.display = "block";
-                    slider.min = capabilities.zoom.min;
-                    slider.max = capabilities.zoom.max;
-                    slider.step = capabilities.zoom.step;
-                    
-                    // 初期値を少しズームさせる（ピントが合いやすくなる）
-                    const defaultZoom = capabilities.zoom.min + (capabilities.zoom.max - capabilities.zoom.min) * 0.1;
-                    slider.value = defaultZoom;
-                    track.applyConstraints({advanced: [{zoom: parseFloat(slider.value)}]});
-
-                    slider.oninput = () => {
-                        track.applyConstraints({advanced: [{zoom: parseFloat(slider.value)}]});
-                    };
-                } else {
-                    slider.style.display = "none";
-                }
-            } catch (zoomErr) {
-                // ズーム設定でエラーが出てもカメラ自体は止めない
-                console.warn("Zoom not supported: ", zoomErr);
-                document.getElementById("zoom-slider").style.display = "none";
-            }
-        }, 800); // カメラ起動完了まで少し待機
-
-    } catch (err) {
-        alert("カメラの起動に失敗しました。ページを再読み込みしてください。\n詳細: " + err);
-        showPage('home');
+            });
+            setTimeout(() => {
+                try {
+                    const track = html5QrCode.getRunningTrack();
+                    const capabilities = track.getCapabilities();
+                    const slider = document.getElementById("zoom-slider");
+                    if (capabilities && capabilities.zoom) {
+                        slider.style.display = "block";
+                        slider.min = capabilities.zoom.min;
+                        slider.max = capabilities.zoom.max;
+                        slider.step = capabilities.zoom.step;
+                        slider.oninput = () => track.applyConstraints({advanced: [{zoom: parseFloat(slider.value)}]});
+                    }
+                } catch (e) {}
+            }, 800);
+        } catch (err) { alert("カメラ起動失敗"); showPage('home'); }
     }
-}
+
     function stopCamera() { if (html5QrCode && html5QrCode.isScanning) html5QrCode.stop(); showPage('home'); }
 
+    // 顧客検索
     async function fetchCustomer(val) {
         const res = await fetch(GAS_URL, { method: "POST", body: JSON.stringify({ action: "customerSearch", val: val }) });
         const d = await res.json();
@@ -221,22 +183,31 @@
             document.getElementById("c-none").style.display = "none";
             document.getElementById("c-detail").style.display = "block";
             document.getElementById("cart-area").style.display = "block";
-        } else { alert("未登録"); }
+            document.getElementById("product-input-area").style.display = "block"; // 手入力ボタンを表示
+        } else { alert("未登録の顧客です"); }
     }
 
-    async function fetchProduct(code) {
-    const res = await fetch(GAS_URL, { method: "POST", body: JSON.stringify({ action: "productSearch", val: code }) });
-    const p = await res.json();
-    if (p && p.name) {
-        // JAN, ロット, 在庫状況のバックアップ
-        p.jan = p.jan || code;
-        p.lot = p.lot || "1";
-        p.stock = p.stock || "不明";
-        openQtyModal(p);
-    } else {
-        alert("商品未登録: " + code);
+    // ★追加: 品番手入力用
+    function inputPartNo() {
+        if (!customer) { alert("顧客を選択してください"); return; }
+        const code = prompt("品番またはJANコードを入力してください");
+        if (code) fetchProduct(code.trim());
     }
-}
+
+    // 商品検索
+    async function fetchProduct(code) {
+        const res = await fetch(GAS_URL, { method: "POST", body: JSON.stringify({ action: "productSearch", val: code }) });
+        const p = await res.json();
+        if (p && p.name) {
+            p.jan = p.jan || code;
+            p.lot = p.lot || "1";
+            p.stock = p.stock || "不明";
+            openQtyModal(p);
+        } else {
+            alert("商品が見つかりません: " + code);
+        }
+    }
+
     function renderCart() {
         const list = document.getElementById("cart-list");
         let total = 0;
@@ -264,6 +235,7 @@
             document.getElementById("c-none").style.display = "block";
             document.getElementById("c-detail").style.display = "none";
             document.getElementById("cart-area").style.display = "none";
+            document.getElementById("product-input-area").style.display = "none";
             showPage('home');
         } catch(e) { alert("送信エラー"); }
         btn.disabled = false; btn.innerText = "注文確定・送信";
@@ -272,74 +244,41 @@
     async function loadHistory() {
         const list = document.getElementById("h-list");
         list.innerHTML = "読込中...";
-        const res = await fetch(GAS_URL, { method: "POST", body: JSON.stringify({ action: "getOrderHistory" }) });
-        const data = await res.json();
-    list.innerHTML = data.map(item => `
-    <div class="card" style="padding: 15px; border-left: 5px solid #4267B2; margin-bottom: 10px;">
-        <div style="display: flex; justify-content: space-between; align-items: flex-start;">
-            <div style="flex: 1;">
-                <span class="status-badge">${item.maker}</span>
-                <span class="status-badge" style="background:#fff3cd;">${item.stock || '通常'}</span>
-                
-                <div style="font-size: 1.2em; font-weight: bold; color: #000; margin-top: 5px;">
-                    ${item.partNo || '品番なし'}
-                </div>
-                
-                <div style="font-size: 0.9em; color: #666; margin-bottom: 8px;">
-                    ${item.name}
-                </div>
-                
-                <div style="font-size: 0.85em; color: #444;">
-                    単価: ¥${Number(item.price).toLocaleString()}
-                </div>
-
-                <div style="display: flex; align-items: center; margin-top: 10px; background: #f1f3f5; border-radius: 8px; width: fit-content; padding: 2px;">
-                    <button onclick="changeQty('${item.timestamp}', '${item.maker}', ${item.qty - 1})" 
-                            style="width: 40px; height: 40px; border: none; background: white; border-radius: 6px; font-size: 20px; font-weight: bold; color: #d9534f; box-shadow: 0 1px 3px rgba(0,0,0,0.1); touch-action: manipulation;">
-                        －
-                    </button>
-                    <div style="width: 45px; text-align: center; font-size: 1.1em; font-weight: bold;">
-                        ${item.qty}
-                    </div>
-                    <button onclick="changeQty('${item.timestamp}', '${item.maker}', ${item.qty + 1})" 
-                            style="width: 40px; height: 40px; border: none; background: white; border-radius: 6px; font-size: 20px; font-weight: bold; color: #28a745; box-shadow: 0 1px 3px rgba(0,0,0,0.1); touch-action: manipulation;">
-                        ＋
-                    </button>
-                </div>
-            </div>
-            
-            <div style="text-align: right; min-width: 80px;">
-                <div style="font-size: 0.75em; color: #888;">${item.displayDate}</div>
-                <div style="font-size: 1.1em; font-weight: bold; color: #d9534f; margin-top: 15px;">
-                    ¥${Number(item.subtotal).toLocaleString()}
-                </div>
-                <div style="margin-top:20px;">
-                    <span class="del-btn" onclick="deleteHistory('${item.timestamp}', '${item.maker}')">削除</span>
-                </div>
-            </div>
-        </div>
-        ${item.note ? `<div style="margin-top: 10px; padding-top: 5px; border-top: 1px dotted #ccc; font-size: 0.8em; color: #555;">備考: ${item.note}</div>` : ''}
-    </div>
-`).join('');  
-        } // ←ここに「 } 」を追加して loadHistory を終わらせる！
-// ★ここに changeQty を貼り付ける！
-    async function changeQty(ts, maker, newQty) {
-        if (newQty < 1) {
-            deleteHistory(ts, maker);
-            return;
-        }
         try {
-            await fetch(GAS_URL, { 
-                method: "POST", 
-                body: JSON.stringify({ action: "updateOrderQty", timestamp: ts, maker: maker, newQty: newQty }) 
-            });
-            loadHistory(); 
-        } catch(e) { 
-            alert("更新エラー"); 
-        }
+            const res = await fetch(GAS_URL, { method: "POST", body: JSON.stringify({ action: "getOrderHistory" }) });
+            const data = await res.json();
+            list.innerHTML = data.map(item => `
+                <div class="card" style="padding: 15px; border-left: 5px solid #4267B2; margin-bottom: 10px;">
+                    <div style="display: flex; justify-content: space-between;">
+                        <div style="flex: 1;">
+                            <span class="status-badge">${item.maker}</span>
+                            <div style="font-size: 1.1em; font-weight: bold; margin-top: 5px;">${item.partNo}</div>
+                            <div style="font-size: 0.9em; color: #666;">${item.name}</div>
+                            <div style="display: flex; align-items: center; margin-top: 10px;">
+                                <button onclick="changeQty('${item.timestamp}', '${item.maker}', ${item.qty - 1})" style="padding:5px 10px;">－</button>
+                                <div style="width: 40px; text-align: center; font-weight: bold;">${item.qty}</div>
+                                <button onclick="changeQty('${item.timestamp}', '${item.maker}', ${item.qty + 1})" style="padding:5px 10px;">＋</button>
+                            </div>
+                        </div>
+                        <div style="text-align: right;">
+                            <div style="font-size: 0.8em; color: #888;">${item.displayDate}</div>
+                            <div style="font-size: 1.1em; font-weight: bold; color: #d9534f; margin-top: 10px;">¥${Number(item.subtotal).toLocaleString()}</div>
+                            <div style="margin-top:15px;"><span class="del-btn" onclick="deleteHistory('${item.timestamp}', '${item.maker}')">削除</span></div>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        } catch(e) { list.innerHTML = "履歴の読み込みに失敗しました。"; }
     }
+
+    async function changeQty(ts, maker, newQty) {
+        if (newQty < 1) { deleteHistory(ts, maker); return; }
+        await fetch(GAS_URL, { method: "POST", body: JSON.stringify({ action: "updateOrderQty", timestamp: ts, maker: maker, newQty: newQty }) });
+        loadHistory();
+    }
+
     async function deleteHistory(ts, maker) {
-        if (!confirm("完全に削除しますか？")) return;
+        if (!confirm("削除しますか？")) return;
         await fetch(GAS_URL, { method: "POST", body: JSON.stringify({ action: "deleteOrderLine", timestamp: ts, maker: maker }) });
         loadHistory();
     }
@@ -351,7 +290,8 @@
         if(id==='home') document.getElementById('n-home').classList.add('active-nav');
         if (id === 'history') loadHistory();
     }
-    function inputTel() { const t = prompt("電話番号を入力"); if(t) fetchCustomer(t); }
+
+    function inputTel() { const t = prompt("電話番号を入力"); if(t) fetchCustomer(t.replace(/-/g, "")); }
 </script>
 </body>
 </html>
