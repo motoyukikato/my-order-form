@@ -66,7 +66,7 @@
 
     <div style="display: flex; gap: 10px; margin-bottom:10px;">
         <button class="btn-main" style="background:#28a745; flex: 2;" onclick="startCamera('customer')"><i class="fas fa-qrcode"></i> 顧客スキャン</button>
-        <button class="btn-main" style="background:#6c757d; flex: 1;" onclick="inputTel()">手入力</button>
+        <button class="btn-main" style="background:#6c757d; flex: 1;" onclick="openTelModal()">手入力</button>
     </div>
 
    <div id="product-input-area" style="display:none; margin: 15px 0;">
@@ -108,57 +108,59 @@
 
 <script>
     const GAS_URL = "https://script.google.com/macros/s/AKfycbxEzZM2hqxpwRiDsmR4jDi6RUeJHO0Ke4OaoZK0u6x3p7lIqWdUsvHvyXSVPRISjFkJow/exec";
-    let html5QrCode = null, customer = null, cart = [], tempProduct = null, editTarget = null;
+    let html5QrCode = null, customer = null, cart = [], tempProduct = null, editTarget = null, isTelMode = false;
 
-   // 数値入力（テンキー）
-    function numIn(n) {
-        let v = document.getElementById("qty-val");
-        if(n==='C') v.innerText = "1";
-        else if(n==='B') v.innerText = v.innerText.length > 1 ? v.innerText.slice(0,-1) : "1";
-        else v.innerText = v.innerText === "1" ? n : v.innerText + n;
+  // 電話入力モードで開く
+    function openTelModal() {
+        isTelMode = true;
+        document.getElementById("modal-p-name").innerText = "電話番号入力";
+        document.getElementById("qty-val").innerText = ""; 
+        document.getElementById("qty-modal").style.display = "flex";
     }
 
+    // 数量入力モードで開く
     function openQtyModal(p, isEdit = false) {
-        tempProduct = p; editTarget = isEdit ? p : null;
+        isTelMode = false; 
+        tempProduct = p; 
+        editTarget = isEdit ? p : null;
         document.getElementById("modal-p-name").innerText = p.name;
         document.getElementById("qty-val").innerText = isEdit ? (p.qty || p.quantity) : "1";
         document.getElementById("qty-modal").style.display = "flex";
     }
 
-    function closeQtyModal() { document.getElementById("qty-modal").style.display = "none"; }
+    function closeQtyModal() {
+        document.getElementById("qty-modal").style.display = "none";
+        isTelMode = false; 
+    }
 
-   async function confirmQty() {
-        let val = document.getElementById("qty-val").innerText;
-        
-        if (isTelMode) {
-            // --- 電話番号モードの場合 ---
-            if (val.length < 9) {
-                alert("番号が短すぎます");
-                return;
-            }
-            closeQtyModal();
-            fetchCustomer(val); // 入力された数字で顧客検索
+    function numIn(n) {
+        let v = document.getElementById("qty-val");
+        if (n === 'C') {
+            v.innerText = isTelMode ? "" : "1";
+        } else if (n === 'B') {
+            v.innerText = v.innerText.length > 1 ? v.innerText.slice(0, -1) : (isTelMode ? "" : "1");
         } else {
-            // --- 数量モード（既存のロジック）の場合 ---
+            if (isTelMode) {
+                v.innerText += n;
+            } else {
+                v.innerText = (v.innerText === "1") ? n : v.innerText + n;
+            }
+        }
+    }
+
+    async function confirmQty() {
+        let val = document.getElementById("qty-val").innerText;
+        if (isTelMode) {
+            if (val.length < 9) { alert("番号が短すぎます"); return; }
+            closeQtyModal();
+            fetchCustomer(val); 
+        } else {
             let q = parseInt(val);
             if (editTarget) {
-                // 履歴からの訂正
-                await fetch(GAS_URL, { 
-                    method: "POST", 
-                    body: JSON.stringify({ 
-                        action: "updateOrderQty", 
-                        timestamp: editTarget.timestamp, 
-                        maker: editTarget.maker, 
-                        newQty: q 
-                    }) 
-                });
+                await fetch(GAS_URL, { method: "POST", body: JSON.stringify({ action: "updateOrderQty", timestamp: editTarget.timestamp, maker: editTarget.maker, newQty: q }) });
                 loadHistory();
             } else {
-                // カートへの新規追加
-                if (q > 0) { 
-                    cart.push({ ...tempProduct, quantity: q }); 
-                    renderCart(); 
-                }
+                if (q > 0) { cart.push({ ...tempProduct, quantity: q }); renderCart(); }
             }
             closeQtyModal();
         }
