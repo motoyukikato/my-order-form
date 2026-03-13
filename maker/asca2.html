@@ -165,20 +165,24 @@
         }
     }
 
-    // --- 履歴訂正・削除（ここを一つにまとめました） ---
-    async function changeQty(ts, maker, newQty) {
-        if (newQty < 1) { deleteHistory(ts, maker); return; }
-        try {
-            const response = await fetch(GAS_URL, { 
-                method: "POST", 
-                body: JSON.stringify({ action: "updateOrderQty", timestamp: ts, maker: maker, newQty: Number(newQty) }) 
-            });
-            const result = await response.json();
-            if (result.success) { await loadHistory(); } 
-            else { alert("更新失敗"); }
-        } catch (e) { alert("通信エラー"); }
-    }
-
+    async function changeQty(ts, maker, newQty, partNo) { // 引数にpartNoを追加
+    if (newQty < 1) { deleteHistory(ts, maker); return; }
+    try {
+        const response = await fetch(GAS_URL, { 
+            method: "POST", 
+            body: JSON.stringify({ 
+                action: "updateOrderQty", 
+                timestamp: ts, 
+                maker: maker, 
+                newQty: Number(newQty),
+                partNo: partNo // ここで品番も送る
+            }) 
+        });
+        const result = await response.json();
+        if (result.success) { await loadHistory(); } 
+        else { alert("更新失敗"); }
+    } catch (e) { alert("通信エラー"); }
+}
     async function deleteHistory(ts, maker) {
         if (!confirm("削除しますか？")) return;
         try {
@@ -309,9 +313,10 @@
                             <div style="font-size: 1.1em; font-weight: bold; margin-top: 5px;">${item.partNo}</div>
                             <div style="font-size: 0.9em; color: #666;">${item.name}</div>
                             <div style="display: flex; align-items: center; margin-top: 10px;">
-                                <button onclick="changeQty('${item.timestamp}', '${item.maker}', ${item.qty - 1})" style="padding:5px 10px;">－</button>
-                                <div style="width: 40px; text-align: center; font-weight: bold;">${item.qty}</div>
-                                <button onclick="changeQty('${item.timestamp}', '${item.maker}', ${item.qty + 1})" style="padding:5px 10px;">＋</button>
+                               // loadHistory内のボタン部分（254行目付近）
+<button onclick="changeQty('${item.timestamp}', '${item.maker}', ${item.qty - 1}, '${item.partNo}')" style="padding:5px 10px;">－</button>
+<div style="width: 40px; text-align: center; font-weight: bold;">${item.qty}</div>
+<button onclick="changeQty('${item.timestamp}', '${item.maker}', ${item.qty + 1}, '${item.partNo}')" style="padding:5px 10px;">＋</button>
                             </div>
                         </div>
                         <div style="text-align: right;">
