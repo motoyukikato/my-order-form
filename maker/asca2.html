@@ -110,7 +110,7 @@
     const GAS_URL = "https://script.google.com/macros/s/AKfycbxEzZM2hqxpwRiDsmR4jDi6RUeJHO0Ke4OaoZK0u6x3p7lIqWdUsvHvyXSVPRISjFkJow/exec";
     let html5QrCode = null, customer = null, cart = [], tempProduct = null, editTarget = null, isTelMode = false;
 
-  // 電話入力モードで開く
+    // --- モーダル制御 ---
     function openTelModal() {
         isTelMode = true;
         document.getElementById("modal-p-name").innerText = "電話番号入力";
@@ -118,7 +118,6 @@
         document.getElementById("qty-modal").style.display = "flex";
     }
 
-    // 数量入力モードで開く
     function openQtyModal(p, isEdit = false) {
         isTelMode = false; 
         tempProduct = p; 
@@ -157,15 +156,16 @@
         } else {
             let q = parseInt(val);
             if (editTarget) {
-                await fetch(GAS_URL, { method: "POST", body: JSON.stringify({ action: "updateOrderQty", timestamp: editTarget.timestamp, maker: editTarget.maker, newQty: q }) });
-                loadHistory();
+                // ここは履歴編集ではなく新規カート追加時の処理
+                if (q > 0) { cart.push({ ...tempProduct, quantity: q }); renderCart(); }
             } else {
                 if (q > 0) { cart.push({ ...tempProduct, quantity: q }); renderCart(); }
             }
             closeQtyModal();
         }
     }
-    // ★ここから貼り付け★
+
+    // --- 履歴訂正・削除（ここを一つにまとめました） ---
     async function changeQty(ts, maker, newQty) {
         if (newQty < 1) { deleteHistory(ts, maker); return; }
         try {
@@ -190,9 +190,8 @@
             if (result.success) { await loadHistory(); }
         } catch (e) { alert("削除失敗"); }
     }
-    // ★ここまで★
 
-    // カメラ制御
+    // --- カメラ制御 ---
     async function startCamera(mode) {
         if (mode === 'product' && !customer) { alert("顧客を選択してください"); return; }
         showPage('scanner-page');
@@ -228,7 +227,7 @@
 
     function stopCamera() { if (html5QrCode && html5QrCode.isScanning) html5QrCode.stop(); showPage('home'); }
 
-   // 顧客検索
+    // --- 検索系 ---
     async function fetchCustomer(val) {
         const res = await fetch(GAS_URL, { method: "POST", body: JSON.stringify({ action: "customerSearch", val: val }) });
         const d = await res.json();
@@ -243,21 +242,10 @@
             document.getElementById("c-detail").style.display = "block";
             document.getElementById("cart-area").style.display = "block";
             document.getElementById("product-input-area").style.display = "block"; 
-            
-            // ★ここに追加：顧客が決まったら商品リスト（候補）を読み込む
             loadProductSuggestions(); 
-            
         } else { alert("未登録の顧客です"); }
     }
 
-    // ★追加: 品番手入力用
-    function inputPartNo() {
-        if (!customer) { alert("顧客を選択してください"); return; }
-        const code = prompt("品番またはJANコードを入力してください");
-        if (code) fetchProduct(code.trim());
-    }
-
-    // 商品検索
     async function fetchProduct(code) {
         const res = await fetch(GAS_URL, { method: "POST", body: JSON.stringify({ action: "productSearch", val: code }) });
         const p = await res.json();
@@ -266,11 +254,10 @@
             p.lot = p.lot || "1";
             p.stock = p.stock || "不明";
             openQtyModal(p);
-        } else {
-            alert("商品が見つかりません: " + code);
-        }
+        } else { alert("商品が見つかりません: " + code); }
     }
 
+    // --- カート・送信 ---
     function renderCart() {
         const list = document.getElementById("cart-list");
         let total = 0;
@@ -304,7 +291,8 @@
         btn.disabled = false; btn.innerText = "注文確定・送信";
     }
 
-  async function loadHistory() {
+    // --- 履歴表示 ---
+    async function loadHistory() {
         const list = document.getElementById("h-list");
         list.innerHTML = "読込中...";
         try {
@@ -337,42 +325,6 @@
         } catch(e) { list.innerHTML = "履歴の読み込みに失敗しました。"; }
     }
 
-   async function changeQty(ts, maker, newQty) {
-        // 1未満になる場合は削除処理へ
-        if (newQty < 1) { 
-            deleteHistory(ts, maker); 
-            return; 
-        }
-
-        try {
-            // fetchに await をつけて、処理が終わるのを待つ
-            const response = await fetch(GAS_URL, { 
-                method: "POST", 
-                body: JSON.stringify({ 
-                    action: "updateOrderQty", 
-                    timestamp: ts, 
-                    maker: maker, 
-                    newQty: Number(newQty) // 確実に数値として送る
-                }) 
-            });
-
-            if (!response.ok) throw new Error('通信失敗');
-
-            // サーバー側の書き換えが終わってから履歴を再読み込み
-            await loadHistory(); 
-            
-        } catch (e) {
-            console.error(e);
-            alert("数量の更新に失敗しました。電波状況を確認してください。");
-        }
-    }
-
-    async function deleteHistory(ts, maker) {
-        if (!confirm("削除しますか？")) return;
-        await fetch(GAS_URL, { method: "POST", body: JSON.stringify({ action: "deleteOrderLine", timestamp: ts, maker: maker }) });
-        loadHistory();
-    }
-
     function showPage(id) {
         document.querySelectorAll('.page-section').forEach(p => p.classList.remove('active'));
         document.getElementById(id).classList.add('active');
@@ -381,10 +333,7 @@
         if (id === 'history') loadHistory();
     }
 
-    function inputTel() { const t = prompt("電話番号を入力"); if(t) fetchCustomer(t.replace(/-/g, "")); }
-   // --- 品番候補（datalist）の制御 ---
-
-    // GASから全商品の品番・品名リストを取得してセット
+    // --- 商品リスト（datalist） ---
     async function loadProductSuggestions() {
         const datalist = document.getElementById("product-list");
         datalist.innerHTML = '<option value="読込中...">'; 
@@ -398,19 +347,12 @@
         }
     }
 
-    // 「追加」ボタンが押された時の処理
     function handleManualInput() {
         const input = document.getElementById("part-no-input");
         const code = input.value.trim();
-        if (code) {
-            fetchProduct(code); // 既存の商品検索関数を呼び出す
-            input.value = "";    // 入力欄を空にする
-        } else {
-            alert("品番を入力してください");
-        }
+        if (code) { fetchProduct(code); input.value = ""; }
+        else { alert("品番を入力してください"); }
     }
-
-    // 元々あった inputPartNo はプロンプト形式なので、今回の「入力欄」形式では handleManualInput がその代わりになります 
 </script>
 </body>
 </html>
