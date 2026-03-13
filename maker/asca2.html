@@ -107,7 +107,7 @@
 </nav>
 
 <script>
-    const GAS_URL = "https://script.google.com/macros/s/AKfycbzZZ6QVuJuK4bD1ElJVEnw3yDGmKYGtvgtHL-8gyqfXPD3TBg3UtR10WDGENJV0cL1m3g/exec";
+    const GAS_URL = "https://script.google.com/macros/s/AKfycbynjrKrK8kt5Pz06PXuRBLTRHC7EvCePsJYx1WrhgoVUaPgJbSwWInUWzmUXCIzfRNP-g/exec";
     let html5QrCode = null, customer = null, cart = [], tempProduct = null, isTelMode = false;
     
     // 【重要】全商品データを保持する変数
@@ -141,9 +141,22 @@
         document.getElementById("qty-modal").style.display = "flex";
     }
 
-    function openQtyModal(p) {
-        isTelMode = false; tempProduct = p; 
-        document.getElementById("modal-p-name").innerText = p.name;
+  function openQtyModal(p) {
+        isTelMode = false; 
+        tempProduct = p; 
+        
+        // 在庫状況によって色を変える（○なら緑、それ以外なら赤）
+        const stockColor = (p.stock === "○" || p.stock === "あり") ? "#28a745" : "#d9534f";
+
+        document.getElementById("modal-p-name").innerHTML = `
+            <div style="font-size: 1.1em; font-weight: bold;">${p.name}</div>
+            <div style="font-size: 0.85em; color: #666; margin-top: 5px;">
+                上代: ¥${(p.listPrice || 0).toLocaleString()} / ロット: ${p.lot || 1}
+            </div>
+            <div style="font-size: 0.9em; font-weight: bold; margin-top: 3px;">
+                在庫: <span style="color: ${stockColor};">${p.stock || "不明"}</span>
+            </div>
+        `;
         document.getElementById("qty-val").innerText = "1";
         document.getElementById("qty-modal").style.display = "flex";
     }
@@ -269,13 +282,30 @@
     }
 
     // --- カート・送信・履歴 ---
-    function renderCart() {
+  function renderCart() {
         const list = document.getElementById("cart-list");
         let total = 0;
         list.innerHTML = cart.map((item, i) => {
             total += (item.price * item.quantity);
-            return `<div class="item-row"><b>${item.name}</b><br><small>品番:${item.partNo}</small><br>¥${item.price.toLocaleString()} × ${item.quantity}
-                <div style="text-align:right"><span class="del-btn" onclick="cart.splice(${i},1);renderCart();">削除</span></div></div>`;
+            const stockColor = (item.stock === "○" || item.stock === "あり") ? "#28a745" : "#d9534f";
+
+            return `
+                <div class="item-row" style="border-bottom: 1px solid #eee; padding: 10px 0;">
+                    <div style="display: flex; justify-content: space-between; align-items: start;">
+                        <b style="flex: 1;">${item.name}</b>
+                        <span style="font-size: 0.8em; color: ${stockColor}; font-weight: bold; margin-left: 10px; white-space: nowrap;">在庫:${item.stock}</span>
+                    </div>
+                    <small style="color: #666;">品番: ${item.partNo} / メーカー: ${item.maker}</small><br>
+                    <div style="display: flex; justify-content: space-between; font-size: 0.9em; margin-top: 5px;">
+                        <span>下代: ¥${item.price.toLocaleString()}</span>
+                        <span style="color: #888;">(上代: ¥${(item.listPrice || 0).toLocaleString()})</span>
+                        <span>数量: ${item.quantity}</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 5px;">
+                        <span style="color: #d9534f; font-weight: bold;">小計: ¥${(item.price * item.quantity).toLocaleString()}</span>
+                        <span class="del-btn" onclick="cart.splice(${i},1);renderCart();">削除</span>
+                    </div>
+                </div>`;
         }).join('');
         document.getElementById("cart-total").innerText = total.toLocaleString();
     }
