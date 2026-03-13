@@ -207,27 +207,28 @@
         } catch (e) { alert("通信エラー"); }
     }
 
-    async function deleteHistory(ts, maker, partNo) { // ← partNo を追加
+    async function deleteHistory(ts, maker, partNo) {
         if (!confirm("削除しますか？")) return;
         try {
             const response = await fetch(GAS_URL, {
                 method: "POST",
-                // bodyの中に partNo を追加して送信する
                 body: JSON.stringify({ 
                     action: "deleteOrderLine", 
                     timestamp: ts, 
                     maker: maker,
-                    partNo: partNo // ← ここが重要！
+                    partNo: partNo 
                 })
             });
             const result = await response.json();
             if (result.success) { 
                 await loadHistory(); 
+            } else {
+                alert("削除に失敗しました: " + (result.error || "不明なエラー"));
             }
         } catch (e) { 
-            alert("削除失敗"); 
+            alert("通信エラーにより削除できませんでした"); 
         }
-    }
+    } // ← ここを必ず「 } 」1つだけにしてください
 
     // --- カメラ・検索処理 ---
     async function startCamera(mode) {
