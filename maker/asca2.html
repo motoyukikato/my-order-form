@@ -69,14 +69,14 @@
         <button class="btn-main" style="background:#6c757d; flex: 1;" onclick="openTelModal()">手入力</button>
     </div>
 
-   <div id="product-input-area" style="display:none; margin: 15px 0;">
-    <div style="display: flex; gap: 5px;">
-        <input type="text" id="part-no-input" list="product-list" placeholder="品番・JANを入力" 
-               style="flex: 2; padding: 12px; border: 1px solid #ccc; border-radius: 8px; font-size: 16px;">
-        <datalist id="product-list"></datalist>
-        <button class="btn-main" style="background:#3b5998; flex: 1; padding: 12px 5px;" onclick="handleManualInput()">追加</button>
+    <div id="product-input-area" style="display:none; margin: 15px 0;">
+        <div style="display: flex; gap: 5px;">
+            <input type="text" id="part-no-input" list="product-list" placeholder="品番・JANを入力" 
+                   style="flex: 2; padding: 12px; border: 1px solid #ccc; border-radius: 8px; font-size: 16px;">
+            <datalist id="product-list"></datalist>
+            <button class="btn-main" style="background:#3b5998; flex: 1; padding: 12px 5px;" onclick="handleManualInput()">追加</button>
+        </div>
     </div>
-</div>
 
     <div id="cart-area" style="display:none;">
         <div id="cart-list" class="card"></div>
@@ -107,10 +107,33 @@
 </nav>
 
 <script>
-    const GAS_URL = "https://script.google.com/macros/s/AKfycbzuLrFwPfoVT1U9iaWD3NEOBv_1bcNgdENMgegDFqOlXmVtVFbL9TZNY1MmK-31PmyfBQ/exec";
-    let html5QrCode = null, customer = null, cart = [], tempProduct = null, editTarget = null, isTelMode = false;
+    const GAS_URL = "https://script.google.com/macros/s/AKfycbzZZ6QVuJuK4bD1ElJVEnw3yDGmKYGtvgtHL-8gyqfXPD3TBg3UtR10WDGENJV0cL1m3g/exec";
+    let html5QrCode = null, customer = null, cart = [], tempProduct = null, isTelMode = false;
+    
+    // 【重要】全商品データを保持する変数
+    let allProducts = [];
 
-    // --- 数量モーダル ---
+    // ページ読み込み時に商品マスタを事前に取得（高速化の核心）
+    window.onload = () => {
+        preloadAllProducts();
+    };
+
+    // --- 商品データの事前読み込み ---
+    async function preloadAllProducts() {
+        try {
+            const res = await fetch(GAS_URL, { method: "POST", body: JSON.stringify({ action: "getAllProducts" }) });
+            allProducts = await res.json();
+            
+            // datalist（入力候補）も生成
+            const datalist = document.getElementById("product-list");
+            datalist.innerHTML = allProducts.map(p => `<option value="${p.partNo}">${p.name}</option>`).join('');
+            console.log("商品マスタ読み込み完了:", allProducts.length, "件");
+        } catch (e) {
+            console.error("商品マスタの読み込みに失敗しました");
+        }
+    }
+
+    // --- 数量モーダル操作 ---
     function openTelModal() {
         isTelMode = true;
         document.getElementById("modal-p-name").innerText = "電話番号入力";
@@ -119,8 +142,7 @@
     }
 
     function openQtyModal(p) {
-        isTelMode = false; 
-        tempProduct = p; 
+        isTelMode = false; tempProduct = p; 
         document.getElementById("modal-p-name").innerText = p.name;
         document.getElementById("qty-val").innerText = "1";
         document.getElementById("qty-modal").style.display = "flex";
@@ -153,10 +175,12 @@
             let q = parseInt(val);
             if (q > 0) { cart.push({ ...tempProduct, quantity: q }); renderCart(); }
             closeQtyModal();
+            // 入力欄をクリア
+            document.getElementById("part-no-input").value = "";
         }
     }
 
-    // --- 履歴訂正（重要：partNoも送る） ---
+    // --- 履歴訂正 ---
     async function changeQty(ts, maker, newQty, partNo) {
         if (newQty < 1) { deleteHistory(ts, maker); return; }
         try {
@@ -182,7 +206,7 @@
         } catch (e) { alert("削除失敗"); }
     }
 
-    // --- カメラ・検索 ---
+    // --- カメラ・検索処理 ---
     async function startCamera(mode) {
         if (mode === 'product' && !customer) { alert("顧客を選択してください"); return; }
         showPage('scanner-page');
@@ -216,17 +240,35 @@
             document.getElementById("c-detail").style.display = "block";
             document.getElementById("cart-area").style.display = "block";
             document.getElementById("product-input-area").style.display = "block"; 
-            loadProductSuggestions(); 
         } else { alert("未登録の顧客です"); }
     }
 
-    async function fetchProduct(code) {
+    // 高速検索：メモリ内のallProductsから探す
+    function fetchProduct(code) {
+        const cleanCode = String(code).trim().toUpperCase();
+        
+        // 通信せずに、手元のデータから探す
+        const p = allProducts.find(item => 
+            String(item.partNo).toUpperCase() === cleanCode || 
+            String(item.jan) === cleanCode
+        );
+        
+        if (p) {
+            openQtyModal(p);
+        } else {
+            // 見つからない場合のみサーバーに問い合わせ
+            fetchProductFromServer(cleanCode);
+        }
+    }
+
+    async function fetchProductFromServer(code) {
         const res = await fetch(GAS_URL, { method: "POST", body: JSON.stringify({ action: "productSearch", val: code }) });
         const p = await res.json();
         if (p && p.name) openQtyModal(p);
         else alert("商品が見つかりません");
     }
 
+    // --- カート・送信・履歴 ---
     function renderCart() {
         const list = document.getElementById("cart-list");
         let total = 0;
@@ -291,19 +333,10 @@
         if (id === 'history') loadHistory();
     }
 
-    async function loadProductSuggestions() {
-        const datalist = document.getElementById("product-list");
-        try {
-            const res = await fetch(GAS_URL, { method: "POST", body: JSON.stringify({ action: "getAllProducts" }) });
-            const products = await res.json(); 
-            datalist.innerHTML = products.map(p => `<option value="${p.partNo}">${p.name}</option>`).join('');
-        } catch (e) { datalist.innerHTML = ''; }
-    }
-
     function handleManualInput() {
         const input = document.getElementById("part-no-input");
         const code = input.value.trim();
-        if (code) { fetchProduct(code); input.value = ""; }
+        if (code) { fetchProduct(code); }
     }
 </script>
 </body>
