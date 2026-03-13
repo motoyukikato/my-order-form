@@ -110,7 +110,7 @@
     const GAS_URL = "https://script.google.com/macros/s/AKfycbxEzZM2hqxpwRiDsmR4jDi6RUeJHO0Ke4OaoZK0u6x3p7lIqWdUsvHvyXSVPRISjFkJow/exec";
     let html5QrCode = null, customer = null, cart = [], tempProduct = null, editTarget = null;
 
-    // 数値入力（テンキー）
+   // 数値入力（テンキー）
     function numIn(n) {
         let v = document.getElementById("qty-val");
         if(n==='C') v.innerText = "1";
@@ -127,15 +127,41 @@
 
     function closeQtyModal() { document.getElementById("qty-modal").style.display = "none"; }
 
-    async function confirmQty() {
-        let q = parseInt(document.getElementById("qty-val").innerText);
-        if(editTarget) {
-            await fetch(GAS_URL, { method: "POST", body: JSON.stringify({ action: "updateOrderQty", timestamp: editTarget.timestamp, maker: editTarget.maker, newQty: q }) });
-            loadHistory();
+   async function confirmQty() {
+        let val = document.getElementById("qty-val").innerText;
+        
+        if (isTelMode) {
+            // --- 電話番号モードの場合 ---
+            if (val.length < 9) {
+                alert("番号が短すぎます");
+                return;
+            }
+            closeQtyModal();
+            fetchCustomer(val); // 入力された数字で顧客検索
         } else {
-            if(q > 0) { cart.push({ ...tempProduct, quantity: q }); renderCart(); }
+            // --- 数量モード（既存のロジック）の場合 ---
+            let q = parseInt(val);
+            if (editTarget) {
+                // 履歴からの訂正
+                await fetch(GAS_URL, { 
+                    method: "POST", 
+                    body: JSON.stringify({ 
+                        action: "updateOrderQty", 
+                        timestamp: editTarget.timestamp, 
+                        maker: editTarget.maker, 
+                        newQty: q 
+                    }) 
+                });
+                loadHistory();
+            } else {
+                // カートへの新規追加
+                if (q > 0) { 
+                    cart.push({ ...tempProduct, quantity: q }); 
+                    renderCart(); 
+                }
+            }
+            closeQtyModal();
         }
-        closeQtyModal();
     }
 
     // カメラ制御
