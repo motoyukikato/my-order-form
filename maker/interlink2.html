@@ -71,8 +71,9 @@
 
     <div id="product-input-area" style="display:none; margin: 15px 0;">
         <div style="display: flex; gap: 5px;">
-            <input type="text" id="part-no-input" list="product-list" placeholder="品番・JANを入力" 
-                   style="flex: 2; padding: 12px; border: 1px solid #ccc; border-radius: 8px; font-size: 16px;">
+           <input type="text" id="part-no-input" list="product-list" placeholder="品番・品名を入力" 
+       oninput="checkAutoInput(this.value)"
+       style="flex: 2; padding: 12px; border: 1px solid #ccc; border-radius: 8px; font-size: 16px;">
             <datalist id="product-list"></datalist>
             <button class="btn-main" style="background:#3b5998; flex: 1; padding: 12px 5px;" onclick="handleManualInput()">追加</button>
         </div>
@@ -114,20 +115,21 @@
     window.onload = () => { preloadAllProducts(); };
 
     // --- 商品データの事前読み込み ---
+// --- 商品データの事前読み込み ---
 async function preloadAllProducts() {
     try {
         const res = await fetch(GAS_URL, { method: "POST", body: JSON.stringify({ action: "getAllProducts" }) });
         allProducts = await res.json();
         
-        // datalist（入力候補）を生成：品番と品名の両方を表示させる
         const datalist = document.getElementById("product-list");
+        // valueに「品名」、中身に「品番」を表示させることで品名検索を有効にします
         datalist.innerHTML = allProducts.map(p => 
-            `<option value="${p.partNo}">${p.name}</option>`
+            `<option value="${p.name}">${p.partNo}</option>`
         ).join('');
         
         console.log("商品マスタ読み込み完了");
     } catch (e) {
-        console.error("商品マスタの読み込みに失敗しました");
+        console.error("商品マスタ読み込み失敗");
     }
 }
     function openTelModal() {
@@ -332,10 +334,15 @@ async function preloadAllProducts() {
         if (id === 'history') loadHistory();
     }
 
-    function handleManualInput() {
-        const input = document.getElementById("part-no-input");
-        if (input.value.trim()) { fetchProduct(input.value.trim()); }
+   function handleManualInput() {
+    const input = document.getElementById("part-no-input");
+    const val = input.value.trim();
+    if (val) { 
+        fetchProduct(val); 
+        // 数量モーダルが開くはずなので、入力欄は空にする
+        input.value = "";
     }
+}
 </script>
 </body>
 </html>
