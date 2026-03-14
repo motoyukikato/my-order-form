@@ -246,7 +246,7 @@
         };
 
         try {
-            const gasUrl = "https://script.google.com/macros/s/AKfycbzA3DKPT9RvjKMr6wUpGk6JxVCSadoQDEXTJk06JYcO32nsRZgI9addYA_Jo_3iL99CNw/exec";
+            const gasUrl = "https://script.google.com/macros/s/AKfycbwZMqykUhvZXb33fPhbWcW9fz1ybz3SwUWqkn2HQ9qx7EwK9xjZdGqe7SUHZbvkwhDmNg/exec";
             await fetch(gasUrl, { method: 'POST', headers: {'Content-Type': 'text/plain'}, body: JSON.stringify(data) });
             alert('送信完了しました。');
             liff.closeWindow();
