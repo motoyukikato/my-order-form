@@ -46,60 +46,67 @@
   // 1. GASでデプロイして発行されたURLをここに貼り付け
   const GAS_URL = "https://script.google.com/macros/s/AKfycbxNDCslf9ESJ6dAdMty8CwpQezxMnpwZgxMUaXZcrxjLANV8vI0IiXZMi9kntQLw-tn/exec"; 
 
-  // URLの末尾（?cid=C001）から取得、なければGUESTにする
   const urlParams = new URLSearchParams(window.location.search);
   const cid = urlParams.get('cid') || "GUEST";
   let itemsData = [];
 
-  // ページ読み込み時にGASから商品データを取得
   window.onload = () => {
-    document.getElementById('comp-name').innerText = cid;
+    // 会社名を表示するための場所（読み込み中...）をリセット
+    document.getElementById('comp-name').innerText = "読み込み中...";
+    
     fetch(`${GAS_URL}?cid=${cid}`)
       .then(res => res.json())
-      .then(data => renderItems(data))
-      .catch(err => console.error("読み込みエラー:", err));
+      .then(data => {
+        // GAS側で { companyName: "...", items: [...] } という形式で返ってくるので分解する
+        const companyName = data.companyName || "ゲスト";
+        const items = data.items || [];
+
+        // 会社名を反映
+        document.getElementById('comp-name').innerText = companyName;
+        
+        // 商品リストを描画
+        renderItems(items);
+      })
+      .catch(err => {
+        console.error("読み込みエラー:", err);
+        document.getElementById('item-list').innerHTML = "データの取得に失敗しました。";
+      });
   };
 
-function renderItems(items) {
-  itemsData = items;
-  const listContainer = document.getElementById('item-list');
-  
-  if (items.length === 0) {
-    listContainer.innerHTML = '<p>表示できる商品がありません。</p>';
-    return;
-  }
-
-  listContainer.innerHTML = items.map((item, index) => {
-    // ロット数を数値に変換（NaN対策）
-    const lotSize = parseInt(item.lot) || 1; 
+  function renderItems(items) {
+    itemsData = items; // 注文時に使うため保存
+    const listContainer = document.getElementById('item-list');
     
-    // 選択肢（オプション）の生成
-    let options = '<option value="0">0</option>';
-    
-    // 例：最大20ケース分まで選択肢を出す
-    for (let i = 1; i <= 20; i++) {
-      const totalQty = lotSize * i; // 合計数量（2, 4, 6...）
-      // 表示を「合計数 (iケース)」にする
-      options += `<option value="${totalQty}">${totalQty} (${i}ケース)</option>`;
+    if (!items || items.length === 0) {
+      listContainer.innerHTML = '<p>表示できる商品がありません。</p>';
+      return;
     }
 
-    return `
-      <div class="item-card">
-        <div class="item-info">
-          <span class="item-name">${item.name}</span>
-          <div class="item-sub">
-            単価: ¥${item.price.toLocaleString()} / ロット: ${lotSize}${item.unit}
+    listContainer.innerHTML = items.map((item, index) => {
+      const lotSize = Number(item.lot) || 1;
+      let options = '<option value="0">0</option>';
+      for (let i = 1; i <= 20; i++) {
+        const totalQty = lotSize * i;
+        options += `<option value="${totalQty}">${totalQty} (${i}ケース)</option>`;
+      }
+
+      return `
+        <div class="item-card">
+          <div class="item-info">
+            <span class="item-name">${item.name}</span>
+            <div class="item-sub">
+              単価: ¥${Number(item.price).toLocaleString()} / ロット: ${lotSize}${item.unit}
+            </div>
+          </div>
+          <div class="item-qty">
+            <select id="qty-${index}" class="qty-input" onchange="updateTotal()" style="width: 120px;">
+              ${options}
+            </select>
           </div>
         </div>
-        <div class="item-qty">
-          <select id="qty-${index}" class="qty-input" onchange="updateTotal()" style="width: 120px; padding: 5px;">
-            ${options}
-          </select>
-        </div>
-      </div>
-    `;
-  }).join('');
-}
+      `;
+    }).join('');
+  }
 
   function updateTotal() {
     let total = 0;
@@ -110,26 +117,14 @@ function renderItems(items) {
     document.getElementById('grand-total').innerText = total.toLocaleString();
   }
 
-  // ★ここを google.script.run から fetch に書き換えました
   function handleOrder() {
     const orderItems = [];
-    let errors = [];
-
     itemsData.forEach((item, index) => {
       const q = parseInt(document.getElementById(`qty-${index}`).value) || 0;
       if (q > 0) {
-        if (q % item.lot !== 0) {
-          errors.push(`${item.name} は ${item.lot} 単位で入力してください。`);
-        } else {
-          orderItems.push({ name: item.name, price: item.price, qty: q });
-        }
+        orderItems.push({ name: item.name, price: item.price, qty: q });
       }
     });
-
-    if (errors.length > 0) {
-      alert("入力エラー:\n" + errors.join("\n"));
-      return;
-    }
 
     if (orderItems.length === 0) {
       alert("注文商品が選択されていません。");
@@ -137,7 +132,6 @@ function renderItems(items) {
     }
 
     if (confirm("この内容で発注してよろしいですか？")) {
-      // POSTリクエストでGASへデータを送信
       fetch(GAS_URL, {
         method: "POST",
         body: JSON.stringify({ cid: cid, items: orderItems })
