@@ -290,17 +290,25 @@ async function preloadAllProducts() {
     function stopCamera() { if (html5QrCode) html5QrCode.stop(); showPage('home'); }
 
     async function fetchCustomer(val) {
-        const res = await fetch(GAS_URL, { method: "POST", body: JSON.stringify({ action: "customerSearch", val: val }) });
-        const d = await res.json();
-        if (d.customer) {
-            customer = d;
-            document.getElementById("r-name").innerText = d.customer;
-            document.getElementById("r-addr1").innerText = "〒" + d.zip + " " + d.address1;
-            document.getElementById("r-tel").innerText = "TEL: " + d.tel;
-            document.getElementById("c-none").style.display = "none"; document.getElementById("c-detail").style.display = "block";
-            document.getElementById("cart-area").style.display = "block"; document.getElementById("product-input-area").style.display = "block";
-        } else { alert("未登録"); }
+    const res = await fetch(GAS_URL, { method: "POST", body: JSON.stringify({ action: "customerSearch", val: val }) });
+    const d = await res.json();
+    if (d.customer) {
+        customer = d;
+        document.getElementById("r-name").innerText = d.customer;
+        document.getElementById("r-addr1").innerText = "〒" + d.zip + " " + d.address1;
+        
+        // ★ここに住所2（address2）の代入処理を追加します
+        document.getElementById("r-addr2").innerText = d.address2 || ""; 
+        
+        document.getElementById("r-tel").innerText = "TEL: " + d.tel;
+        document.getElementById("c-none").style.display = "none"; 
+        document.getElementById("c-detail").style.display = "block";
+        document.getElementById("cart-area").style.display = "block"; 
+        document.getElementById("product-input-area").style.display = "block";
+    } else { 
+        alert("未登録"); 
     }
+}
 
    // 高速検索：メモリ内のallProductsから「品番」または「品名」で探す
     function fetchProduct(code) {
