@@ -182,8 +182,13 @@ async function preloadAllProducts() {
         const list = document.getElementById("cart-list");
         let total = 0;
         list.innerHTML = cart.map((item, i) => {
+            // 合計計算は「下代(item.price) × 数量」で行う
             total += (item.price * item.quantity);
             const stockColor = (item.stock === "○" || item.stock === "あり") ? "#28a745" : "#d9534f";
+            
+            // 上代の表示用フォーマット（データがない場合は0を表示）
+            const displayListPrice = (item.listPrice || 0).toLocaleString();
+
             return `
                 <div class="item-row">
                     <div style="display: flex; justify-content: space-between; align-items: start;">
@@ -191,6 +196,11 @@ async function preloadAllProducts() {
                         <span style="font-size: 0.8em; color: ${stockColor}; font-weight: bold;">在庫:${item.stock}</span>
                     </div>
                     <small>品番: ${item.partNo} / メーカー: ${item.maker}</small><br>
+                    
+                    <div style="font-size: 0.85em; color: #666; margin-top: 2px;">
+                        上代: ¥${displayListPrice}
+                    </div>
+
                     <div style="display: flex; justify-content: space-between; font-size: 0.9em; margin-top: 5px;">
                         <span>下代: ¥${item.price.toLocaleString()}</span>
                         <span>数量: ${item.quantity}</span>
