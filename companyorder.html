@@ -60,7 +60,7 @@
       .catch(err => console.error("読み込みエラー:", err));
   };
 
- function renderItems(items) {
+function renderItems(items) {
   itemsData = items;
   const listContainer = document.getElementById('item-list');
   
@@ -70,11 +70,17 @@
   }
 
   listContainer.innerHTML = items.map((item, index) => {
-    // 選択肢（オプション）を生成する（例：0, 1ロット, 2ロット... 最大10ロットまで）
+    // ロット数を数値に変換（NaN対策）
+    const lotSize = parseInt(item.lot) || 1; 
+    
+    // 選択肢（オプション）の生成
     let options = '<option value="0">0</option>';
-    for (let i = 1; i <= 10; i++) {
-      const val = item.lot * i;
-      options += `<option value="${val}">${val} (${i}${item.unit})</option>`;
+    
+    // 例：最大20ケース分まで選択肢を出す
+    for (let i = 1; i <= 20; i++) {
+      const totalQty = lotSize * i; // 合計数量（2, 4, 6...）
+      // 表示を「合計数 (iケース)」にする
+      options += `<option value="${totalQty}">${totalQty} (${i}ケース)</option>`;
     }
 
     return `
@@ -82,11 +88,11 @@
         <div class="item-info">
           <span class="item-name">${item.name}</span>
           <div class="item-sub">
-            単価: ¥${item.price.toLocaleString()} / 単位: <span class="lot-badge">${item.lot}${item.unit}</span>
+            単価: ¥${item.price.toLocaleString()} / ロット: ${lotSize}${item.unit}
           </div>
         </div>
         <div class="item-qty">
-          <select id="qty-${index}" class="qty-input" onchange="updateTotal()" style="width: 100px;">
+          <select id="qty-${index}" class="qty-input" onchange="updateTotal()" style="width: 120px; padding: 5px;">
             ${options}
           </select>
         </div>
