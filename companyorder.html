@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>専用発注書</title>
+  <style>
+    :root { --primary-color: #2c3e50; --accent-color: #27ae60; }
+    body { font-family: "Helvetica Neue", Arial, sans-serif; background-color: #f8f9fa; color: #333; margin: 0; padding: 20px; }
+    .container { max-width: 600px; margin: 0 auto; }
+    h2 { border-left: 5px solid var(--primary-color); padding-left: 10px; color: var(--primary-color); }
+    
+    .item-card { background: white; padding: 15px; margin-bottom: 15px; border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); display: flex; justify-content: space-between; align-items: center; }
+    .item-info { flex: 1; }
+    .item-name { font-weight: bold; font-size: 1.1em; display: block; }
+    .item-sub { font-size: 0.85em; color: #666; margin-top: 4px; }
+    .lot-badge { background: #eef2f3; color: #d35400; padding: 2px 6px; border-radius: 4px; font-weight: bold; }
+    
+    .qty-input { width: 80px; padding: 8px; border: 1px solid #ddd; border-radius: 5px; text-align: center; font-size: 1em; }
+    
+    .footer { position: sticky; bottom: 0; background: var(--primary-color); color: white; padding: 20px; border-radius: 12px; margin-top: 30px; box-shadow: 0 -5px 15px rgba(0,0,0,0.1); }
+    .total-row { display: flex; justify-content: space-between; font-size: 1.2em; font-weight: bold; margin-bottom: 15px; }
+    .btn-submit { background: var(--accent-color); color: white; border: none; width: 100%; padding: 15px; border-radius: 8px; font-size: 1.1em; font-weight: bold; cursor: pointer; transition: 0.3s; }
+    .btn-submit:hover { opacity: 0.9; transform: translateY(-2px); }
+    .loading { text-align: center; padding: 50px; color: #999; }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <h2>専用発注書 (<span id="comp-name">読み込み中...</span> 様)</h2>
+  
+  <div id="item-list">
+    <div class="loading">商品を読み込んでいます...</div>
+  </div>
+
+  <div class="footer">
+    <div class="total-row">
+      <span>合計金額</span>
+      <span>¥ <span id="grand-total">0</span></span>
+    </div>
+    <button class="btn-submit" onclick="handleOrder()">注文を確定する</button>
+  </div>
+</div>
+<script>
+  // 1. GASでデプロイして発行されたURLをここに貼り付け
+  const GAS_URL = "https://script.google.com/macros/s/AKfycbxNDCslf9ESJ6dAdMty8CwpQezxMnpwZgxMUaXZcrxjLANV8vI0IiXZMi9kntQLw-tn/exec"; 
+
+  // URLの末尾（?cid=C001）から取得、なければGUESTにする
+  const urlParams = new URLSearchParams(window.location.search);
+  const cid = urlParams.get('cid') || "GUEST";
+  let itemsData = [];
+
+  // ページ読み込み時にGASから商品データを取得
+  window.onload = () => {
+    document.getElementById('comp-name').innerText = cid;
+    fetch(`${GAS_URL}?cid=${cid}`)
+      .then(res => res.json())
+      .then(data => renderItems(data))
+      .catch(err => console.error("読み込みエラー:", err));
+  };
+
+  function renderItems(items) {
+    itemsData = items;
+    const listContainer = document.getElementById('item-list');
+    if (items.length === 0) {
+      listContainer.innerHTML = '<p>表示できる商品がありません。</p>';
+      return;
+    }
+    listContainer.innerHTML = items.map((item, index) => `
+      <div class="item-card">
+        <div class="item-info">
+          <span class="item-name">${item.name}</span>
+          <div class="item-sub">
+            単価: ¥${item.price.toLocaleString()} / 入数: <span class="lot-badge">${item.lot}${item.unit}</span>
+          </div>
+        </div>
+        <div class="item-qty">
+          <input type="number" id="qty-${index}" class="qty-input" 
+                 value="0" min="0" step="${item.lot}" 
+                 onchange="updateTotal()">
+        </div>
+      </div>
+    `).join('');
+  }
+
+  function updateTotal() {
+    let total = 0;
+    itemsData.forEach((item, index) => {
+      const q = parseInt(document.getElementById(`qty-${index}`).value) || 0;
+      total += item.price * q;
+    });
+    document.getElementById('grand-total').innerText = total.toLocaleString();
+  }
+
+  // ★ここを google.script.run から fetch に書き換えました
+  function handleOrder() {
+    const orderItems = [];
+    let errors = [];
+
+    itemsData.forEach((item, index) => {
+      const q = parseInt(document.getElementById(`qty-${index}`).value) || 0;
+      if (q > 0) {
+        if (q % item.lot !== 0) {
+          errors.push(`${item.name} は ${item.lot} 単位で入力してください。`);
+        } else {
+          orderItems.push({ name: item.name, price: item.price, qty: q });
+        }
+      }
+    });
+
+    if (errors.length > 0) {
+      alert("入力エラー:\n" + errors.join("\n"));
+      return;
+    }
+
+    if (orderItems.length === 0) {
+      alert("注文商品が選択されていません。");
+      return;
+    }
+
+    if (confirm("この内容で発注してよろしいですか？")) {
+      // POSTリクエストでGASへデータを送信
+      fetch(GAS_URL, {
+        method: "POST",
+        body: JSON.stringify({ cid: cid, items: orderItems })
+      })
+      .then(res => res.json())
+      .then(res => {
+        alert(res.message);
+        location.reload();
+      })
+      .catch(err => alert("送信エラーが発生しました。"));
+    }
+  }
+</script>
+
+
+</body>
+</html>
