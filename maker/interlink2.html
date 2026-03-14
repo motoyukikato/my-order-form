@@ -113,16 +113,23 @@
 
     window.onload = () => { preloadAllProducts(); };
 
-    async function preloadAllProducts() {
-        try {
-            const res = await fetch(GAS_URL, { method: "POST", body: JSON.stringify({ action: "getAllProducts" }) });
-            allProducts = await res.json();
-            const datalist = document.getElementById("product-list");
-            datalist.innerHTML = allProducts.map(p => `<option value="${p.partNo}">${p.name}</option>`).join('');
-            console.log("商品マスタ読み込み完了");
-        } catch (e) { console.error("商品マスタ読み込み失敗"); }
+    // --- 商品データの事前読み込み ---
+async function preloadAllProducts() {
+    try {
+        const res = await fetch(GAS_URL, { method: "POST", body: JSON.stringify({ action: "getAllProducts" }) });
+        allProducts = await res.json();
+        
+        // datalist（入力候補）を生成：品番と品名の両方を表示させる
+        const datalist = document.getElementById("product-list");
+        datalist.innerHTML = allProducts.map(p => 
+            `<option value="${p.partNo}">${p.name}</option>`
+        ).join('');
+        
+        console.log("商品マスタ読み込み完了");
+    } catch (e) {
+        console.error("商品マスタの読み込みに失敗しました");
     }
-
+}
     function openTelModal() {
         isTelMode = true;
         document.getElementById("modal-p-name").innerText = "電話番号入力";
@@ -285,29 +292,34 @@
 
    // 高速検索：メモリ内のallProductsから「品番」または「品名」で探す
     function fetchProduct(code) {
-        const cleanInput = String(code).trim().toUpperCase();
-        
-        if (!cleanInput) return;
+    const cleanInput = String(code).trim().toUpperCase();
+    if (!cleanInput) return;
 
-        // 1. まずは品番で完全一致検索
-        let p = allProducts.find(item => 
-            String(item.partNo).toUpperCase() === cleanInput
+    // 1. まずは品番で完全一致検索
+    let p = allProducts.find(item => 
+        String(item.partNo).toUpperCase() === cleanInput
+    );
+
+    // 2. 品番で見つからない場合、品名で完全一致検索
+    if (!p) {
+        p = allProducts.find(item => 
+            String(item.name).toUpperCase() === cleanInput
         );
-
-        // 2. 品番で見つからない場合、品名にキーワードが含まれているか検索（部分一致）
-        if (!p) {
-            p = allProducts.find(item => 
-                String(item.name).toUpperCase().includes(cleanInput)
-            );
-        }
-        
-        if (p) {
-            openQtyModal(p);
-        } else {
-            // 手元のデータで見つからない場合のみサーバーに問い合わせ
-            fetchProductFromServer(cleanInput);
-        }
     }
+
+    // 3. それでも見つからない場合のみ、品名の部分一致で最初に出てきたものを採用
+    if (!p) {
+        p = allProducts.find(item => 
+            String(item.name).toUpperCase().includes(cleanInput)
+        );
+    }
+    
+    if (p) {
+        openQtyModal(p);
+    } else {
+        fetchProductFromServer(cleanInput);
+    }
+}
     async function fetchProductFromServer(code) {
         const res = await fetch(GAS_URL, { method: "POST", body: JSON.stringify({ action: "productSearch", val: code }) });
         const p = await res.json();
