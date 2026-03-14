@@ -283,13 +283,31 @@
         } else { alert("未登録"); }
     }
 
+   // 高速検索：メモリ内のallProductsから「品番」または「品名」で探す
     function fetchProduct(code) {
-        const cleanCode = String(code).trim().toUpperCase();
-        const p = allProducts.find(item => String(item.partNo).toUpperCase() === cleanCode || String(item.jan) === cleanCode);
-        if (p) openQtyModal(p);
-        else fetchProductFromServer(cleanCode);
-    }
+        const cleanInput = String(code).trim().toUpperCase();
+        
+        if (!cleanInput) return;
 
+        // 1. まずは品番で完全一致検索
+        let p = allProducts.find(item => 
+            String(item.partNo).toUpperCase() === cleanInput
+        );
+
+        // 2. 品番で見つからない場合、品名にキーワードが含まれているか検索（部分一致）
+        if (!p) {
+            p = allProducts.find(item => 
+                String(item.name).toUpperCase().includes(cleanInput)
+            );
+        }
+        
+        if (p) {
+            openQtyModal(p);
+        } else {
+            // 手元のデータで見つからない場合のみサーバーに問い合わせ
+            fetchProductFromServer(cleanInput);
+        }
+    }
     async function fetchProductFromServer(code) {
         const res = await fetch(GAS_URL, { method: "POST", body: JSON.stringify({ action: "productSearch", val: code }) });
         const p = await res.json();
