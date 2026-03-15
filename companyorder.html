@@ -129,7 +129,7 @@
 
 <script>
   // ★重要：ここに最新の「ウェブアプリURL」を貼り付けてください
-  const GAS_URL = "https://script.google.com/macros/s/AKfycbxY0gH6qPt0Kdnud_YqJfVfeXEuEVPNrgOfI3ALFSAt5npxfacNYiBFaAJ9tAwy78Aq/exec"; 
+  const GAS_URL = "https://script.google.com/macros/s/AKfycbxHk_Iv9CZZkWKIaBNqbRplHgeZzuL4PLEgcKbookC3-PiifdnECUZRedDNGbv-r7wO/exec"; 
 
   const urlParams = new URLSearchParams(window.location.search);
   const cid = urlParams.get('cid') || "GUEST";
@@ -148,38 +148,7 @@
       });
   };
 
-  function renderItems(items) {
-    itemsData = items;
-    const listContainer = document.getElementById('item-list');
-    if (!items.length) {
-      listContainer.innerHTML = '<p>表示できる商品がありません。</p>';
-      return;
-    }
-
-    listContainer.innerHTML = items.map((item, index) => {
-      const lot = Number(item.lot) || 1;
-      let options = '<option value="0">0</option>';
-      for (let i = 1; i <= 20; i++) {
-        const qty = lot * i;
-        options += `<option value="${qty}">${qty} (${i}ケース)</option>`;
-      }
-      const imgSrc = item.img || 'https://via.placeholder.com/65';
-
-      return `
-        <div class="item-card">
-          <img src="${imgSrc}" class="item-img" alt="">
-          <div class="item-info">
-            <span class="item-name">${item.name}</span>
-            <div class="item-sub">単価:¥${Number(item.price).toLocaleString()} / ロット:${lot}${item.unit}</div>
-          </div>
-          <div class="item-qty">
-            <select id="qty-${index}" class="qty-input" onchange="updateTotal()">${options}</select>
-          </div>
-        </div>
-      `;
-    }).join('');
-  }
-
+ 
   function updateTotal() {
     let total = 0;
     itemsData.forEach((item, index) => {
@@ -188,15 +157,73 @@
     });
     document.getElementById('grand-total').innerText = total.toLocaleString();
   }
+function renderItems(items) {
+  itemsData = items;
+  const listContainer = document.getElementById('item-list');
+  
+  listContainer.innerHTML = items.map((item, index) => {
+    const lot = Number(item.lot) || 1;
+    let controlHtml = '';
 
+    if (item.isAssort) {
+      // ★アソート用：1個単位で選べる数値入力
+      controlHtml = `
+        <div style="text-align:right;">
+          <input type="number" id="qty-${index}" class="qty-input" 
+                 value="0" min="0" step="1" onchange="updateTotal()">
+          <div style="font-size:0.7em; color:var(--accent-color);">※1点から注文可(合計${lot}で1箱)</div>
+        </div>`;
+    } else {
+      // 通常用：ケース単位のプルダウン
+      let options = '<option value="0">0</option>';
+      for (let i = 1; i <= 20; i++) {
+        const qty = lot * i;
+        options += `<option value="${qty}">${qty} (${i}ケース)</option>`;
+      }
+      controlHtml = `<select id="qty-${index}" class="qty-input" onchange="updateTotal()">${options}</select>`;
+    }
+
+    return `
+      <div class="item-card">
+        <img src="${item.img || 'https://via.placeholder.com/65'}" class="item-img">
+        <div class="item-info">
+          <span class="item-name">${item.name}</span>
+          <div class="item-sub">単価:¥${item.price.toLocaleString()} / 入数:${lot}</div>
+        </div>
+        <div class="item-qty">
+          ${controlHtml}
+        </div>
+      </div>
+    `;
+  }).join('');
+}
   function handleOrder() {
     const orderItems = [];
+    let assortTotal = 0; // アソート商品の合計個数を数える変数
+    
     itemsData.forEach((item, index) => {
       const q = parseInt(document.getElementById(`qty-${index}`).value) || 0;
-      if (q > 0) orderItems.push({ name: item.name, price: item.price, qty: q });
+      if (q > 0) {
+        orderItems.push({ name: item.name, price: item.price, qty: q });
+        
+        // もしその商品が「アソート対象」なら、選ばれた個数を加算する
+        if (item.isAssort) {
+          assortTotal += q;
+        }
+      }
     });
 
+    // 1. 何も選ばれていない時のチェック
     if (!orderItems.length) return alert("商品を選択してください。");
+
+    // 2. ★アソート商品の合計が「2」になっているかチェック
+    // ※アソート商品が1つでも選ばれている場合のみチェックが走ります
+    if (assortTotal > 0 && assortTotal !== 2) {
+      alert("アソート商品は、ケース単位（合計2個）になるように選択してください。\n現在は " + assortTotal + " 個選択されています。");
+      return;
+    }
+
+    // 3. 確認と送信
     if (!confirm("発注を確定してよろしいですか？")) return;
 
     fetch(GAS_URL, {
