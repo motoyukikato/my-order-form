@@ -225,19 +225,21 @@ function renderItems(items) {
   }).join('');
 }
 function handleOrder() {
-  // ★ここに追加：入力値の取得と保存
+  // 1. 入力値の取得
   const userName = document.getElementById('user-name').value;
   const userTel = document.getElementById('user-tel').value;
   const userAddress = document.getElementById('user-address').value;
 
+  // 2. 入力チェック
   if (!userName || !userTel || !userAddress) {
     return alert("配送先情報をすべて入力してください。");
   }
 
-  // スマホに保存
+  // 3. ブラウザ（スマホ）への保存
   localStorage.setItem('order_user_name', userName);
   localStorage.setItem('order_user_tel', userTel);
   localStorage.setItem('order_user_address', userAddress);
+
   const orderItems = [];
   let assortQty = 0;      
   let normalCases = 0;    
@@ -247,14 +249,12 @@ function handleOrder() {
 
   itemsData.forEach((item, index) => {
     const q = parseInt(document.getElementById(`qty-${index}`).value) || 0;
-    
     if (q > 0) {
       if (item.isAssort) {
-        assortQty += q; // アソート個数（1, 2, 3...）
+        assortQty += q;
       } else {
         const c = q / Number(item.lot);
         normalCases += c;
-        // 個別最小チェック
         if (Number(item.minCase) > 0 && c < Number(item.minCase)) {
           errorMessages.push(`【${item.name}】は単独で${item.minCase}箱以上必要です。`);
         }
@@ -263,45 +263,35 @@ function handleOrder() {
     }
   });
 
-  // --- アソートの計算（ここを柔軟に変更） ---
-  // 1個＝0.5ケースとして計算。
-  let assortCases = assortQty * 0.5; 
+  const finalTotal = normalCases + (assortQty * 0.5);
 
-  // 全体合計の判定
-  const finalTotal = normalCases + assortCases;
-
-  // 判定：合計がノルマに届いているか
   if (finalTotal > 0 && finalTotal < (requiredTotal - 0.01)) {
-    return alert(`合計で${requiredTotal}ケース以上の注文が必要です。\n(現在: 通常${normalCases}箱 + アソート${assortCases}箱 = 計${finalTotal}箱)`);
+    return alert(`合計で${requiredTotal}ケース以上の注文が必要です。`);
   }
 
-  // ---【重要】アソートの「偶数縛り」を特定のIDだけ解除 ---
-  // 以下のID以外（一般的な顧客）は、まだ2個単位のルールを残したい場合
   const isSpecialCustomer = (cid === "I001-ha-90ag");
-  
   if (!isSpecialCustomer && assortQty % 2 !== 0) {
-    return alert("アソート商品は合計2個（1ケース分）の倍数になるように選んでください。");
+    return alert("アソート商品は合計2個単位で選んでください。");
   }
 
   if (errorMessages.length > 0) return alert(errorMessages.join("\n"));
   if (orderItems.length === 0) return alert("商品を選択してください。");
 
-  // 送信
   if (!confirm(`合計 ${finalTotal} ケースで発注を確定しますか？`)) return;
 
   const btn = document.querySelector('.btn-submit');
   btn.disabled = true;
   btn.innerText = "送信中...";
 
- // fetch の body 部分をこのように修正してください
+  // ★ここが最重要：住所情報などをJSONに含めて送信する
   fetch(GAS_URL, {
     method: "POST",
     mode: "no-cors",
     body: JSON.stringify({ 
       cid: cid, 
-      userName: userName,    // 追加
-      userTel: userTel,      // 追加
-      userAddress: userAddress, // 追加
+      userName: userName, 
+      userTel: userTel, 
+      userAddress: userAddress, 
       items: orderItems 
     })
   })
@@ -313,6 +303,16 @@ function handleOrder() {
     alert("エラーが発生しました。");
     btn.disabled = false;
   });
+}
+
+// クリアボタン用の関数
+function clearCustomerInfo() {
+  if (!confirm("保存されている配送先情報を削除しますか？")) return;
+  localStorage.clear();
+  document.getElementById('user-name').value = "";
+  document.getElementById('user-tel').value = "";
+  document.getElementById('user-address').value = "";
+  alert("情報を削除しました。");
 }
 </script>
 </body>
