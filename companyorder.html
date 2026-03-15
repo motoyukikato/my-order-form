@@ -233,19 +233,19 @@
     // ★画像URLがない場合の予備画像を設定
     const imgSrc = item.img || 'https://via.placeholder.com/60';
 
-    return `
+   return `
       <div class="item-card">
         <img src="${imgSrc}" class="item-img" alt="${item.name}">
         
         <div class="item-info">
           <span class="item-name">${item.name}</span>
           <div class="item-sub">
-            単価: ¥${Number(item.price).toLocaleString()} / ロット: ${lotSize}${item.unit}
+            単価: ¥${item.price.toLocaleString()} / 入数: ${item.lot}${item.unit}
           </div>
         </div>
         
         <div class="item-qty">
-          <select id="qty-${index}" class="qty-input" onchange="updateTotal()" style="width: 120px;">
+          <select id="qty-${index}" class="qty-input" onchange="updateTotal()">
             ${options}
           </select>
         </div>
