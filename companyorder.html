@@ -184,7 +184,79 @@
 </div>
 <script>
   // 1. GASでデプロイして発行されたURLをここに貼り付け
-  const GAS_URL = "https://script.google.com/macros/s/AKfycbxNDCslf9ESJ6dAdMty8CwpQezxMnpwZgxMUaXZcrxjLANV8vI0IiXZMi9kntQLw-tn/exec"; 
+  const GAS_URL = "/**
+ * 1. 外部（GitHub）からのデータ取得リクエスト（GET）を受け取る
+ */
+function doGet(e) {
+  const cid = e.parameter.cid || "GUEST";
+  const result = getCompanyItems(cid);
+  
+  return ContentService.createTextOutput(JSON.stringify(result))
+    .setMimeType(ContentService.MimeType.JSON);
+}
+
+/**
+ * 2. 外部（GitHub）からの注文送信リクエスト（POST）を受け取る
+ */
+function doPost(e) {
+  const orderData = JSON.parse(e.postData.contents);
+  const resultMessage = submitOrder(orderData);
+  
+  return ContentService.createTextOutput(JSON.stringify({ 
+    status: "success", 
+    message: resultMessage 
+  })).setMimeType(ContentService.MimeType.JSON);
+}
+
+/**
+ * 商品リストと会社名を取得する
+ */
+function getCompanyItems(cid) {
+  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("CompanyItems");
+  const data = sheet.getDataRange().getValues();
+  data.shift(); 
+  
+  const filteredRows = data.filter(row => row[0] === cid);
+  if (filteredRows.length === 0) return { companyName: "ゲスト", items: [] };
+
+  // G列（index 6）から会社名を取得
+  const companyName = filteredRows[0][6] || cid; 
+
+  const items = filteredRows.map(row => ({
+    id: row[1],
+    name: row[2],
+    price: Number(row[3]),
+    unit: row[4],
+    lot: Number(row[5]) || 1,
+    img: row[8] // ★I列(index 8)の画像URLをここで正しく取得しています
+  }));
+
+  return { 
+    companyName: companyName, 
+    items: items 
+  };
+}
+
+/**
+ * 注文データを「OrderLog」シートに保存する
+ */
+function submitOrder(orderData) {
+  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("OrderLog");
+  const timestamp = new Date();
+  
+  orderData.items.forEach(item => {
+    sheet.appendRow([
+      timestamp, 
+      orderData.cid, 
+      item.name, 
+      item.price, 
+      item.qty, 
+      item.price * item.qty
+    ]);
+  });
+
+  return "注文が完了しました。ありがとうございます！";
+}"; 
 
   const urlParams = new URLSearchParams(window.location.search);
   const cid = urlParams.get('cid') || "GUEST";
