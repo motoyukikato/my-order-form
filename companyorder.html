@@ -35,7 +35,14 @@
   font-size: 1.5em;
   margin-bottom: 25px;
 }
-
+.item-img {
+    width: 60px;
+    height: 60px;
+    object-fit: cover;
+    border-radius: 8px;
+    margin-right: 15px;
+    background-color: #eee; 
+  }
   /* 商品カードのデザイン調整（よりクリーンに） */
   .item-card {
     background: var(--card-background);
@@ -207,39 +214,45 @@
   };
 
   function renderItems(items) {
-    itemsData = items; // 注文時に使うため保存
-    const listContainer = document.getElementById('item-list');
-    
-    if (!items || items.length === 0) {
-      listContainer.innerHTML = '<p>表示できる商品がありません。</p>';
-      return;
+  itemsData = items; // 注文時に使うため保存
+  const listContainer = document.getElementById('item-list');
+  
+  if (!items || items.length === 0) {
+    listContainer.innerHTML = '<p>表示できる商品がありません。</p>';
+    return;
+  }
+
+  listContainer.innerHTML = items.map((item, index) => {
+    const lotSize = Number(item.lot) || 1;
+    let options = '<option value="0">0</option>';
+    for (let i = 1; i <= 20; i++) {
+      const totalQty = lotSize * i;
+      options += `<option value="${totalQty}">${totalQty} (${i}ケース)</option>`;
     }
 
-    listContainer.innerHTML = items.map((item, index) => {
-      const lotSize = Number(item.lot) || 1;
-      let options = '<option value="0">0</option>';
-      for (let i = 1; i <= 20; i++) {
-        const totalQty = lotSize * i;
-        options += `<option value="${totalQty}">${totalQty} (${i}ケース)</option>`;
-      }
+    // ★画像URLがない場合の予備画像を設定
+    const imgSrc = item.img || 'https://via.placeholder.com/60';
 
-      return `
-        <div class="item-card">
-          <div class="item-info">
-            <span class="item-name">${item.name}</span>
-            <div class="item-sub">
-              単価: ¥${Number(item.price).toLocaleString()} / ロット: ${lotSize}${item.unit}
-            </div>
-          </div>
-          <div class="item-qty">
-            <select id="qty-${index}" class="qty-input" onchange="updateTotal()" style="width: 120px;">
-              ${options}
-            </select>
+    return `
+      <div class="item-card">
+        <img src="${imgSrc}" class="item-img" alt="${item.name}">
+        
+        <div class="item-info">
+          <span class="item-name">${item.name}</span>
+          <div class="item-sub">
+            単価: ¥${Number(item.price).toLocaleString()} / ロット: ${lotSize}${item.unit}
           </div>
         </div>
-      `;
-    }).join('');
-  }
+        
+        <div class="item-qty">
+          <select id="qty-${index}" class="qty-input" onchange="updateTotal()" style="width: 120px;">
+            ${options}
+          </select>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
 
   function updateTotal() {
     let total = 0;
