@@ -199,63 +199,51 @@ function renderItems(items) {
 }
 function handleOrder() {
   const orderItems = [];
-  let assortQty = 0;      // アソートの「個数」
-  let normalCases = 0;    // 通常商品の「ケース数」
-  let errorMessages = [];
+  let assortQty = 0;      
+  let normalCases = 0;    
   
-  // L列（合計最小数）を数値として取得
-  const requiredTotal = itemsData.length > 0 ? Number(itemsData[0].globalMin || 1) : 1;
+  // 顧客の合計ノルマ（L列）を確実に取得
+  const requiredTotal = itemsData.length > 0 ? Number(itemsData[0].globalMin || 0) : 0;
 
   itemsData.forEach((item, index) => {
     const q = parseInt(document.getElementById(`qty-${index}`).value) || 0;
     
     if (q > 0) {
+      const currentCases = q / Number(item.lot);
+
       if (item.isAssort) {
-        // アソート商品は「個数」を貯める
         assortQty += q;
       } else {
-        // 通常商品は「ケース数」を貯める
-        const currentCases = q / Number(item.lot);
         normalCases += currentCases;
-
-        // 個別最小チェック (K列)
+        
+        // --- チェック1：特定商品の最小ケース数（K列） ---
         if (Number(item.minCase) > 0 && currentCases < Number(item.minCase)) {
-          errorMessages.push(`【${item.name}】は単体で${item.minCase}ケース以上必要です。`);
+          return alert(`【${item.name}】は単体で${item.minCase}ケース以上選んでください。`);
         }
       }
       orderItems.push({ name: item.name, price: item.price, qty: q });
     }
   });
 
-  // --- アソートの計算（ここが重要！） ---
+  // --- チェック2：アソートの個数ルール（2個＝1箱） ---
   let assortCases = 0;
   if (assortQty > 0) {
-    // アソートが2の倍数（2個, 4個...）になっているかチェック
     if (assortQty % 2 !== 0) {
       return alert("アソート商品は合計2個（1ケース分）になるように選んでください。");
     }
-    // 2個を1ケースとして換算
     assortCases = assortQty / 2;
   }
 
-  // --- 全体合計の判定（通常ケース + アソートケース） ---
+  // --- チェック3：全体の合計ケース数（L列） ---
   const finalTotal = normalCases + assortCases;
-
-  // 「合計5ケース以上」のチェック
   if (finalTotal > 0 && finalTotal < requiredTotal) {
-    alert(`このお客様は合計${requiredTotal}ケース以上の注文が必要です。\n（現在：通常 ${normalCases}箱 + アソート ${assortCases}箱 ＝ 計 ${finalTotal}箱）`);
-    return; // ここで中断
-  }
-
-  // 個別エラー（K列）があれば表示
-  if (errorMessages.length > 0) {
-    return alert(errorMessages.join("\n"));
+    return alert(`このお客様は合計${requiredTotal}ケース以上の注文が必要です。\n（現在の合計: ${finalTotal}ケース）\n\n※通常 ${normalCases}箱 ＋ アソート ${assortCases}箱`);
   }
 
   if (orderItems.length === 0) return alert("商品を選択してください。");
 
-  // 送信
-  if (!confirm(`合計 ${finalTotal} ケースで確定しますか？`)) return;
+  // 送信前の最終確認
+  if (!confirm(`合計 ${finalTotal} ケース（通常${normalCases}＋アソート${assortCases}）で注文を確定しますか？`)) return;
 
   const btn = document.querySelector('.btn-submit');
   btn.disabled = true;
