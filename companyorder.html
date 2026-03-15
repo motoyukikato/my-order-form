@@ -160,7 +160,22 @@
       });
   };
 
- 
+ // 入力内容と保存データをすべて消去する関数
+function clearCustomerInfo() {
+  if (!confirm("入力された名前・電話番号・住所をすべて消去しますか？")) return;
+
+  // 1. 画面上の入力欄を空にする
+  document.getElementById('user-name').value = "";
+  document.getElementById('user-tel').value = "";
+  document.getElementById('user-address').value = "";
+
+  // 2. ブラウザの保存データ(localStorage)を削除する
+  localStorage.removeItem('order_user_name');
+  localStorage.removeItem('order_user_tel');
+  localStorage.removeItem('order_user_address');
+
+  alert("情報を削除しました。");
+}
   function updateTotal() {
     let total = 0;
     itemsData.forEach((item, index) => {
