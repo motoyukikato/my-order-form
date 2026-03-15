@@ -135,19 +135,22 @@
     </div>
     <button class="btn-submit" onclick="handleOrder()">注文を確定する</button>
   </div>
-</div> <script>
-  // ★重要：ここに最新の「ウェブアプリURL」を貼り付けてください
-  const GAS_URL = "https://script.google.com/macros/s/AKfycbwDrfC6K4rlcPsi0PvuFyMBOzIs2ivX02tSFr9c-Y6KUbQPhkGKH5_KaQDrtGpZeuQY/exec"; 
+</div> 
+ <script>
+  // ★重要：GASの「デプロイ」→「デプロイを管理」で発行された最新のURLに書き換えてください
+  const GAS_URL = "ここに最新のGASのURLを貼り付け"; 
 
   const urlParams = new URLSearchParams(window.location.search);
   const cid = urlParams.get('cid') || "GUEST";
   let itemsData = [];
 
   window.onload = () => {
-    // ★ここに追加：前回保存した情報の読み込み
+    // 保存情報の読み込み
     document.getElementById('user-name').value = localStorage.getItem('order_user_name') || "";
     document.getElementById('user-tel').value = localStorage.getItem('order_user_tel') || "";
     document.getElementById('user-address').value = localStorage.getItem('order_user_address') || "";
+    
+    // データ取得
     fetch(`${GAS_URL}?cid=${cid}`)
       .then(res => res.json())
       .then(data => {
@@ -160,22 +163,38 @@
       });
   };
 
- // 入力内容と保存データをすべて消去する関数
-function clearCustomerInfo() {
-  if (!confirm("入力された名前・電話番号・住所をすべて消去しますか？")) return;
+  function renderItems(items) {
+    itemsData = items;
+    const listContainer = document.getElementById('item-list');
+    listContainer.innerHTML = items.map((item, index) => {
+      const lot = Number(item.lot) || 1;
+      let controlHtml = '';
 
-  // 1. 画面上の入力欄を空にする
-  document.getElementById('user-name').value = "";
-  document.getElementById('user-tel').value = "";
-  document.getElementById('user-address').value = "";
+      if (item.isAssort) {
+        controlHtml = `<div style="text-align:right;">
+          <input type="number" id="qty-${index}" class="qty-input" value="0" min="0" step="1" onchange="updateTotal()">
+          <div style="font-size:0.7em; color:var(--accent-color);">※1点から注文可(合計${lot}で1箱)</div>
+        </div>`;
+      } else {
+        let options = '<option value="0">0</option>';
+        for (let i = 1; i <= 20; i++) {
+          const qty = lot * i;
+          options += `<option value="${qty}">${qty} (${i}ケース)</option>`;
+        }
+        controlHtml = `<select id="qty-${index}" class="qty-input" onchange="updateTotal()">${options}</select>`;
+      }
 
-  // 2. ブラウザの保存データ(localStorage)を削除する
-  localStorage.removeItem('order_user_name');
-  localStorage.removeItem('order_user_tel');
-  localStorage.removeItem('order_user_address');
+      return `<div class="item-card">
+        <img src="${item.img || 'https://via.placeholder.com/65'}" class="item-img">
+        <div class="item-info">
+          <span class="item-name">${item.name}</span>
+          <div class="item-sub">単価:¥${item.price.toLocaleString()} / 入数:${lot}</div>
+        </div>
+        <div class="item-qty">${controlHtml}</div>
+      </div>`;
+    }).join('');
+  }
 
-  alert("情報を削除しました。");
-}
   function updateTotal() {
     let total = 0;
     itemsData.forEach((item, index) => {
@@ -184,136 +203,60 @@ function clearCustomerInfo() {
     });
     document.getElementById('grand-total').innerText = total.toLocaleString();
   }
-function renderItems(items) {
-  itemsData = items;
-  const listContainer = document.getElementById('item-list');
-  
-  listContainer.innerHTML = items.map((item, index) => {
-    const lot = Number(item.lot) || 1;
-    let controlHtml = '';
 
-    if (item.isAssort) {
-      // ★アソート用：1個単位で選べる数値入力
-      controlHtml = `
-        <div style="text-align:right;">
-          <input type="number" id="qty-${index}" class="qty-input" 
-                 value="0" min="0" step="1" onchange="updateTotal()">
-          <div style="font-size:0.7em; color:var(--accent-color);">※1点から注文可(合計${lot}で1箱)</div>
-        </div>`;
-    } else {
-      // 通常用：ケース単位のプルダウン
-      let options = '<option value="0">0</option>';
-      for (let i = 1; i <= 20; i++) {
-        const qty = lot * i;
-        options += `<option value="${qty}">${qty} (${i}ケース)</option>`;
-      }
-      controlHtml = `<select id="qty-${index}" class="qty-input" onchange="updateTotal()">${options}</select>`;
+  function handleOrder() {
+    const userName = document.getElementById('user-name').value;
+    const userTel = document.getElementById('user-tel').value;
+    const userAddress = document.getElementById('user-address').value;
+
+    if (!userName || !userTel || !userAddress) {
+      return alert("配送先情報をすべて入力してください。");
     }
 
-    return `
-      <div class="item-card">
-        <img src="${item.img || 'https://via.placeholder.com/65'}" class="item-img">
-        <div class="item-info">
-          <span class="item-name">${item.name}</span>
-          <div class="item-sub">単価:¥${item.price.toLocaleString()} / 入数:${lot}</div>
-        </div>
-        <div class="item-qty">
-          ${controlHtml}
-        </div>
-      </div>
-    `;
-  }).join('');
-}
-function handleOrder() {
-  // 1. 入力値の取得
-  const userName = document.getElementById('user-name').value;
-  const userTel = document.getElementById('user-tel').value;
-  const userAddress = document.getElementById('user-address').value;
+    localStorage.setItem('order_user_name', userName);
+    localStorage.setItem('order_user_tel', userTel);
+    localStorage.setItem('order_user_address', userAddress);
 
-  // 2. 入力チェック
-  if (!userName || !userTel || !userAddress) {
-    return alert("配送先情報をすべて入力してください。");
-  }
+    const orderItems = [];
+    itemsData.forEach((item, index) => {
+      const q = parseInt(document.getElementById(`qty-${index}`).value) || 0;
+      if (q > 0) orderItems.push({ name: item.name, price: item.price, qty: q });
+    });
 
-  // 3. ブラウザ（スマホ）への保存
-  localStorage.setItem('order_user_name', userName);
-  localStorage.setItem('order_user_tel', userTel);
-  localStorage.setItem('order_user_address', userAddress);
+    if (orderItems.length === 0) return alert("商品を選択してください。");
+    if (!confirm("発注を確定しますか？")) return;
 
-  const orderItems = [];
-  let assortQty = 0;      
-  let normalCases = 0;    
-  let errorMessages = [];
-  
-  const requiredTotal = itemsData.length > 0 ? Number(itemsData[0].globalMin || 1) : 1;
+    const btn = document.querySelector('.btn-submit');
+    btn.disabled = true;
+    btn.innerText = "送信中...";
 
-  itemsData.forEach((item, index) => {
-    const q = parseInt(document.getElementById(`qty-${index}`).value) || 0;
-    if (q > 0) {
-      if (item.isAssort) {
-        assortQty += q;
-      } else {
-        const c = q / Number(item.lot);
-        normalCases += c;
-        if (Number(item.minCase) > 0 && c < Number(item.minCase)) {
-          errorMessages.push(`【${item.name}】は単独で${item.minCase}箱以上必要です。`);
-        }
-      }
-      orderItems.push({ name: item.name, price: item.price, qty: q });
-    }
-  });
-
-  const finalTotal = normalCases + (assortQty * 0.5);
-
-  if (finalTotal > 0 && finalTotal < (requiredTotal - 0.01)) {
-    return alert(`合計で${requiredTotal}ケース以上の注文が必要です。`);
-  }
-
-  const isSpecialCustomer = (cid === "I001-ha-90ag");
-  if (!isSpecialCustomer && assortQty % 2 !== 0) {
-    return alert("アソート商品は合計2個単位で選んでください。");
-  }
-
-  if (errorMessages.length > 0) return alert(errorMessages.join("\n"));
-  if (orderItems.length === 0) return alert("商品を選択してください。");
-
-  if (!confirm(`合計 ${finalTotal} ケースで発注を確定しますか？`)) return;
-
-  const btn = document.querySelector('.btn-submit');
-  btn.disabled = true;
-  btn.innerText = "送信中...";
-
-  // GitHub側のコード：fetchの部分
-  fetch(GAS_URL, {
-    method: "POST",
-    mode: "no-cors",
-    body: JSON.stringify({ 
-      cid: cid, 
-      userName: userName,     // ★これが抜けているとエラーになります
-      userTel: userTel,       // ★これ
-      userAddress: userAddress, // ★これ
-      items: orderItems 
+    // ★ここが重要：GASへ「名前・電話・住所」をセットで送る
+    fetch(GAS_URL, {
+      method: "POST",
+      mode: "no-cors",
+      body: JSON.stringify({ 
+        cid: cid, 
+        userName: userName, 
+        userTel: userTel, 
+        userAddress: userAddress, 
+        items: orderItems 
+      })
     })
-  })})
-  .then(() => {
-    alert("発注を承りました。");
-    location.reload();
-  })
-  .catch(() => {
-    alert("エラーが発生しました。");
-    btn.disabled = false;
-  });
-}
+    .then(() => {
+      alert("発注を承りました。");
+      location.reload();
+    })
+    .catch(() => {
+      alert("エラーが発生しました。");
+      btn.disabled = false;
+    });
+  }
 
-// クリアボタン用の関数
-function clearCustomerInfo() {
-  if (!confirm("保存されている配送先情報を削除しますか？")) return;
-  localStorage.clear();
-  document.getElementById('user-name').value = "";
-  document.getElementById('user-tel').value = "";
-  document.getElementById('user-address').value = "";
-  alert("情報を削除しました。");
-}
-</script>
+  function clearCustomerInfo() {
+    if (!confirm("情報を削除しますか？")) return;
+    localStorage.clear();
+    location.reload();
+  }
+</script> 
 </body>
 </html>
