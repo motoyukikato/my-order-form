@@ -4,176 +4,120 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>専用発注書</title>
- <style>
-  /* さわやかなブルーをベースにした配色定義 */
-  :root {
-    --primary-color: #3498db;    /* メインの青（ヘッダーやボタン） */
-    --accent-color: #e67e22;     /* アクセントのオレンジ（ロット表示） */
-    --background-color: #ecf0f1; /* 薄いグレーの背景 */
-    --text-color: #2c3e50;       /* 濃いグレーの文字 */
-    --card-background: #ffffff;   /* カードの白 */
-  }
+  <style>
+    :root {
+      --primary-color: #3498db;
+      --accent-color: #e67e22;
+      --background-color: #ecf0f1;
+      --text-color: #2c3e50;
+      --card-background: #ffffff;
+    }
 
-  body {
-    font-family: "Helvetica Neue", Arial, sans-serif;
-    background-color: var(--background-color);
-    color: var(--text-color);
-    margin: 0;
-    padding: 20px;
-    padding-bottom: 100px; /* フッターと重ならないための余白 */
-  }
+    body {
+      font-family: "Helvetica Neue", Arial, sans-serif;
+      background-color: var(--background-color);
+      color: var(--text-color);
+      margin: 0;
+      padding: 20px;
+      padding-bottom: 100px;
+    }
 
-  .container {
-    max-width: 600px;
-    margin: 0 auto;
-  }
+    .container { max-width: 600px; margin: 0 auto; }
 
- h2 {
-  border-left: 5px solid var(--primary-color);
-  padding-left: 15px;
-  color: #2c3e50; /* さわやかな青から、ハッキリした黒系に変更 */
-  font-size: 1.5em;
-  margin-bottom: 25px;
-}
-.item-img {
-    width: 60px;
-    height: 60px;
-    object-fit: cover;
-    border-radius: 8px;
-    margin-right: 15px;
-    background-color: #eee; 
-  }
-  /* 商品カードのデザイン調整（よりクリーンに） */
-  .item-card {
-    background: var(--card-background);
-    padding: 20px;
-    margin-bottom: 15px;
-    border-radius: 12px; /* 少し丸みを大きく */
-    box-shadow: 0 2px 10px rgba(0,0,0,0.05); /* 影を薄くさわやかに */
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    transition: transform 0.2s ease; /* ホバー時のアニメーション */
-  }
+    h2 {
+      border-left: 5px solid var(--primary-color);
+      padding-left: 15px;
+      color: #2c3e50;
+      font-size: 1.5em;
+      margin-bottom: 25px;
+    }
 
-  .item-card:hover {
-    transform: translateY(-3px); /* ホバー時に少し浮く効果 */
-    box-shadow: 0 5px 15px rgba(0,0,0,0.1);
-  }
+    .item-card {
+      background: var(--card-background);
+      padding: 15px;
+      margin-bottom: 15px;
+      border-radius: 12px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
 
-  .item-info {
-    flex: 1;
-  }
+    .item-img {
+      width: 65px;
+      height: 65px;
+      object-fit: cover;
+      border-radius: 8px;
+      margin-right: 15px;
+      background-color: #eee;
+    }
 
-  .item-name {
-    font-weight: bold;
-    font-size: 1.15em;
-    display: block;
-    color: #34495e; /* 文字色を少し柔らかく */
-  }
+    .item-info { flex: 1; }
 
-  .item-sub {
-    font-size: 0.9em;
-    color: #7f8c8d;
-    margin-top: 6px;
-  }
+    .item-name {
+      font-weight: bold;
+      font-size: 1.1em;
+      display: block;
+      color: #34495e;
+    }
 
-  /* ロット表示をアクセントカラーに */
-  .lot-badge {
-    background: #fdf2e9; /* 薄いオレンジ背景 */
-    color: var(--accent-color);
-    padding: 3px 8px;
-    border-radius: 6px;
-    font-weight: bold;
-    font-size: 0.85em;
-  }
+    .item-sub {
+      font-size: 0.85em;
+      color: #7f8c8d;
+      margin-top: 4px;
+    }
 
-  /* プルダウンのデザイン調整 */
-  .qty-input {
-    width: 130px;
-    padding: 10px;
-    border: 2px solid #ddd;
-    border-radius: 8px;
-    text-align: center;
-    font-size: 1em;
-    color: var(--primary-color);
-    font-weight: bold;
-    background-color: #fff;
-    cursor: pointer;
-    transition: border-color 0.2s;
-  }
+    .qty-input {
+      width: 120px;
+      padding: 8px;
+      border: 2px solid #ddd;
+      border-radius: 8px;
+      font-size: 1em;
+      color: var(--primary-color);
+      font-weight: bold;
+    }
 
-  .qty-input:focus {
-    border-color: var(--primary-color);
-    outline: none;
-  }
+    .footer {
+      position: sticky;
+      bottom: 10px;
+      background: rgba(52, 152, 219, 0.95);
+      color: white;
+      padding: 20px;
+      border-radius: 15px;
+      box-shadow: 0 5px 20px rgba(0,0,0,0.15);
+      backdrop-filter: blur(5px);
+    }
 
-  /* フッターのデザイン調整（より一体感を） */
-  .footer {
-    position: sticky;
-    bottom: 10px; /* 少し浮かせた感じに */
-    background: rgba(52, 152, 219, 0.95); /* 半透明のプライマリーカラー */
-    color: white;
-    padding: 20px;
-    border-radius: 15px;
-    margin-top: 30px;
-    box-shadow: 0 5px 20px rgba(0,0,0,0.15);
-    backdrop-filter: blur(5px); /* 背景をぼかすエフェクト */
-  }
+    .total-row {
+      display: flex;
+      justify-content: space-between;
+      font-size: 1.3em;
+      font-weight: bold;
+      margin-bottom: 12px;
+    }
 
-  .total-row {
-    display: flex;
-    justify-content: space-between;
-    font-size: 1.3em;
-    font-weight: bold;
-    margin-bottom: 15px;
-    border-bottom: 1px solid rgba(255,255,255,0.3);
-    padding-bottom: 10px;
-  }
+    .btn-submit {
+      background: #fff;
+      color: var(--primary-color);
+      border: none;
+      width: 100%;
+      padding: 15px;
+      border-radius: 10px;
+      font-size: 1.1em;
+      font-weight: bold;
+      cursor: pointer;
+    }
 
-  /* 確定ボタンのデザイン調整 */
-  .btn-submit {
-    background: #fff; /* ボタンを白にしてさわやかに */
-    color: var(--primary-color); /* 文字をプライマリーカラーに */
-    border: none;
-    width: 100%;
-    padding: 15px;
-    border-radius: 10px;
-    font-size: 1.2em;
-    font-weight: bold;
-    cursor: pointer;
-    transition: all 0.3s ease;
-    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-  }
-
-  .btn-submit:hover {
-    background: #f1f1f1;
-    transform: translateY(-2px);
-    box-shadow: 0 6px 12px rgba(0,0,0,0.15);
-  }
-
-  .btn-submit:active {
-    transform: translateY(1px);
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-  }
-
-  .loading {
-    text-align: center;
-    padding: 50px;
-    color: #999;
-    font-size: 1.2em;
-  }
-</style>
+    .loading { text-align: center; padding: 50px; color: #999; }
+  </style>
 </head>
 <body>
 
 <div class="container">
   <h2>専用発注書 (<span id="comp-name">読み込み中...</span> 様)</h2>
-  
   <div id="item-list">
     <div class="loading">商品を読み込んでいます...</div>
   </div>
-
   <div class="footer">
     <div class="total-row">
       <span>合計金額</span>
@@ -182,149 +126,59 @@
     <button class="btn-submit" onclick="handleOrder()">注文を確定する</button>
   </div>
 </div>
+
 <script>
-  // 1. GASでデプロイして発行されたURLをここに貼り付け
-  const GAS_URL = "/**
- * 1. 外部（GitHub）からのデータ取得リクエスト（GET）を受け取る
- */
-function doGet(e) {
-  const cid = e.parameter.cid || "GUEST";
-  const result = getCompanyItems(cid);
-  
-  return ContentService.createTextOutput(JSON.stringify(result))
-    .setMimeType(ContentService.MimeType.JSON);
-}
-
-/**
- * 2. 外部（GitHub）からの注文送信リクエスト（POST）を受け取る
- */
-function doPost(e) {
-  const orderData = JSON.parse(e.postData.contents);
-  const resultMessage = submitOrder(orderData);
-  
-  return ContentService.createTextOutput(JSON.stringify({ 
-    status: "success", 
-    message: resultMessage 
-  })).setMimeType(ContentService.MimeType.JSON);
-}
-
-/**
- * 商品リストと会社名を取得する
- */
-function getCompanyItems(cid) {
-  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("CompanyItems");
-  const data = sheet.getDataRange().getValues();
-  data.shift(); 
-  
-  const filteredRows = data.filter(row => row[0] === cid);
-  if (filteredRows.length === 0) return { companyName: "ゲスト", items: [] };
-
-  // G列（index 6）から会社名を取得
-  const companyName = filteredRows[0][6] || cid; 
-
-  const items = filteredRows.map(row => ({
-    id: row[1],
-    name: row[2],
-    price: Number(row[3]),
-    unit: row[4],
-    lot: Number(row[5]) || 1,
-    img: row[8] // ★I列(index 8)の画像URLをここで正しく取得しています
-  }));
-
-  return { 
-    companyName: companyName, 
-    items: items 
-  };
-}
-
-/**
- * 注文データを「OrderLog」シートに保存する
- */
-function submitOrder(orderData) {
-  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("OrderLog");
-  const timestamp = new Date();
-  
-  orderData.items.forEach(item => {
-    sheet.appendRow([
-      timestamp, 
-      orderData.cid, 
-      item.name, 
-      item.price, 
-      item.qty, 
-      item.price * item.qty
-    ]);
-  });
-
-  return "注文が完了しました。ありがとうございます！";
-}"; 
+  // ★重要：ここに最新の「ウェブアプリURL」を貼り付けてください
+  const GAS_URL = "https://script.google.com/macros/s/AKfycbxY0gH6qPt0Kdnud_YqJfVfeXEuEVPNrgOfI3ALFSAt5npxfacNYiBFaAJ9tAwy78Aq/exec"; 
 
   const urlParams = new URLSearchParams(window.location.search);
   const cid = urlParams.get('cid') || "GUEST";
   let itemsData = [];
 
   window.onload = () => {
-    // 会社名を表示するための場所（読み込み中...）をリセット
-    document.getElementById('comp-name').innerText = "読み込み中...";
-    
     fetch(`${GAS_URL}?cid=${cid}`)
       .then(res => res.json())
       .then(data => {
-        // GAS側で { companyName: "...", items: [...] } という形式で返ってくるので分解する
-        const companyName = data.companyName || "ゲスト";
-        const items = data.items || [];
-
-        // 会社名を反映
-        document.getElementById('comp-name').innerText = companyName;
-        
-        // 商品リストを描画
-        renderItems(items);
+        document.getElementById('comp-name').innerText = data.companyName || "ゲスト";
+        renderItems(data.items || []);
       })
       .catch(err => {
-        console.error("読み込みエラー:", err);
+        console.error(err);
         document.getElementById('item-list').innerHTML = "データの取得に失敗しました。";
       });
   };
 
   function renderItems(items) {
-  itemsData = items; // 注文時に使うため保存
-  const listContainer = document.getElementById('item-list');
-  
-  if (!items || items.length === 0) {
-    listContainer.innerHTML = '<p>表示できる商品がありません。</p>';
-    return;
-  }
-
-  listContainer.innerHTML = items.map((item, index) => {
-    const lotSize = Number(item.lot) || 1;
-    let options = '<option value="0">0</option>';
-    for (let i = 1; i <= 20; i++) {
-      const totalQty = lotSize * i;
-      options += `<option value="${totalQty}">${totalQty} (${i}ケース)</option>`;
+    itemsData = items;
+    const listContainer = document.getElementById('item-list');
+    if (!items.length) {
+      listContainer.innerHTML = '<p>表示できる商品がありません。</p>';
+      return;
     }
 
-    // ★画像URLがない場合の予備画像を設定
-    const imgSrc = item.img || 'https://via.placeholder.com/60';
+    listContainer.innerHTML = items.map((item, index) => {
+      const lot = Number(item.lot) || 1;
+      let options = '<option value="0">0</option>';
+      for (let i = 1; i <= 20; i++) {
+        const qty = lot * i;
+        options += `<option value="${qty}">${qty} (${i}ケース)</option>`;
+      }
+      const imgSrc = item.img || 'https://via.placeholder.com/65';
 
-   return `
-      <div class="item-card">
-        <img src="${imgSrc}" class="item-img" alt="${item.name}">
-        
-        <div class="item-info">
-          <span class="item-name">${item.name}</span>
-          <div class="item-sub">
-            単価: ¥${item.price.toLocaleString()} / 入数: ${item.lot}${item.unit}
+      return `
+        <div class="item-card">
+          <img src="${imgSrc}" class="item-img" alt="">
+          <div class="item-info">
+            <span class="item-name">${item.name}</span>
+            <div class="item-sub">単価:¥${Number(item.price).toLocaleString()} / ロット:${lot}${item.unit}</div>
+          </div>
+          <div class="item-qty">
+            <select id="qty-${index}" class="qty-input" onchange="updateTotal()">${options}</select>
           </div>
         </div>
-        
-        <div class="item-qty">
-          <select id="qty-${index}" class="qty-input" onchange="updateTotal()">
-            ${options}
-          </select>
-        </div>
-      </div>
-    `;
-  }).join('');
-}
+      `;
+    }).join('');
+  }
 
   function updateTotal() {
     let total = 0;
@@ -339,31 +193,23 @@ function submitOrder(orderData) {
     const orderItems = [];
     itemsData.forEach((item, index) => {
       const q = parseInt(document.getElementById(`qty-${index}`).value) || 0;
-      if (q > 0) {
-        orderItems.push({ name: item.name, price: item.price, qty: q });
-      }
+      if (q > 0) orderItems.push({ name: item.name, price: item.price, qty: q });
     });
 
-    if (orderItems.length === 0) {
-      alert("注文商品が選択されていません。");
-      return;
-    }
+    if (!orderItems.length) return alert("商品を選択してください。");
+    if (!confirm("発注を確定してよろしいですか？")) return;
 
-    if (confirm("この内容で発注してよろしいですか？")) {
-      fetch(GAS_URL, {
-        method: "POST",
-        body: JSON.stringify({ cid: cid, items: orderItems })
-      })
-      .then(res => res.json())
-      .then(res => {
-        alert(res.message);
-        location.reload();
-      })
-      .catch(err => alert("送信エラーが発生しました。"));
-    }
+    fetch(GAS_URL, {
+      method: "POST",
+      body: JSON.stringify({ cid: cid, items: orderItems })
+    })
+    .then(res => res.json())
+    .then(res => { 
+      alert(res.message); 
+      location.reload(); 
+    })
+    .catch(err => alert("送信エラーが発生しました。"));
   }
 </script>
-
-
 </body>
 </html>
