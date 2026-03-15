@@ -129,7 +129,7 @@
 
 <script>
   // ★重要：ここに最新の「ウェブアプリURL」を貼り付けてください
-  const GAS_URL = "https://script.google.com/macros/s/AKfycbxHk_Iv9CZZkWKIaBNqbRplHgeZzuL4PLEgcKbookC3-PiifdnECUZRedDNGbv-r7wO/exec"; 
+  const GAS_URL = "https://script.google.com/macros/s/AKfycbzK75m2Y7MefRIfntBaUKB0m-g-pPxvO6y8itkdmgiwBLQdUKcda4ryzKhEttYigX7g/exec"; 
 
   const urlParams = new URLSearchParams(window.location.search);
   const cid = urlParams.get('cid') || "GUEST";
@@ -198,69 +198,85 @@ function renderItems(items) {
   }).join('');
 }
 function handleOrder() {
-    const orderItems = [];
-    let assortTotal = 0; 
-    let totalCases = 0;    // 全商品の合計ケース数をカウントする変数
-    let errorMessages = []; 
+  const orderItems = [];
+  let assortQty = 0;      
+  let normalCases = 0;    
+  let errorMessages = [];
+  
+  // 数値として確実に扱うために Number() を使用
+  const requiredTotal = itemsData.length > 0 ? Number(itemsData[0].globalMin || 1) : 1;
 
-    itemsData.forEach((item, index) => {
-      const q = parseInt(document.getElementById(`qty-${index}`).value) || 0;
-      
-      if (q > 0) {
-        const currentCases = q / item.lot; // この商品の注文ケース数
-        totalCases += currentCases;        // 全体の合計ケース数に加算
+  itemsData.forEach((item, index) => {
+    const inputVal = document.getElementById(`qty-${index}`).value;
+    const q = parseInt(inputVal) || 0;
+    
+    if (q > 0) {
+      const currentCases = q / Number(item.lot);
 
-        // --- 条件1：商品ごとの最小ケース数チェック (K列) ---
-        const minAllowed = item.minCase || 1; 
-        if (currentCases < minAllowed) {
-          errorMessages.push(`【${item.name}】は${minAllowed}ケース以上で注文してください。`);
-        }
-
-        orderItems.push({ name: item.name, price: item.price, qty: q });
-        
-        if (item.isAssort) {
-          assortTotal += q;
+      if (item.isAssort) {
+        assortQty += q;
+      } else {
+        normalCases += currentCases;
+        // 個別最小チェック
+        const minVal = Number(item.minCase);
+        if (minVal > 0 && currentCases < minVal) {
+          errorMessages.push(`【${item.name}】は${minVal}ケース以上必要です。`);
         }
       }
-    });
-
-    // --- 条件2：全体合計の最小ケース数チェック ---
-    // 例：cidが「C001」の顧客だけ、合計5ケース以上にしたい場合
-    const globalMinCases = (cid === "C001") ? 5 : 1; // 顧客IDで分岐（必要なければ 1 に）
-    
-    if (totalCases > 0 && totalCases < globalMinCases) {
-      errorMessages.push(`合計注文数が ${globalMinCases} ケースに満たしていません。（現在: ${totalCases} ケース）`);
+      orderItems.push({ name: item.name, price: item.price, qty: q });
     }
+  });
 
-    // エラーがあれば表示して中断
-    if (errorMessages.length > 0) {
-      alert(errorMessages.join("\n"));
-      return;
+  // アソート計算
+  let assortCases = 0;
+  if (assortQty > 0) {
+    if (assortQty % 2 !== 0) {
+      return alert("アソート商品は合計2個（1ケース分）になるように選んでください。");
     }
+    assortCases = assortQty / 2;
+  }
 
-    // 何も選ばれていない時のチェック
-    if (!orderItems.length) return alert("商品を選択してください。");
+  // 合計の再計算
+  const finalTotal = normalCases + assortCases;
 
-    // アソート商品の合計チェック (2個=1ケース分)
-    if (assortTotal > 0 && assortTotal !== 2) {
-      alert("アソート商品は、合計2個（1ケース分）になるように選択してください。");
-      return;
-    }
+  // デバッグ用（あとで消してOK）：現在の計算結果をログに出す
+  console.log("通常ケース:", normalCases, "アソートケース:", assortCases, "合計:", finalTotal, "必要数:", requiredTotal);
 
-    if (!confirm("発注を確定してよろしいですか？")) return;
+  // 全体合計チェック（誤差を防ぐため、0.01引いて判定）
+  if (finalTotal > 0 && finalTotal < (requiredTotal - 0.01)) {
+    errorMessages.push(`合計${requiredTotal}ケース以上の注文が必要です。(現在: ${finalTotal}ケース)`);
+  }
 
-    // --- 送信処理 (fetch) はそのまま ---
-    fetch(GAS_URL, {
-      method: "POST",
-      body: JSON.stringify({ cid: cid, items: orderItems })
-    })
-    .then(res => res.json())
-    .then(res => { 
-      alert(res.message); 
-      location.reload(); 
-    })
-    .catch(err => alert("送信エラーが発生しました。"));
-  } 
+  if (errorMessages.length > 0) {
+    return alert(errorMessages.join("\n"));
+  }
+
+  if (orderItems.length === 0) return alert("商品を選択してください。");
+
+  // 送信前の最終確認
+  if (!confirm(`合計 ${finalTotal} ケースで発注を確定しますか？`)) return;
+
+  // ボタン無効化
+  const btn = document.querySelector('.btn-submit');
+  btn.disabled = true;
+  btn.innerText = "送信中...";
+
+  // GASへ送信
+  fetch(GAS_URL, {
+    method: "POST",
+    mode: "no-cors", 
+    body: JSON.stringify({ cid: cid, items: orderItems })
+  })
+  .then(() => {
+    alert("発注を承りました。"); 
+    location.reload(); 
+  })
+  .catch(err => {
+    alert("送信に失敗しました。URLが正しいか確認してください。");
+    btn.disabled = false;
+    btn.innerText = "注文を確定する";
+  });
+}
 </script>
 </body>
 </html>
