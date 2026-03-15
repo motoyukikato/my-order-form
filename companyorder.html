@@ -125,8 +125,14 @@
   </div>
 
   <div id="item-list">
-
-<script>
+</div> <div class="footer">
+    <div class="total-row">
+      <span>合計金額</span>
+      <span>¥ <span id="grand-total">0</span></span>
+    </div>
+    <button class="btn-submit" onclick="handleOrder()">注文を確定する</button>
+  </div>
+</div> <script>
   // ★重要：ここに最新の「ウェブアプリURL」を貼り付けてください
   const GAS_URL = "https://script.google.com/macros/s/AKfycbzK75m2Y7MefRIfntBaUKB0m-g-pPxvO6y8itkdmgiwBLQdUKcda4ryzKhEttYigX7g/exec"; 
 
@@ -269,10 +275,17 @@ function handleOrder() {
   btn.disabled = true;
   btn.innerText = "送信中...";
 
+ // fetch の body 部分をこのように修正してください
   fetch(GAS_URL, {
     method: "POST",
     mode: "no-cors",
-    body: JSON.stringify({ cid: cid, items: orderItems })
+    body: JSON.stringify({ 
+      cid: cid, 
+      userName: userName,    // 追加
+      userTel: userTel,      // 追加
+      userAddress: userAddress, // 追加
+      items: orderItems 
+    })
   })
   .then(() => {
     alert("発注を承りました。");
