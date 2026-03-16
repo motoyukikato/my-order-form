@@ -81,6 +81,16 @@
         <button class="btn-main" style="background:#d9534f; margin-top:10px;" id="submit-btn" onclick="submitFinalOrder()">注文確定・送信</button>
     </div>
 </section>
+ <section id="scanner-page" class="page-section">
+    <div id="reader" style="width: 100%; min-height: 300px; background: #000; border-radius: 12px;"></div>
+    <div style="text-align:center; padding:20px; background:#fff; margin-top: 10px; border-radius: 12px;">
+        <p style="color: #d9534f; font-weight: bold; margin-bottom: 15px;">
+            <i class="fas fa-expand"></i> 枠の中にQRを合わせてください<br>
+            <small style="color: #666; font-weight: normal;">少し離すとピントが合いやすくなります</small>
+        </p>
+        <button class="btn-main" style="background:#666;" onclick="stopCamera()">キャンセル</button>
+    </div>
+</section>   
 
 <section id="history" class="page-section">
     <h3 style="text-align:center;">注文履歴</h3>
@@ -88,13 +98,22 @@
 </section>
 
 <nav>
-    <button onclick="showPage('home')" id="n-home" class="active-nav"><i class="fas fa-shopping-cart"></i><br>カート</button>
-    <button onclick="openCamera('product')"><i class="fas fa-barcode"></i><br>スキャン</button>
-    <button onclick="showPage('history')"><i class="fas fa-history"></i><br>履歴</button>
+    <button onclick="showPage('home')" id="n-home" class="active-nav">
+        <i class="fas fa-shopping-cart"></i><br>カート
+    </button>
+    
+    <button onclick="startCamera('product')">
+        <i class="fas fa-barcode"></i><br>スキャン
+    </button>
+    
+    <button onclick="showPage('history')">
+        <i class="fas fa-history"></i><br>履歴
+    </button>
 </nav>
-
 <script>
     const GAS_URL = "https://script.google.com/macros/s/AKfycbyEXeKGobNn-sMWULcBrLr3uooKTUYRyA5c1yMo6x8s0jNeF3oUCifLtxAVRalXdUE-qQ/exec";
+   // ★ここが重要：html5QrCodeの宣言を追加
+    let html5QrCode = null; 
     let customer = null, cart = [], tempProduct = null, isTelMode = false, currentScanMode = 'customer';
     let allProducts = [];
 
@@ -107,13 +126,54 @@
         } catch (e) { console.error("商品読込失敗"); }
     }
 
-    // カメラボタンが押されたとき
-    function openCamera(mode) {
-        if (mode === 'product' && !customer) { alert("先に顧客を選択してください"); return; }
-        currentScanMode = mode;
-        document.getElementById('qr-input').click();
-    }
+    // 自動スキャンを開始する関数
+async function startCamera(mode) {
+    if (mode === 'product' && !customer) { alert("先に顧客を選択してください"); return; }
+    currentScanMode = mode;
+    
+    showPage('scanner-page');
 
+    // 既存のカメラがあれば一度止める
+    if (html5QrCode) {
+        try { await html5QrCode.stop(); } catch (e) {}
+    }
+    
+    html5QrCode = new Html5Qrcode("reader");
+
+    const config = { 
+        fps: 15, 
+        qrbox: { width: 250, height: 250 }, // スキャン枠のサイズ
+        aspectRatio: 1.0 
+    };
+
+    try {
+        await html5QrCode.start(
+            { facingMode: "environment" }, 
+            config, 
+            (text) => {
+                // 【成功時】自動で読み取った後の処理
+                html5QrCode.stop().then(() => {
+                    showPage('home');
+                    if (currentScanMode === 'customer') fetchCustomer(text.trim()); 
+                    else fetchProduct(text.trim());
+                });
+            }
+        );
+    } catch (err) {
+        console.error(err);
+        alert("カメラの起動に失敗しました。権限を確認するか、ブラウザを再起動してください。");
+        showPage('home');
+    }
+}
+
+// キャンセル・停止用の関数
+function stopCamera() {
+    if (html5QrCode) {
+        html5QrCode.stop().then(() => { showPage('home'); }).catch(() => { showPage('home'); });
+    } else {
+        showPage('home');
+    }
+}
     // 写真が選択されたとき（解析処理）
     async function handleFile(input) {
         if (!input.files || input.files.length === 0) return;
