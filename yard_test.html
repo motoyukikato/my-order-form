@@ -253,20 +253,50 @@
         loadHistory();
     }
 
-    async function startCamera(mode) {
-        if (mode === 'product' && !customer) { alert("顧客を選択してください"); return; }
-        showPage('scanner-page');
-        if (html5QrCode) { try { await html5QrCode.stop(); } catch(e){} }
-        html5QrCode = new Html5Qrcode("reader");
+async function startCamera(mode) {
+    if (mode === 'product' && !customer) { alert("顧客を選択してください"); return; }
+    showPage('scanner-page');
+
+    // --- ここから修正：既存のインスタンスを確実に破棄 ---
+    if (html5QrCode) {
         try {
-            await html5QrCode.start({ facingMode: "environment" }, { fps: 25, qrbox: { width: 320, height: 120 } }, (text) => {
+            await html5QrCode.stop();
+        } catch (e) {
+            console.log("Stop failed or already stopped");
+        }
+        // コンテナを一度空にして初期化し直す
+        document.getElementById("reader").innerHTML = "";
+    }
+    
+    html5QrCode = new Html5Qrcode("reader");
+    // ----------------------------------------------
+
+    try {
+        // Android向けに設定を軽量化
+        const config = { 
+            fps: 15, 
+            qrbox: { width: 250, height: 250 }, // 正方形の方がAndroidでは安定しやすい
+            aspectRatio: 1.0 
+        };
+
+        await html5QrCode.start(
+            { facingMode: "environment" }, 
+            config, 
+            (text) => {
                 html5QrCode.stop().then(() => {
                     showPage('home');
-                    if (mode === 'customer') fetchCustomer(text.trim()); else fetchProduct(text.trim());
+                    if (mode === 'customer') fetchCustomer(text.trim()); 
+                    else fetchProduct(text.trim());
                 });
-            });
-        } catch (err) { alert("起動失敗"); showPage('home'); }
+            }
+        );
+    } catch (err) {
+        console.error("Camera Error:", err);
+        // エラー詳細を表示（デバッグ用）
+        alert("カメラが起動できません。他のカメラアプリを完全に閉じてから再試行してください。\nエラー内容: " + err);
+        showPage('home');
     }
+}
 
     function stopCamera() { if (html5QrCode) html5QrCode.stop(); showPage('home'); }
 
