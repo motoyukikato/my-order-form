@@ -64,8 +64,11 @@
         </div>
     </div>
 
+    <input type="file" id="qr-input" accept="image/*" capture="environment" style="display:none;" onchange="handleFile(this)">
     <div style="display: flex; gap: 10px; margin-bottom:10px;">
-        <button class="btn-main" style="background:#28a745; flex: 2;" onclick="startCamera('customer')"><i class="fas fa-qrcode"></i> 顧客スキャン</button>
+        <button class="btn-main" style="background:#28a745; flex: 2;" onclick="document.getElementById('qr-input').click(); currentScanMode='customer';">
+            <i class="fas fa-camera"></i> 顧客スキャン
+        </button>
         <button class="btn-main" style="background:#6c757d; flex: 1;" onclick="openTelModal()">手入力</button>
     </div>
 
@@ -102,7 +105,7 @@
 
 <nav>
     <button onclick="showPage('home')" id="n-home" class="active-nav"><i class="fas fa-shopping-cart"></i><br>カート</button>
-    <button onclick="startCamera('product')"><i class="fas fa-barcode"></i><br>スキャン</button>
+    <button onclick="document.getElementById('qr-input').click(); currentScanMode='product';"><i class="fas fa-barcode"></i><br>スキャン</button>
     <button onclick="showPage('history')"><i class="fas fa-history"></i><br>履歴</button>
 </nav>
 
@@ -111,6 +114,34 @@
     let html5QrCode = null, customer = null, cart = [], tempProduct = null, isTelMode = false;
     let allProducts = [];
 
+    let currentScanMode = 'customer'; 
+
+    async function handleFile(input) {
+        if (!input.files || input.files.length === 0) return;
+
+        const file = input.files[0];
+        // 解析用のエンジンの準備（表示はしないので "reader" を借りるだけ）
+        const qrScanner = new Html5Qrcode("reader");
+
+        try {
+            // 画像からQRを読み取る
+            const text = await qrScanner.scanFile(file, false);
+            
+            if (currentScanMode === 'customer') {
+                fetchCustomer(text.trim());
+            } else {
+                if (!customer) { alert("顧客を選択してください"); return; }
+                fetchProduct(text.trim());
+            }
+        } catch (err) {
+            alert("QRコードが認識できませんでした。もう少し近づいて、ピントを合わせて撮ってみてください。");
+        } finally {
+            // 同じ写真を連続で選んでも反応するようにリセット
+            input.value = "";
+            qrScanner.clear(); // メモリ解放
+        }
+    }
+    
     window.onload = () => { preloadAllProducts(); };
 
     async function preloadAllProducts() {
@@ -252,45 +283,6 @@
         await fetch(GAS_URL, { method: "POST", body: JSON.stringify({ action: "deleteOrderLine", timestamp: ts, maker: maker, partNo: partNo }) });
         loadHistory();
     }
-
-async function startCamera(mode) {
-    if (mode === 'product' && !customer) { alert("顧客を選択してください"); return; }
-    showPage('scanner-page');
-
-    // 既存のインスタンスを徹底的に掃除
-    if (html5QrCode) {
-        try { await html5QrCode.stop(); } catch (e) {}
-        document.getElementById("reader").innerHTML = "";
-    }
-    
-    html5QrCode = new Html5Qrcode("reader");
-
-    // Android/Chrome向けの軽量設定
-    const config = { 
-        fps: 10,           // フレームレートを下げて負荷を軽減
-        aspectRatio: 1.0   // アスペクト比を固定
-        // qrboxは一旦削除して、画面全体で認識させる（真っ暗対策）
-    };
-
-    try {
-        // facingModeを直接指定せず、シンプルな制約で開始
-        await html5QrCode.start(
-            { facingMode: "environment" }, 
-            config, 
-            (text) => {
-                html5QrCode.stop().then(() => {
-                    showPage('home');
-                    if (mode === 'customer') fetchCustomer(text.trim()); 
-                    else fetchProduct(text.trim());
-                });
-            }
-        );
-    } catch (err) {
-        console.error(err);
-        alert("カメラの起動がタイムアウトしました。ブラウザのタブをすべて閉じ、再起動してお試しください。");
-        showPage('home');
-    }
-}
 
     function stopCamera() { if (html5QrCode) html5QrCode.stop(); showPage('home'); }
 
