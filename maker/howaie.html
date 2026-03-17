@@ -119,21 +119,29 @@ window.onload = () => {
         // document.getElementById("title").innerText = MY_MAKER + " 受注システム";
     }
 };
-    const GAS_URL = "https://script.google.com/macros/s/AKfycbxdxBtxBuRiGwxj-y_na1w95zTdpBpC7zrz_w42IW2k_QW9gHc5CPuAjs8nNlPgd43H/exec";
+    const GAS_URL = "https://script.google.com/macros/s/AKfycbyJdPx0TQRu7bpf1blacVGnlxlgzA7bwDa7dHywK373qPQuI_JfkXo0_WNOnRlvyhpX/exec";
     let html5QrCode = null, customer = null, cart = [], tempProduct = null, isTelMode = false;
     let allProducts = [];
 
     window.onload = () => { preloadAllProducts(); };
 
     async function preloadAllProducts() {
-        try {
-            const res = await fetch(GAS_URL, { method: "POST", body: JSON.stringify({ action: "getAllProducts" }) });
-            allProducts = await res.json();
-            const datalist = document.getElementById("product-list");
-            datalist.innerHTML = allProducts.map(p => `<option value="${p.partNo}">${p.name}</option>`).join('');
-            console.log("商品マスタ読み込み完了");
-        } catch (e) { console.error("商品マスタ読み込み失敗"); }
+    try {
+        const res = await fetch(GAS_URL, { 
+            method: "POST", 
+            body: JSON.stringify({ 
+                action: "getAllProducts",
+                targetMaker: MY_MAKER // ★ここを追加！自分のメーカーの商品だけを要求する
+            }) 
+        });
+        allProducts = await res.json();
+        const datalist = document.getElementById("product-list");
+        datalist.innerHTML = allProducts.map(p => `<option value="${p.partNo}">${p.name}</option>`).join('');
+        console.log(MY_MAKER + " の商品マスタ読み込み完了");
+    } catch (e) { 
+        console.error("商品マスタ読み込み失敗"); 
     }
+}
 
     function openTelModal() {
         isTelMode = true;
@@ -329,22 +337,21 @@ function renderHistoryList(data, currentMaker) {
     }
 
     // 修正後：ローカル（事前読み込みデータ）からの検索
-    function fetchProduct(code) {
-        const cleanCode = String(code).trim().toUpperCase();
-        
-        // MY_MAKERが一致し、かつ品番かJANが一致するものを探す
-        const p = allProducts.find(item => 
-            (String(item.maker) === MY_MAKER) && 
-            (String(item.partNo).toUpperCase() === cleanCode || String(item.jan) === cleanCode)
-        );
-        
-        if (p) {
-            openQtyModal(p);
-        } else {
-            // ローカルになければサーバーに問い合わせ
-            fetchProductFromServer(cleanCode);
-        }
+   function fetchProduct(code) {
+    const cleanCode = String(code).trim().toUpperCase();
+    
+    // MY_MAKERが一致し、かつ品番かJANが一致するものを探す
+    const p = allProducts.find(item => 
+        (String(item.maker) === MY_MAKER) && // ★ここが重要！
+        (String(item.partNo).toUpperCase() === cleanCode || String(item.jan) === cleanCode)
+    );
+    
+    if (p) {
+        openQtyModal(p);
+    } else {
+        fetchProductFromServer(cleanCode);
     }
+}
 
     // 修正後：サーバーへの商品問い合わせ
     async function fetchProductFromServer(code) {
