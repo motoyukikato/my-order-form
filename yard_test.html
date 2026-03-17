@@ -83,11 +83,10 @@
     </div>
 </section>
 <section id="scanner-page" class="page-section">
-    <div id="reader" style="width: 100%; min-height: 250px; background: #000; border-radius: 12px; overflow: hidden;"></div>
-    
-    <div style="text-align:center; padding:15px; background:#fff; margin-top: 10px; border-radius: 12px;">
+    <video id="video" style="width: 100%; min-height: 250px; background: #000; border-radius: 12px;" autoplay playsinline></video>
+    <canvas id="canvas" style="display:none;"></canvas> <div style="text-align:center; padding:15px; background:#fff; margin-top: 10px; border-radius: 12px;">
         <p style="color: #3b5998; font-weight: bold;">
-            <i class="fas fa-barcode"></i> バーコードを枠に合わせてください
+            <i class="fas fa-barcode"></i> バーコードを中央に合わせてください
         </p>
         <button class="btn-main" style="background:#666;" onclick="stopCamera()">キャンセル</button>
     </div>
@@ -109,75 +108,68 @@
 <script>
     const GAS_URL = "https://script.google.com/macros/s/AKfycbyEXeKGobNn-sMWULcBrLr3uooKTUYRyA5c1yMo6x8s0jNeF3oUCifLtxAVRalXdUE-qQ/exec";
    // ★ここが重要：html5QrCodeの宣言を追加
-   // スクリプト冒頭の変数宣言をこれに合わせる
-let html5QrCode = null;
-let currentScanMode = 'customer';
+let videoStream = null;
+let scanInterval = null;
 
-// スキャン開始：オートシャッター（かざすだけ）を有効にする
 async function startCamera(mode) {
     if (mode === 'product' && !customer) { alert("先に顧客を選択してください"); return; }
     currentScanMode = mode;
-    
     showPage('scanner-page');
 
-    // 1. 以前のカメラプロセスが残っていたら完全に停止（真っ暗対策）
-    if (html5QrCode) {
-        try {
-            await html5QrCode.stop();
-            html5QrCode.clear();
-        } catch (e) { console.log("Cleaning up previous camera..."); }
-    }
-    
-    // 2. 表示エリアを一度リセット
-    document.getElementById("reader").innerHTML = "";
-    html5QrCode = new Html5Qrcode("reader");
-
-    // 3. オートスキャン（自動読み取り）の設定
-    const config = { 
-        fps: 15,                // フレームレートを少し下げて負荷を軽減
-        qrbox: { width: 280, height: 150 }, // バーコードに合わせて横長の枠にする
-        aspectRatio: 1.0,
-        // バーコード(JAN)を優先的に認識させる設定
-        formatsToSupport: [ 
-            Html5QrcodeSupportedFormats.EAN_13, 
-            Html5QrcodeSupportedFormats.EAN_8,
-            Html5QrcodeSupportedFormats.CODE_128,
-            Html5QrcodeSupportedFormats.QR_CODE 
-        ]
-    };
+    const video = document.getElementById('video');
 
     try {
-        // カメラ起動（かざすと自動で反応するモード）
-        await html5QrCode.start(
-            { facingMode: "environment" }, 
-            config, 
-            (decodedText) => {
-                // 【自動読み取り成功時】
-                // Androidならブルッと震わせて知らせる
-                if (navigator.vibrate) navigator.vibrate(100);
-                
-                html5QrCode.stop().then(() => {
-                    html5QrCode.clear();
-                    showPage('home');
-                    if (currentScanMode === 'customer') fetchCustomer(decodedText.trim()); 
-                    else fetchProduct(decodedText.trim());
-                });
-            }
-        );
+        // ライブラリを介さず、直接ブラウザにカメラを要求する
+        videoStream = await navigator.mediaDevices.getUserMedia({ 
+            video: { facingMode: "environment", width: { ideal: 1280 }, height: { ideal: 720 } } 
+        });
+        video.srcObject = videoStream;
+        
+        // 映像が流れたら解析開始（0.3秒おきにチェック＝疑似オートスキャン）
+        const barcodeDetector = new Html5Qrcode("reader-hidden"); // 解析機能だけ借りる
+        
+        scanInterval = setInterval(async () => {
+            // ここでvideoの現在の1コマをキャプチャして解析する処理
+            // ライブラリの「scanFile」にビデオの静止画を渡す
+            captureAndScan(barcodeDetector);
+        }, 300);
+
     } catch (err) {
-        console.error("Camera fail:", err);
-        // 万が一真っ暗になったりエラーが出た場合は、従来の「写真撮影」に自動で切り替え
-        alert("オートスキャンが起動できません。カメラアプリを起動します。");
-        document.getElementById('qr-input').click(); 
+        alert("カメラへのアクセスが拒否されました。設定を確認してください。");
         showPage('home');
     }
 }
 
-// キャンセル・戻る用
-function stopCamera() {
-    showPage('home');
+async function captureAndScan(detector) {
+    const video = document.getElementById('video');
+    const canvas = document.getElementById('canvas');
+    if (video.readyState === video.HAVE_ENOUGH_DATA) {
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        canvas.getContext('2d').drawImage(video, 0, 0);
+        
+        canvas.toBlob(async (blob) => {
+            const file = new File([blob], "scan.jpg", { type: "image/jpeg" });
+            try {
+                const text = await detector.scanFile(file, false);
+                // 成功！
+                stopCamera();
+                if (currentScanMode === 'customer') fetchCustomer(text.trim());
+                else fetchProduct(text.trim());
+            } catch (e) {
+                // 読み取り失敗時は何もしない（次のインターバルへ）
+            }
+        }, 'image/jpeg');
+    }
 }
 
+function stopCamera() {
+    if (videoStream) {
+        videoStream.getTracks().forEach(track => track.stop());
+    }
+    clearInterval(scanInterval);
+    showPage('home');
+}
 // 写真が選択されたとき（解析処理）★ここは今のままでもOKですが、整理版を載せます
 async function handleFile(input) {
     if (!input.files || input.files.length === 0) return;
