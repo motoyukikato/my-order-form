@@ -262,8 +262,9 @@ function renderHistoryList(data, currentMaker) {
 
     list.innerHTML = data.map(item => `
         <div class="card" style="border-left: 5px solid #3b5998; margin-bottom:15px;">
-            <button onclick="changeQty('${item.timestamp}', '${currentMaker}', ${item.qty + 1}, '${item.partNo}')">＋</button>
-            <span class="del-btn" onclick="deleteHistory('${item.timestamp}', '${currentMaker}', '${item.partNo}')">削除</span>
+            // ボタン部分のイメージ（renderHistoryList内）
+<button onclick="changeQty('${item.timestamp}', '${currentMaker}', ${item.qty + 1}, '${item.partNo}')">＋</button>
+<span class="del-btn" onclick="deleteHistory('${item.timestamp}', '${currentMaker}', '${item.partNo}')">削除</span>
         </div>
     `).join('');
 }
