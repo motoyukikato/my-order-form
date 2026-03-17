@@ -353,25 +353,15 @@ window.onload = async () => {
     function handleManualInput() { const val = document.getElementById("part-no-input").value; if (val) fetchProduct(val); }
 // --- 履歴読み込み機能 ---
 let rawHistoryData = []; // 検索用にデータを保持
-
 async function loadHistory() {
     const list = document.getElementById("h-list");
-    list.innerHTML = '<p style="text-align:center; padding:20px;">全履歴を読込中...</p>';
-
-    // カートにある商品のメーカー、または最後にスキャンした商品のメーカーを特定
-    let targetMaker = "";
-    if (cart.length > 0) {
-        targetMaker = cart[0].maker;
-    } else if (tempProduct) {
-        targetMaker = tempProduct.maker;
-    }
+    list.innerHTML = '<p style="text-align:center; padding:20px;">【asca】全履歴を読込中...</p>';
 
     try {
         const res = await fetch(GAS_URL, { 
             method: "POST", 
             body: JSON.stringify({ 
-                action: "getOrderHistory",
-                targetMaker: targetMaker 
+                action: "getOrderHistory" // 引数なしでOK
             }) 
         });
         rawHistoryData = await res.json();
@@ -380,7 +370,6 @@ async function loadHistory() {
         list.innerHTML = '<p style="text-align:center; color:red; padding:20px;">履歴の取得に失敗しました</p>';
     }
 }
-
 // 履歴の描画（訂正・削除ボタン付き）
 // 履歴の描画（品番を表示に追加）
 function renderHistoryList(data) {
@@ -398,9 +387,10 @@ function renderHistoryList(data) {
             </div>
             <div style="margin:5px 0;"><b>${h.customerName} 様</b></div>
             
-            <div style="background:#f9f9f9; padding:8px; border-radius:5px; border:1px solid #eee;">
-                <div style="color:#666; font-size:0.8em;">品番: <b style="color:#000;">${h.partNo}</b></div>
-                <div style="font-size:1em; margin:3px 0; font-weight:bold;">${h.name}</div>
+           // renderHistoryList内の一部
+<div style="background:#f9f9f9; padding:8px; border-radius:5px; border:1px solid #eee;">
+    <div style="color:#666; font-size:0.85em;">品番: <b style="color:#000;">${h.partNo}</b></div>
+    <div style="font-size:1em; margin:3px 0; font-weight:bold;">${h.name}</div>
                 <div style="display:flex; justify-content:space-between; margin-top:5px; align-items:center;">
                     <span>¥${h.price.toLocaleString()} × <b>${h.qty}</b></span>
                     <span style="font-weight:bold; color:#d9534f; font-size:1.1em;">¥${h.subtotal.toLocaleString()}</span>
