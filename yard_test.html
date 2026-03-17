@@ -29,7 +29,8 @@
 
 <header>商事本部 立ち売り受注システム</header>
 
-<div id="reader" style="display:none;"></div>
+<div id="reader-hidden" style="display:none;"></div>
+
 <input type="file" id="qr-input" accept="image/*" capture="environment" style="display:none;" onchange="handleFile(this)">
 
 <div id="qty-modal">
@@ -184,21 +185,29 @@ function stopCamera() {
 }
     // 写真が選択されたとき（解析処理）
     async function handleFile(input) {
-        if (!input.files || input.files.length === 0) return;
-        const file = input.files[0];
-        const qrScanner = new Html5Qrcode("reader");
+    if (!input.files || input.files.length === 0) return;
+    
+    const file = input.files[0];
+    // 隠した要素「reader-hidden」を使って解析する
+    const html5QrCode = new Html5Qrcode("reader-hidden");
 
-        try {
-            const text = await qrScanner.scanFile(file, false);
-            if (currentScanMode === 'customer') fetchCustomer(text.trim());
-            else fetchProduct(text.trim());
-        } catch (err) {
-            alert("QRを認識できません。明るい場所で大きく撮影してください。");
-        } finally {
-            input.value = "";
-            qrScanner.clear();
+    try {
+        const text = await html5QrCode.scanFile(file, false);
+        
+        // 成功したらホーム画面に戻す（スキャン中画面にいた場合）
+        showPage('home');
+
+        if (currentScanMode === 'customer') {
+            fetchCustomer(text.trim());
+        } else {
+            fetchProduct(text.trim()); // ここで成功すれば、残しておいた「数量入力画面」がパッと開きます！
         }
+    } catch (err) {
+        alert("QRが読み取れませんでした。もう少し明るい場所で撮り直してください。");
+    } finally {
+        input.value = ""; 
     }
+}
 
     async function fetchCustomer(val) {
         const res = await fetch(GAS_URL, { method: "POST", body: JSON.stringify({ action: "customerSearch", val: val }) });
