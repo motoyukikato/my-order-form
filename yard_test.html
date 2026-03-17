@@ -113,46 +113,47 @@
 <script>
     const GAS_URL = "https://script.google.com/macros/s/AKfycbyEXeKGobNn-sMWULcBrLr3uooKTUYRyA5c1yMo6x8s0jNeF3oUCifLtxAVRalXdUE-qQ/exec";
    // ★ここが重要：html5QrCodeの宣言を追加
-    let html5QrCode = null; 
-    let customer = null, cart = [], tempProduct = null, isTelMode = false, currentScanMode = 'customer';
-    let allProducts = [];
+   // スクリプト冒頭の変数宣言をこれに合わせる
+let html5QrCode = null;
+let currentScanMode = 'customer';
 
-    window.onload = () => { preloadAllProducts(); };
-
-    async function preloadAllProducts() {
-        try {
-            const res = await fetch(GAS_URL, { method: "POST", body: JSON.stringify({ action: "getAllProducts" }) });
-            allProducts = await res.json();
-        } catch (e) { console.error("商品読込失敗"); }
-    }
-
-    // 自動スキャンを開始する関数
 async function startCamera(mode) {
     if (mode === 'product' && !customer) { alert("先に顧客を選択してください"); return; }
     currentScanMode = mode;
     
     showPage('scanner-page');
 
-    // 既存のカメラがあれば一度止める
+    // ★重要：既存のカメラプロセスを完全に殺す
     if (html5QrCode) {
-        try { await html5QrCode.stop(); } catch (e) {}
+        try {
+            await html5QrCode.stop();
+            html5QrCode.clear(); // 内部メモリの解放
+        } catch (e) {
+            console.log("Stop failed, but continuing...");
+        }
     }
+
+    // HTML要素を物理的に空にしてから再生成（これが真っ暗対策に有効）
+    const readerElem = document.getElementById("reader");
+    readerElem.innerHTML = ""; 
     
     html5QrCode = new Html5Qrcode("reader");
 
     const config = { 
-        fps: 15, 
-        qrbox: { width: 250, height: 250 }, // スキャン枠のサイズ
+        fps: 10, 
+        qrbox: { width: 250, height: 250 },
         aspectRatio: 1.0 
     };
 
     try {
+        // カメラ起動
         await html5QrCode.start(
             { facingMode: "environment" }, 
             config, 
             (text) => {
-                // 【成功時】自動で読み取った後の処理
+                // 読み取り成功時
                 html5QrCode.stop().then(() => {
+                    html5QrCode.clear();
                     showPage('home');
                     if (currentScanMode === 'customer') fetchCustomer(text.trim()); 
                     else fetchProduct(text.trim());
@@ -160,16 +161,23 @@ async function startCamera(mode) {
             }
         );
     } catch (err) {
-        console.error(err);
-        alert("カメラの起動に失敗しました。権限を確認するか、ブラウザを再起動してください。");
-        showPage('home');
+        console.error("Camera Start Error:", err);
+        // ★自動切り替え：もし真っ暗やエラーなら、写真選択（カメラアプリ）を起動
+        alert("自動スキャンが起動できません。カメラアプリを起動します。");
+        stopCamera(); 
+        document.getElementById('qr-input').click(); 
     }
 }
 
-// キャンセル・停止用の関数
+// キャンセル時も確実にクリアする
 function stopCamera() {
     if (html5QrCode) {
-        html5QrCode.stop().then(() => { showPage('home'); }).catch(() => { showPage('home'); });
+        html5QrCode.stop().then(() => {
+            html5QrCode.clear();
+            showPage('home');
+        }).catch(() => {
+            showPage('home');
+        });
     } else {
         showPage('home');
     }
