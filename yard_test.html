@@ -121,7 +121,7 @@
 </nav>
 
 <script>
-    const GAS_URL = "https://script.google.com/macros/s/AKfycbyBD-QILYG82O8MwohmzVYxIRBuovdVJLTGFX34SNGKEfkMFHrdHXyCQWb9wb5CircQsw/exec";
+    const GAS_URL = "https://script.google.com/macros/s/AKfycbx72FLIv3C-3HErAFJk83AOD_8mUKYr5ajbk-sn1o-C7MkuF7IuytwEZuKmzaxtnCO_Yg/exec";
     let allProducts = [];
     let customer = null;
     let cart = [];
@@ -382,6 +382,7 @@ async function loadHistory() {
 }
 
 // 履歴の描画（訂正・削除ボタン付き）
+// 履歴の描画（品番を表示に追加）
 function renderHistoryList(data) {
     const list = document.getElementById("h-list");
     if (!data || data.length === 0) {
@@ -391,23 +392,25 @@ function renderHistoryList(data) {
 
     list.innerHTML = data.map(h => `
         <div class="card" style="font-size: 0.85em; border-left: 5px solid #3b5998; margin-bottom:15px;">
-            <div style="display:flex; justify-content:space-between;">
+            <div style="display:flex; justify-content:space-between; margin-bottom:5px;">
                 <span style="font-weight:bold; color:#3b5998;">${h.displayDate}</span>
-                <span>${h.maker}</span>
+                <span style="background:#eee; padding:2px 6px; border-radius:4px;">${h.maker}</span>
             </div>
             <div style="margin:5px 0;"><b>${h.customerName} 様</b></div>
-            <div style="background:#f9f9f9; padding:8px; border-radius:5px;">
-                <div style="font-size:0.9em;">${h.name}</div>
+            
+            <div style="background:#f9f9f9; padding:8px; border-radius:5px; border:1px solid #eee;">
+                <div style="color:#666; font-size:0.8em;">品番: <b style="color:#000;">${h.partNo}</b></div>
+                <div style="font-size:1em; margin:3px 0; font-weight:bold;">${h.name}</div>
                 <div style="display:flex; justify-content:space-between; margin-top:5px; align-items:center;">
                     <span>¥${h.price.toLocaleString()} × <b>${h.qty}</b></span>
-                    <span style="font-weight:bold; color:#d9534f;">¥${h.subtotal.toLocaleString()}</span>
+                    <span style="font-weight:bold; color:#d9534f; font-size:1.1em;">¥${h.subtotal.toLocaleString()}</span>
                 </div>
             </div>
             
             <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:10px;">
                 <button onclick="deleteHistoryItem('${h.timestamp}', '${h.maker}', '${h.partNo}', '${h.name}')" 
                         style="padding:8px 12px; background:#fff; border:1px solid #d9534f; color:#d9534f; border-radius:5px; font-size:0.9em;">
-                    <i class="fas fa-trash"></i> 削除
+                    削除
                 </button>
                 <button onclick="editHistoryQty('${h.timestamp}', '${h.maker}', '${h.partNo}', '${h.name}', ${h.qty})" 
                         style="padding:8px 12px; background:#3b5998; border:none; color:#fff; border-radius:5px; font-size:0.9em; font-weight:bold;">
