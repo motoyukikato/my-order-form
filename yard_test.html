@@ -82,17 +82,14 @@
         <button class="btn-main" style="background:#d9534f; margin-top:10px;" id="submit-btn" onclick="submitFinalOrder()">注文確定・送信</button>
     </div>
 </section>
- <section id="scanner-page" class="page-section">
-    <div style="text-align:center; padding:50px 20px; background:#fff; border-radius:15px; margin-top:20px;">
-        <i class="fas fa-camera" style="font-size: 5em; color: #3b5998; margin-bottom: 20px;"></i>
-        <h2 style="margin-bottom:10px;">カメラを起動します</h2>
-        <p style="color:#666; margin-bottom:30px;">「カメラを起動」ボタンを押して、<br>QRコードを撮影してください。</p>
-        
-        <button class="btn-main" style="background:#3b5998; font-size:1.3em;" onclick="document.getElementById('qr-input').click()">
-            <i class="fas fa-play"></i> カメラを起動
-        </button>
-        
-        <button class="btn-main" style="background:#999; margin-top:15px;" onclick="showPage('home')">キャンセル</button>
+<section id="scanner-page" class="page-section">
+    <div id="reader" style="width: 100%; min-height: 250px; background: #000; border-radius: 12px; overflow: hidden;"></div>
+    
+    <div style="text-align:center; padding:15px; background:#fff; margin-top: 10px; border-radius: 12px;">
+        <p style="color: #3b5998; font-weight: bold;">
+            <i class="fas fa-barcode"></i> バーコードを枠に合わせてください
+        </p>
+        <button class="btn-main" style="background:#666;" onclick="stopCamera()">キャンセル</button>
     </div>
 </section>
 
