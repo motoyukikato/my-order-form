@@ -95,8 +95,13 @@
 </section>
 
 <section id="history" class="page-section">
-    <h3 style="text-align:center;">注文履歴</h3>
-    <div id="h-list"></div>
+    <div style="padding: 10px;">
+        <h3 style="text-align:center; color:#3b5998; margin-top:0;">注文履歴</h3>
+        <hr style="border:0; border-top:1px solid #ddd; margin-bottom:15px;">
+        <div id="h-list">
+            <p style="text-align:center; color:#999;">読み込み中...</p>
+        </div>
+    </div>
 </section>
 
 <nav>
@@ -268,10 +273,33 @@ window.onload = async () => {
     }
 
     async function submitFinalOrder() {
-        if (cart.length === 0 || !confirm("送信しますか？")) return;
-        await fetch(GAS_URL, { method: "POST", body: JSON.stringify({ action: "orderSubmit", data: { ...customer, items: cart } }) });
-        alert("送信完了！"); location.reload();
+    if (cart.length === 0 || !confirm("注文を送信しますか？")) return;
+    
+    const btn = document.getElementById("submit-btn");
+    btn.disabled = true;
+    btn.innerText = "送信中...";
+
+    try {
+        const res = await fetch(GAS_URL, { 
+            method: "POST", 
+            body: JSON.stringify({ action: "orderSubmit", data: { ...customer, items: cart, commonNote: document.getElementById("common-note").value } }) 
+        });
+        
+        alert("注文を送信しました！");
+        
+        // カートを空にして履歴画面へ移動
+        cart = [];
+        renderCart();
+        document.getElementById("common-note").value = "";
+        showPage('history'); // 自動的に履歴画面を表示
+        
+    } catch (e) {
+        alert("送信に失敗しました。電波の良い場所で再度お試しください。");
+    } finally {
+        btn.disabled = false;
+        btn.innerText = "注文確定・送信";
     }
+}
 
     function showPage(id) {
         document.querySelectorAll('.page-section').forEach(p => p.classList.remove('active'));
@@ -281,6 +309,47 @@ window.onload = async () => {
     }
     
     function handleManualInput() { const val = document.getElementById("part-no-input").value; if (val) fetchProduct(val); }
+// --- 履歴読み込み機能 ---
+async function loadHistory() {
+    const list = document.getElementById("h-list");
+    if (!list) return; // 要素がなければ何もしない
+    
+    list.innerHTML = '<p style="text-align:center; padding:20px; color:#999;">履歴を取得中...</p>';
+
+    try {
+        const res = await fetch(GAS_URL, { 
+            method: "POST", 
+            body: JSON.stringify({ action: "getOrderHistory" }) 
+        });
+        const data = await res.json();
+
+        if (!data || data.length === 0) {
+            list.innerHTML = '<p style="text-align:center; padding:20px; color:#999;">履歴はありません</p>';
+            return;
+        }
+
+        list.innerHTML = data.map(h => `
+            <div class="card" style="font-size: 0.85em; border-left: 5px solid #3b5998; margin-bottom:10px;">
+                <div style="display:flex; justify-content:space-between; margin-bottom:5px;">
+                    <span style="font-weight:bold; color:#3b5998;">${h.displayDate}</span>
+                    <span style="color:#666;">${h.maker}</span>
+                </div>
+                <div style="margin-bottom:5px;"><b>${h.customerName} 様</b></div>
+                <div style="background:#f9f9f9; padding:8px; border-radius:5px;">
+                    <div>${h.name}</div>
+                    <div style="display:flex; justify-content:space-between; margin-top:5px;">
+                        <span>¥${h.price.toLocaleString()} × ${h.qty}</span>
+                        <span style="font-weight:bold; color:#d9534f;">¥${h.subtotal.toLocaleString()}</span>
+                    </div>
+                </div>
+                ${h.note ? `<div style="font-size:0.8em; color:#777; margin-top:5px;">備考: ${h.note}</div>` : ''}
+            </div>
+        `).join('');
+
+    } catch (e) {
+        list.innerHTML = '<p style="text-align:center; color:red; padding:20px;">履歴の取得に失敗しました</p>';
+    }
+}
 </script>
 </body>
 </html>
