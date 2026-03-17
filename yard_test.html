@@ -124,12 +124,19 @@
     let tempProduct = null;
 
     // 起動時に商品データを取得
-    window.onload = async () => {
-        try {
-            const res = await fetch(GAS_URL, { method: "POST", body: JSON.stringify({ action: "getProductMaster" }) });
-            allProducts = await res.json();
-        } catch (e) { console.error("商品データの取得に失敗しました"); }
-    };
+   // HTML側のこの部分を修正
+window.onload = async () => {
+    try {
+        const res = await fetch(GAS_URL, { 
+            method: "POST", 
+            body: JSON.stringify({ action: "getAllProducts" }) // ここを修正！
+        });
+        allProducts = await res.json();
+        console.log("読み込み成功:", allProducts.length, "件");
+    } catch (e) {
+        console.error("商品データの取得に失敗");
+    }
+};
 
     async function startCamera(mode) {
         if (mode === 'product' && !customer) { alert("先に顧客を選択してください"); return; }
@@ -221,11 +228,22 @@
     }
 
     function fetchProduct(code) {
-        const cleanCode = String(code).trim().toUpperCase();
-        const p = allProducts.find(item => String(item.partNo).toUpperCase() === cleanCode || String(item.jan) === cleanCode);
-        if (p) openQtyModal(p);
-        else alert("商品が見つかりません: " + cleanCode);
+    const cleanCode = String(code).trim().toUpperCase();
+    
+    // GASの getAllProducts は partNo, jan という名前でデータを返しています
+    const p = allProducts.find(item => 
+        String(item.partNo).toUpperCase() === cleanCode || 
+        String(item.jan) === cleanCode
+    );
+
+    if (p) {
+        openQtyModal(p); // 商品が見つかれば数量入力へ
+    } else {
+        alert("商品が見つかりません: " + cleanCode);
+        // オートスキャン中ならループを再開
+        if (isScanning) requestAnimationFrame(scanLoop);
     }
+}
 
     function openTelModal() { isTelMode = true; document.getElementById("modal-p-name").innerText = "電話番号入力"; document.getElementById("qty-val").innerText = ""; document.getElementById("qty-modal").style.display = "flex"; }
     function openQtyModal(p) { isTelMode = false; tempProduct = p; document.getElementById("modal-p-name").innerText = p.name; document.getElementById("qty-val").innerText = "1"; document.getElementById("qty-modal").style.display = "flex"; }
