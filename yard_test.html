@@ -23,6 +23,7 @@
         .numpad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
         .numpad button { padding: 15px; font-size: 1.5em; border: 1px solid #ddd; border-radius: 8px; background: #f9f9f9; }
         .del-btn { color: #d9534f; text-decoration: underline; font-size: 0.9em; cursor: pointer; margin-left:10px; }
+        .item-row { border-bottom: 1px solid #eee; padding: 10px 0; }
     </style>
 </head>
 <body>
@@ -30,7 +31,7 @@
 <header>商事本部 立ち売り受注システム</header>
 
 <div id="reader-hidden" style="display:none;"></div>
-
+<canvas id="canvas" style="display:none;"></canvas>
 <input type="file" id="qr-input" accept="image/*" capture="environment" style="display:none;" onchange="handleFile(this)">
 
 <div id="qty-modal">
@@ -56,13 +57,13 @@
         <div id="c-detail" style="display:none;">
             <b id="r-name" style="color:#3b5998; font-size:1.1em;"></b><br>
             <small id="r-addr1"></small><br>
-            <small id="r-addr2"></small><br>
+            <small id="r-addr2" style="color:#555; font-weight:bold;"></small><br>
             <small id="r-tel"></small>
         </div>
     </div>
 
     <div style="display: flex; gap: 10px; margin-bottom:10px;">
-        <button class="btn-main" style="background:#28a745; flex: 2;" onclick="openCamera('customer')">
+        <button class="btn-main" style="background:#28a745; flex: 2;" onclick="startCamera('customer')">
             <i class="fas fa-camera"></i> 顧客スキャン
         </button>
         <button class="btn-main" style="background:#6c757d; flex: 1;" onclick="openTelModal()">手入力</button>
@@ -82,9 +83,10 @@
         <button class="btn-main" style="background:#d9534f; margin-top:10px;" id="submit-btn" onclick="submitFinalOrder()">注文確定・送信</button>
     </div>
 </section>
+
 <section id="scanner-page" class="page-section">
     <video id="video" style="width: 100%; min-height: 250px; background: #000; border-radius: 12px;" autoplay playsinline></video>
-    <canvas id="canvas" style="display:none;"></canvas> <div style="text-align:center; padding:15px; background:#fff; margin-top: 10px; border-radius: 12px;">
+    <div style="text-align:center; padding:15px; background:#fff; margin-top: 10px; border-radius: 12px;">
         <p style="color: #3b5998; font-weight: bold;">
             <i class="fas fa-barcode"></i> バーコードを中央に合わせてください
         </p>
@@ -92,161 +94,131 @@
     </div>
 </section>
 
+<section id="history" class="page-section">
+    <h3 style="text-align:center;">注文履歴</h3>
+    <div id="h-list"></div>
+</section>
+
 <nav>
     <button onclick="showPage('home')" id="n-home" class="active-nav">
         <i class="fas fa-shopping-cart"></i><br>カート
     </button>
-    
     <button onclick="startCamera('product')">
         <i class="fas fa-barcode"></i><br>スキャン
     </button>
-    
     <button onclick="showPage('history')">
         <i class="fas fa-history"></i><br>履歴
     </button>
 </nav>
+
 <script>
     const GAS_URL = "https://script.google.com/macros/s/AKfycbyEXeKGobNn-sMWULcBrLr3uooKTUYRyA5c1yMo6x8s0jNeF3oUCifLtxAVRalXdUE-qQ/exec";
-   // ★ここが重要：html5QrCodeの宣言を追加
-let videoStream = null;
-let scanInterval = null;
+    let allProducts = [];
+    let customer = null;
+    let cart = [];
+    let currentScanMode = 'customer';
+    let videoStream = null;
+    let isScanning = false;
+    let barcodeScanner = null;
+    let isTelMode = false;
+    let tempProduct = null;
 
-async function startCamera(mode) {
-    if (mode === 'product' && !customer) { alert("先に顧客を選択してください"); return; }
-    currentScanMode = mode;
-    showPage('scanner-page');
-
-    const video = document.getElementById('video');
-
-    try {
-        // ライブラリを介さず、直接ブラウザにカメラを要求する
-        videoStream = await navigator.mediaDevices.getUserMedia({ 
-            video: { facingMode: "environment", width: { ideal: 1280 }, height: { ideal: 720 } } 
-        });
-        video.srcObject = videoStream;
-        
-        // 映像が流れたら解析開始（0.3秒おきにチェック＝疑似オートスキャン）
-        const barcodeDetector = new Html5Qrcode("reader-hidden"); // 解析機能だけ借りる
-        
-        scanInterval = setInterval(async () => {
-            // ここでvideoの現在の1コマをキャプチャして解析する処理
-            // ライブラリの「scanFile」にビデオの静止画を渡す
-            captureAndScan(barcodeDetector);
-        }, 300);
-
-    } catch (err) {
-        alert("カメラへのアクセスが拒否されました。設定を確認してください。");
-        showPage('home');
-    }
-}
-
-async function captureAndScan(detector) {
-    const video = document.getElementById('video');
-    const canvas = document.getElementById('canvas');
-    if (video.readyState === video.HAVE_ENOUGH_DATA) {
-        canvas.width = video.videoWidth;
-        canvas.height = video.videoHeight;
-        canvas.getContext('2d').drawImage(video, 0, 0);
-        
-        canvas.toBlob(async (blob) => {
-            const file = new File([blob], "scan.jpg", { type: "image/jpeg" });
-            try {
-                const text = await detector.scanFile(file, false);
-                // 成功！
-                stopCamera();
-                if (currentScanMode === 'customer') fetchCustomer(text.trim());
-                else fetchProduct(text.trim());
-            } catch (e) {
-                // 読み取り失敗時は何もしない（次のインターバルへ）
-            }
-        }, 'image/jpeg');
-    }
-}
-
-function stopCamera() {
-    if (videoStream) {
-        videoStream.getTracks().forEach(track => track.stop());
-    }
-    clearInterval(scanInterval);
-    showPage('home');
-}
-// 写真が選択されたとき（解析処理）★ここは今のままでもOKですが、整理版を載せます
-async function handleFile(input) {
-    if (!input.files || input.files.length === 0) return;
-    
-    const file = input.files[0];
-    
-    // ★バーコード(JAN)に対応させるための設定
-    const html5QrCode = new Html5Qrcode("reader-hidden");
-    const config = {
-        // あらゆるバーコード規格をスキャン対象に含める
-        formatsToSupport: [ 
-            Html5QrcodeSupportedFormats.EAN_13, 
-            Html5QrcodeSupportedFormats.EAN_8, 
-            Html5QrcodeSupportedFormats.CODE_128, 
-            Html5QrcodeSupportedFormats.QR_CODE 
-        ]
+    // 起動時に商品データを取得
+    window.onload = async () => {
+        try {
+            const res = await fetch(GAS_URL, { method: "POST", body: JSON.stringify({ action: "getProductMaster" }) });
+            allProducts = await res.json();
+        } catch (e) { console.error("商品データの取得に失敗しました"); }
     };
 
-    try {
-        // 第2引数をtrueにして、より高精度にスキャン
-        const text = await html5QrCode.scanFile(file, true);
-        
-        showPage('home');
-        if (currentScanMode === 'customer') fetchCustomer(text.trim());
-        else fetchProduct(text.trim());
+    async function startCamera(mode) {
+        if (mode === 'product' && !customer) { alert("先に顧客を選択してください"); return; }
+        currentScanMode = mode;
+        showPage('scanner-page');
 
-    } catch (err) {
-        console.error(err);
-        alert("バーコードが認識できませんでした。\n\n【読み取りのコツ】\n・バーコードを水平（横向き）にして撮る\n・ピントが合うまで少し離す\n・明るい場所で撮る");
-    } finally {
-        input.value = ""; 
-    }
-}
-    // 写真が選択されたとき（解析処理）
-    async function handleFile(input) {
-    if (!input.files || input.files.length === 0) return;
-    
-    const file = input.files[0];
-    // 隠した要素「reader-hidden」を使って解析する
-    const html5QrCode = new Html5Qrcode("reader-hidden");
+        if (!barcodeScanner) barcodeScanner = new Html5Qrcode("reader-hidden");
 
-    try {
-        const text = await html5QrCode.scanFile(file, false);
-        
-        // 成功したらホーム画面に戻す（スキャン中画面にいた場合）
-        showPage('home');
-
-        if (currentScanMode === 'customer') {
-            fetchCustomer(text.trim());
-        } else {
-            fetchProduct(text.trim()); // ここで成功すれば、残しておいた「数量入力画面」がパッと開きます！
+        try {
+            videoStream = await navigator.mediaDevices.getUserMedia({ 
+                video: { facingMode: "environment", width: 1280, height: 720 } 
+            });
+            document.getElementById('video').srcObject = videoStream;
+            isScanning = true;
+            requestAnimationFrame(scanLoop);
+        } catch (err) {
+            alert("カメラの起動に失敗しました。写真選択に切り替えます。");
+            document.getElementById('qr-input').click();
+            showPage('home');
         }
-    } catch (err) {
-        alert("QRが読み取れませんでした。もう少し明るい場所で撮り直してください。");
-    } finally {
-        input.value = ""; 
     }
-}
 
-  async function fetchCustomer(val) {
-    const res = await fetch(GAS_URL, { method: "POST", body: JSON.stringify({ action: "customerSearch", val: val }) });
-    const d = await res.json();
-    if (d.customer) {
-        customer = d;
-        document.getElementById("r-name").innerText = d.customer;
-        document.getElementById("r-addr1").innerText = "〒" + d.zip + " " + d.address1;
-        
-        // ★ここを修正：d.address2 を確実に表示させる
-        document.getElementById("r-addr2").innerText = d.address2 || ""; 
-        
-        document.getElementById("r-tel").innerText = "TEL: " + d.tel;
-        document.getElementById("c-none").style.display = "none";
-        document.getElementById("c-detail").style.display = "block";
-        document.getElementById("cart-area").style.display = "block";
-        document.getElementById("product-input-area").style.display = "block";
-    } else { alert("未登録のコードです"); }
-}
+    async function scanLoop() {
+        if (!isScanning) return;
+        const video = document.getElementById('video');
+        const canvas = document.getElementById('canvas');
+
+        if (video.readyState === video.HAVE_ENOUGH_DATA) {
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            canvas.getContext('2d').drawImage(video, 0, 0);
+            
+            canvas.toBlob(async (blob) => {
+                try {
+                    const file = new File([blob], "scan.jpg", { type: "image/jpeg" });
+                    const text = await barcodeScanner.scanFile(file, false);
+                    if (isScanning) {
+                        isScanning = false;
+                        if (navigator.vibrate) navigator.vibrate(100);
+                        stopCamera();
+                        if (currentScanMode === 'customer') fetchCustomer(text.trim());
+                        else fetchProduct(text.trim());
+                    }
+                } catch (e) {
+                    if (isScanning) requestAnimationFrame(scanLoop);
+                }
+            }, 'image/jpeg', 0.7);
+        } else {
+            requestAnimationFrame(scanLoop);
+        }
+    }
+
+    function stopCamera() {
+        isScanning = false;
+        if (videoStream) {
+            videoStream.getTracks().forEach(track => track.stop());
+            videoStream = null;
+        }
+        showPage('home');
+    }
+
+    async function handleFile(input) {
+        if (!input.files || input.files.length === 0) return;
+        const scanner = new Html5Qrcode("reader-hidden");
+        try {
+            const text = await scanner.scanFile(input.files[0], true);
+            if (currentScanMode === 'customer') fetchCustomer(text.trim());
+            else fetchProduct(text.trim());
+        } catch (err) {
+            alert("読み取れませんでした。");
+        }
+        input.value = "";
+    }
+
+    async function fetchCustomer(val) {
+        const res = await fetch(GAS_URL, { method: "POST", body: JSON.stringify({ action: "customerSearch", val: val }) });
+        const d = await res.json();
+        if (d.customer) {
+            customer = d;
+            document.getElementById("r-name").innerText = d.customer;
+            document.getElementById("r-addr1").innerText = "〒" + d.zip + " " + d.address1;
+            document.getElementById("r-addr2").innerText = d.address2 || ""; 
+            document.getElementById("r-tel").innerText = "TEL: " + d.tel;
+            document.getElementById("c-none").style.display = "none";
+            document.getElementById("c-detail").style.display = "block";
+            document.getElementById("cart-area").style.display = "block";
+            document.getElementById("product-input-area").style.display = "block";
+        } else { alert("顧客が見つかりません: " + val); }
+    }
 
     function fetchProduct(code) {
         const cleanCode = String(code).trim().toUpperCase();
@@ -255,7 +227,6 @@ async function handleFile(input) {
         else alert("商品が見つかりません: " + cleanCode);
     }
 
-    // --- 以下、ユーティリティ関数（数量・カート・履歴） ---
     function openTelModal() { isTelMode = true; document.getElementById("modal-p-name").innerText = "電話番号入力"; document.getElementById("qty-val").innerText = ""; document.getElementById("qty-modal").style.display = "flex"; }
     function openQtyModal(p) { isTelMode = false; tempProduct = p; document.getElementById("modal-p-name").innerText = p.name; document.getElementById("qty-val").innerText = "1"; document.getElementById("qty-modal").style.display = "flex"; }
     function closeQtyModal() { document.getElementById("qty-modal").style.display = "none"; }
@@ -287,7 +258,8 @@ async function handleFile(input) {
     function showPage(id) {
         document.querySelectorAll('.page-section').forEach(p => p.classList.remove('active'));
         document.getElementById(id).classList.add('active');
-        if (id === 'history') loadHistory();
+        document.querySelectorAll('nav button').forEach(b => b.classList.remove('active-nav'));
+        if(id === 'home') document.getElementById('n-home').classList.add('active-nav');
     }
     
     function handleManualInput() { const val = document.getElementById("part-no-input").value; if (val) fetchProduct(val); }
