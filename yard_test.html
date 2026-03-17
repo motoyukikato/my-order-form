@@ -96,8 +96,12 @@
 
 <section id="history" class="page-section">
     <div style="padding: 10px;">
-        <h3 style="text-align:center; color:#3b5998; margin-top:0;">注文履歴</h3>
-        <hr style="border:0; border-top:1px solid #ddd; margin-bottom:15px;">
+        <h3 style="text-align:center; color:#3b5998; margin:0 0 10px;">注文履歴</h3>
+        
+        <input type="text" id="history-search" placeholder="顧客名・品番で検索..." 
+               style="width:100%; padding:12px; border:1px solid #ccc; border-radius:8px; margin-bottom:15px; box-sizing:border-box;"
+               oninput="filterHistory()">
+
         <div id="h-list">
             <p style="text-align:center; color:#999;">読み込み中...</p>
         </div>
@@ -256,11 +260,37 @@ window.onload = async () => {
     function numIn(n) { let v = document.getElementById("qty-val"); if (n === 'C') v.innerText = isTelMode ? "" : "1"; else if (n === 'B') v.innerText = v.innerText.slice(0, -1); else v.innerText += n; }
     
     async function confirmQty() {
-        let val = document.getElementById("qty-val").innerText;
-        if (isTelMode) { fetchCustomer(val); } 
-        else { cart.push({ ...tempProduct, quantity: parseInt(val) }); renderCart(); }
+    let val = document.getElementById("qty-val").innerText;
+    if (isTelMode) { 
+        fetchCustomer(val); 
+        closeQtyModal();
+    } else if (tempProduct.isUpdate) {
+        // --- 数量訂正処理 ---
+        if (!confirm("数量を " + val + " に変更しますか？")) return;
+        closeQtyModal();
+        try {
+            const res = await fetch(GAS_URL, { 
+                method: "POST", 
+                body: JSON.stringify({ 
+                    action: "updateOrderQty", 
+                    timestamp: tempProduct.timestamp, 
+                    maker: tempProduct.maker, 
+                    partNo: tempProduct.partNo, 
+                    newQty: val 
+                }) 
+            });
+            alert("訂正完了");
+            loadHistory(); // 履歴を更新
+        } catch (e) {
+            alert("訂正失敗");
+        }
+    } else {
+        // 通常のカート追加
+        cart.push({ ...tempProduct, quantity: parseInt(val) }); 
+        renderCart();
         closeQtyModal();
     }
+}
 
     function renderCart() {
         const list = document.getElementById("cart-list");
@@ -322,46 +352,106 @@ window.onload = async () => {
     
     function handleManualInput() { const val = document.getElementById("part-no-input").value; if (val) fetchProduct(val); }
 // --- 履歴読み込み機能 ---
+let rawHistoryData = []; // 検索用にデータを保持
+
 async function loadHistory() {
     const list = document.getElementById("h-list");
-    if (!list) return; // 要素がなければ何もしない
-    
-    list.innerHTML = '<p style="text-align:center; padding:20px; color:#999;">履歴を取得中...</p>';
+    list.innerHTML = '<p style="text-align:center; padding:20px;">履歴を取得中...</p>';
 
     try {
         const res = await fetch(GAS_URL, { 
             method: "POST", 
             body: JSON.stringify({ action: "getOrderHistory" }) 
         });
-        const data = await res.json();
-
-        if (!data || data.length === 0) {
-            list.innerHTML = '<p style="text-align:center; padding:20px; color:#999;">履歴はありません</p>';
-            return;
-        }
-
-        list.innerHTML = data.map(h => `
-            <div class="card" style="font-size: 0.85em; border-left: 5px solid #3b5998; margin-bottom:10px;">
-                <div style="display:flex; justify-content:space-between; margin-bottom:5px;">
-                    <span style="font-weight:bold; color:#3b5998;">${h.displayDate}</span>
-                    <span style="color:#666;">${h.maker}</span>
-                </div>
-                <div style="margin-bottom:5px;"><b>${h.customerName} 様</b></div>
-                <div style="background:#f9f9f9; padding:8px; border-radius:5px;">
-                    <div>${h.name}</div>
-                    <div style="display:flex; justify-content:space-between; margin-top:5px;">
-                        <span>¥${h.price.toLocaleString()} × ${h.qty}</span>
-                        <span style="font-weight:bold; color:#d9534f;">¥${h.subtotal.toLocaleString()}</span>
-                    </div>
-                </div>
-                ${h.note ? `<div style="font-size:0.8em; color:#777; margin-top:5px;">備考: ${h.note}</div>` : ''}
-            </div>
-        `).join('');
-
+        rawHistoryData = await res.json();
+        renderHistoryList(rawHistoryData); 
     } catch (e) {
-        list.innerHTML = '<p style="text-align:center; color:red; padding:20px;">履歴の取得に失敗しました</p>';
+        list.innerHTML = '<p style="text-align:center; color:red; padding:20px;">取得失敗</p>';
     }
 }
+
+// 履歴の描画（訂正・削除ボタン付き）
+function renderHistoryList(data) {
+    const list = document.getElementById("h-list");
+    if (!data || data.length === 0) {
+        list.innerHTML = '<p style="text-align:center; padding:20px; color:#999;">データがありません</p>';
+        return;
+    }
+
+    list.innerHTML = data.map(h => `
+        <div class="card" style="font-size: 0.85em; border-left: 5px solid #3b5998; margin-bottom:15px;">
+            <div style="display:flex; justify-content:space-between;">
+                <span style="font-weight:bold; color:#3b5998;">${h.displayDate}</span>
+                <span>${h.maker}</span>
+            </div>
+            <div style="margin:5px 0;"><b>${h.customerName} 様</b></div>
+            <div style="background:#f9f9f9; padding:8px; border-radius:5px;">
+                <div style="font-size:0.9em;">${h.name}</div>
+                <div style="display:flex; justify-content:space-between; margin-top:5px; align-items:center;">
+                    <span>¥${h.price.toLocaleString()} × <b>${h.qty}</b></span>
+                    <span style="font-weight:bold; color:#d9534f;">¥${h.subtotal.toLocaleString()}</span>
+                </div>
+            </div>
+            
+            <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:10px;">
+                <button onclick="deleteHistoryItem('${h.timestamp}', '${h.maker}', '${h.partNo}', '${h.name}')" 
+                        style="padding:8px 12px; background:#fff; border:1px solid #d9534f; color:#d9534f; border-radius:5px; font-size:0.9em;">
+                    <i class="fas fa-trash"></i> 削除
+                </button>
+                <button onclick="editHistoryQty('${h.timestamp}', '${h.maker}', '${h.partNo}', '${h.name}', ${h.qty})" 
+                        style="padding:8px 12px; background:#3b5998; border:none; color:#fff; border-radius:5px; font-size:0.9em; font-weight:bold;">
+                    数量訂正
+                </button>
+            </div>
+        </div>
+    `).join('');
+}
+
+// 検索フィルター
+function filterHistory() {
+    const query = document.getElementById("history-search").value.toLowerCase();
+    const filtered = rawHistoryData.filter(h => 
+        h.customerName.toLowerCase().includes(query) || 
+        h.name.toLowerCase().includes(query) || 
+        h.partNo.toLowerCase().includes(query)
+    );
+    renderHistoryList(filtered);
+}
+
+// 訂正モードの起動
+function editHistoryQty(ts, maker, partNo, name, currentQty) {
+    isTelMode = false;
+    tempProduct = { partNo: partNo, maker: maker, name: name, isUpdate: true, timestamp: ts };
+    document.getElementById("modal-p-name").innerText = "[数量訂正] " + name;
+    document.getElementById("qty-val").innerText = currentQty;
+    document.getElementById("qty-modal").style.display = "flex";
+}
+ // 削除処理の呼び出し
+async function deleteHistoryItem(ts, maker, partNo, name) {
+    if (!confirm("【確認】\nこの注文（" + name + "）を完全に削除しますか？\n集計用マスタとメーカー用シートの両方から消去されます。")) return;
+
+    try {
+        const res = await fetch(GAS_URL, { 
+            method: "POST", 
+            body: JSON.stringify({ 
+                action: "deleteOrderLine", 
+                timestamp: ts, 
+                maker: maker, 
+                partNo: partNo 
+            }) 
+        });
+        const result = await res.json();
+        
+        if (result.success) {
+            alert("削除が完了しました");
+            loadHistory(); // 履歴を最新の状態に更新
+        } else {
+            alert("削除に失敗しました");
+        }
+    } catch (e) {
+        alert("通信エラーが発生しました。電波の良い場所で再度お試しください。");
+    }
+}   
 </script>
 </body>
 </html>
