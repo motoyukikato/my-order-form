@@ -111,7 +111,7 @@
     <button onclick="startCamera('product')">
         <i class="fas fa-barcode"></i><br>スキャン
     </button>
-    <button onclick="showPage('history')">
+    <button onclick="showPage('history')" id="n-history">
         <i class="fas fa-history"></i><br>履歴
     </button>
 </nav>
@@ -302,11 +302,23 @@ window.onload = async () => {
 }
 
     function showPage(id) {
-        document.querySelectorAll('.page-section').forEach(p => p.classList.remove('active'));
-        document.getElementById(id).classList.add('active');
-        document.querySelectorAll('nav button').forEach(b => b.classList.remove('active-nav'));
-        if(id === 'home') document.getElementById('n-home').classList.add('active-nav');
+    // 1. すべてのページを一旦非表示にする
+    document.querySelectorAll('.page-section').forEach(p => p.classList.remove('active'));
+    
+    // 2. 選択されたページだけを表示する
+    const targetPage = document.getElementById(id);
+    if (targetPage) targetPage.classList.add('active');
+
+    // 3. ナビゲーションボタンの色（アクティブ状態）を切り替える
+    document.querySelectorAll('nav button').forEach(b => b.classList.remove('active-nav'));
+    const navBtn = document.getElementById('n-' + id);
+    if (navBtn) navBtn.classList.add('active-nav');
+
+    // ★重要：履歴ページを開いた時だけ、データを読みに行く命令を出す
+    if (id === 'history') {
+        loadHistory(); 
     }
+}
     
     function handleManualInput() { const val = document.getElementById("part-no-input").value; if (val) fetchProduct(val); }
 // --- 履歴読み込み機能 ---
