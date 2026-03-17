@@ -211,11 +211,10 @@
         btn.disabled = false; btn.innerText = "注文確定・送信";
     }
 
-    async function loadHistory() {
+ async function loadHistory() {
     const list = document.getElementById("h-list");
     
-    // 1. カートに商品がある場合は、そのメーカーを優先
-    // 2. カートが空なら、直前にスキャン/手入力した商品のメーカーを使用
+    // 現在扱っているメーカーを特定（カートの中身 or 最後にスキャンした商品）
     let targetMaker = "";
     if (cart.length > 0) {
         targetMaker = cart[0].maker;
@@ -225,12 +224,7 @@
 
     // まだ何もスキャンしていない場合
     if (!targetMaker) {
-        list.innerHTML = `
-            <div style="text-align:center; padding:30px; color:#666;">
-                <i class="fas fa-barcode" style="font-size:3em; color:#ccc; margin-bottom:10px;"></i><br>
-                商品が選択されていません。<br>
-                先に商品をスキャンまたは品番入力すると、<br>そのメーカーの履歴が表示されます。
-            </div>`;
+        list.innerHTML = '<p style="text-align:center; padding:20px; color:#999;">商品スキャン、または品番入力をすると<br>そのメーカーの履歴が表示されます。</p>';
         return;
     }
 
@@ -241,17 +235,17 @@
             method: "POST", 
             body: JSON.stringify({ 
                 action: "getOrderHistory",
-                targetMaker: targetMaker // ここで判別したメーカー名を送る
+                targetMaker: targetMaker // ★ここが抜けていると履歴が出ません！
             }) 
         });
         const data = await res.json();
         
-        // 履歴を表示する（※引数にtargetMakerを渡すのがコツです）
+        // 履歴を表示する（メーカー名を引数に渡す）
         renderHistoryList(data, targetMaker); 
     } catch (e) {
         list.innerHTML = '<p style="text-align:center; color:red; padding:20px;">履歴の取得に失敗しました</p>';
     }
-}
+}   
 // 描画関数も修正（操作ボタンに正しいメーカー名をセットするため）
 function renderHistoryList(data, currentMaker) {
     const list = document.getElementById("h-list");
@@ -261,10 +255,28 @@ function renderHistoryList(data, currentMaker) {
     }
 
     list.innerHTML = data.map(item => `
-        <div class="card" style="border-left: 5px solid #3b5998; margin-bottom:15px;">
-            // ボタン部分のイメージ（renderHistoryList内）
-<button onclick="changeQty('${item.timestamp}', '${currentMaker}', ${item.qty + 1}, '${item.partNo}')">＋</button>
-<span class="del-btn" onclick="deleteHistory('${item.timestamp}', '${currentMaker}', '${item.partNo}')">削除</span>
+        <div class="card" style="border-left: 5px solid #3b5998; margin-bottom:15px; padding:10px;">
+            <div style="display:flex; justify-content:space-between; font-size:0.8em; color:#888;">
+                <span>${item.displayDate}</span>
+                <span class="status-badge" style="background:#eef; color:#333; padding:2px 5px; border-radius:3px;">${item.maker}</span>
+            </div>
+            <div style="font-weight:bold; margin:5px 0; color:#3b5998;">${item.customerName} 様</div>
+            
+            <div style="background:#f8f9fa; padding:8px; border-radius:5px; border:1px solid #eee;">
+                <div style="font-size:0.7em; color:#666;">品番:</div>
+                <div style="font-weight:bold; font-size:1.1em;">${item.partNo}</div>
+                <div style="font-size:0.85em; margin-top:3px;">${item.name}</div>
+            </div>
+
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-top:10px;">
+                <div style="font-weight:bold; color:#d9534f; font-size:1.1em;">¥${item.subtotal.toLocaleString()}</div>
+                <div style="display:flex; align-items:center; gap:8px;">
+                    <button onclick="changeQty('${item.timestamp}', '${currentMaker}', ${item.qty - 1}, '${item.partNo}')" style="padding:5px 10px;">－</button>
+                    <span style="font-weight:bold; min-width:20px; text-align:center;">${item.qty}</span>
+                    <button onclick="changeQty('${item.timestamp}', '${currentMaker}', ${item.qty + 1}, '${item.partNo}')" style="padding:5px 10px;">＋</button>
+                    <span class="del-btn" style="margin-left:10px; color:#d9534f;" onclick="deleteHistory('${item.timestamp}', '${currentMaker}', '${item.partNo}')">削除</span>
+                </div>
+            </div>
         </div>
     `).join('');
 }
