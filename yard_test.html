@@ -138,21 +138,30 @@ async function handleFile(input) {
     if (!input.files || input.files.length === 0) return;
     
     const file = input.files[0];
-    // 隠した要素を使って解析
-    const html5QrScanner = new Html5Qrcode("reader-hidden");
+    
+    // ★バーコード(JAN)に対応させるための設定
+    const html5QrCode = new Html5Qrcode("reader-hidden");
+    const config = {
+        // あらゆるバーコード規格をスキャン対象に含める
+        formatsToSupport: [ 
+            Html5QrcodeSupportedFormats.EAN_13, 
+            Html5QrcodeSupportedFormats.EAN_8, 
+            Html5QrcodeSupportedFormats.CODE_128, 
+            Html5QrcodeSupportedFormats.QR_CODE 
+        ]
+    };
 
     try {
-        const text = await html5QrScanner.scanFile(file, false);
+        // 第2引数をtrueにして、より高精度にスキャン
+        const text = await html5QrCode.scanFile(file, true);
+        
         showPage('home');
+        if (currentScanMode === 'customer') fetchCustomer(text.trim());
+        else fetchProduct(text.trim());
 
-        if (currentScanMode === 'customer') {
-            fetchCustomer(text.trim());
-        } else {
-            fetchProduct(text.trim()); 
-        }
     } catch (err) {
-        alert("QRが読み取れませんでした。ピントを合わせて、明るい場所で撮り直してください。");
-        showPage('home');
+        console.error(err);
+        alert("バーコードが認識できませんでした。\n\n【読み取りのコツ】\n・バーコードを水平（横向き）にして撮る\n・ピントが合うまで少し離す\n・明るい場所で撮る");
     } finally {
         input.value = ""; 
     }
@@ -183,21 +192,24 @@ async function handleFile(input) {
     }
 }
 
-    async function fetchCustomer(val) {
-        const res = await fetch(GAS_URL, { method: "POST", body: JSON.stringify({ action: "customerSearch", val: val }) });
-        const d = await res.json();
-        if (d.customer) {
-            customer = d;
-            document.getElementById("r-name").innerText = d.customer;
-            document.getElementById("r-addr1").innerText = "〒" + d.zip + " " + d.address1;
-            document.getElementById("r-addr2").innerText = d.address2 || ""; 
-            document.getElementById("r-tel").innerText = "TEL: " + d.tel;
-            document.getElementById("c-none").style.display = "none";
-            document.getElementById("c-detail").style.display = "block";
-            document.getElementById("cart-area").style.display = "block";
-            document.getElementById("product-input-area").style.display = "block";
-        } else { alert("未登録のQRです"); }
-    }
+  async function fetchCustomer(val) {
+    const res = await fetch(GAS_URL, { method: "POST", body: JSON.stringify({ action: "customerSearch", val: val }) });
+    const d = await res.json();
+    if (d.customer) {
+        customer = d;
+        document.getElementById("r-name").innerText = d.customer;
+        document.getElementById("r-addr1").innerText = "〒" + d.zip + " " + d.address1;
+        
+        // ★ここを修正：d.address2 を確実に表示させる
+        document.getElementById("r-addr2").innerText = d.address2 || ""; 
+        
+        document.getElementById("r-tel").innerText = "TEL: " + d.tel;
+        document.getElementById("c-none").style.display = "none";
+        document.getElementById("c-detail").style.display = "block";
+        document.getElementById("cart-area").style.display = "block";
+        document.getElementById("product-input-area").style.display = "block";
+    } else { alert("未登録のコードです"); }
+}
 
     function fetchProduct(code) {
         const cleanCode = String(code).trim().toUpperCase();
