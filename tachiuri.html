@@ -355,17 +355,37 @@ function renderHistoryList(data, currentMaker) {
     function stopCamera() { if (html5QrCode) html5QrCode.stop(); showPage('home'); }
 
     async function fetchCustomer(val) {
-        const res = await fetch(GAS_URL, { method: "POST", body: JSON.stringify({ action: "customerSearch", val: val }) });
+    try {
+        const res = await fetch(GAS_URL, { 
+            method: "POST", 
+            body: JSON.stringify({ action: "customerSearch", val: val }) 
+        });
         const d = await res.json();
+        
+        if (d.error) {
+            alert("検索エラー: " + d.error);
+            return;
+        }
+
         if (d.customer) {
             customer = d;
             document.getElementById("r-name").innerText = d.customer;
             document.getElementById("r-addr1").innerText = "〒" + d.zip + " " + d.address1;
             document.getElementById("r-tel").innerText = "TEL: " + d.tel;
-            document.getElementById("c-none").style.display = "none"; document.getElementById("c-detail").style.display = "block";
-            document.getElementById("cart-area").style.display = "block"; document.getElementById("product-input-area").style.display = "block";
-        } else { alert("未登録"); }
+            
+            // 画面表示の切り替え
+            document.getElementById("c-none").style.display = "none"; 
+            document.getElementById("c-detail").style.display = "block";
+            document.getElementById("cart-area").style.display = "block"; 
+            document.getElementById("product-input-area").style.display = "block";
+        } else {
+            alert("顧客が見つかりませんでした");
+        }
+    } catch (e) {
+        console.error(e);
+        alert("通信エラーが発生しました");
     }
+}
 
     // 修正後：ローカル（事前読み込みデータ）からの検索
   function fetchProduct(code) {
