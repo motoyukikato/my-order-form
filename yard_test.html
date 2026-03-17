@@ -116,16 +116,64 @@
 let html5QrCode = null;
 let currentScanMode = 'customer';
 
-// スキャン開始：ブラウザ内カメラは使わず、即座にカメラアプリを起動
-function startCamera(mode) {
+// スキャン開始：オートシャッター（かざすだけ）を有効にする
+async function startCamera(mode) {
     if (mode === 'product' && !customer) { alert("先に顧客を選択してください"); return; }
     currentScanMode = mode;
     
-    // スキャン中ページ（カメラ起動を促す画面）を表示
     showPage('scanner-page');
+
+    // 1. 以前のカメラプロセスが残っていたら完全に停止（真っ暗対策）
+    if (html5QrCode) {
+        try {
+            await html5QrCode.stop();
+            html5QrCode.clear();
+        } catch (e) { console.log("Cleaning up previous camera..."); }
+    }
     
-    // スマホのカメラアプリ（ファイル入力）を直接叩く
-    document.getElementById('qr-input').click();
+    // 2. 表示エリアを一度リセット
+    document.getElementById("reader").innerHTML = "";
+    html5QrCode = new Html5Qrcode("reader");
+
+    // 3. オートスキャン（自動読み取り）の設定
+    const config = { 
+        fps: 15,                // フレームレートを少し下げて負荷を軽減
+        qrbox: { width: 280, height: 150 }, // バーコードに合わせて横長の枠にする
+        aspectRatio: 1.0,
+        // バーコード(JAN)を優先的に認識させる設定
+        formatsToSupport: [ 
+            Html5QrcodeSupportedFormats.EAN_13, 
+            Html5QrcodeSupportedFormats.EAN_8,
+            Html5QrcodeSupportedFormats.CODE_128,
+            Html5QrcodeSupportedFormats.QR_CODE 
+        ]
+    };
+
+    try {
+        // カメラ起動（かざすと自動で反応するモード）
+        await html5QrCode.start(
+            { facingMode: "environment" }, 
+            config, 
+            (decodedText) => {
+                // 【自動読み取り成功時】
+                // Androidならブルッと震わせて知らせる
+                if (navigator.vibrate) navigator.vibrate(100);
+                
+                html5QrCode.stop().then(() => {
+                    html5QrCode.clear();
+                    showPage('home');
+                    if (currentScanMode === 'customer') fetchCustomer(decodedText.trim()); 
+                    else fetchProduct(decodedText.trim());
+                });
+            }
+        );
+    } catch (err) {
+        console.error("Camera fail:", err);
+        // 万が一真っ暗になったりエラーが出た場合は、従来の「写真撮影」に自動で切り替え
+        alert("オートスキャンが起動できません。カメラアプリを起動します。");
+        document.getElementById('qr-input').click(); 
+        showPage('home');
+    }
 }
 
 // キャンセル・戻る用
