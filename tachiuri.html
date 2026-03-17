@@ -119,7 +119,7 @@ window.onload = () => {
         // document.getElementById("title").innerText = MY_MAKER + " 受注システム";
     }
 };
-    const GAS_URL = "https://script.google.com/macros/s/AKfycbx6-QFL3QslGRvkj4qlUBBU6QRFNwnnJPXVCLpFtAkBHmlaL0OImVkEjVHwcBuj3osV5g/exec";
+    const GAS_URL = "https://script.google.com/macros/s/AKfycbycH4xTfrclPbndD93AxyC1DFR17BREP_ZAEo3TmGaXOz0n8K3sQRGefWzysnckKQxcPA/exec";
     let html5QrCode = null, customer = null, cart = [], tempProduct = null, isTelMode = false;
     let allProducts = [];
 
@@ -220,21 +220,47 @@ window.onload = () => {
         document.getElementById("cart-total").innerText = total.toLocaleString();
     }
 
-    async function submitFinalOrder() {
-        if (cart.length === 0 || !confirm("送信しますか？")) return;
-        const noteVal = document.getElementById("common-note").value;
-        const btn = document.getElementById("submit-btn");
-        btn.disabled = true; btn.innerText = "送信中...";
-        try {
-            await fetch(GAS_URL, { method: "POST", body: JSON.stringify({ action: "orderSubmit", data: { ...customer, items: cart, commonNote: noteVal } }) });
-            alert("送信完了！");
-            cart = []; customer = null; document.getElementById("common-note").value = ""; renderCart();
-            document.getElementById("c-none").style.display = "block"; document.getElementById("c-detail").style.display = "none";
-            document.getElementById("cart-area").style.display = "none"; document.getElementById("product-input-area").style.display = "none";
-            showPage('home');
-        } catch(e) { alert("送信エラー"); }
-        btn.disabled = false; btn.innerText = "注文確定・送信";
+    // HTMLの 260行目付近にある関数を差し替え
+async function submitFinalOrder() {
+    if (cart.length === 0 || !confirm("送信しますか？")) return;
+    const noteVal = document.getElementById("common-note").value;
+    const btn = document.getElementById("submit-btn");
+    
+    btn.disabled = true; 
+    btn.innerText = "送信中..."; // ここで止まっている状態
+
+    try {
+        // ★修正ポイント：customer情報に maker を追加して送る
+        const orderPayload = { 
+            action: "orderSubmit", 
+            data: { 
+                ...customer, 
+                items: cart, 
+                commonNote: noteVal,
+                maker: MY_MAKER // これがないとGASが保存先を特定できない場合があります
+            } 
+        };
+
+        const response = await fetch(GAS_URL, { 
+            method: "POST", 
+            body: JSON.stringify(orderPayload) 
+        });
+
+        if (!response.ok) throw new Error("サーバーエラー");
+
+        alert("送信完了！");
+        // --- 以下、リセット処理（既存のまま） ---
+        cart = []; customer = null; document.getElementById("common-note").value = ""; renderCart();
+        document.getElementById("c-none").style.display = "block"; document.getElementById("c-detail").style.display = "none";
+        document.getElementById("cart-area").style.display = "none"; document.getElementById("product-input-area").style.display = "none";
+        showPage('home');
+    } catch(e) { 
+        console.error(e);
+        alert("送信エラーが発生しました。通信環境を確認してください。"); 
     }
+    btn.disabled = false; 
+    btn.innerText = "注文確定・送信";
+}
 
  // 既存の loadHistory 関数を以下のように書き換え
 async function loadHistory() {
