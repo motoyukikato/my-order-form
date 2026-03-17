@@ -107,7 +107,19 @@
 </nav>
 
 <script>
-    const GAS_URL = "https://script.google.com/macros/s/AKfycbx4xhRzB_lWlyEr827Ub4maN6cmJ_nCGsML5ufOHJmFMVWyKBjUPNwEwCIwGQkyQr_g/exec";
+    // --- ここから追加・修正 ---
+const urlParams = new URLSearchParams(window.location.search);
+const MY_MAKER = urlParams.get('m'); // URLの ?m=ホワイエ から取得
+
+// アプリのタイトルなどをメーカー名に変える（任意）
+window.onload = () => {
+    if (MY_MAKER) {
+        console.log("現在のメーカーモード:", MY_MAKER);
+        // もし画面にタイトル要素（id="title"など）があれば書き換え可能
+        // document.getElementById("title").innerText = MY_MAKER + " 受注システム";
+    }
+};
+    const GAS_URL = "https://script.google.com/macros/s/AKfycbxdxBtxBuRiGwxj-y_na1w95zTdpBpC7zrz_w42IW2k_QW9gHc5CPuAjs8nNlPgd43H/exec";
     let html5QrCode = null, customer = null, cart = [], tempProduct = null, isTelMode = false;
     let allProducts = [];
 
@@ -211,20 +223,15 @@
         btn.disabled = false; btn.innerText = "注文確定・送信";
     }
 
- async function loadHistory() {
+ // 既存の loadHistory 関数を以下のように書き換え
+async function loadHistory() {
     const list = document.getElementById("h-list");
     
-    // 現在扱っているメーカーを特定（カートの中身 or 最後にスキャンした商品）
-    let targetMaker = "";
-    if (cart.length > 0) {
-        targetMaker = cart[0].maker;
-    } else if (tempProduct) {
-        targetMaker = tempProduct.maker;
-    }
+    // スキャン前でも、URLにメーカー名があればそれを使う
+    const targetMaker = MY_MAKER; 
 
-    // まだ何もスキャンしていない場合
     if (!targetMaker) {
-        list.innerHTML = '<p style="text-align:center; padding:20px; color:#999;">商品スキャン、または品番入力をすると<br>そのメーカーの履歴が表示されます。</p>';
+        list.innerHTML = '<p style="text-align:center; padding:20px; color:#999;">メーカー指定がありません(URLを確認してください)</p>';
         return;
     }
 
@@ -235,17 +242,15 @@
             method: "POST", 
             body: JSON.stringify({ 
                 action: "getOrderHistory",
-                targetMaker: targetMaker // ★ここが抜けていると履歴が出ません！
+                targetMaker: targetMaker // URLから取得したメーカー名を送る
             }) 
         });
         const data = await res.json();
-        
-        // 履歴を表示する（メーカー名を引数に渡す）
         renderHistoryList(data, targetMaker); 
     } catch (e) {
         list.innerHTML = '<p style="text-align:center; color:red; padding:20px;">履歴の取得に失敗しました</p>';
     }
-}   
+}
 // 描画関数も修正（操作ボタンに正しいメーカー名をセットするため）
 function renderHistoryList(data, currentMaker) {
     const list = document.getElementById("h-list");
@@ -323,17 +328,42 @@ function renderHistoryList(data, currentMaker) {
         } else { alert("未登録"); }
     }
 
+    // 修正後：ローカル（事前読み込みデータ）からの検索
     function fetchProduct(code) {
         const cleanCode = String(code).trim().toUpperCase();
-        const p = allProducts.find(item => String(item.partNo).toUpperCase() === cleanCode || String(item.jan) === cleanCode);
-        if (p) openQtyModal(p);
-        else fetchProductFromServer(cleanCode);
+        
+        // MY_MAKERが一致し、かつ品番かJANが一致するものを探す
+        const p = allProducts.find(item => 
+            (String(item.maker) === MY_MAKER) && 
+            (String(item.partNo).toUpperCase() === cleanCode || String(item.jan) === cleanCode)
+        );
+        
+        if (p) {
+            openQtyModal(p);
+        } else {
+            // ローカルになければサーバーに問い合わせ
+            fetchProductFromServer(cleanCode);
+        }
     }
 
+    // 修正後：サーバーへの商品問い合わせ
     async function fetchProductFromServer(code) {
-        const res = await fetch(GAS_URL, { method: "POST", body: JSON.stringify({ action: "productSearch", val: code }) });
+        const res = await fetch(GAS_URL, { 
+            method: "POST", 
+            body: JSON.stringify({ 
+                action: "productSearch", 
+                val: code,
+                targetMaker: MY_MAKER // ★これでGASが「ホワイエのファイル」を見に行けます
+            }) 
+        });
         const p = await res.json();
-        if (p && p.name) openQtyModal(p); else alert("不明な商品");
+        
+        // 取得した商品が現在のメーカーのものであるか最終確認（セキュリティ用）
+        if (p && p.name && p.maker === MY_MAKER) {
+            openQtyModal(p);
+        } else {
+            alert("不明な商品、またはこのメーカーの商品ではありません");
+        }
     }
 
     function showPage(id) {
