@@ -236,28 +236,6 @@
  * 商品追加時のモーダル表示
  */
 function openQtyModal(p) {
-    isTelMode = false; 
-    tempProduct = p; // 選択された商品を一時保存
-
-    // 商品名を表示
-    document.getElementById("modal-p-name").innerText = p.name;
-    
-    // ★上代・在庫・ロットを表示（pの中にデータがある前提）
-    const price = p.listPrice ? p.listPrice.toLocaleString() : (p.price ? p.price.toLocaleString() : "0");
-    const stock = p.stock || "不明";
-    const lot = p.lot || "1";
-    
-    document.getElementById("modal-p-info").innerHTML = 
-        `上代: ¥${price} / 在庫: ${stock} / ロット: ${lot}`;
-
-    document.getElementById("qty-val").innerText = "1";
-    document.getElementById("qty-modal").style.display = "flex";
-
-    // ★決定ボタンに機能を割り当て（これが無いと押せません）
-    document.getElementById("confirm-btn").onclick = function() {
-        confirmQty();
-    };
-}
 
 /**
  * 数量決定時の処理
