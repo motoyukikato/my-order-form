@@ -335,15 +335,70 @@
         if (val) fetchProduct(val.trim());
     }
 
-    async function loadHistory() {
-        const list = document.getElementById("h-list");
-        list.innerHTML = "読み込み中...";
-        try {
-            const res = await fetch(GAS_URL, { method: "POST", body: JSON.stringify({ action: "getOrderHistory", targetMaker: MY_MAKER }) });
-            const data = await res.json();
-            list.innerHTML = '<h4>▼ 送信済み履歴</h4>' + data.map(item => `<div class="card" style="font-size:0.85em;"><b>${item.customerName} 様</b> [${item.displayDate}]<br>${item.name}×${item.qty}</div>`).join('');
-        } catch (e) { list.innerHTML = "エラー"; }
+    /**
+ * 履歴の描画（ボタン付きに改造）
+ */
+async function loadHistory() {
+    const list = document.getElementById("h-list");
+    list.innerHTML = "<p style='text-align:center;'>読み込み中...</p>";
+    try {
+        const res = await fetch(GAS_URL, { method: "POST", body: JSON.stringify({ action: "getOrderHistory", targetMaker: MY_MAKER }) });
+        const data = await res.json();
+        
+        list.innerHTML = '<h4>▼ 送信済み履歴 (数量変更可)</h4>' + data.map((item, i) => `
+            <div class="card" style="font-size:0.9em; border-left: 5px solid #3b5998;">
+                <div style="display:flex; justify-content:space-between; margin-bottom:5px;">
+                    <b>${item.customerName} 様</b>
+                    <small style="color:#999;">${item.displayDate}</small>
+                </div>
+                <div style="display:flex; justify-content:space-between; align-items:center;">
+                    <div style="flex:1;">${item.name}</div>
+                    <div style="display:flex; align-items:center; gap:5px;">
+                        <button onclick="updateHistoryQty('${item.timestamp}', '${item.partNo}', -1)" style="width:30px;height:30px;border-radius:50%;border:1px solid #ccc;background:#fff;">−</button>
+                        <b id="hist-qty-${item.timestamp}-${item.partNo}" style="min-width:25px; text-align:center;">${item.qty}</b>
+                        <button onclick="updateHistoryQty('${item.timestamp}', '${item.partNo}', 1)" style="width:30px;height:30px;border-radius:50%;border:1px solid #ccc;background:#fff;">＋</button>
+                    </div>
+                </div>
+            </div>`).join('');
+    } catch (e) { list.innerHTML = "エラーが発生しました"; }
+}
+
+/**
+ * 履歴の数量を直接GASへ送って書き換える関数
+ */
+async function updateHistoryQty(ts, partNo, diff) {
+    const qtyElem = document.getElementById(`hist-qty-${ts}-${partNo}`);
+    let currentQty = parseInt(qtyElem.innerText);
+    let newQty = currentQty + diff;
+    if (newQty < 1) return; // 1未満にはしない
+
+    // 画面上の数字を先に変えておく（サクサク感を出すため）
+    qtyElem.innerText = newQty;
+    qtyElem.style.color = "red"; // 更新中っぽく見せる
+
+    try {
+        const res = await fetch(GAS_URL, { 
+            method: "POST", 
+            body: JSON.stringify({ 
+                action: "updateOrderQty", 
+                timestamp: ts, 
+                maker: MY_MAKER, 
+                newQty: newQty, 
+                partNo: partNo 
+            }) 
+        });
+        const result = await res.json();
+        if (result.success) {
+            qtyElem.style.color = "black"; // 成功したら戻す
+        } else {
+            alert("更新に失敗しました。シートを確認してください。");
+            loadHistory(); // 失敗したら再読込して戻す
+        }
+    } catch (e) {
+        alert("通信エラー");
+        loadHistory();
     }
+}
 </script>
 </body>
 </html>
