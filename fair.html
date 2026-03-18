@@ -160,13 +160,23 @@
         resetUI();
     }
 
-    function resetUI() {
-        customer = null; cart = [];
+   function resetUI() {
+        // 全ての変数を初期化
+        customer = null;
+        cart = [];
+        tempProduct = null;
+
+        // 全ての入力欄を空にする
         document.getElementById("common-note").value = "";
+        document.getElementById("part-no-input").value = "";
+        
+        // UI表示を初期状態（顧客選択前）に戻す
         document.getElementById("c-none").style.display = "block";
         document.getElementById("c-detail").style.display = "none";
         document.getElementById("cart-area").style.display = "none";
         document.getElementById("product-input-area").style.display = "none";
+        
+        // カート表示（リストと合計金額）をリフレッシュ
         renderCart();
     }
 
@@ -273,15 +283,57 @@
     }
 
     async function submitFinalOrder() {
-        if (cart.length === 0 || !confirm("送信しますか？")) return;
+        if (cart.length === 0) {
+            alert("カートが空です");
+            return;
+        }
+        if (!confirm("送信しますか？")) return;
+
         const btn = document.getElementById("submit-btn");
-        btn.disabled = true; btn.innerText = "送信中...";
+        const originalText = btn.innerText;
+
+        // ボタンを無効化して連打・重複送信を防止
+        btn.disabled = true;
+        btn.innerText = "送信中...";
+
         try {
-            await fetch(GAS_URL, { method: "POST", body: JSON.stringify({ action: "orderSubmit", data: { ...customer, items: cart, commonNote: document.getElementById("common-note").value, maker: MY_MAKER } }) });
-            alert("送信完了！");
-            resetUI();
-        } catch(e) { alert("送信エラー"); }
-        btn.disabled = false; btn.innerText = "注文確定・送信";
+            const payload = {
+                action: "orderSubmit",
+                data: {
+                    ...customer,
+                    items: cart,
+                    commonNote: document.getElementById("common-note").value,
+                    maker: MY_MAKER
+                }
+            };
+
+            const res = await fetch(GAS_URL, {
+                method: "POST",
+                body: JSON.stringify(payload)
+            });
+
+            const result = await res.json();
+
+            if (result.success) {
+                alert("送信完了！画面をリセットします。");
+                
+                // ★ここで確実に全てを消去する★
+                resetUI(); 
+                
+                // ページをカート（ホーム）画面に戻す
+                showPage('home');
+            } else {
+                throw new Error(result.error || "送信に失敗しました");
+            }
+
+        } catch (e) {
+            console.error(e);
+            alert("エラーが発生しました: " + e.message);
+        } finally {
+            // 失敗した場合でもボタンを戻す
+            btn.disabled = false;
+            btn.innerText = originalText;
+        }
     }
 
     async function loadHistory() {
