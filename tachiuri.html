@@ -127,7 +127,7 @@
 <script>
     const urlParams = new URLSearchParams(window.location.search);
     const MY_MAKER = urlParams.get('m');
-    const GAS_URL = "https://script.google.com/macros/s/AKfycbxXyLq-plYi7d3-mC-QBOHCRCc3L5srUIhLydnTT4wzvDP8kwn8a11hGJE6xCb9dI0o/exec";
+    const GAS_URL = "https://script.google.com/macros/s/AKfycbz1RC4QVgKIh9LxNsOrw5o6R3AdzzAD-Vxe4DBI2LiZ7xivL3d3nTSRIw5mc64Mx1ay/exec";
 
     let html5QrCode = null, customer = null, cart = [], tempProduct = null, isTelMode = false;
     let allProducts = [], pendingOrders = [];
@@ -349,20 +349,27 @@ function confirmQty() {
     function stopCamera() { if (html5QrCode) html5QrCode.stop(); showPage('home'); }
 
     async function fetchCustomer(val) {
-    // 検索値をURLパラメータに付けて送る
+    // 検索中を知らせる（任意）
+    console.log("検索開始:", val);
+    
+    // URLにパラメータを付与して呼び出す方式に切り替え
     const fetchUrl = `${GAS_URL}?action=customerSearch&val=${encodeURIComponent(val)}`;
     
     try {
         const res = await fetch(fetchUrl);
+        if (!res.ok) throw new Error("ネットワークエラー");
+        
         const d = await res.json();
+        
         if (d && d.customer) { 
             customer = d; 
             updateCustomerDisplay(); 
         } else { 
-            alert(d.error || "未登録です"); 
+            alert(d.error || "未登録の顧客です"); 
         }
     } catch (e) {
-        alert("通信エラーが発生しました");
+        console.error("Fetch Error:", e);
+        alert("通信エラーが発生しました。GASのデプロイ設定を確認してください。");
     }
 }
 
