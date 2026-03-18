@@ -268,31 +268,69 @@
         }
     }
 
+   // --- 修正版：数量訂正ができるカート表示 ---
     function renderCart() {
         const list = document.getElementById("cart-list");
         let total = 0;
         list.innerHTML = cart.map((item, i) => {
             total += (item.price * item.quantity);
-            return `<div class="item-row">
-                <b>${item.name}</b><br>
-                <small>品番: ${item.partNo} / 数量: ${item.quantity} / 単価: ¥${item.price.toLocaleString()}</small>
-                <div style="text-align:right;"><span class="del-btn" onclick="cart.splice(${i},1);renderCart();">削除</span></div>
+            return `<div class="item-row" style="display: flex; justify-content: space-between; align-items: center;">
+                <div style="flex: 1;">
+                    <b>${item.name}</b><br>
+                    <small>品番: ${item.partNo} / 単価: ¥${item.price.toLocaleString()}</small>
+                </div>
+                <div style="display: flex; align-items: center; gap: 15px;">
+                    <div onclick="editCartQty(${i})" style="background: #eee; padding: 5px 12px; border-radius: 5px; font-weight: bold; cursor: pointer; border: 1px solid #ccc;">
+                        数量: ${item.quantity}
+                    </div>
+                    <span class="del-btn" onclick="cart.splice(${i},1);renderCart();">削除</span>
+                </div>
             </div>`;
         }).join('');
         document.getElementById("cart-total").innerText = total.toLocaleString();
     }
 
-    async function submitFinalOrder() {
-        if (cart.length === 0) {
-            alert("カートが空です");
-            return;
+    // --- 新機能：カート内数量の訂正ボタン用 ---
+    function editCartQty(index) {
+        isTelMode = false;
+        tempProduct = cart[index];
+        
+        // モーダルを表示状態にする
+        document.getElementById("qty-val").innerText = tempProduct.quantity;
+        document.getElementById("modal-p-name").innerHTML = `
+            <div style="color: #d9534f; font-weight: bold;">【数量訂正】</div>
+            <div style="font-size: 1.1em; font-weight: bold;">${tempProduct.name}</div>
+        `;
+
+        document.getElementById("qty-modal").style.display = "flex";
+        
+        // 「決定」ボタンを押したときの動きを「訂正確定(confirmEditQty)」に一時的に書き換える
+        const confirmBtn = document.querySelector("#qty-modal .btn-main[onclick='confirmQty()']");
+        if (confirmBtn) confirmBtn.setAttribute("onclick", `confirmEditQty(${index})`);
+    }
+
+    // --- 新機能：訂正を確定してカートに戻す ---
+    function confirmEditQty(index) {
+        let val = document.getElementById("qty-val").innerText;
+        let q = parseInt(val);
+        if (q > 0) {
+            cart[index].quantity = q;
+            renderCart();
         }
+        closeQtyModal();
+        
+        // ボタンの動きを「新規追加(confirmQty)」に戻す
+        const confirmBtn = document.querySelector("#qty-modal .btn-main[onclick^='confirmEditQty']");
+        if (confirmBtn) confirmBtn.setAttribute("onclick", "confirmQty()");
+    }
+
+    // --- 送信処理（これは今のままでOKですが、念のため再掲） ---
+    async function submitFinalOrder() {
+        if (cart.length === 0) { alert("カートが空です"); return; }
         if (!confirm("送信しますか？")) return;
 
         const btn = document.getElementById("submit-btn");
         const originalText = btn.innerText;
-
-        // ボタンを無効化して連打・重複送信を防止
         btn.disabled = true;
         btn.innerText = "送信中...";
 
@@ -306,36 +344,23 @@
                     maker: MY_MAKER
                 }
             };
-
-            const res = await fetch(GAS_URL, {
-                method: "POST",
-                body: JSON.stringify(payload)
-            });
-
+            const res = await fetch(GAS_URL, { method: "POST", body: JSON.stringify(payload) });
             const result = await res.json();
 
             if (result.success) {
                 alert("送信完了！画面をリセットします。");
-                
-                // ★ここで確実に全てを消去する★
                 resetUI(); 
-                
-                // ページをカート（ホーム）画面に戻す
                 showPage('home');
             } else {
                 throw new Error(result.error || "送信に失敗しました");
             }
-
         } catch (e) {
-            console.error(e);
             alert("エラーが発生しました: " + e.message);
         } finally {
-            // 失敗した場合でもボタンを戻す
             btn.disabled = false;
             btn.innerText = originalText;
         }
     }
-
     async function loadHistory() {
         const list = document.getElementById("h-list");
         list.innerHTML = `<p style="text-align:center; padding:10px;">履歴読込中...</p>`;
