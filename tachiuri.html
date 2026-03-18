@@ -127,7 +127,7 @@
 <script>
     const urlParams = new URLSearchParams(window.location.search);
     const MY_MAKER = urlParams.get('m');
-    const GAS_URL = "https://script.google.com/macros/s/AKfycbx7QkjWmj-pkF6aJGKii4ntIoDPK1A84ihpanp4e5vE461IzL0BQcLPJImMJvFrKWib/exec";
+    const GAS_URL = "https://script.google.com/macros/s/AKfycbxXyLq-plYi7d3-mC-QBOHCRCc3L5srUIhLydnTT4wzvDP8kwn8a11hGJE6xCb9dI0o/exec";
 
     let html5QrCode = null, customer = null, cart = [], tempProduct = null, isTelMode = false;
     let allProducts = [], pendingOrders = [];
@@ -349,28 +349,44 @@ function confirmQty() {
     function stopCamera() { if (html5QrCode) html5QrCode.stop(); showPage('home'); }
 
     async function fetchCustomer(val) {
-        const res = await fetch(GAS_URL, { method: "POST", body: JSON.stringify({ action: "customerSearch", val: val }) });
+    // 検索値をURLパラメータに付けて送る
+    const fetchUrl = `${GAS_URL}?action=customerSearch&val=${encodeURIComponent(val)}`;
+    
+    try {
+        const res = await fetch(fetchUrl);
         const d = await res.json();
-        if (d.customer) { customer = d; updateCustomerDisplay(); } else alert("未登録");
+        if (d && d.customer) { 
+            customer = d; 
+            updateCustomerDisplay(); 
+        } else { 
+            alert(d.error || "未登録です"); 
+        }
+    } catch (e) {
+        alert("通信エラーが発生しました");
     }
+}
 
     function fetchProduct(code) {
         const p = allProducts.find(item => (item.partNo.toUpperCase() === code.toUpperCase() || item.jan === code));
         if (p) openQtyModal(p); else alert("なし: " + code);
     }
 
-   function updateCustomerDisplay() {
-        document.getElementById("r-name").innerText = customer.customer;
-        
-        // 住所1と住所2を合体させて表示（住所2がある場合のみ後ろに付け足す）
-        const addr2 = customer.address2 ? " " + customer.address2 : "";
-        document.getElementById("r-addr1").innerText = "〒" + customer.zip + " " + customer.address1 + addr2;
-        
-        document.getElementById("r-tel").innerText = "TEL: " + customer.tel;
-        document.getElementById("c-none").style.display = "none";
-        document.getElementById("c-detail").style.display = "block";
-        document.getElementById("product-input-area").style.display = "block";
-    }
+  function updateCustomerDisplay() {
+    if (!customer) return;
+    document.getElementById("r-name").innerText = customer.customer + " 様";
+    
+    // 住所の組み立て（nullやundefinedを避ける）
+    const zip = customer.zip ? "〒" + customer.zip : "";
+    const addr1 = customer.address1 || "";
+    const addr2 = customer.address2 || "";
+    
+    document.getElementById("r-addr1").innerText = `${zip} ${addr1} ${addr2}`;
+    document.getElementById("r-tel").innerText = "TEL: " + (customer.tel || "---");
+    
+    document.getElementById("c-none").style.display = "none";
+    document.getElementById("c-detail").style.display = "block";
+    document.getElementById("product-input-area").style.display = "block";
+}
 
     function showPage(id) {
         document.querySelectorAll('.page-section').forEach(p => p.classList.remove('active'));
