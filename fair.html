@@ -338,65 +338,81 @@
     /**
  * 履歴の描画（ボタン付きに改造）
  */
+/**
+ * 履歴の描画（数量変更 ＋ 削除ボタン付き）
+ */
 async function loadHistory() {
     const list = document.getElementById("h-list");
-    list.innerHTML = "<p style='text-align:center;'>読み込み中...</p>";
+    list.innerHTML = "<p style='text-align:center; padding:20px;'>読み込み中...</p>";
     try {
-        const res = await fetch(GAS_URL, { method: "POST", body: JSON.stringify({ action: "getOrderHistory", targetMaker: MY_MAKER }) });
+        const res = await fetch(GAS_URL, { 
+            method: "POST", 
+            body: JSON.stringify({ action: "getOrderHistory", targetMaker: MY_MAKER }) 
+        });
         const data = await res.json();
         
-        list.innerHTML = '<h4>▼ 送信済み履歴 (数量変更可)</h4>' + data.map((item, i) => `
-            <div class="card" style="font-size:0.9em; border-left: 5px solid #3b5998;">
-                <div style="display:flex; justify-content:space-between; margin-bottom:5px;">
+        if (data.length === 0) {
+            list.innerHTML = "<p style='text-align:center; color:#999; padding:20px;'>履歴はありません</p>";
+            return;
+        }
+
+        // HTML組み立て
+        list.innerHTML = '<h4>▼ 送信済み履歴 (修正・削除可)</h4>' + data.map((item, i) => `
+            <div id="hist-card-${item.timestamp}-${item.partNo}" class="card" style="font-size:0.9em; border-left: 5px solid #3b5998; position: relative; margin-bottom:10px;">
+                <div style="display:flex; justify-content:space-between; margin-bottom:5px; padding-right: 30px;">
                     <b>${item.customerName} 様</b>
                     <small style="color:#999;">${item.displayDate}</small>
                 </div>
                 <div style="display:flex; justify-content:space-between; align-items:center;">
-                    <div style="flex:1;">${item.name}</div>
-                    <div style="display:flex; align-items:center; gap:5px;">
-                        <button onclick="updateHistoryQty('${item.timestamp}', '${item.partNo}', -1)" style="width:30px;height:30px;border-radius:50%;border:1px solid #ccc;background:#fff;">−</button>
-                        <b id="hist-qty-${item.timestamp}-${item.partNo}" style="min-width:25px; text-align:center;">${item.qty}</b>
-                        <button onclick="updateHistoryQty('${item.timestamp}', '${item.partNo}', 1)" style="width:30px;height:30px;border-radius:50%;border:1px solid #ccc;background:#fff;">＋</button>
+                    <div style="flex:1; padding-right:10px;">${item.name}</div>
+                    <div style="display:flex; align-items:center; gap:8px;">
+                        <button onclick="updateHistoryQty('${item.timestamp}', '${item.partNo}', -1)" style="width:32px;height:32px;border-radius:50%;border:1px solid #ccc;background:#fff;display:flex;align-items:center;justify-content:center;font-size:1.2em;">−</button>
+                        <b id="hist-qty-${item.timestamp}-${item.partNo}" style="min-width:25px; text-align:center; font-size:1.1em;">${item.qty}</b>
+                        <button onclick="updateHistoryQty('${item.timestamp}', '${item.partNo}', 1)" style="width:32px;height:32px;border-radius:50%;border:1px solid #ccc;background:#fff;display:flex;align-items:center;justify-content:center;font-size:1.2em;">＋</button>
+                        
+                        <button onclick="deleteHistoryOrder('${item.timestamp}', '${item.partNo}', '${item.name}')" style="margin-left:10px; border:none; background:none; color:#d9534f; font-size:1.2em; padding:5px;">
+                            <i class="fas fa-trash-alt"></i>
+                        </button>
                     </div>
                 </div>
             </div>`).join('');
-    } catch (e) { list.innerHTML = "エラーが発生しました"; }
+    } catch (e) { 
+        list.innerHTML = "<p style='text-align:center; color:red; padding:20px;'>履歴の読み込みに失敗しました</p>"; 
+    }
 }
 
 /**
- * 履歴の数量を直接GASへ送って書き換える関数
+ * 履歴の行削除を実行する関数
  */
-async function updateHistoryQty(ts, partNo, diff) {
-    const qtyElem = document.getElementById(`hist-qty-${ts}-${partNo}`);
-    let currentQty = parseInt(qtyElem.innerText);
-    let newQty = currentQty + diff;
-    if (newQty < 1) return; // 1未満にはしない
+async function deleteHistoryOrder(ts, partNo, name) {
+    if (!confirm(`【削除確認】\n${name}\n\nこの注文行をスプレッドシートから完全に削除してもよろしいですか？`)) return;
 
-    // 画面上の数字を先に変えておく（サクサク感を出すため）
-    qtyElem.innerText = newQty;
-    qtyElem.style.color = "red"; // 更新中っぽく見せる
+    const card = document.getElementById(`hist-card-${ts}-${partNo}`);
+    card.style.opacity = "0.3"; // 処理中を視覚的に示す
 
     try {
         const res = await fetch(GAS_URL, { 
             method: "POST", 
             body: JSON.stringify({ 
-                action: "updateOrderQty", 
+                action: "deleteOrderLine", 
                 timestamp: ts, 
                 maker: MY_MAKER, 
-                newQty: newQty, 
                 partNo: partNo 
             }) 
         });
         const result = await res.json();
         if (result.success) {
-            qtyElem.style.color = "black"; // 成功したら戻す
+            card.remove(); // 成功したら画面から消す
+            if (document.getElementById("h-list").children.length <= 1) {
+                loadHistory(); // 最後の1件を消した場合は再描画
+            }
         } else {
-            alert("更新に失敗しました。シートを確認してください。");
-            loadHistory(); // 失敗したら再読込して戻す
+            alert("削除に失敗しました。");
+            card.style.opacity = "1";
         }
     } catch (e) {
-        alert("通信エラー");
-        loadHistory();
+        alert("通信エラーが発生しました");
+        card.style.opacity = "1";
     }
 }
 </script>
