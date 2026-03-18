@@ -127,7 +127,7 @@
 <script>
     const urlParams = new URLSearchParams(window.location.search);
     const MY_MAKER = urlParams.get('m');
-    const GAS_URL = "https://script.google.com/macros/s/AKfycbyj6d0GJMvjxMMh0evdYt-MzJ67-ckDdxnA7BUh9rt0WWxjXdk_f_c9EL9jxy_KazQk/exec";
+    const GAS_URL = "https://script.google.com/macros/s/AKfycbw6QOsisAOQ6EEmSlun451iU7pgEIsX2IZrbp-pYlJbRZqU7dJeMw90dTg1OIJFGGQX/exec";
 
     let html5QrCode = null, customer = null, cart = [], tempProduct = null, isTelMode = false;
     let allProducts = [], pendingOrders = [];
@@ -142,25 +142,45 @@
    async function loadHistory() {
     const list = document.getElementById("h-list");
     list.innerHTML = "読み込み中...";
+    
+    // デバッグ用：今どのメーカー名で探そうとしているかコンソールに出す
+    console.log("履歴取得対象メーカー:", MY_MAKER);
+
+    if (!MY_MAKER) {
+        list.innerHTML = "メーカー名が指定されていないため取得できません";
+        return;
+    }
+
     const url = `${GAS_URL}?action=getOrderHistory&targetMaker=${encodeURIComponent(MY_MAKER)}`;
+    
     try {
         const res = await fetch(url);
         const data = await res.json();
         
-        if (!data || data.length === 0) {
-            list.innerHTML = "<p style='text-align:center; color:#999; padding:20px;'>履歴はありません</p>";
+        // GAS側からエラーが返ってきた場合
+        if (data.error) {
+            list.innerHTML = `<p style="color:red;">エラー: ${data.error}</p>`;
             return;
         }
-        
-        // 既存の描画ロジックへ
-        list.innerHTML = '<h4>▼ 送信済み履歴</h4>' + data.map((item, i) => `
-            <div class="card" style="font-size:0.9em; border-left: 5px solid #3b5998; margin-bottom:10px;">
-                <b>${item.customerName} 様</b><br>
-                ${item.name} (${item.qty})
+
+        if (!data || data.length === 0) {
+            list.innerHTML = `<p style="text-align:center; color:#999; padding:20px;">${MY_MAKER} の履歴はありません</p>`;
+            return;
+        }
+
+        // 正常にデータが来た場合の表示処理
+        list.innerHTML = '<h4>▼ 送信済み履歴</h4>' + data.map((item) => `
+            <div class="card" style="font-size:0.9em; border-left: 5px solid #3b5998; margin-bottom:10px; padding:10px;">
+                <div style="display:flex; justify-content:space-between;">
+                    <b>${item.customerName} 様</b>
+                    <small>${item.displayDate}</small>
+                </div>
+                <div style="margin-top:5px;">${item.name} (${item.qty}個)</div>
             </div>
         `).join('');
     } catch (e) { 
-        list.innerHTML = "履歴の読み込みに失敗しました"; 
+        console.error("履歴取得失敗:", e);
+        list.innerHTML = "通信エラーが発生しました。URLとデプロイ設定を確認してください。"; 
     }
 }
     // --- カート描画（増減ボタン付き） ---
