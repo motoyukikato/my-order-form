@@ -142,42 +142,77 @@
         } catch (e) { console.error("商品マスタ読み込み失敗"); }
     }
 
-    // --- カート描画（数量ボタン・訂正機能） ---
+   // --- カート描画（増減ボタン付きに強化） ---
     function renderCart() {
         const list = document.getElementById("cart-list");
         let total = 0;
+        
+        if (cart.length === 0) {
+            list.innerHTML = "<p style='text-align:center; color:#ccc; padding:20px;'>カートは空です</p>";
+            document.getElementById("cart-area").style.display = "none";
+            return;
+        }
+
         list.innerHTML = cart.map((item, i) => {
             total += (item.price * item.quantity);
             return `
-            <div class="item-row">
-                <div style="flex: 1; padding-right:10px;">
-                    <b style="font-size:1.05em;">${item.name}</b><br>
+            <div class="item-row" style="display: flex; align-items: center; justify-content: space-between; padding: 12px 0;">
+                <div style="flex: 1; padding-right:5px;">
+                    <b style="font-size:1.0em; display:block;">${item.name}</b>
                     <small style="color:#666;">${item.partNo} / ¥${item.price.toLocaleString()}</small>
                 </div>
-                <div style="display: flex; align-items: center; gap: 12px;">
-                    <div class="qty-btn-trigger" onclick="editCartQty(${i})">${item.quantity}</div>
-                    <span class="del-btn" onclick="cart.splice(${i},1);renderCart();">削除</span>
+                <div style="display: flex; align-items: center; gap: 5px;">
+                    <button onclick="changeQty(${i}, -1)" style="width:32px; height:32px; border-radius:50%; border:1px solid #ccc; background:#fff; font-size:1.2em; line-height:1;">−</button>
+                    
+                    <div class="qty-btn-trigger" onclick="editCartQty(${i})" 
+                         style="min-width:40px; height:32px; line-height:32px; text-align:center; background:#eef2f7; border:2px solid #3b5998; border-radius:8px; font-weight:bold; color:#3b5998;">
+                         ${item.quantity}
+                    </div>
+                    
+                    <button onclick="changeQty(${i}, 1)" style="width:32px; height:32px; border-radius:50%; border:1px solid #ccc; background:#fff; font-size:1.2em; line-height:1;">＋</button>
+                    
+                    <span class="del-btn" onclick="if(confirm('削除しますか？')){cart.splice(${i},1);renderCart();}" 
+                          style="margin-left:5px; color:#d9534f; font-size:0.7em; border:1px solid #d9534f; padding:2px 5px; border-radius:4px;">削除</span>
                 </div>
             </div>`;
         }).join('');
+
         document.getElementById("cart-total").innerText = total.toLocaleString();
-        document.getElementById("cart-area").style.display = cart.length > 0 ? "block" : "none";
+        document.getElementById("cart-area").style.display = "block";
     }
 
-    // --- 数量訂正モード ---
+    // --- ボタンでの増減用関数（新しく追加してください） ---
+    function changeQty(index, diff) {
+        let newQty = cart[index].quantity + diff;
+        if (newQty > 0) {
+            cart[index].quantity = newQty;
+            renderCart();
+        } else if (newQty === 0) {
+            if(confirm("この商品を削除しますか？")) {
+                cart.splice(index, 1);
+                renderCart();
+            }
+        }
+    }
+
+    // --- 数量訂正モード（テンキー呼び出し） ---
     function editCartQty(index) {
         isTelMode = false;
         const item = cart[index];
         document.getElementById("qty-val").innerText = item.quantity;
         document.getElementById("modal-p-name").innerHTML = `<span style="color:#d9534f">【数量変更】</span><br>${item.name}`;
         document.getElementById("qty-modal").style.display = "flex";
+        
+        // 決定ボタンを押した時の動作を上書き
         document.getElementById("confirm-btn").onclick = function() {
             const q = parseInt(document.getElementById("qty-val").innerText);
-            if (q > 0) { cart[index].quantity = q; renderCart(); }
+            if (!isNaN(q) && q > 0) { 
+                cart[index].quantity = q; 
+                renderCart(); 
+            }
             closeQtyModal();
         };
     }
-
     // --- 保留機能 ---
     function holdOrder() {
         if (!customer || cart.length === 0) { alert("保留する内容がありません"); return; }
