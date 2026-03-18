@@ -49,14 +49,12 @@
 
 <div id="qty-modal">
     <div class="modal-content">
-        <div id="modal-p-name" style="margin-bottom:15px; font-size:1.1em; font-weight:bold;">商品名</div>
-        <div class="qty-display" id="qty-val">1</div>
-        <div class="numpad">
-            <button onclick="numIn(7)">7</button><button onclick="numIn(8)">8</button><button onclick="numIn(9)">9</button>
-            <button onclick="numIn(4)">4</button><button onclick="numIn(5)">5</button><button onclick="numIn(6)">6</button>
-            <button onclick="numIn(1)">1</button><button onclick="numIn(2)">2</button><button onclick="numIn(3)">3</button>
-            <button onclick="numIn('C')" style="color:#d9534f;">C</button><button onclick="numIn(0)">0</button><button onclick="numIn('B')">←</button>
+        <div id="modal-p-name" style="margin-bottom:5px; font-size:1.1em; font-weight:bold;">商品名</div>
+        <div id="modal-p-info" style="font-size:0.85em; color:#666; margin-bottom:10px; line-height:1.4;">
+            上代: ¥0 / 在庫: -- / ロット: --
         </div>
+        
+        <div class="qty-display" id="qty-val">1</div>
         <div style="display:flex; gap:10px; margin-top:20px;">
             <button class="btn-main" style="background:#6c757d; flex:1;" onclick="closeQtyModal()">戻る</button>
             <button id="confirm-btn" class="btn-main" style="background:#3b5998; flex:2;">決定</button>
@@ -234,27 +232,56 @@
         else if (n === 'B') v.innerText = v.innerText.length > 1 ? v.innerText.slice(0, -1) : (isTelMode ? "" : "1");
         else v.innerText = (isTelMode || v.innerText !== "1") ? v.innerText + n : n;
     }
+/**
+ * 商品追加時のモーダル表示
+ */
+function openQtyModal(p) {
+    isTelMode = false; 
+    tempProduct = p; // 選択された商品を一時保存
 
-    function openQtyModal(p) {
-        isTelMode = false; tempProduct = p;
-        document.getElementById("modal-p-name").innerText = p.name;
-        document.getElementById("qty-val").innerText = "1";
-        document.getElementById("qty-modal").style.display = "flex";
-        document.getElementById("confirm-btn").onclick = confirmQty;
-    }
+    // 商品名を表示
+    document.getElementById("modal-p-name").innerText = p.name;
+    
+    // ★上代・在庫・ロットを表示（pの中にデータがある前提）
+    const price = p.listPrice ? p.listPrice.toLocaleString() : (p.price ? p.price.toLocaleString() : "0");
+    const stock = p.stock || "不明";
+    const lot = p.lot || "1";
+    
+    document.getElementById("modal-p-info").innerHTML = 
+        `上代: ¥${price} / 在庫: ${stock} / ロット: ${lot}`;
 
-    function confirmQty() {
-        let val = document.getElementById("qty-val").innerText;
-        if (isTelMode) {
-            if (val.length < 9) return alert("番号が短いです");
-            closeQtyModal(); fetchCustomer(val);
-        } else {
-            let q = parseInt(val);
-            if (q > 0) { cart.push({ ...tempProduct, quantity: q }); renderCart(); }
-            closeQtyModal();
-            document.getElementById("part-no-input").value = "";
+    document.getElementById("qty-val").innerText = "1";
+    document.getElementById("qty-modal").style.display = "flex";
+
+    // ★決定ボタンに機能を割り当て（これが無いと押せません）
+    document.getElementById("confirm-btn").onclick = function() {
+        confirmQty();
+    };
+}
+
+/**
+ * 数量決定時の処理
+ */
+function confirmQty() {
+    let val = document.getElementById("qty-val").innerText;
+    
+    if (isTelMode) {
+        // 電話番号入力モードの場合
+        if (val.length < 9) return alert("番号が短いです");
+        closeQtyModal(); 
+        fetchCustomer(val);
+    } else {
+        // 通常の商品追加モードの場合
+        let q = parseInt(val);
+        if (q > 0) { 
+            // カートに商品を追加
+            cart.push({ ...tempProduct, quantity: q }); 
+            renderCart(); 
         }
+        closeQtyModal();
+        document.getElementById("part-no-input").value = ""; // 入力欄をクリア
     }
+}
 
     function closeQtyModal() { document.getElementById("qty-modal").style.display = "none"; }
 
