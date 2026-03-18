@@ -270,30 +270,7 @@
 
    // --- 修正版：数量訂正ができるカート表示 ---
    // --- カート表示（数量をタップ可能にする） ---
-    function renderCart() {
-        const list = document.getElementById("cart-list");
-        let total = 0;
-        list.innerHTML = cart.map((item, i) => {
-            total += (item.price * item.quantity);
-            return `<div class="item-row" style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #eee; padding: 10px 0;">
-                <div style="flex: 1;">
-                    <b style="font-size: 1.1em;">${item.name}</b><br>
-                    <small style="color: #666;">品番: ${item.partNo} / 単価: ¥${item.price.toLocaleString()}</small>
-                </div>
-                <div style="display: flex; align-items: center; gap: 10px;">
-                    <div onclick="editCartQty(${i})" style="background: #f0f0f0; padding: 8px 15px; border-radius: 8px; font-weight: bold; cursor: pointer; border: 1px solid #ccc; min-width: 60px; text-align: center;">
-                        ${item.quantity}
-                    </div>
-                    <span class="del-btn" style="color: #d9534f; font-size: 0.8em;" onclick="cart.splice(${i},1);renderCart();">削除</span>
-                </div>
-            </div>`;
-        }).join('');
-        document.getElementById("cart-total").innerText = total.toLocaleString();
-        
-        // カートが空なら非表示、あれば表示
-        document.getElementById("cart-area").style.display = cart.length > 0 ? "block" : "none";
-    }
-
+    f
     // --- 数量訂正モードの開始 ---
     function editCartQty(index) {
         isTelMode = false;
