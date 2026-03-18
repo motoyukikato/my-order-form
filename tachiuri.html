@@ -394,6 +394,9 @@ function confirmQty() {
 /**
  * 履歴の描画（住所2の表示を追加 ＋ 数量変更 ＋ 削除ボタン）
  */
+/**
+ * 履歴の描画（品番・上代・在庫状況を追加）
+ */
 async function loadHistory() {
     const list = document.getElementById("h-list");
     list.innerHTML = "<p style='text-align:center; padding:20px;'>読み込み中...</p>";
@@ -415,12 +418,19 @@ async function loadHistory() {
                     <b>${item.customerName} 様</b>
                     <small style="color:#999;">${item.displayDate}</small>
                 </div>
-                <div style="font-size:0.8em; color:#666; margin-bottom:8px;">
-                    ${item.address1 || ""}<br>
-                    ${item.address2 ? '<b>' + item.address2 + '</b>' : ""} 
+                
+                <div style="margin-bottom:5px;">
+                    <b style="font-size:1.1em;">${item.name}</b><br>
+                    <span style="color:#666;">品番: ${item.partNo}</span>
                 </div>
+
+                <div style="display:flex; gap:15px; font-size:0.85em; color:#444; background:#f9f9f9; padding:5px; border-radius:4px; margin-bottom:8px;">
+                    <span>単価: ¥${Number(item.price).toLocaleString()}</span>
+                    <span>在庫: <span style="color:${item.stock === '欠品' ? 'red' : 'blue'}">${item.stock || '--'}</span></span>
+                </div>
+
                 <div style="display:flex; justify-content:space-between; align-items:center; border-top:1px solid #eee; padding-top:8px;">
-                    <div style="flex:1; padding-right:10px;">${item.name}</div>
+                    <div style="font-weight:bold; color:#d9534f;">小計: ¥${(item.price * item.qty).toLocaleString()}</div>
                     <div style="display:flex; align-items:center; gap:8px;">
                         <button onclick="updateHistoryQty('${item.timestamp}', '${item.partNo}', -1)" style="width:32px;height:32px;border-radius:50%;border:1px solid #ccc;background:#fff;display:flex;align-items:center;justify-content:center;">−</button>
                         <b id="hist-qty-${item.timestamp}-${item.partNo}" style="min-width:25px; text-align:center;">${item.qty}</b>
@@ -436,7 +446,6 @@ async function loadHistory() {
         list.innerHTML = "<p style='text-align:center; color:red; padding:20px;'>履歴の読み込みに失敗しました</p>"; 
     }
 }
-
 /**
  * 履歴の行削除を実行する関数
  */
