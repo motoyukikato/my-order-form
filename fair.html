@@ -313,9 +313,13 @@
         if (p) openQtyModal(p); else alert("なし: " + code);
     }
 
-    function updateCustomerDisplay() {
+   function updateCustomerDisplay() {
         document.getElementById("r-name").innerText = customer.customer;
-        document.getElementById("r-addr1").innerText = "〒" + customer.zip + " " + customer.address1;
+        
+        // 住所1と住所2を合体させて表示（住所2がある場合のみ後ろに付け足す）
+        const addr2 = customer.address2 ? " " + customer.address2 : "";
+        document.getElementById("r-addr1").innerText = "〒" + customer.zip + " " + customer.address1 + addr2;
+        
         document.getElementById("r-tel").innerText = "TEL: " + customer.tel;
         document.getElementById("c-none").style.display = "none";
         document.getElementById("c-detail").style.display = "block";
