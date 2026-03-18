@@ -55,6 +55,14 @@
         </div>
         
         <div class="qty-display" id="qty-val">1</div>
+
+        <div class="numpad">
+            <button onclick="numIn('1')">1</button><button onclick="numIn('2')">2</button><button onclick="numIn('3')">3</button>
+            <button onclick="numIn('4')">4</button><button onclick="numIn('5')">5</button><button onclick="numIn('6')">6</button>
+            <button onclick="numIn('7')">7</button><button onclick="numIn('8')">8</button><button onclick="numIn('9')">9</button>
+            <button onclick="numIn('C')">C</button><button onclick="numIn('0')">0</button><button onclick="numIn('B')">BS</button>
+        </div>
+        
         <div style="display:flex; gap:10px; margin-top:20px;">
             <button class="btn-main" style="background:#6c757d; flex:1;" onclick="closeQtyModal()">戻る</button>
             <button id="confirm-btn" class="btn-main" style="background:#3b5998; flex:2;">決定</button>
@@ -235,7 +243,43 @@
 /**
  * 商品追加時のモーダル表示
  */
+/**
+ * 商品追加時のモーダル表示
+ */
 function openQtyModal(p) {
+    const modalTitle = document.getElementById("modal-p-name");
+    const modalInfo = document.getElementById("modal-p-info");
+    const qtyDisplay = document.getElementById("qty-val");
+
+    if (p) {
+        // --- 商品追加モード ---
+        isTelMode = false;
+        tempProduct = p;
+        modalTitle.innerText = p.name;
+        
+        // 上代・在庫・ロットの表示（データがない場合は0や--を表示）
+        const price = p.listPrice ? p.listPrice.toLocaleString() : (p.price ? p.price.toLocaleString() : "0");
+        const stock = p.stock || "--";
+        const lot = p.lot || "1";
+        modalInfo.innerHTML = `上代: ¥${price} / 在庫: ${stock} / ロット: ${lot}`;
+        
+        qtyDisplay.innerText = "1"; // 初期値は1
+    } else {
+        // --- 電話番号入力モード ---
+        isTelMode = true;
+        tempProduct = null;
+        modalTitle.innerText = "電話番号を手入力";
+        modalInfo.innerHTML = "ハイフンなしで入力してください";
+        qtyDisplay.innerText = ""; // 空から開始
+    }
+
+    document.getElementById("qty-modal").style.display = "flex";
+
+    // 決定ボタンのイベントをここで確実にセット
+    document.getElementById("confirm-btn").onclick = function() {
+        confirmQty();
+    };
+}
 
 /**
  * 数量決定時の処理
@@ -244,20 +288,17 @@ function confirmQty() {
     let val = document.getElementById("qty-val").innerText;
     
     if (isTelMode) {
-        // 電話番号入力モードの場合
         if (val.length < 9) return alert("番号が短いです");
         closeQtyModal(); 
         fetchCustomer(val);
     } else {
-        // 通常の商品追加モードの場合
         let q = parseInt(val);
         if (q > 0) { 
-            // カートに商品を追加
             cart.push({ ...tempProduct, quantity: q }); 
             renderCart(); 
         }
         closeQtyModal();
-        document.getElementById("part-no-input").value = ""; // 入力欄をクリア
+        document.getElementById("part-no-input").value = ""; 
     }
 }
 
