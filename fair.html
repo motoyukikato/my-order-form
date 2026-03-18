@@ -55,7 +55,7 @@
         </div>
         <div style="display:flex; gap:10px; margin-top:20px;">
             <button class="btn-main" style="background:#ccc; flex:1;" onclick="closeQtyModal()">戻る</button>
-            <button class="btn-main" style="background:#3b5998; flex:2;" onclick="confirmQty()">決定</button>
+            <button id="confirm-btn" class="btn-main" style="background:#3b5998; flex:2;" onclick="confirmQty()">決定</button>
         </div>
     </div>
 </div>
@@ -269,59 +269,65 @@
     }
 
    // --- 修正版：数量訂正ができるカート表示 ---
+   // --- カート表示（数量をタップ可能にする） ---
     function renderCart() {
         const list = document.getElementById("cart-list");
         let total = 0;
         list.innerHTML = cart.map((item, i) => {
             total += (item.price * item.quantity);
-            return `<div class="item-row" style="display: flex; justify-content: space-between; align-items: center;">
+            return `<div class="item-row" style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #eee; padding: 10px 0;">
                 <div style="flex: 1;">
-                    <b>${item.name}</b><br>
-                    <small>品番: ${item.partNo} / 単価: ¥${item.price.toLocaleString()}</small>
+                    <b style="font-size: 1.1em;">${item.name}</b><br>
+                    <small style="color: #666;">品番: ${item.partNo} / 単価: ¥${item.price.toLocaleString()}</small>
                 </div>
-                <div style="display: flex; align-items: center; gap: 15px;">
-                    <div onclick="editCartQty(${i})" style="background: #eee; padding: 5px 12px; border-radius: 5px; font-weight: bold; cursor: pointer; border: 1px solid #ccc;">
-                        数量: ${item.quantity}
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <div onclick="editCartQty(${i})" style="background: #f0f0f0; padding: 8px 15px; border-radius: 8px; font-weight: bold; cursor: pointer; border: 1px solid #ccc; min-width: 60px; text-align: center;">
+                        ${item.quantity}
                     </div>
-                    <span class="del-btn" onclick="cart.splice(${i},1);renderCart();">削除</span>
+                    <span class="del-btn" style="color: #d9534f; font-size: 0.8em;" onclick="cart.splice(${i},1);renderCart();">削除</span>
                 </div>
             </div>`;
         }).join('');
         document.getElementById("cart-total").innerText = total.toLocaleString();
+        
+        // カートが空なら非表示、あれば表示
+        document.getElementById("cart-area").style.display = cart.length > 0 ? "block" : "none";
     }
 
-    // --- 新機能：カート内数量の訂正ボタン用 ---
+    // --- 数量訂正モードの開始 ---
     function editCartQty(index) {
         isTelMode = false;
-        tempProduct = cart[index];
+        const item = cart[index];
         
-        // モーダルを表示状態にする
-        document.getElementById("qty-val").innerText = tempProduct.quantity;
+        // モーダルの表示を「訂正」用にセット
+        document.getElementById("qty-val").innerText = item.quantity;
         document.getElementById("modal-p-name").innerHTML = `
-            <div style="color: #d9534f; font-weight: bold;">【数量訂正】</div>
-            <div style="font-size: 1.1em; font-weight: bold;">${tempProduct.name}</div>
+            <div style="color: #d9534f; font-weight: bold;">【数量の変更】</div>
+            <div style="font-size: 1.1em; font-weight: bold;">${item.name}</div>
         `;
 
         document.getElementById("qty-modal").style.display = "flex";
         
-        // 「決定」ボタンを押したときの動きを「訂正確定(confirmEditQty)」に一時的に書き換える
-        const confirmBtn = document.querySelector("#qty-modal .btn-main[onclick='confirmQty()']");
-        if (confirmBtn) confirmBtn.setAttribute("onclick", `confirmEditQty(${index})`);
+        // ★重要：決定ボタンの「onclick」を訂正確定用に書き換える
+        const btn = document.getElementById("confirm-btn");
+        btn.setAttribute("onclick", `confirmEditQty(${index})`);
     }
 
-    // --- 新機能：訂正を確定してカートに戻す ---
+    // --- 数量訂正の確定 ---
     function confirmEditQty(index) {
-        let val = document.getElementById("qty-val").innerText;
-        let q = parseInt(val);
+        const val = document.getElementById("qty-val").innerText;
+        const q = parseInt(val);
+        
         if (q > 0) {
-            cart[index].quantity = q;
-            renderCart();
+            cart[index].quantity = q; // 数量を上書き
+            renderCart(); // 表示を更新
         }
+        
         closeQtyModal();
         
-        // ボタンの動きを「新規追加(confirmQty)」に戻す
-        const confirmBtn = document.querySelector("#qty-modal .btn-main[onclick^='confirmEditQty']");
-        if (confirmBtn) confirmBtn.setAttribute("onclick", "confirmQty()");
+        // ★重要：決定ボタンの「onclick」を「新規追加用」に戻しておく
+        const btn = document.getElementById("confirm-btn");
+        btn.setAttribute("onclick", "confirmQty()");
     }
 
     // --- 送信処理（これは今のままでOKですが、念のため再掲） ---
