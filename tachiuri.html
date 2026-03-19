@@ -471,6 +471,40 @@ async function deleteHistoryOrder(ts, partNo, name) {
         card.style.opacity = "1";
     }
 }
+    /**
+ * 履歴の数量を直接更新する関数
+ */
+async function updateHistoryQty(ts, partNo, diff) {
+    const qtyElem = document.getElementById(`hist-qty-${ts}-${partNo}`);
+    let currentQty = parseInt(qtyElem.innerText);
+    let newQty = currentQty + diff;
+    if (newQty <= 0) return alert("数量は1以上で入力してください（削除する場合はゴミ箱ボタンを使用してください）");
+
+    qtyElem.innerText = "..."; // 更新中表示
+
+    try {
+        const res = await fetch(GAS_URL, {
+            method: "POST",
+            body: JSON.stringify({
+                action: "updateOrderQty",
+                timestamp: ts,
+                partNo: partNo,
+                newQty: newQty,
+                maker: MY_MAKER
+            })
+        });
+        const result = await res.json();
+        if (result.success) {
+            qtyElem.innerText = newQty;
+        } else {
+            alert("更新に失敗しました");
+            qtyElem.innerText = currentQty;
+        }
+    } catch (e) {
+        alert("通信エラーが発生しました");
+        qtyElem.innerText = currentQty;
+    }
+}
 </script>
 </body>
 </html>
