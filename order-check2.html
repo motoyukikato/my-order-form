@@ -176,12 +176,18 @@
         const newEmail = window.prompt("請書の送信先を確認・修正してください。", currentEmail);
         if (newEmail === null || !newEmail.trim()) return;
 
+        // 【修正ポイント】currentScannedId が空の場合、取得データから補完する
+        if (!currentScannedId && lastFetchedData.length > 0) {
+            currentScannedId = lastFetchedData[0].customerId;
+        }
+
         const btn = document.getElementById("email-btn");
         btn.disabled = true;
         btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> 送信中...';
 
         const script = document.createElement('script');
-        script.src = `${GAS_URL}?action=sendEmail&id=${encodeURIComponent(currentScannedId)}&email=${encodeURIComponent(newEmail.trim())}&callback=onEmailSent`;
+        // ここで id=... に currentScannedId を確実にセットします
+        script.src = `${GAS_URL}?action=sendEmail&val=${encodeURIComponent(currentScannedId)}&email=${encodeURIComponent(newEmail.trim())}&callback=onEmailSent`;
         document.body.appendChild(script);
 
         setTimeout(() => {
