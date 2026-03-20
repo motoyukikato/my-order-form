@@ -120,15 +120,19 @@
 
     // 履歴取得 (JSONP方式)
     function fetchHistory(val, type) {
-        document.getElementById("scan-view").style.display = "none";
-        document.getElementById("loading").style.display = "block";
-        
-        const script = document.createElement('script');
-        // typeが 'tel' の場合は tel=... 、それ以外は id=... でリクエスト
-        const param = type === "tel" ? `tel=${encodeURIComponent(val)}` : `id=${encodeURIComponent(val)}`;
-        script.src = `${GAS_URL}?${param}&callback=showResult`;
-        document.body.appendChild(script);
-    }
+    document.getElementById("scan-view").style.display = "none";
+    document.getElementById("loading").style.display = "block";
+    
+    const script = document.createElement('script');
+    
+    // ★ GAS側の条件分岐に合わせて action を追加します
+    let action = (type === "tel") ? "getHistoryByTel" : "getCustomerSpecificHistory";
+    
+    // リクエストURLを組み立て（actionを追加）
+    script.src = `${GAS_URL}?action=${action}&val=${encodeURIComponent(val)}&callback=showResult`;
+    
+    document.body.appendChild(script);
+}
 
     // GASからのデータを受け取って表示
     function showResult(data) {
