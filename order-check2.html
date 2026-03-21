@@ -15,9 +15,6 @@
         table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 0.9em; }
         th { background: #f1f3f5; text-align: left; padding: 10px; border-bottom: 2px solid #dee2e6; color: #495057; }
         td { padding: 12px 10px; border-bottom: 1px solid #eee; vertical-align: middle; }
-        .item-name { font-weight: bold; display: block; margin-bottom: 2px; }
-        .item-info { color: #666; font-size: 0.85em; }
-        .status-badge { display: inline-block; padding: 2px 8px; border-radius: 12px; font-size: 0.75em; font-weight: bold; background: #e9ecef; color: #495057; }
         .total-box { background: #343a40; color: white; padding: 20px; border-radius: 12px; text-align: right; margin-top: 15px; }
         .total-label { font-size: 0.9em; opacity: 0.8; }
         .total-price { font-size: 1.6em; color: #ffeb3b; font-weight: bold; margin-left: 10px; }
@@ -25,7 +22,6 @@
         .btn-scan { background: #28a745; color: white; }
         .btn-tel { background: #6c757d; color: white; margin-top: 10px; }
         .btn-email { background: #007bff; color: white; display: none; }
-        .btn-email:disabled { background: #adb5bd; }
         .loading { text-align: center; padding: 40px; display: none; color: #4267B2; }
     </style>
 </head>
@@ -88,7 +84,6 @@
 </div>
 
 <script>
-    // GASのURL（しっかり残してあります）
     const GAS_URL = "https://script.google.com/macros/s/AKfycbzjePWn5bxik5NiLup8pE6vL1uvEof5ejounfarKuylG4oFJSbyInzHf7x5TljdON3YeA/exec"; 
 
     let currentScannedId = "";
@@ -112,7 +107,7 @@
     }
 
     function inputTel() {
-        const tel = window.prompt("検索する電話番号を入力してください（ハイフンなしOK）");
+        const tel = window.prompt("検索する電話番号を入力してください");
         if (!tel) return;
         fetchHistory(tel, "tel");
     }
@@ -138,7 +133,6 @@
             document.getElementById("cust-name").innerText = data[0].customerName + " 様";
             currentScannedId = data[0].customerId;
 
-            // 商品明細の生成と合計の計算
             tableBody.innerHTML = data.map(item => {
                 const subtotal = Number(item.price || 0) * Number(item.qty || 0); 
                 total += subtotal; 
@@ -162,42 +156,11 @@
                     </tr>
                 `;
             }).join('');
-
-            // 合計金額をセット
             document.getElementById("total-amount").innerText = total.toLocaleString();
-
         } else {
             tableBody.innerHTML = '<tr><td colspan="2" style="text-align:center; padding:30px; color:#999;">履歴がありません。</td></tr>';
             document.getElementById("email-btn").style.display = "none";
             document.getElementById("total-amount").innerText = "0";
-        }
-    }
-
-           // 履歴表示のループ内 (map処理など)
-tableBody.innerHTML = data.map(item => {
-    return `
-        <tr>
-            <td style="font-size: 0.85em;">
-                <span style="color:#888;">${item.displayDate}</span><br>
-                <strong>${item.customerName} 様</strong><br>
-                <span style="color:#d9534f; font-weight:bold;">品番：${item.partNo}</span> 
-                <span style="background:#eee; padding:0 5px; border-radius:4px;">L：${item.lot}</span><br>
-                ${item.name}<br>
-                <span style="color:#666;">
-                    単価：¥${Number(item.price).toLocaleString()} 
-                    (数量：${item.qty})
-                </span>
-            </td>
-            <td style="text-align:right; font-weight:bold; vertical-align:bottom;">
-                ¥${(item.price * item.qty).toLocaleString()}
-            </td>
-        </tr>
-    `;
-}).join('');
-            document.getElementById("total-amount").innerText = total.toLocaleString();
-        } else {
-            tableBody.innerHTML = '<tr><td colspan="2" style="text-align:center; padding:30px; color:#999;">履歴がありません。</td></tr>';
-            document.getElementById("email-btn").style.display = "none";
         }
     }
 
@@ -207,34 +170,24 @@ tableBody.innerHTML = data.map(item => {
             const found = lastFetchedData.find(d => d.email && d.email.includes("@"));
             defaultEmail = found ? found.email : "";
         }
-
-        const newEmail = window.prompt("請書の送信先を確認・修正してください。", defaultEmail);
-        if (newEmail === null || !newEmail.trim()) return;
-
-        if (!currentScannedId && lastFetchedData.length > 0) {
-            currentScannedId = lastFetchedData[0].customerId;
-        }
+        const newEmail = window.prompt("送信先を確認・修正してください。", defaultEmail);
+        if (!newEmail) return;
 
         const btn = document.getElementById("email-btn");
         btn.disabled = true;
-        btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> 送信中...';
+        btn.innerHTML = '送信中...';
 
         const script = document.createElement('script');
         script.src = `${GAS_URL}?action=sendEmail&val=${encodeURIComponent(currentScannedId)}&email=${encodeURIComponent(newEmail.trim())}&callback=onEmailSent`;
         document.body.appendChild(script);
-
-        setTimeout(() => {
-            if (btn.disabled && btn.innerHTML.includes('送信中')) onEmailSent({success: true});
-        }, 5000);
+        setTimeout(() => { if (btn.disabled) onEmailSent({success: true}); }, 6000);
     }
 
     function onEmailSent(response) {
         alert("請書メールを送信しました！");
         const btn = document.getElementById("email-btn");
-        btn.style.background = "#6c757d";
-        btn.innerHTML = '<i class="fa-solid fa-check"></i> 送信完了';
+        btn.innerHTML = '送信完了';
     }
 </script>
-
 </body>
 </html>
