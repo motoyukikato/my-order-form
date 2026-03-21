@@ -134,7 +134,7 @@
             currentScannedId = data[0].customerId;
 
             tableBody.innerHTML = data.map(item => {
-                // 小計を計算（GAS側で計算済みの場合は item.subtotal でもOK）
+                // 単価(price) × 数量(qty) で小計を計算
                 const subtotal = Number(item.price || 0) * Number(item.qty || 0); 
                 total += subtotal; 
 
@@ -142,12 +142,11 @@
                     <tr>
                         <td style="font-size: 0.85em; padding: 12px 10px;">
                             <span style="color:#888;">${item.displayDate || ''}</span><br>
-                            
                             <strong style="font-size: 1.1em; display: block; margin: 3px 0;">${item.name || '---'}</strong>
                             
                             <div style="margin-bottom: 5px;">
                                 <span style="color:#d9534f; font-weight:bold;">品番：${item.partNo || '---'}</span> 
-                                <span style="background:#fff3cd; padding:1px 6px; border-radius:4px; margin-left:5px; font-weight:bold; color:#856404;">ロット：${item.lot || '1'}</span>
+                                <span style="background:#fff3cd; padding:1px 6px; border-radius:4px; margin-left:5px; font-weight:bold; color:#856404;">L：${item.lot || '1'}</span>
                             </div>
                             
                             <div style="color:#666; line-height: 1.4;">
