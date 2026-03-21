@@ -23,7 +23,7 @@
         .total-price { font-size: 1.6em; color: #ffeb3b; font-weight: bold; margin-left: 10px; }
         .btn { border: none; width: 100%; padding: 16px; border-radius: 8px; font-size: 17px; font-weight: bold; cursor: pointer; transition: 0.2s; margin-top: 10px; }
         .btn-scan { background: #28a745; color: white; }
-        .btn-tel { background: #6c757d; color: white; margin-top: 10px; } /* 電話番号用ボタン */
+        .btn-tel { background: #6c757d; color: white; margin-top: 10px; }
         .btn-email { background: #007bff; color: white; display: none; }
         .btn-email:disabled { background: #adb5bd; }
         .loading { text-align: center; padding: 40px; display: none; color: #4267B2; }
@@ -38,7 +38,6 @@
         <div class="card">
             <p style="text-align:center; font-weight:bold;">お客様QRをスキャン<br>または電話番号を入力してください</p>
             <div id="reader"></div>
-            
             <div style="display: flex; gap: 10px;">
                 <button id="start-btn" class="btn btn-scan" style="flex: 2;" onclick="startScan()">
                     <i class="fa-solid fa-camera"></i> スキャン
@@ -89,6 +88,7 @@
 </div>
 
 <script>
+    // GASのURL（しっかり残してあります）
     const GAS_URL = "https://script.google.com/macros/s/AKfycbzjePWn5bxik5NiLup8pE6vL1uvEof5ejounfarKuylG4oFJSbyInzHf7x5TljdON3YeA/exec"; 
 
     let currentScannedId = "";
@@ -111,42 +111,31 @@
         }
     }
 
-    // 電話番号入力
     function inputTel() {
         const tel = window.prompt("検索する電話番号を入力してください（ハイフンなしOK）");
         if (!tel) return;
         fetchHistory(tel, "tel");
     }
 
-    // 履歴取得 (JSONP方式)
     function fetchHistory(val, type) {
-    document.getElementById("scan-view").style.display = "none";
-    document.getElementById("loading").style.display = "block";
-    
-    const script = document.createElement('script');
-    
-    // ★ GAS側の条件分岐に合わせて action を追加します
-    let action = (type === "tel") ? "getHistoryByTel" : "getCustomerSpecificHistory";
-    
-    // リクエストURLを組み立て（actionを追加）
-    script.src = `${GAS_URL}?action=${action}&val=${encodeURIComponent(val)}&callback=showResult`;
-    
-    document.body.appendChild(script);
-}
+        document.getElementById("scan-view").style.display = "none";
+        document.getElementById("loading").style.display = "block";
+        const script = document.createElement('script');
+        let action = (type === "tel") ? "getHistoryByTel" : "getCustomerSpecificHistory";
+        script.src = `${GAS_URL}?action=${action}&val=${encodeURIComponent(val)}&callback=showResult`;
+        document.body.appendChild(script);
+    }
 
-    // GASからのデータを受け取って表示
     function showResult(data) {
         document.getElementById("loading").style.display = "none";
         document.getElementById("result-view").style.display = "block";
         const tableBody = document.getElementById("history-table-body");
         let total = 0;
-        lastFetchedData = data;
+        lastFetchedData = data; 
 
         if (data && data.length > 0) {
             document.getElementById("email-btn").style.display = "block";
             document.getElementById("cust-name").innerText = data[0].customerName + " 様";
-            
-            // 手入力の場合、currentScannedId を取得したデータのcustomerIdにセット（メール送信用）
             currentScannedId = data[0].customerId;
 
             tableBody.innerHTML = data.map(item => {
@@ -156,6 +145,7 @@
                         <td>
                             <span class="status-badge">${item.maker}</span> 
                             <span class="status-badge" style="background:#fff3cd;">${item.stock || '通常'}</span><br>
+                            <span style="color:#d9534f; font-size:0.8em; font-weight:bold;">品番：${item.code || '---'}</span><br>
                             <span class="item-name">${item.name}</span>
                             <span class="item-info">¥${Number(item.price).toLocaleString()} × ${item.qty}</span>
                         </td>
@@ -166,17 +156,21 @@
             }).join('');
             document.getElementById("total-amount").innerText = total.toLocaleString();
         } else {
-            tableBody.innerHTML = '<tr><td colspan="2" style="text-align:center; padding:30px; color:#999;">履歴がありません。<br>スプレッドシートの電話番号列を確認してください。</td></tr>';
+            tableBody.innerHTML = '<tr><td colspan="2" style="text-align:center; padding:30px; color:#999;">履歴がありません。</td></tr>';
             document.getElementById("email-btn").style.display = "none";
         }
     }
 
     async function requestEmail() {
-        let currentEmail = (lastFetchedData && lastFetchedData.length > 0) ? lastFetchedData[0].email : "";
-        const newEmail = window.prompt("請書の送信先を確認・修正してください。", currentEmail);
+        let defaultEmail = "";
+        if (lastFetchedData && lastFetchedData.length > 0) {
+            const found = lastFetchedData.find(d => d.email && d.email.includes("@"));
+            defaultEmail = found ? found.email : "";
+        }
+
+        const newEmail = window.prompt("請書の送信先を確認・修正してください。", defaultEmail);
         if (newEmail === null || !newEmail.trim()) return;
 
-        // 【修正ポイント】currentScannedId が空の場合、取得データから補完する
         if (!currentScannedId && lastFetchedData.length > 0) {
             currentScannedId = lastFetchedData[0].customerId;
         }
@@ -186,7 +180,6 @@
         btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> 送信中...';
 
         const script = document.createElement('script');
-        // ここで id=... に currentScannedId を確実にセットします
         script.src = `${GAS_URL}?action=sendEmail&val=${encodeURIComponent(currentScannedId)}&email=${encodeURIComponent(newEmail.trim())}&callback=onEmailSent`;
         document.body.appendChild(script);
 
@@ -196,9 +189,8 @@
     }
 
     function onEmailSent(response) {
-        const btn = document.getElementById("email-btn");
-        if (!btn.disabled || btn.innerHTML.includes('送信完了')) return;
         alert("請書メールを送信しました！");
+        const btn = document.getElementById("email-btn");
         btn.style.background = "#6c757d";
         btn.innerHTML = '<i class="fa-solid fa-check"></i> 送信完了';
     }
