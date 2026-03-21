@@ -136,36 +136,40 @@
 
     // 商品検索
     async function searchProduct(code) {
-        try {
-            const res = await fetch(SEARCH_URL, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ jan: code })
+    try {
+        const res = await fetch(SEARCH_URL, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ jan: code })
+        });
+        const data = await res.json();
+
+        if (data.items && data.items.length > 0) {
+            const product = data.items[0]; 
+            const itemLot = Number(product.lot) || 1; 
+
+            cart.push({ 
+                jan: product.jan || code,
+                partNo: product.partNo || "品番なし",
+                name: product.name,
+                
+                // --- 価格情報の追加 ---
+                price: Number(product.price),      // 単価（下代）
+                listPrice: Number(product.listPrice || 0), // ★上代を追加（プロパティ名はフロー側に合わせてください）
+                
+                quantity: itemLot,
+                lot: itemLot,
+                stock: product.stock 
             });
-            const data = await res.json();
-
-            if (data.items && data.items.length > 0) {
-                const product = data.items[0]; 
-                const itemLot = Number(product.lot) || 1; 
-
-                cart.push({ 
-                    jan: product.jan || code,
-                    partNo: product.partNo || "品番なし", // 品番を優先
-                    name: product.name,
-                    price: Number(product.price), 
-                    quantity: itemLot,
-                    lot: itemLot,
-                    stock: product.stock 
-                });
-                updateCartUI();
-                showPage('cart');
-            } else {
-                alert("商品が見つかりません");
-            }
-        } catch (e) {
-            alert("検索エラーが発生しました");
+            updateCartUI();
+            showPage('cart');
+        } else {
+            alert("商品が見つかりません");
         }
+    } catch (e) {
+        alert("検索エラーが発生しました");
     }
+}
 
     async function handleScan() { liff.scanCodeV2().then(res => { if (res.value) searchProduct(res.value); }); }
     async function handleManualSearch() {
