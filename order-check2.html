@@ -138,14 +138,16 @@
             document.getElementById("cust-name").innerText = data[0].customerName + " 様";
             currentScannedId = data[0].customerId;
 
-            tableBody.innerHTML = data.map(item => {
+           tableBody.innerHTML = data.map(item => {
                 total += Number(item.subtotal || 0);
                 return `
                     <tr>
                         <td>
                             <span class="status-badge">${item.maker}</span> 
-                            <span class="status-badge" style="background:#fff3cd;">${item.stock || '通常'}</span><br>
-                            <span style="color:#d9534f; font-size:0.8em; font-weight:bold;">品番：${item.code || '---'}</span><br>
+                            <span class="status-badge" style="background:#fff3cd;">ロット：${item.lot || '---'}</span><br>
+                            
+                            <span style="color:#d9534f; font-size:0.85em; font-weight:bold;">品番：${item.code || '---'}</span><br>
+                            
                             <span class="item-name">${item.name}</span>
                             <span class="item-info">¥${Number(item.price).toLocaleString()} × ${item.qty}</span>
                         </td>
