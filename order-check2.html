@@ -130,13 +130,48 @@
         document.getElementById("loading").style.display = "none";
         document.getElementById("result-view").style.display = "block";
         const tableBody = document.getElementById("history-table-body");
-        let total = 0;
+        let total = 0; // ここで合計を貯めていきます
         lastFetchedData = data; 
 
         if (data && data.length > 0) {
             document.getElementById("email-btn").style.display = "block";
             document.getElementById("cust-name").innerText = data[0].customerName + " 様";
             currentScannedId = data[0].customerId;
+
+            // mapの中で「小計の計算」と「合計への加算」を行います
+            tableBody.innerHTML = data.map(item => {
+                const subtotal = Number(item.price || 0) * Number(item.qty || 0); // 小計
+                total += subtotal; // 合計にプラス
+
+                return `
+                    <tr>
+                        <td style="font-size: 0.85em;">
+                            <span style="color:#888;">${item.displayDate}</span><br>
+                            <strong>${item.name}</strong><br>
+                            <span style="color:#d9534f; font-weight:bold;">品番：${item.partNo}</span> 
+                            <span style="background:#eee; padding:0 5px; border-radius:4px;">L：${item.lot}</span><br>
+                            <span style="color:#666; font-size: 0.9em;">
+                                単価：¥${Number(item.price || 0).toLocaleString()} / 
+                                <span style="color:#000; font-weight:bold;">上代：¥${Number(item.listPrice || 0).toLocaleString()}</span><br>
+                                (数量：${item.qty})
+                            </span>
+                        </td>
+                        <td style="text-align:right; font-weight:bold; vertical-align:bottom;">
+                            ¥${subtotal.toLocaleString()}
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+
+            // 最後に合計金額を画面にセット
+            document.getElementById("total-amount").innerText = total.toLocaleString();
+
+        } else {
+            tableBody.innerHTML = '<tr><td colspan="2" style="text-align:center; padding:30px; color:#999;">履歴がありません。</td></tr>';
+            document.getElementById("email-btn").style.display = "none";
+            document.getElementById("total-amount").innerText = "0";
+        }
+    }
 
            // 履歴表示のループ内 (map処理など)
 tableBody.innerHTML = data.map(item => {
