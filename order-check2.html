@@ -117,8 +117,8 @@
         document.getElementById("loading").style.display = "block";
         const script = document.createElement('script');
         
-        // --- ここを修正：GAS側の getOrderHistory 関数を呼び出すようにします ---
-        // valにはメーカー名など、検索したい条件が入るように調整が必要です
+        // 修正ポイント：actionを "getOrderHistory" に、パラメータを "targetMaker" に変更
+        // ※valには検索したいメーカー名等が入る必要があります
         script.src = `${GAS_URL}?action=getOrderHistory&targetMaker=${encodeURIComponent(val)}&callback=showResult`;
         
         document.body.appendChild(script);
