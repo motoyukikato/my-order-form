@@ -130,7 +130,7 @@
         document.getElementById("loading").style.display = "none";
         document.getElementById("result-view").style.display = "block";
         const tableBody = document.getElementById("history-table-body");
-        let total = 0; // ここで合計を貯めていきます
+        let total = 0; 
         lastFetchedData = data; 
 
         if (data && data.length > 0) {
@@ -138,10 +138,10 @@
             document.getElementById("cust-name").innerText = data[0].customerName + " 様";
             currentScannedId = data[0].customerId;
 
-            // mapの中で「小計の計算」と「合計への加算」を行います
+            // 商品明細の生成と合計の計算
             tableBody.innerHTML = data.map(item => {
-                const subtotal = Number(item.price || 0) * Number(item.qty || 0); // 小計
-                total += subtotal; // 合計にプラス
+                const subtotal = Number(item.price || 0) * Number(item.qty || 0); 
+                total += subtotal; 
 
                 return `
                     <tr>
@@ -163,7 +163,7 @@
                 `;
             }).join('');
 
-            // 最後に合計金額を画面にセット
+            // 合計金額をセット
             document.getElementById("total-amount").innerText = total.toLocaleString();
 
         } else {
