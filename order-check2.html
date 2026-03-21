@@ -131,13 +131,20 @@
         let total = 0; 
         lastFetchedData = data; 
 
-        if (data && data.length > 0) {
+        if (data && data.length > 0 && !data.error) {
             document.getElementById("email-btn").style.display = "block";
-            document.getElementById("cust-name").innerText = data[0].customerName + " 様";
-            currentScannedId = data[0].customerId;
+            // 最初のデータから顧客名を取得
+            const firstItem = data[0];
+            document.getElementById("cust-name").innerText = (firstItem.customerName || "お客様") + " 様";
+            currentScannedId = firstItem.customerId;
 
             tableBody.innerHTML = data.map(item => {
-                const subtotal = Number(item.price || 0) * Number(item.qty || 0); 
+                // 文字列を数値に変換（カンマなどが入っていても動くように）
+                const p = typeof item.price === 'number' ? item.price : parseFloat(String(item.price || "0").replace(/[^0-9.]/g, ''));
+                const q = typeof item.qty === 'number' ? item.qty : parseFloat(String(item.qty || "0").replace(/[^0-9.]/g, ''));
+                const lp = typeof item.listPrice === 'number' ? item.listPrice : parseFloat(String(item.listPrice || "0").replace(/[^0-9.]/g, ''));
+                
+                const subtotal = p * q; 
                 total += subtotal; 
 
                 return `
@@ -152,9 +159,9 @@
                             </div>
                             
                             <div style="color:#666; line-height: 1.4;">
-                                単価：<span style="color:#333; font-weight:bold;">¥${Number(item.price || 0).toLocaleString()}</span> / 
-                                <span style="color:#000;">上代：<span style="font-weight:bold;">¥${Number(item.listPrice || 0).toLocaleString()}</span></span><br>
-                                <span style="font-size: 0.9em;">(数量：${item.qty || 0})</span>
+                                単価：<span style="color:#333; font-weight:bold;">¥${p.toLocaleString()}</span> / 
+                                <span style="color:#000;">上代：<span style="font-weight:bold;">¥${lp.toLocaleString()}</span></span><br>
+                                <span style="font-size: 0.9em;">(数量：${q})</span>
                             </div>
                         </td>
                         <td style="text-align:right; font-weight:bold; vertical-align:bottom; font-size: 1.1em; padding-bottom: 15px;">
@@ -165,9 +172,10 @@
             }).join('');
             document.getElementById("total-amount").innerText = total.toLocaleString();
         } else {
-            tableBody.innerHTML = '<tr><td colspan="2" style="text-align:center; padding:30px; color:#999;">履歴がありません。</td></tr>';
+            tableBody.innerHTML = '<tr><td colspan="2" style="text-align:center; padding:30px; color:#999;">履歴が見つかりませんでした。</td></tr>';
             document.getElementById("email-btn").style.display = "none";
             document.getElementById("total-amount").innerText = "0";
+            document.getElementById("cust-name").innerText = "---";
         }
     }
 
