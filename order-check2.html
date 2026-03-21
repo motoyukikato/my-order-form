@@ -112,12 +112,15 @@
         fetchHistory(tel, "tel");
     }
 
-    function fetchHistory(val, type) {
+   function fetchHistory(val, type) {
         document.getElementById("scan-view").style.display = "none";
         document.getElementById("loading").style.display = "block";
         const script = document.createElement('script');
-        let action = (type === "tel") ? "getHistoryByTel" : "getCustomerSpecificHistory";
-        script.src = `${GAS_URL}?action=${action}&val=${encodeURIComponent(val)}&callback=showResult`;
+        
+        // --- ここを修正：GAS側の getOrderHistory 関数を呼び出すようにします ---
+        // valにはメーカー名など、検索したい条件が入るように調整が必要です
+        script.src = `${GAS_URL}?action=getOrderHistory&targetMaker=${encodeURIComponent(val)}&callback=showResult`;
+        
         document.body.appendChild(script);
     }
 
