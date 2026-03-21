@@ -138,24 +138,27 @@
             document.getElementById("cust-name").innerText = data[0].customerName + " 様";
             currentScannedId = data[0].customerId;
 
-           tableBody.innerHTML = data.map(item => {
-                total += Number(item.subtotal || 0);
-                return `
-                    <tr>
-                        <td>
-                            <span class="status-badge">${item.maker}</span> 
-                            <span class="status-badge" style="background:#fff3cd;">ロット：${item.lot || '---'}</span><br>
-                            
-                            <span style="color:#d9534f; font-size:0.85em; font-weight:bold;">品番：${item.code || '---'}</span><br>
-                            
-                            <span class="item-name">${item.name}</span>
-                            <span class="item-info">¥${Number(item.price).toLocaleString()} × ${item.qty}</span>
-                        </td>
-                        <td style="text-align:right; font-weight:bold; vertical-align:bottom;">
-                            ¥${Number(item.subtotal).toLocaleString()}
-                        </td>
-                    </tr>`;
-            }).join('');
+           // 履歴表示のループ内 (map処理など)
+tableBody.innerHTML = data.map(item => {
+    return `
+        <tr>
+            <td style="font-size: 0.85em;">
+                <span style="color:#888;">${item.displayDate}</span><br>
+                <strong>${item.customerName} 様</strong><br>
+                <span style="color:#d9534f; font-weight:bold;">品番：${item.partNo}</span> 
+                <span style="background:#eee; padding:0 5px; border-radius:4px;">L：${item.lot}</span><br>
+                ${item.name}<br>
+                <span style="color:#666;">
+                    単価：¥${Number(item.price).toLocaleString()} 
+                    (数量：${item.qty})
+                </span>
+            </td>
+            <td style="text-align:right; font-weight:bold; vertical-align:bottom;">
+                ¥${(item.price * item.qty).toLocaleString()}
+            </td>
+        </tr>
+    `;
+}).join('');
             document.getElementById("total-amount").innerText = total.toLocaleString();
         } else {
             tableBody.innerHTML = '<tr><td colspan="2" style="text-align:center; padding:30px; color:#999;">履歴がありません。</td></tr>';
