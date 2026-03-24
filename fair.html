@@ -355,13 +355,32 @@
     }
 
    function fetchProduct(code) {
-    // 読み取った値の前後にある空白や改行を徹底的に除去する
-    code = String(code).trim(); 
-    if (!code) return;
-        let p = allProducts.find(item => (item.partNo.toUpperCase() === code.toUpperCase() || item.jan === code));
-        if (!p && /^\d+$/.test(code)) { p = allProducts.find(item => parseInt(item.partNo) === parseInt(code)); }
-        if (p) openQtyModal(p); else alert("見つかりません: " + code);
+    // 1. 読み取ったコードの前後にある空白・改行を消して大文字にする
+    const cleanCode = String(code).trim().toUpperCase(); 
+    if (!cleanCode) return;
+
+    // 2. データ側(item.partNo や item.jan)に空白が混ざっていても無視して探す
+    let p = allProducts.find(item => {
+        const targetPartNo = String(item.partNo || "").trim().toUpperCase();
+        const targetJan = String(item.jan || "").trim();
+        return (targetPartNo === cleanCode || targetJan === cleanCode);
+    });
+
+    // 3. 数字のみの場合の予備検索
+    if (!p && /^\d+$/.test(cleanCode)) {
+        p = allProducts.find(item => {
+            const numPartNo = parseInt(String(item.partNo).trim());
+            return numPartNo === parseInt(cleanCode);
+        });
     }
+
+    if (p) {
+        openQtyModal(p);
+    } else {
+        // 見つからない時は、確認のために読み取った値を [ ] で囲んで表示します
+        alert("商品が見つかりません\n読み取った値: [" + cleanCode + "]");
+    }
+}
 
     function updateCustomerDisplay() {
         document.getElementById("r-name").innerText = customer.customer;
