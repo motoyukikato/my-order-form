@@ -320,8 +320,10 @@
         if (d.customer) { customer = d; updateCustomerDisplay(); } else alert("未登録");
     }
 
-    function fetchProduct(code) {
-        if (!code) return;
+   function fetchProduct(code) {
+    // 読み取った値の前後にある空白や改行を徹底的に除去する
+    code = String(code).trim(); 
+    if (!code) return;
         let p = allProducts.find(item => (item.partNo.toUpperCase() === code.toUpperCase() || item.jan === code));
         if (!p && /^\d+$/.test(code)) { p = allProducts.find(item => parseInt(item.partNo) === parseInt(code)); }
         if (p) openQtyModal(p); else alert("見つかりません: " + code);
