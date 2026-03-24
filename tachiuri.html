@@ -3,7 +3,7 @@
 <head>
     <link rel="apple-touch-icon" href="https://lh3.googleusercontent.com/d/1DSkUsFODBJCNE-yaXEHEKKScuhVZ-qNh">
     <link rel="icon" sizes="192x192" href="https://lh3.googleusercontent.com/d/1DSkUsFODBJCNE-yaXEHEKKScuhVZ-qNh">
-    <meta name="apple-mobile-web-app-capable" content="yes">
+   <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="受注システム">
     <meta charset="UTF-8">
@@ -12,7 +12,14 @@
     <script src="https://unpkg.com/html5-qrcode"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
-        body { font-family: sans-serif; margin: 0; padding-bottom: 90px; background: #f4f7f9; -webkit-user-select: none; }
+        body { 
+    font-family: sans-serif; 
+    margin: 0; 
+    padding-bottom: 90px; 
+    background: #f4f7f9; 
+    -webkit-user-select: none; 
+    touch-action: manipulation; /* ←これを追加しました */
+}
         header { background: #fff; text-align: center; padding: 12px; border-bottom: 3px solid #3b5998; font-weight: bold; position: sticky; top: 0; z-index: 100; }
         .page-section { display: none; padding: 10px; }
         .active { display: block; }
@@ -92,7 +99,12 @@
 </section>
 
 <section id="scanner-page" class="page-section">
-    <div id="reader"></div>
+    <div id="camera-guide" style="display:none; background:#fff3cd; color:#856404; padding:12px; text-align:center; font-size:14px; font-weight:bold; border-bottom:1px solid #ffeeba;">
+        📸 ピントが合わない時は、一度離してから<br>ゆっくり近づけてください
+    </div>
+
+    <div id="reader" style="width:100% !important;"></div>
+
     <div style="text-align:center; padding:20px; background:#fff;">
         <button class="btn-main" style="background:#666;" onclick="stopCamera()">キャンセル</button>
     </div>
@@ -114,7 +126,7 @@
 <script>
     const urlParams = new URLSearchParams(window.location.search);
     const MY_MAKER = urlParams.get('m');
-    const GAS_URL = "https://script.google.com/macros/s/AKfycbyQf9IJAO94WyGnjZugUsdPLC0UzM-oRJ2A2msJ7mTXy21G2mxYftVORgQJ1Bp6fyU5/exec";
+    const GAS_URL = "https://script.google.com/macros/s/AKfycbyRryAgFuZ3CByabhwq0n1i-uaFuwtbuumEpMVfSos2JdrcOxRF1RzgvGmK_AV70s_0/exec";
 
     let html5QrCode = null, customer = null, cart = [], tempProduct = null, isTelMode = false;
     let allProducts = [], pendingOrders = [];
@@ -228,11 +240,32 @@
     }
 
     function numIn(n) {
-        let v = document.getElementById("qty-val");
-        if (n === 'C') v.innerText = isTelMode ? "" : "1";
-        else if (n === 'B') v.innerText = v.innerText.length > 1 ? v.innerText.slice(0, -1) : (isTelMode ? "" : "1");
-        else v.innerText = (isTelMode || v.innerText !== "1") ? v.innerText + n : n;
+    let v = document.getElementById("qty-val");
+    
+    // クリア(C)ボタン
+    if (n === 'C') {
+        v.innerText = isTelMode ? "" : "1";
+    } 
+    // バックスペース(BS)ボタン
+    else if (n === 'B') {
+        v.innerText = v.innerText.length > 1 ? v.innerText.slice(0, -1) : (isTelMode ? "" : "1");
+    } 
+    // 数字ボタン
+    else {
+        if (isTelMode) {
+            // 電話番号：そのまま後ろに足す
+            v.innerText += n;
+        } else {
+            // 数量：最初が「1」なら上書き、それ以外は後ろに足す
+            // これで「1」→「0」と打つと「10」になります
+            if (v.innerText === "1") {
+                v.innerText = n;
+            } else {
+                v.innerText += n;
+            }
+        }
     }
+}
 
     function openQtyModal(p) {
         const modalTitle = document.getElementById("modal-p-name");
@@ -300,19 +333,48 @@
         document.getElementById("confirm-btn").onclick = confirmQty;
     }
 
-    async function startCamera(mode) {
+   async function startCamera(mode) {
         if (mode === 'product' && !customer) return alert("先に顧客を選択してください");
         showPage('scanner-page');
-        html5QrCode = new Html5Qrcode("reader");
-        await html5QrCode.start({ facingMode: "environment" }, { fps: 20, qrbox: 250 }, (text) => {
-            html5QrCode.stop().then(() => {
-                showPage('home');
-                if (mode === 'customer') fetchCustomer(text.trim()); else fetchProduct(text.trim());
-            });
-        });
+
+        // 1. 案内メッセージを表示する
+        document.getElementById('camera-guide').style.display = 'block';
+
+        // 2. カメラの準備（重複を削除し、1回だけにしました）
+        if (html5QrCode === null) {
+            html5QrCode = new Html5Qrcode("reader");
+        }
+
+        try {
+            await html5QrCode.start(
+                { facingMode: "environment" }, 
+                { fps: 20, qrbox: 250 }, 
+                (text) => {
+                    html5QrCode.stop().then(() => {
+                        // スキャン成功時に案内を消す
+                        document.getElementById('camera-guide').style.display = 'none';
+                        showPage('home');
+                        if (mode === 'customer') fetchCustomer(text.trim()); else fetchProduct(text.trim());
+                    });
+                }
+            );
+        } catch (err) {
+            // 万が一起動に失敗した時も案内を消す
+            document.getElementById('camera-guide').style.display = 'none';
+            console.error("カメラ起動エラー:", err);
+            // エラー時はユーザーに知らせる
+            alert("カメラの起動に失敗しました。ページを再読み込みするか、ブラウザのカメラ権限を確認してください。");
+        }
     }
 
-    function stopCamera() { if (html5QrCode) html5QrCode.stop(); showPage('home'); }
+    function stopCamera() { 
+    if (html5QrCode) {
+        html5QrCode.stop();
+        // ★これを追加：案内メッセージを隠す
+        document.getElementById('camera-guide').style.display = 'none';
+    }
+    showPage('home'); 
+}
 
     async function fetchCustomer(val) {
         const res = await fetch(GAS_URL, { method: "POST", body: JSON.stringify({ action: "customerSearch", val: val }) });
@@ -320,12 +382,33 @@
         if (d.customer) { customer = d; updateCustomerDisplay(); } else alert("未登録");
     }
 
-    function fetchProduct(code) {
-        if (!code) return;
-        let p = allProducts.find(item => (item.partNo.toUpperCase() === code.toUpperCase() || item.jan === code));
-        if (!p && /^\d+$/.test(code)) { p = allProducts.find(item => parseInt(item.partNo) === parseInt(code)); }
-        if (p) openQtyModal(p); else alert("見つかりません: " + code);
+   function fetchProduct(code) {
+    // 1. 読み取ったコードの前後にある空白・改行を消して大文字にする
+    const cleanCode = String(code).trim().toUpperCase(); 
+    if (!cleanCode) return;
+
+    // 2. データ側(item.partNo や item.jan)に空白が混ざっていても無視して探す
+    let p = allProducts.find(item => {
+        const targetPartNo = String(item.partNo || "").trim().toUpperCase();
+        const targetJan = String(item.jan || "").trim();
+        return (targetPartNo === cleanCode || targetJan === cleanCode);
+    });
+
+    // 3. 数字のみの場合の予備検索
+    if (!p && /^\d+$/.test(cleanCode)) {
+        p = allProducts.find(item => {
+            const numPartNo = parseInt(String(item.partNo).trim());
+            return numPartNo === parseInt(cleanCode);
+        });
     }
+
+    if (p) {
+        openQtyModal(p);
+    } else {
+        // 見つからない時は、確認のために読み取った値を [ ] で囲んで表示します
+        alert("商品が見つかりません\n読み取った値: [" + cleanCode + "]");
+    }
+}
 
     function updateCustomerDisplay() {
         document.getElementById("r-name").innerText = customer.customer;
