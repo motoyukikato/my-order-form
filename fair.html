@@ -12,7 +12,14 @@
     <script src="https://unpkg.com/html5-qrcode"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
-        body { font-family: sans-serif; margin: 0; padding-bottom: 90px; background: #f4f7f9; -webkit-user-select: none; }
+        body { 
+    font-family: sans-serif; 
+    margin: 0; 
+    padding-bottom: 90px; 
+    background: #f4f7f9; 
+    -webkit-user-select: none; 
+    touch-action: manipulation; /* ←これを追加しました */
+}
         header { background: #fff; text-align: center; padding: 12px; border-bottom: 3px solid #3b5998; font-weight: bold; position: sticky; top: 0; z-index: 100; }
         .page-section { display: none; padding: 10px; }
         .active { display: block; }
