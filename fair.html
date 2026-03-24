@@ -240,11 +240,32 @@
     }
 
     function numIn(n) {
-        let v = document.getElementById("qty-val");
-        if (n === 'C') v.innerText = isTelMode ? "" : "1";
-        else if (n === 'B') v.innerText = v.innerText.length > 1 ? v.innerText.slice(0, -1) : (isTelMode ? "" : "1");
-        else v.innerText = (isTelMode || v.innerText !== "1") ? v.innerText + n : n;
+    let v = document.getElementById("qty-val");
+    
+    // クリア(C)ボタン
+    if (n === 'C') {
+        v.innerText = isTelMode ? "" : "1";
+    } 
+    // バックスペース(BS)ボタン
+    else if (n === 'B') {
+        v.innerText = v.innerText.length > 1 ? v.innerText.slice(0, -1) : (isTelMode ? "" : "1");
+    } 
+    // 数字ボタン
+    else {
+        if (isTelMode) {
+            // 電話番号：そのまま後ろに足す
+            v.innerText += n;
+        } else {
+            // 数量：最初が「1」なら上書き、それ以外は後ろに足す
+            // これで「1」→「0」と打つと「10」になります
+            if (v.innerText === "1") {
+                v.innerText = n;
+            } else {
+                v.innerText += n;
+            }
+        }
     }
+}
 
     function openQtyModal(p) {
         const modalTitle = document.getElementById("modal-p-name");
