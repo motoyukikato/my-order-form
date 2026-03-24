@@ -92,7 +92,11 @@
 </section>
 
 <section id="scanner-page" class="page-section">
-    <div id="reader"></div>
+    <div id="reader" style="position: relative;">
+        <div id="camera-guide" style="display:none; position:absolute; top:20px; left:50%; transform:translateX(-50%); z-index:100; background:rgba(0,0,0,0.7); color:white; padding:10px 20px; border-radius:30px; font-size:14px; width:80%; text-align:center; pointer-events:none; border: 1px solid rgba(255,255,255,0.3); line-height: 1.4;">
+            📸 ピントが合わない時は<br>一度離してからゆっくり近づけてください
+        </div>
+        </div>
     <div style="text-align:center; padding:20px; background:#fff;">
         <button class="btn-main" style="background:#666;" onclick="stopCamera()">キャンセル</button>
     </div>
@@ -303,6 +307,9 @@
     async function startCamera(mode) {
         if (mode === 'product' && !customer) return alert("先に顧客を選択してください");
         showPage('scanner-page');
+        // startCamera関数の中
+document.getElementById('camera-guide').style.display = 'block'; // ←これを追加
+html5QrCode = new Html5Qrcode("reader");
         html5QrCode = new Html5Qrcode("reader");
         await html5QrCode.start({ facingMode: "environment" }, { fps: 20, qrbox: 250 }, (text) => {
             html5QrCode.stop().then(() => {
