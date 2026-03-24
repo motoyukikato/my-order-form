@@ -306,34 +306,38 @@
     }
 
    async function startCamera(mode) {
-    if (mode === 'product' && !customer) return alert("先に顧客を選択してください");
-    showPage('scanner-page');
+        if (mode === 'product' && !customer) return alert("先に顧客を選択してください");
+        showPage('scanner-page');
 
-    // 1. 案内メッセージを表示する
-    document.getElementById('camera-guide').style.display = 'block';
+        // 1. 案内メッセージを表示する
+        document.getElementById('camera-guide').style.display = 'block';
 
-    // 2. カメラの準備（1回だけに整理しました）
-    html5QrCode = new Html5Qrcode("reader");
+        // 2. カメラの準備（重複を削除し、1回だけにしました）
+        if (html5QrCode === null) {
+            html5QrCode = new Html5Qrcode("reader");
+        }
 
-    try {
-        await html5QrCode.start(
-            { facingMode: "environment" }, 
-            { fps: 20, qrbox: 250 }, 
-            (text) => {
-                html5QrCode.stop().then(() => {
-                    // スキャン成功時に案内を消す
-                    document.getElementById('camera-guide').style.display = 'none';
-                    showPage('home');
-                    if (mode === 'customer') fetchCustomer(text.trim()); else fetchProduct(text.trim());
-                });
-            }
-        );
-    } catch (err) {
-        // 万が一起動に失敗した時も案内を消す
-        document.getElementById('camera-guide').style.display = 'none';
-        console.error(err);
+        try {
+            await html5QrCode.start(
+                { facingMode: "environment" }, 
+                { fps: 20, qrbox: 250 }, 
+                (text) => {
+                    html5QrCode.stop().then(() => {
+                        // スキャン成功時に案内を消す
+                        document.getElementById('camera-guide').style.display = 'none';
+                        showPage('home');
+                        if (mode === 'customer') fetchCustomer(text.trim()); else fetchProduct(text.trim());
+                    });
+                }
+            );
+        } catch (err) {
+            // 万が一起動に失敗した時も案内を消す
+            document.getElementById('camera-guide').style.display = 'none';
+            console.error("カメラ起動エラー:", err);
+            // エラー時はユーザーに知らせる
+            alert("カメラの起動に失敗しました。ページを再読み込みするか、ブラウザのカメラ権限を確認してください。");
+        }
     }
-}
 
     function stopCamera() { 
     if (html5QrCode) {
