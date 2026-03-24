@@ -92,11 +92,12 @@
 </section>
 
 <section id="scanner-page" class="page-section">
-    <div id="reader" style="position: relative;">
-        <div id="camera-guide" style="display:none; position:absolute; top:20px; left:50%; transform:translateX(-50%); z-index:100; background:rgba(0,0,0,0.7); color:white; padding:10px 20px; border-radius:30px; font-size:14px; width:80%; text-align:center; pointer-events:none; border: 1px solid rgba(255,255,255,0.3); line-height: 1.4;">
-            📸 ピントが合わない時は<br>一度離してからゆっくり近づけてください
-        </div>
-        </div>
+    <div id="camera-guide" style="display:none; background:#fff3cd; color:#856404; padding:12px; text-align:center; font-size:14px; font-weight:bold; border-bottom:1px solid #ffeeba;">
+        📸 ピントが合わない時は、一度離してから<br>ゆっくり近づけてください
+    </div>
+
+    <div id="reader" style="width:100% !important;"></div>
+
     <div style="text-align:center; padding:20px; background:#fff;">
         <button class="btn-main" style="background:#666;" onclick="stopCamera()">キャンセル</button>
     </div>
@@ -304,22 +305,44 @@
         document.getElementById("confirm-btn").onclick = confirmQty;
     }
 
-    async function startCamera(mode) {
-        if (mode === 'product' && !customer) return alert("先に顧客を選択してください");
-        showPage('scanner-page');
-        // startCamera関数の中
-document.getElementById('camera-guide').style.display = 'block'; // ←これを追加
-html5QrCode = new Html5Qrcode("reader");
-        html5QrCode = new Html5Qrcode("reader");
-        await html5QrCode.start({ facingMode: "environment" }, { fps: 20, qrbox: 250 }, (text) => {
-            html5QrCode.stop().then(() => {
-                showPage('home');
-                if (mode === 'customer') fetchCustomer(text.trim()); else fetchProduct(text.trim());
-            });
-        });
-    }
+   async function startCamera(mode) {
+    if (mode === 'product' && !customer) return alert("先に顧客を選択してください");
+    showPage('scanner-page');
 
-    function stopCamera() { if (html5QrCode) html5QrCode.stop(); showPage('home'); }
+    // 1. 案内メッセージを表示する
+    document.getElementById('camera-guide').style.display = 'block';
+
+    // 2. カメラの準備（1回だけに整理しました）
+    html5QrCode = new Html5Qrcode("reader");
+
+    try {
+        await html5QrCode.start(
+            { facingMode: "environment" }, 
+            { fps: 20, qrbox: 250 }, 
+            (text) => {
+                html5QrCode.stop().then(() => {
+                    // スキャン成功時に案内を消す
+                    document.getElementById('camera-guide').style.display = 'none';
+                    showPage('home');
+                    if (mode === 'customer') fetchCustomer(text.trim()); else fetchProduct(text.trim());
+                });
+            }
+        );
+    } catch (err) {
+        // 万が一起動に失敗した時も案内を消す
+        document.getElementById('camera-guide').style.display = 'none';
+        console.error(err);
+    }
+}
+
+    function stopCamera() { 
+    if (html5QrCode) {
+        html5QrCode.stop();
+        // ★これを追加：案内メッセージを隠す
+        document.getElementById('camera-guide').style.display = 'none';
+    }
+    showPage('home'); 
+}
 
     async function fetchCustomer(val) {
         const res = await fetch(GAS_URL, { method: "POST", body: JSON.stringify({ action: "customerSearch", val: val }) });
