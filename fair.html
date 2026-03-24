@@ -239,45 +239,53 @@
         showPage('home');
     }
 
-    function numIn(n) {
-    let v = document.getElementById("qty-val");
-    
-    // クリア(C)ボタン
-    if (n === 'C') {
-        v.innerText = isTelMode ? "" : "1";
-    } 
-    // バックスペース(BS)ボタン
-    else if (n === 'B') {
-        v.innerText = v.innerText.length > 1 ? v.innerText.slice(0, -1) : (isTelMode ? "" : "1");
-    } 
-    // 数字ボタン
-    else {
+ function numIn(n) {
+        let v = document.getElementById("qty-val");
+        
+        if (n === 'C') {
+            // クリア時は「1」ではなく「商品のロット数」に戻すのが親切です
+            v.innerText = isTelMode ? "" : (tempProduct && tempProduct.lot ? tempProduct.lot : "1");
+            return;
+        }
+        
+        if (n === 'B') {
+            v.innerText = v.innerText.length > 1 ? v.innerText.slice(0, -1) : (isTelMode ? "" : "0");
+            return;
+        }
+        
         if (isTelMode) {
-            // 電話番号：そのまま後ろに足す
             v.innerText += n;
         } else {
-            // 数量：最初が「1」なら上書き、それ以外は後ろに足す
-            // これで「1」→「0」と打つと「10」になります
-            if (v.innerText === "1") {
+            // ★数量入力のルール
+            // モーダルを開いた直後の状態（初期値と同じ）なら、打った数字で「上書き」
+            // すでに何か打ち始めた後なら、後ろに「追加」
+            // ただし、1文字目が「0」にならないように制御します
+            if (v.innerText === String(tempProduct ? tempProduct.lot : "1")) {
                 v.innerText = n;
             } else {
                 v.innerText += n;
+                // 先頭の0を消す処理（010にならないように）
+                if (v.innerText.startsWith("0")) v.innerText = v.innerText.slice(1);
             }
         }
     }
-}
 
     function openQtyModal(p) {
         const modalTitle = document.getElementById("modal-p-name");
         const modalInfo = document.getElementById("modal-p-info");
         const qtyDisplay = document.getElementById("qty-val");
+
         if (p) {
             isTelMode = false;
             tempProduct = p;
             modalTitle.innerText = p.name;
             const price = p.listPrice ? p.listPrice.toLocaleString() : (p.price ? p.price.toLocaleString() : "0");
             modalInfo.innerHTML = `上代: ¥${price} / 在庫: ${p.stock || "--"} / ロット: ${p.lot || "1"}`;
-            qtyDisplay.innerText = "1";
+            
+            // ★ここを修正：1ではなく、商品のロット数を初期表示にする
+            // ロット数が設定されていない場合は「1」にします
+            qtyDisplay.innerText = p.lot ? p.lot : "1";
+
         } else {
             isTelMode = true;
             tempProduct = null;
