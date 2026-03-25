@@ -227,6 +227,7 @@
         });
         if (items.length === 0) { alert('注文商品を入力してください'); return; }
 
+        // 送信開始：ボタンを無効化
         btn.disabled = true; 
         btn.innerText = "送信中..."; 
         document.getElementById('loadingMsg').style.display = 'block';
@@ -256,34 +257,47 @@
         };
 
         try {
-            await fetch(gasUrl, {
+            // GASへ送信
+            const response = await fetch(gasUrl, {
                 method: 'POST',
                 headers: { 'Content-Type': 'text/plain' },
                 body: JSON.stringify(orderData)
             });
-            localStorage.setItem('storeName', storeName);
-            localStorage.setItem('email', document.getElementById('email').value);
-            alert('注文を送信しました！履歴を更新します。'); 
             
-            // 入力欄をクリア（任意）
-            document.getElementById('itemContainer').innerHTML = ''; 
-            addNewItem(); // 空のカードを1つ追加
-            document.getElementById('comments').value = '';
+            const result = await response.json();
 
-            // ボタンの状態を戻す
-            btn.disabled = false;
-            btn.innerText = "注文を送信する";
-            document.getElementById('loadingMsg').style.display = 'none';
+            if (result.status === 'ok') {
+                alert('注文を送信しました！履歴を更新します。');
+                
+                // 入力情報を保存
+                localStorage.setItem('storeName', storeName);
+                localStorage.setItem('email', document.getElementById('email').value);
 
-            // 最新の履歴と入荷情報を再読み込み
-            if (currentUserProfile) {
-                await loadAppData(currentUserProfile.userId);
+                // --- 画面の表示をリセット ---
+                document.getElementById('comments').value = '';
+                document.getElementById('imageFile1').value = '';
+                document.getElementById('imageFile2').value = '';
+                
+                // ボタンを元に戻す
+                btn.disabled = false;
+                btn.innerText = "注文を送信する";
+                document.getElementById('loadingMsg').style.display = 'none';
+
+                // ★重要：最新の履歴と入荷情報を再読み込みして画面を更新
+                if (currentUserProfile) {
+                    await loadAppData(currentUserProfile.userId);
+                }
+
+                // 履歴の場所まで自動スクロール
+                document.getElementById('historySection').scrollIntoView({ behavior: 'smooth' });
+
+            } else {
+                throw new Error("サーバー側でエラーが発生しました");
             }
 
-            // 履歴セクションまでスクロール
-            document.getElementById('historySection').scrollIntoView({ behavior: 'smooth' });
         } catch (e) {
-            alert('送信に失敗しました。');
+            console.error(e);
+            alert('送信に失敗しました。もう一度お試しください。');
             btn.disabled = false;
             btn.innerText = "注文を送信する";
             document.getElementById('loadingMsg').style.display = 'none';
