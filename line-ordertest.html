@@ -281,6 +281,7 @@
             };
 
             // ★修正ポイント：'no-cors'モードを使い、返事の解析をスキップして確実に「成功」へ繋げます
+            // 1. GASへ送信（no-corsモードで確実に実行）
             await fetch(gasUrl, {
                 method: 'POST',
                 mode: 'no-cors', 
@@ -288,35 +289,35 @@
                 body: JSON.stringify(orderData)
             });
             
-            // Teamsに通知が来ているなら、処理は成功しています！
-            alert('注文を送信しました！');
-            
-            // ★alertの代わりに画面上に「完了」を表示（LINE強制終了対策）
+            // 2. ★重要：alertを使わず、画面上にメッセージを表示
             const loadingMsg = document.getElementById('loadingMsg');
-            loadingMsg.innerHTML = '<div style="background:#d4edda; color:#155724; padding:10px; border-radius:8px; border:1px solid #c3e6cb; margin-top:10px;">✅ 送信が完了しました！<br>履歴を読み込んでいます...</div>';
+            loadingMsg.innerHTML = `
+                <div style="background:#d4edda; color:#155724; padding:15px; border-radius:12px; border:2px solid #c3e6cb; margin-top:10px; font-weight:bold; text-align:center; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+                    ✅ 送信が完了しました！<br>
+                    <span style="font-size:0.9em; font-weight:normal;">最新の履歴へ移動します...</span>
+                </div>`;
             loadingMsg.style.display = 'block';
 
-            // 入力情報を保存
+            // 3. 入力情報の保存とリセット
             localStorage.setItem('storeName', storeName);
             localStorage.setItem('email', document.getElementById('email').value);
-
-            // 画面の表示をリセット
             document.getElementById('comments').value = '';
             document.getElementById('imageFile1').value = '';
             document.getElementById('imageFile2').value = '';
             
-            // ボタンを元に戻す
+            // 4. ボタンを元に戻す
             btn.disabled = false;
             btn.innerText = "注文を送信する";
 
-            // 最新の履歴を再読み込み（ここを待つ）
+            // 5. 最新の履歴を再読み込み
             if (currentUserProfile) {
-                await loadAppData(currentUserProfile.userId);
+                try {
+                    await loadAppData(currentUserProfile.userId);
+                } catch (err) { console.log("履歴更新エラー"); }
             }
 
-            // 1.5秒ほど「完了」を見せてから、スルスルと履歴まで動かす
+            // 6. 1.5秒待ってから、スルスルと履歴までスクロール
             setTimeout(() => {
-                loadingMsg.style.display = 'none';
                 const hist = document.getElementById('historySection');
                 if (hist) {
                     hist.style.display = 'block';
@@ -329,6 +330,8 @@
                         behavior: 'smooth'
                     });
                 }
+                // 5秒後に完了メッセージを非表示にする
+                setTimeout(() => { loadingMsg.style.display = 'none'; }, 5000);
             }, 1500); 
 
         } catch (e) {
