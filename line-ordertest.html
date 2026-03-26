@@ -183,13 +183,27 @@
             }
 
             // 履歴の更新
+           // 履歴の更新（一番新しいものにNEWバッジを付与）
             if (result.history && result.history.length > 0) {
-                historyList.innerHTML = result.history.map(h => `
-                    <div class="history-item" onclick="applyHistory('${h.maker}', '${h.partNo}', '${h.quantity}')">
-                        <span class="history-date">${h.date}</span><br>
-                        <strong>${h.maker}</strong> / ${h.partNo} (数量: ${h.quantity})
-                    </div>
-                `).join('');
+                historyList.innerHTML = result.history.map((h, index) => {
+                    // 一番上（indexが0）の場合だけ特別なスタイルを適用
+                    const isNew = (index === 0);
+                    const bgStyle = isNew ? 'background-color: #e8f5e9; border-left: 5px solid #28a745;' : '';
+                    const newBadge = isNew ? '<span style="background:#28a745; color:white; font-size:10px; padding:2px 6px; border-radius:10px; font-weight:bold; margin-left:8px;">NEW</span>' : '';
+
+                    return `
+                        <div class="history-item" style="${bgStyle}" onclick="applyHistory('${h.maker}', '${h.partNo}', '${h.quantity}')">
+                            <div style="display: flex; align-items: center; margin-bottom: 4px;">
+                                <span class="history-date">${h.date}</span>
+                                ${newBadge}
+                            </div>
+                            <div style="font-size: 14px; color: #333;">
+                                <strong>${h.maker}</strong> / ${h.partNo} <br>
+                                <span style="color: #666;">数量: ${h.quantity}</span>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
             } else {
                 historyList.innerHTML = '<div style="padding:10px; font-size:12px;">まだ履歴がありません。</div>';
             }
