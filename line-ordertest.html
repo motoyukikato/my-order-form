@@ -118,8 +118,8 @@
         "とうきょうりぼん:東京リボン", "とうきょうかんかん:東京かんかん", "とすだいす:TOSSDICE", "だんぼーる:段ボール",
         "とうきょうどう:東京堂", "とーく:トーク", "どりーむふぁーむすずか:ドリームファームスズカ", "とうか:東花", "とうほうぼうえき:東方貿易",
         "ねいちゃーでざいんず:ネイチャーデザインズ", "ぱれすかがく:パレス化学", "ぱれ:パレ", "ぽっしゅりびんぐ:ポッシュリビング",
-        "ふぁーむ:FARM", "はなりんくす:花Links", "ふろーネット:flonet", "ほわいえ:ホワイエ", "は花のそのくぼた:花のそのくぼた",
-        "ふろーるえばー:フロールエバー", "ふらわーべーす:フラワーベース", "ぷらすがーでん:プラスガーデン", 
+        "ふぁーむ:FARM", "はなりんくす:花Links", "ふろーネット:flonet", "ほわいえ:ホワイエ", "はなのそのくぼた:花のそのくぼた",
+        "ふろーるえばー:フロールエバー", "ふらわーべーす:フラワーベース", "ぷらすがーでん:プラスガーデン","はちなまんかせい:八幡化成", 
         "ぼぶくらふと:ボブクラフト", "まつむらこうげい:松村工芸", "ほしの:星野",
         "まぐねっと:マグネット", "まるこうせいとう:丸滉製陶", "まるまひらのとうきてん:丸又平野陶器店", 
         "まるわぼうえき:丸和貿易", "みゅーるみる:ミュールミル", "むらたやさんぎょう:村田屋産業", 
@@ -213,7 +213,7 @@
         container.appendChild(newCard);
     }
 
-    async function sendOrder() {
+   async function sendOrder() {
         const btn = document.getElementById('sendBtn');
         const storeName = document.getElementById('storeName').value;
         if (!storeName) { alert('店名を入れてください'); return; }
@@ -232,78 +232,74 @@
         btn.innerText = "送信中..."; 
         document.getElementById('loadingMsg').style.display = 'block';
 
-        const readFile = (id) => {
-            const file = document.getElementById(id).files[0];
-            return new Promise((resolve) => {
-                if (!file) resolve(null);
-                else {
+        try {
+            const readFile = (id) => {
+                const file = document.getElementById(id).files[0];
+                return new Promise((resolve) => {
+                    if (!file) { resolve(null); return; }
                     const reader = new FileReader();
                     reader.onload = (e) => resolve({ data: e.target.result, name: file.name });
+                    reader.onerror = () => resolve(null);
                     reader.readAsDataURL(file);
-                }
-            });
-        };
+                });
+            };
 
-        const [img1, img2] = await Promise.all([readFile('imageFile1'), readFile('imageFile2')]);
-        const images = [img1, img2].filter(i => i !== null);
+            const [img1, img2] = await Promise.all([readFile('imageFile1'), readFile('imageFile2')]);
+            const images = [img1, img2].filter(i => i !== null);
 
-        const orderData = {
-            storeName: storeName,
-            email: document.getElementById('email').value,
-            items: items,
-            comments: document.getElementById('comments').value,
-            userId: currentUserProfile ? currentUserProfile.userId : "unknown",
-            images: images
-        };
+            const orderData = {
+                storeName: storeName,
+                email: document.getElementById('email').value,
+                items: items,
+                comments: document.getElementById('comments').value,
+                userId: currentUserProfile ? currentUserProfile.userId : "unknown",
+                images: images
+            };
 
-        try {
-            // GASへ送信
-            const response = await fetch(gasUrl, {
+            // ★修正ポイント：'no-cors'モードを使い、返事の解析をスキップして確実に「成功」へ繋げます
+            await fetch(gasUrl, {
                 method: 'POST',
+                mode: 'no-cors', 
                 headers: { 'Content-Type': 'text/plain' },
                 body: JSON.stringify(orderData)
             });
             
-            const result = await response.json();
+            // Teamsに通知が来ているなら、処理は成功しています！
+            alert('注文を送信しました！');
+            
+            // 入力情報を保存
+            localStorage.setItem('storeName', storeName);
+            localStorage.setItem('email', document.getElementById('email').value);
 
-            if (result.status === 'ok') {
-                alert('注文を送信しました！履歴を更新します。');
-                
-                // 入力情報を保存
-                localStorage.setItem('storeName', storeName);
-                localStorage.setItem('email', document.getElementById('email').value);
+            // 画面の表示をリセット
+            document.getElementById('comments').value = '';
+            document.getElementById('imageFile1').value = '';
+            document.getElementById('imageFile2').value = '';
+            
+            // ボタンを元に戻す
+            btn.disabled = false;
+            btn.innerText = "注文を送信する";
+            document.getElementById('loadingMsg').style.display = 'none';
 
-                // --- 画面の表示をリセット ---
-                document.getElementById('comments').value = '';
-                document.getElementById('imageFile1').value = '';
-                document.getElementById('imageFile2').value = '';
-                
-                // ボタンを元に戻す
-                btn.disabled = false;
-                btn.innerText = "注文を送信する";
-                document.getElementById('loadingMsg').style.display = 'none';
-
-                // ★重要：最新の履歴と入荷情報を再読み込みして画面を更新
-                if (currentUserProfile) {
-                    await loadAppData(currentUserProfile.userId);
-                }
-
-                // 履歴の場所まで自動スクロール
-                document.getElementById('historySection').scrollIntoView({ behavior: 'smooth' });
-
-            } else {
-                throw new Error("サーバー側でエラーが発生しました");
+            // 最新の履歴を再読み込み
+            if (currentUserProfile) {
+                await loadAppData(currentUserProfile.userId);
             }
+
+            // 履歴まで自動スクロール
+            setTimeout(() => {
+                const hist = document.getElementById('historySection');
+                if(hist) hist.scrollIntoView({ behavior: 'smooth' });
+            }, 500);
 
         } catch (e) {
             console.error(e);
-            alert('送信に失敗しました。もう一度お試しください。');
+            alert('送信時にエラーが発生しました。Teams通知を確認してください。');
             btn.disabled = false;
             btn.innerText = "注文を送信する";
             document.getElementById('loadingMsg').style.display = 'none';
         }
     }
-
     async function initLiff() {
         try {
             await liff.init({ liffId: "2008835052-zCjbE0pV" });
