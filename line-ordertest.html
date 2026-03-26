@@ -267,6 +267,11 @@
             // Teamsに通知が来ているなら、処理は成功しています！
             alert('注文を送信しました！');
             
+            // ★alertの代わりに画面上に「完了」を表示（LINE強制終了対策）
+            const loadingMsg = document.getElementById('loadingMsg');
+            loadingMsg.innerHTML = '<div style="background:#d4edda; color:#155724; padding:10px; border-radius:8px; border:1px solid #c3e6cb; margin-top:10px;">✅ 送信が完了しました！<br>履歴を読み込んでいます...</div>';
+            loadingMsg.style.display = 'block';
+
             // 入力情報を保存
             localStorage.setItem('storeName', storeName);
             localStorage.setItem('email', document.getElementById('email').value);
@@ -279,21 +284,18 @@
             // ボタンを元に戻す
             btn.disabled = false;
             btn.innerText = "注文を送信する";
-            document.getElementById('loadingMsg').style.display = 'none';
 
-            // 最新の履歴を再読み込み
+            // 最新の履歴を再読み込み（ここを待つ）
             if (currentUserProfile) {
                 await loadAppData(currentUserProfile.userId);
             }
 
-            // 履歴まで自動スクロール（スマホ用に調整）
+            // 1.5秒ほど「完了」を見せてから、スルスルと履歴まで動かす
             setTimeout(() => {
+                loadingMsg.style.display = 'none';
                 const hist = document.getElementById('historySection');
                 if (hist) {
-                    // 要素の表示を確実にする
                     hist.style.display = 'block';
-                    
-                    // 画面上部からの位置を計算して、少し余裕をもってスクロール
                     const rect = hist.getBoundingClientRect();
                     const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
                     const targetY = rect.top + scrollTop - 20;
@@ -303,7 +305,7 @@
                         behavior: 'smooth'
                     });
                 }
-            }, 800); // キーボードが完全に閉じるまで少し長めに待つ
+            }, 1500); 
 
         } catch (e) {
             console.error(e);
