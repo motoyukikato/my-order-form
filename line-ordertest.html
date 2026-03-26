@@ -164,30 +164,40 @@
         const historySection = document.getElementById('historySection');
         const historyList = document.getElementById('historyList');
 
+        // まず枠だけ強制的に表示させる
+        historySection.style.display = 'block';
+        arrivalSection.style.display = 'block';
+
         try {
             const response = await fetch(`${gasUrl}?userId=${userId}&t=${new Date().getTime()}`);
+            if (!response.ok) throw new Error("Network error");
             const result = await response.json();
 
-            // 入荷予定
+            // 入荷予定の更新
             if (result.calendar && result.calendar.length > 0) {
-                arrivalSection.style.display = 'block';
                 arrivalList.innerHTML = result.calendar.map(c => `
-                    <div style="font-size:13px; padding:3px 0; border-bottom:1px solid #eee;">📅 ${c.date} : ${c.title}</div>
+                    <div style="font-size:13px; padding:5px 0; border-bottom:1px solid #eee;">📅 ${c.date} : ${c.title}</div>
                 `).join('');
-            } else { arrivalSection.style.display = 'none'; }
+            } else {
+                arrivalList.innerHTML = '<div style="padding:10px; font-size:12px;">直近の入荷予定はありません。</div>';
+            }
 
-            // 履歴
+            // 履歴の更新
             if (result.history && result.history.length > 0) {
-                historySection.style.display = 'block';
                 historyList.innerHTML = result.history.map(h => `
                     <div class="history-item" onclick="applyHistory('${h.maker}', '${h.partNo}', '${h.quantity}')">
                         <span class="history-date">${h.date}</span><br>
                         <strong>${h.maker}</strong> / ${h.partNo} (数量: ${h.quantity})
                     </div>
                 `).join('');
-            } else { historySection.style.display = 'none'; }
+            } else {
+                historyList.innerHTML = '<div style="padding:10px; font-size:12px;">まだ履歴がありません。</div>';
+            }
 
-        } catch (e) { console.error("Data Load Error", e); }
+        } catch (e) {
+            console.error("Data Load Error", e);
+            historyList.innerHTML = '<div style="padding:10px; color:red; font-size:12px;">履歴の読み込みに失敗しました。</div>';
+        }
     }
 
     function applyHistory(maker, partNo, quantity) {
