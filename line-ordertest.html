@@ -286,11 +286,24 @@
                 await loadAppData(currentUserProfile.userId);
             }
 
-            // 履歴まで自動スクロール
+            // 履歴まで自動スクロール（スマホ用に調整）
             setTimeout(() => {
                 const hist = document.getElementById('historySection');
-                if(hist) hist.scrollIntoView({ behavior: 'smooth' });
-            }, 500);
+                if (hist) {
+                    // 要素の表示を確実にする
+                    hist.style.display = 'block';
+                    
+                    // 画面上部からの位置を計算して、少し余裕をもってスクロール
+                    const rect = hist.getBoundingClientRect();
+                    const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+                    const targetY = rect.top + scrollTop - 20;
+
+                    window.scrollTo({
+                        top: targetY,
+                        behavior: 'smooth'
+                    });
+                }
+            }, 800); // キーボードが完全に閉じるまで少し長めに待つ
 
         } catch (e) {
             console.error(e);
