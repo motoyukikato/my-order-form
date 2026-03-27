@@ -99,10 +99,13 @@
         <div class="total-box">合計: ¥<span id="cart-total">0</span></div>
         <textarea id="common-note" placeholder="備考・送り先など"></textarea>
         <div style="display:flex; gap:10px; margin-top:15px;">
-            <button class="btn-main" style="background:#ffa000; color:#fff; flex: 1;" onclick="holdOrder()"><i class="fas fa-pause"></i> 保留</button>
-            <button class="btn-main" style="background:#d32f2f; flex: 2;" id="submit-btn" onclick="submitFinalOrder()"><i class="fas fa-paper-plane"></i> 送信</button>
-        </div>
-    </div>
+    <button type="button" class="btn-main" style="background:#ffa000; color:#fff; flex: 1;" onclick="holdOrder()">
+        <i class="fas fa-pause"></i> 保留
+    </button>
+    <button type="button" class="btn-main" style="background:#d32f2f; flex: 2;" id="submit-btn" onclick="submitFinalOrder()">
+        <i class="fas fa-paper-plane"></i> 送信
+    </button>
+</div>
 </section>
 <section id="scanner-page" class="page-section">
     <div id="camera-guide" style="background:#fff3cd; color:#856404; padding:10px; text-align:center; font-size:14px;">
@@ -334,17 +337,27 @@
     }
 
     function confirmQty() {
-        let val = document.getElementById("qty-val").innerText;
-        if (isTelMode) {
-            if (val.length < 9) return alert("番号が正しくありません");
-            closeQtyModal(); fetchCustomer(val);
-        } else {
-            let q = parseInt(val);
-            if (q > 0) { cart.push({ ...tempProduct, quantity: q }); renderCart(); }
-            closeQtyModal(); 
-            document.getElementById("part-no-input").value = "";
+    let val = document.getElementById("qty-val").innerText;
+    if (isTelMode) {
+        if (val.length < 9) return alert("番号が正しくありません");
+        closeQtyModal(); 
+        fetchCustomer(val);
+    } else {
+        let q = parseInt(val);
+        if (q > 0) {
+            // 商品情報をカートに追加（必要な項目を整理）
+            cart.push({
+                name: tempProduct.name,
+                price: tempProduct.listPrice || 0,
+                quantity: q,
+                partNo: tempProduct.partNo
+            });
+            renderCart();
         }
+        closeQtyModal();
+        document.getElementById("part-no-input").value = "";
     }
+}
 
     function showPage(id) {
         document.querySelectorAll('.page-section').forEach(p => p.classList.remove('active'));
@@ -355,6 +368,52 @@
 
     function openTelModal() { openQtyModal(null); }
     function handleManualInput() { fetchProduct(document.getElementById("part-no-input").value); }
+    // --- ここから追加 ---
+async function submitFinalOrder() {
+    if (!customer) return alert("顧客を選択してください");
+    if (cart.length === 0) return alert("カートが空です");
+
+    if (!confirm("この内容で送信してよろしいですか？")) return;
+
+    const btn = document.getElementById('submit-btn');
+    btn.disabled = true; // 二重送信防止
+    btn.innerText = "送信中...";
+
+    const data = {
+        action: "submitOrder", // GAS側の処理に合わせてください
+        customer: customer,
+        cart: cart,
+        note: document.getElementById('common-note').value,
+        maker: MY_MAKER
+    };
+
+    try {
+        const response = await fetch(GAS_URL, {
+            method: "POST",
+            body: JSON.stringify(data)
+        });
+        
+        if (response.ok) {
+            alert("送信が完了しました！");
+            // 画面を初期化
+            location.reload();
+        } else {
+            throw new Error("サーバーエラー");
+        }
+    } catch (e) {
+        alert("送信に失敗しました。電波の良い場所で再度お試しください。");
+        btn.disabled = false;
+        btn.innerText = "送信";
+    }
+}
+
+// 保留ボタンの機能（簡易版）
+function holdOrder() {
+    if (cart.length === 0) return alert("カートが空です");
+    alert("この注文を一時保存しました（履歴から再開できます）");
+    // 本来はローカルストレージに保存する処理などをここに入れます
+}
+// --- ここまで追加 ---
 </script>
 </body>
 </html>
