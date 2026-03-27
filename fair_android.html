@@ -212,29 +212,57 @@
     }
 
     async function startCamera(mode) {
-        if (mode === 'product' && !customer) return alert("顧客を選択してください");
-        showPage('scanner-page');
-        
-        if (!html5QrCode) html5QrCode = new Html5Qrcode("reader");
+    if (mode === 'product' && !customer) return alert("顧客を選択してください");
+    showPage('scanner-page');
+    
+    // 案内を表示
+    document.getElementById('camera-guide').style.display = 'block';
 
-        const config = { 
-            fps: 15, // Androidは少しfpsを下げると安定します
-            qrbox: { width: 250, height: 250 },
-            aspectRatio: 1.0 
-        };
+    if (!html5QrCode) {
+        html5QrCode = new Html5Qrcode("reader");
+    }
 
+    // Android向けに制約をより柔軟に、かつ確実に背面カメラを狙う設定
+    const config = { 
+        fps: 10, 
+        qrbox: { width: 250, height: 250 },
+        aspectRatio: 1.0,
+        // Android特有のフォーカス問題を避けるための設定
+        videoConstraints: {
+            facingMode: { exact: "environment" },
+            focusMode: "continuous"
+        }
+    };
+
+    try {
+        await html5QrCode.start(
+            { facingMode: "environment" }, 
+            config, 
+            (text) => {
+                html5QrCode.stop().then(() => {
+                    document.getElementById('camera-guide').style.display = 'none';
+                    showPage('home');
+                    if (mode === 'customer') fetchCustomer(text.trim()); 
+                    else fetchProduct(text.trim());
+                });
+            }
+        );
+    } catch (err) {
+        // もし "exact environment" で失敗した時のための予備（古いAndroid用）
         try {
-            await html5QrCode.start({ facingMode: "environment" }, config, (text) => {
+            await html5QrCode.start({ facingMode: "environment" }, { fps: 10, qrbox: 250 }, (text) => {
                 html5QrCode.stop().then(() => {
                     showPage('home');
                     if (mode === 'customer') fetchCustomer(text.trim()); else fetchProduct(text.trim());
                 });
             });
-        } catch (err) {
-            alert("カメラエラー: " + err);
+        } catch (err2) {
+            console.error("Camera Error:", err2);
+            alert("カメラが起動できません。ブラウザの設定でカメラの使用を許可してください。");
             showPage('home');
         }
     }
+}
 
     function stopCamera() {
         if (html5QrCode) html5QrCode.stop();
