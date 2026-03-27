@@ -218,53 +218,47 @@
     async function startCamera(mode) {
     if (mode === 'product' && !customer) return alert("顧客を選択してください");
     showPage('scanner-page');
-    
-    // 案内を表示
-    document.getElementById('camera-guide').style.display = 'block';
 
-    if (!html5QrCode) {
-        html5QrCode = new Html5Qrcode("reader");
+    // 1. 既存のインスタンスを完全に破棄（Androidの二重起動防止）
+    if (html5QrCode) {
+        try { await html5QrCode.clear(); } catch (e) {}
+        html5QrCode = null;
     }
 
-    // Android向けに制約をより柔軟に、かつ確実に背面カメラを狙う設定
-    const config = { 
-        fps: 10, 
-        qrbox: { width: 250, height: 250 },
-        aspectRatio: 1.0,
-        // Android特有のフォーカス問題を避けるための設定
-        videoConstraints: {
-            facingMode: { exact: "environment" },
-            focusMode: "continuous"
-        }
-    };
-
+    // 2. カメラデバイスを探す
     try {
-        await html5QrCode.start(
-            { facingMode: "environment" }, 
-            config, 
-            (text) => {
-                html5QrCode.stop().then(() => {
-                    document.getElementById('camera-guide').style.display = 'none';
-                    showPage('home');
-                    if (mode === 'customer') fetchCustomer(text.trim()); 
-                    else fetchProduct(text.trim());
-                });
-            }
-        );
-    } catch (err) {
-        // もし "exact environment" で失敗した時のための予備（古いAndroid用）
-        try {
-            await html5QrCode.start({ facingMode: "environment" }, { fps: 10, qrbox: 250 }, (text) => {
-                html5QrCode.stop().then(() => {
-                    showPage('home');
-                    if (mode === 'customer') fetchCustomer(text.trim()); else fetchProduct(text.trim());
-                });
-            });
-        } catch (err2) {
-            console.error("Camera Error:", err2);
-            alert("カメラが起動できません。ブラウザの設定でカメラの使用を許可してください。");
+        const cameras = await Html5Qrcode.getCameras();
+        if (cameras && cameras.length > 0) {
+            // 背面カメラ（Back Camera）を優先的に探す
+            let backCamera = cameras.find(c => c.label.toLowerCase().includes('back') || c.label.toLowerCase().includes('rear'));
+            let cameraId = backCamera ? backCamera.id : cameras[0].id;
+
+            html5QrCode = new Html5Qrcode("reader");
+            
+            await html5QrCode.start(
+                cameraId, 
+                { fps: 10, qrbox: 250 }, 
+                (text) => {
+                    html5QrCode.stop().then(() => {
+                        showPage('home');
+                        if (mode === 'customer') fetchCustomer(text.trim()); 
+                        else fetchProduct(text.trim());
+                    });
+                }
+            );
+        } else {
+            alert("カメラが見つかりません");
             showPage('home');
         }
+    } catch (err) {
+        console.error(err);
+        // ここで「NotAllowedError」が出る場合はOSの設定です
+        if(err.name === "NotAllowedError") {
+            alert("Android本体の設定で、Chromeアプリへのカメラ権限がオフになっています。\n設定 > アプリ > Chrome > 権限 からカメラを許可してください。");
+        } else {
+            alert("カメラエラー: " + err.message);
+        }
+        showPage('home');
     }
 }
 
