@@ -215,29 +215,42 @@
         document.getElementById("qty-modal").style.display = "none";
     }
 
-    async function startCamera(mode) {
+   async function startCamera(mode) {
     if (mode === 'product' && !customer) return alert("顧客を選択してください");
     showPage('scanner-page');
 
-    // 1. 既存のインスタンスを完全に破棄（Androidの二重起動防止）
+    // 1. 既存のカメラ要素を一度「物理的に消去」してリセットする（重要）
+    const readerDiv = document.getElementById("reader");
+    readerDiv.innerHTML = ""; 
+
+    // 2. 前のインスタンスが残っていたら完全に破棄
     if (html5QrCode) {
-        try { await html5QrCode.clear(); } catch (e) {}
+        try {
+            await html5QrCode.stop();
+            await html5QrCode.clear();
+        } catch (e) { /* 停止失敗は無視 */ }
         html5QrCode = null;
     }
 
-    // 2. カメラデバイスを探す
-    try {
-        const cameras = await Html5Qrcode.getCameras();
-        if (cameras && cameras.length > 0) {
-            // 背面カメラ（Back Camera）を優先的に探す
-            let backCamera = cameras.find(c => c.label.toLowerCase().includes('back') || c.label.toLowerCase().includes('rear'));
-            let cameraId = backCamera ? backCamera.id : cameras[0].id;
-
+    // 3. 0.5秒だけ待つ（Androidのカメラ解放待ち）
+    setTimeout(async () => {
+        try {
+            // 新しく作り直す
             html5QrCode = new Html5Qrcode("reader");
-            
+
+            const config = { 
+                fps: 10, 
+                qrbox: { width: 250, height: 250 },
+                aspectRatio: 1.0,
+                // 最も標準的なカメラ設定
+                videoConstraints: {
+                    facingMode: "environment"
+                }
+            };
+
             await html5QrCode.start(
-                cameraId, 
-                { fps: 10, qrbox: 250 }, 
+                { facingMode: "environment" }, 
+                config, 
                 (text) => {
                     html5QrCode.stop().then(() => {
                         showPage('home');
@@ -246,20 +259,12 @@
                     });
                 }
             );
-        } else {
-            alert("カメラが見つかりません");
+        } catch (err) {
+            console.error(err);
+            alert("カメラの起動に失敗しました。\n\n【解決策】\n一度Chromeのタブをすべて閉じ、ブラウザを再起動してからもう一度試してください。");
             showPage('home');
         }
-    } catch (err) {
-        console.error(err);
-        // ここで「NotAllowedError」が出る場合はOSの設定です
-        if(err.name === "NotAllowedError") {
-            alert("Android本体の設定で、Chromeアプリへのカメラ権限がオフになっています。\n設定 > アプリ > Chrome > 権限 からカメラを許可してください。");
-        } else {
-            alert("カメラエラー: " + err.message);
-        }
-        showPage('home');
-    }
+    }, 500); 
 }
 
     function stopCamera() {
