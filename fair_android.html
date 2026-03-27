@@ -79,16 +79,21 @@
             <small id="r-tel"></small>
         </div>
     </div>
+
     <div style="display: flex; gap: 10px; margin-bottom:15px;">
-        <button class="btn-main" style="background:#2e7d32; flex: 2;" onclick="startCamera('customer')"><i class="fas fa-qrcode"></i> 顧客スキャン</button>
+        <button class="btn-main" style="background:#2e7d32; flex: 2;" onclick="startCamera('customer')">
+            <i class="fas fa-qrcode"></i> 顧客スキャン
+        </button>
         <button class="btn-main" style="background:#757575; flex: 1;" onclick="openTelModal()">手入力</button>
     </div>
+
     <div id="product-input-area" style="display:none; margin-bottom: 15px;">
         <div style="display: flex; gap: 8px;">
             <input type="text" id="part-no-input" placeholder="品番・JAN入力" style="flex: 3; padding: 12px; border: 1px solid #ccc; border-radius: 4px; font-size: 16px;">
             <button class="btn-main" style="background:#3b5998; flex: 1;" onclick="handleManualInput()">追加</button>
         </div>
     </div>
+    
     <div id="cart-area" style="display:none;">
         <div id="cart-list" class="card" style="padding: 0 10px;"></div>
         <div class="total-box">合計: ¥<span id="cart-total">0</span></div>
@@ -99,7 +104,6 @@
         </div>
     </div>
 </section>
-
 <section id="scanner-page" class="page-section">
     <div id="camera-guide" style="background:#fff3cd; color:#856404; padding:10px; text-align:center; font-size:14px;">
         📸 ピントが合わない時は、一度離してからゆっくり近づけてください
