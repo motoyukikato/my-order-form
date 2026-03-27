@@ -219,52 +219,45 @@
     if (mode === 'product' && !customer) return alert("顧客を選択してください");
     showPage('scanner-page');
 
-    // 1. 既存のカメラ要素を一度「物理的に消去」してリセットする（重要）
-    const readerDiv = document.getElementById("reader");
-    readerDiv.innerHTML = ""; 
-
-    // 2. 前のインスタンスが残っていたら完全に破棄
+    // 1. 掃除
     if (html5QrCode) {
-        try {
-            await html5QrCode.stop();
-            await html5QrCode.clear();
-        } catch (e) { /* 停止失敗は無視 */ }
+        try { await html5QrCode.stop(); } catch (e) {}
         html5QrCode = null;
     }
+    document.getElementById("reader").innerHTML = "";
 
-    // 3. 0.5秒だけ待つ（Androidのカメラ解放待ち）
-    setTimeout(async () => {
-        try {
-            // 新しく作り直す
-            html5QrCode = new Html5Qrcode("reader");
-
-            const config = { 
-                fps: 10, 
-                qrbox: { width: 250, height: 250 },
-                aspectRatio: 1.0,
-                // 最も標準的なカメラ設定
-                videoConstraints: {
-                    facingMode: "environment"
-                }
-            };
-
-            await html5QrCode.start(
-                { facingMode: "environment" }, 
-                config, 
-                (text) => {
-                    html5QrCode.stop().then(() => {
-                        showPage('home');
-                        if (mode === 'customer') fetchCustomer(text.trim()); 
-                        else fetchProduct(text.trim());
-                    });
-                }
-            );
-        } catch (err) {
-            console.error(err);
-            alert("カメラの起動に失敗しました。\n\n【解決策】\n一度Chromeのタブをすべて閉じ、ブラウザを再起動してからもう一度試してください。");
-            showPage('home');
+    try {
+        // 2. 利用可能なカメラをリストアップ
+        const devices = await Html5Qrcode.getCameras();
+        if (!devices || devices.length === 0) {
+            alert("カメラが見つかりません。");
+            return showPage('home');
         }
-    }, 500); 
+
+        // 3. 「背面(back)」という単語が入っているカメラを優先、なければ一番最後のカメラを選択
+        const backCameras = devices.filter(d => d.label.toLowerCase().includes('back') || d.label.toLowerCase().includes('rear'));
+        const targetId = backCameras.length > 0 ? backCameras[backCameras.length - 1].id : devices[devices.length - 1].id;
+
+        html5QrCode = new Html5Qrcode("reader");
+
+        // 4. 極限までシンプルな設定で起動
+        await html5QrCode.start(
+            targetId, 
+            { fps: 10, qrbox: 250 }, 
+            (text) => {
+                html5QrCode.stop().then(() => {
+                    showPage('home');
+                    if (mode === 'customer') fetchCustomer(text.trim());
+                    else fetchProduct(text.trim());
+                });
+            }
+        );
+    } catch (err) {
+        // ここでもエラーが出る場合、ブラウザがカメラを「ビジー（使用中）」と誤認しています
+        console.error(err);
+        alert("カメラの占有エラーです。Chromeのタブをすべて閉じ、スマホを再起動してください。");
+        showPage('home');
+    }
 }
 
     function stopCamera() {
