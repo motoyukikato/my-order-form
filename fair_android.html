@@ -73,11 +73,12 @@
 <section id="home" class="page-section active">
     <div class="card">
         <div id="c-none" style="text-align:center; color:#999;">顧客を選択してください</div>
-        <div id="c-detail" style="display:none;">
-            <b id="r-name" style="color:#3b5998; font-size:1.1em;"></b><br>
-            <small id="r-addr1"></small><br>
-            <small id="r-tel"></small>
-        </div>
+       <div id="c-detail" style="display:none;">
+    <b id="r-name" style="color:#3b5998; font-size:1.1em;"></b><br>
+    <small id="r-addr1"></small><br>
+    <small id="r-addr2" style="color:#666;"></small><br>
+    <small id="r-tel"></small>
+</div>
     </div>
 
     <div style="display: flex; gap: 10px; margin-bottom:15px;">
@@ -308,14 +309,18 @@
         } catch(e) { alert("通信エラー"); }
     }
 
-    function updateCustomerDisplay() {
-        document.getElementById("r-name").innerText = customer.customer;
-        document.getElementById("r-addr1").innerText = customer.address1;
-        document.getElementById("r-tel").innerText = "TEL: " + customer.tel;
-        document.getElementById("c-none").style.display = "none";
-        document.getElementById("c-detail").style.display = "block";
-        document.getElementById("product-input-area").style.display = "block";
-    }
+ function updateCustomerDisplay() {
+    document.getElementById("r-name").innerText = customer.customer;
+    document.getElementById("r-addr1").innerText = customer.address1 || "";
+    
+    // 住所2があれば表示、なければ空にする
+    document.getElementById("r-addr2").innerText = customer.address2 || "";
+    
+    document.getElementById("r-tel").innerText = "TEL: " + (customer.tel || "");
+    document.getElementById("c-none").style.display = "none";
+    document.getElementById("c-detail").style.display = "block";
+    document.getElementById("product-input-area").style.display = "block";
+}
 
     function renderCart() {
         const list = document.getElementById("cart-list");
@@ -393,13 +398,18 @@ async function submitFinalOrder() {
     btn.disabled = true; // 二重送信防止
     btn.innerText = "送信中...";
 
-    const data = {
-        action: "submitOrder", // GAS側の処理に合わせてください
-        customer: customer,
-        cart: cart,
-        note: document.getElementById('common-note').value,
-        maker: MY_MAKER
-    };
+   const data = {
+    action: "submitOrder",
+    customer: {
+        name: customer.customer,
+        address1: customer.address1,
+        address2: customer.address2, // ★ここを追加
+        tel: customer.tel
+    },
+    cart: cart,
+    note: document.getElementById('common-note').value,
+    maker: MY_MAKER
+};
 
     try {
         const response = await fetch(GAS_URL, {
