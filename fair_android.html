@@ -456,16 +456,20 @@ async function loadHistory() {
                 <div style="display:flex; justify-content:space-between; align-items:center;">
                     <div style="font-size:0.8em; color:#666;">
                         品番: ${item.partNo}<br>
-                        <span style="color:#d32f2f;">¥${item.subtotal.toLocaleString()}</span>
+                        <span style="color:#d32f2f; font-weight:bold;">¥${item.subtotal.toLocaleString()}</span>
                     </div>
                     
-                    <div style="display:flex; align-items:center; gap:8px;">
-                        <button onclick="execUpdate('${item.timestamp}', '${item.partNo}', ${item.qty - 1})" class="qty-ctrl-btn" style="width:32px; height:32px; font-size:1em;">-</button>
-                        <div style="min-width:30px; text-align:center; font-weight:bold; font-size:1.1em;">${item.qty}</div>
-                        <button onclick="execUpdate('${item.timestamp}', '${item.partNo}', ${item.qty + 1})" class="qty-ctrl-btn" style="width:32px; height:32px; font-size:1em;">+</button>
+                    <div style="display:flex; align-items:center; gap:5px;">
+                        <button onclick="execUpdate('${item.timestamp}', '${item.partNo}', ${item.qty - 1})" class="qty-ctrl-btn" style="width:36px; height:36px;">-</button>
                         
-                        <button onclick="execDelete('${item.timestamp}', '${item.partNo}')" style="margin-left:10px; background:none; border:none; color:#bbb; padding:5px;">
-                            <i class="fas fa-trash-alt"></i>
+                        <input type="number" value="${item.qty}" 
+                            style="width:50px; height:32px; text-align:center; font-size:1.1em; font-weight:bold; border:2px solid #3b5998; border-radius:4px;"
+                            onchange="execUpdate('${item.timestamp}', '${item.partNo}', this.value)">
+                        
+                        <button onclick="execUpdate('${item.timestamp}', '${item.partNo}', ${item.qty + 1})" class="qty-ctrl-btn" style="width:36px; height:36px;">+</button>
+                        
+                        <button onclick="execDelete('${item.timestamp}', '${item.partNo}')" style="margin-left:8px; background:none; border:none; color:#bbb; padding:5px;">
+                            <i class="fas fa-trash-alt fa-lg"></i>
                         </button>
                     </div>
                 </div>
