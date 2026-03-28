@@ -83,10 +83,11 @@
     <div class="card">
         <div id="c-none" style="text-align:center; color:#999; padding: 10px;">顧客情報を選択してください</div>
         <div id="c-detail" style="display:none;">
-            <b id="r-name" style="color:#3b5998; font-size:1.2em;"></b><br>
-            <small id="r-addr1" style="color:#666;"></small><br>
-            <small id="r-tel" style="color:#666;"></small>
-        </div>
+    <b id="r-name" style="color:#3b5998; font-size:1.2em;"></b><br>
+    <small id="r-addr1" style="color:#666;"></small><br>
+    <small id="r-addr2" style="color:#666;"></small><br>
+    <small id="r-tel" style="color:#666;"></small>
+</div>
     </div>
     <div style="display: flex; gap: 10px; margin-bottom:15px;">
         <button class="btn-main" style="background:#28a745; flex: 2;" onclick="startCamera('customer')"><i class="fas fa-qrcode"></i> 顧客スキャン</button>
@@ -650,17 +651,27 @@ function stopCamera() {
             window.location.href = url.toString();
         }
     }
-    // 全角・半角・大文字・小文字の差をなくす関数
-function normalizeText(str) {
-    if (!str) return "";
-    return String(str)
-        .replace(/[！-～]/g, function(s) {
-            return String.fromCharCode(s.charCodeAt(0) - 0xFEE0);
-        })
-        .replace(/　/g, " ") // 全角スペースを半角に
-        .toUpperCase()      // 大文字に統一
-        .trim();            // 前後の空白を消す
-}
+ // --- 全角・半角・大文字・小文字の差をなくす関数（ゆらぎ吸収） ---
+    function normalizeText(str) {
+        if (!str) return "";
+        return String(str)
+            .replace(/[！-～]/g, function(s) {
+                return String.fromCharCode(s.charCodeAt(0) - 0xFEE0);
+            })
+            .replace(/　/g, " ") // 全角スペースを半角に
+            .toUpperCase()      // 大文字に統一
+            .trim();            // 前後の空白を消す
+    }
+
+    // メーカーを切り替えてリロードする関数
+    function switchMaker(makerName) {
+        if (confirm(makerName + " に切り替えますか？\n（現在の入力内容は消去されます）")) {
+            const url = new URL(window.location.href);
+            url.searchParams.set('m', makerName);
+            window.location.href = url.toString();
+        }
+    }
+</script>
 </script>
 </body>
 </html>
