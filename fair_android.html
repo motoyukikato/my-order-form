@@ -88,11 +88,12 @@
     </div>
 
     <div id="product-input-area" style="display:none; margin-bottom: 15px;">
-        <div style="display: flex; gap: 8px;">
-            <input type="text" id="part-no-input" placeholder="品番・JAN入力" style="flex: 3; padding: 12px; border: 1px solid #ccc; border-radius: 4px; font-size: 16px;">
-            <button class="btn-main" style="background:#3b5998; flex: 1;" onclick="handleManualInput()">追加</button>
-        </div>
+    <div style="display: flex; gap: 8px;">
+        <input type="text" id="part-no-input" list="product-list" placeholder="品番・JAN入力" style="flex: 3; padding: 12px; border: 1px solid #ccc; border-radius: 4px; font-size: 16px;">
+        <button class="btn-main" style="background:#3b5998; flex: 1;" onclick="handleManualInput()">追加</button>
     </div>
+    <datalist id="product-list"></datalist>
+</div>
     
     <div id="cart-area" style="display:none;">
         <div id="cart-list" class="card" style="padding: 0 10px;"></div>
@@ -157,12 +158,22 @@
     };
 
     async function preloadAllProducts() {
-        if (!MY_MAKER) return;
-        try {
-            const res = await fetch(GAS_URL, { method: "POST", body: JSON.stringify({ action: "getAllProducts", targetMaker: MY_MAKER }) });
-            allProducts = await res.json();
-        } catch (e) { console.error("Load failed", e); }
-    }
+    if (!MY_MAKER) return;
+    try {
+        const res = await fetch(GAS_URL, { method: "POST", body: JSON.stringify({ action: "getAllProducts", targetMaker: MY_MAKER }) });
+        allProducts = await res.json();
+        
+        // --- 以下の5行を追加することで、入力候補が表示されるようになります ---
+        const list = document.getElementById("product-list");
+        list.innerHTML = ""; 
+        allProducts.forEach(p => {
+            const option = document.createElement("option");
+            option.value = p.partNo; // 品番を候補にする
+            option.textContent = p.name; // 横に商品名を表示
+            list.appendChild(option);
+        });
+    } catch (e) { console.error("Load failed", e); }
+}
 
     function numIn(n) {
         let v = document.getElementById("qty-val");
