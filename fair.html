@@ -484,21 +484,47 @@ function openTelModal() {
     }
     
     // カメラ関連（既存のまま）
-    async function startCamera(mode) {
-        if (mode === 'product' && !customer) return alert("先に顧客を選択してください");
-        showPage('scanner-page');
-        document.getElementById('camera-guide').style.display = 'block';
-        if (html5QrCode === null) html5QrCode = new Html5Qrcode("reader");
+async function startCamera(mode) {
+    if (mode === 'product' && !customer) return alert("先に顧客を選択してください");
+    
+    // 1. もし既にスキャナーが動いていたら、一度完全に停止させる
+    if (html5QrCode && html5QrCode.getState() !== 1) { // 1は「IDLE（待機中）」の状態
         try {
-            await html5QrCode.start({ facingMode: "environment" }, { fps: 20, qrbox: 250 }, (text) => {
+            await html5QrCode.stop();
+        } catch (e) {
+            // 停止に失敗しても次へ進む
+            console.log("Stop failed, but continuing...");
+        }
+    }
+
+    showPage('scanner-page');
+    document.getElementById('camera-guide').style.display = 'block';
+
+    // 2. インスタンスがない場合だけ新しく作る
+    if (html5QrCode === null) html5QrCode = new Html5Qrcode("reader");
+
+    try {
+        await html5QrCode.start(
+            { facingMode: "environment" }, 
+            { fps: 20, qrbox: 250 }, 
+            (text) => {
+                // スキャン成功時の処理
                 html5QrCode.stop().then(() => {
                     document.getElementById('camera-guide').style.display = 'none';
                     showPage('home');
-                    if (mode === 'customer') fetchCustomer(text.trim()); else fetchProduct(text.trim());
-                });
-            });
-        } catch (err) { alert("カメラエラー"); }
+                    if (mode === 'customer') {
+                        fetchCustomer(text.trim());
+                    } else {
+                        fetchProduct(text.trim());
+                    }
+                }).catch(err => console.error("Stop error", err));
+            }
+        );
+    } catch (err) { 
+        console.error(err);
+        alert("カメラを起動できませんでした。ブラウザの再読み込みを試してください。"); 
     }
+}
 
     function stopCamera() {
         if (html5QrCode && html5QrCode.getState() !== 1) {
