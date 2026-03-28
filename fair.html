@@ -234,7 +234,10 @@
             }
         });
     };
-
+// HTMLの「手入力」ボタンから呼ばれる関数
+function openTelModal() {
+    openQtyModal(); // 引数なしで呼ぶことで「電話番号入力モード」として起動します
+}
     // --- 以下、既存の機能関数（そのまま統合） ---
 
     async function preloadAllProducts() {
