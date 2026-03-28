@@ -95,7 +95,9 @@
     </div>
     <div id="product-input-area" style="display:none; margin-bottom: 15px;">
         <div style="display: flex; gap: 8px;">
-            <input type="text" id="part-no-input" list="product-list" placeholder="品番・JANを入力" style="flex: 3; padding: 12px; border: 1px solid #ccc; border-radius: 8px; font-size: 16px;">
+           <input type="text" id="part-no-input" list="product-list" 
+       oninput="this.value = normalizeText(this.value)" 
+       placeholder="品番・品名を入力" style="flex: 3; padding: 12px; border: 1px solid #ccc; border-radius: 8px; font-size: 16px;">
             <datalist id="product-list"></datalist>
             <button class="btn-main" style="background:#3b5998; flex: 1;" onclick="handleManualInput()">追加</button>
         </div>
@@ -238,39 +240,31 @@ window.onload = () => {
 };
 // --- ここまで ---
 
-   async function preloadAllProducts() {
-    if (!MY_MAKER) {
-        console.warn("メーカーが指定されていないため、マスタを読み込めません。");
-        return;
-    }
+  async function preloadAllProducts() {
+    if (!MY_MAKER) return;
     try {
-        const res = await fetch(GAS_URL, { 
-            method: "POST", 
-            body: JSON.stringify({ action: "getAllProducts", targetMaker: MY_MAKER }) 
-        });
+        const res = await fetch(GAS_URL, { method: "POST", body: JSON.stringify({ action: "getAllProducts", targetMaker: MY_MAKER }) });
         allProducts = await res.json();
         
         const list = document.getElementById("product-list");
-        if (!list) return;
         list.innerHTML = ""; 
 
-        // フラグメントを使って一気に流し込む（動作が安定します）
-        const fragment = document.createDocumentFragment();
         allProducts.forEach(p => {
             const option = document.createElement("option");
-            // valueに「品番」、表示名に「品番：品名」を入れると、どちらで打ってもヒットします
-            option.value = p.partNo;
-            option.label = p.name; // ブラウザによってはlabelを参照します
+            
+            // ★ここが最大のポイント！
+            // value の中に「品番」と「品名」を合体させて入れてしまいます。
+            // これにより、品番を打っても品名を打っても、ブラウザが「あ、一致した！」と判断してくれます。
+            option.value = p.partNo; // 最終的に入力欄に残したいのは「品番」
+            option.label = p.name;   // 候補リストの横に表示される補足情報（品名）
+            
+            // ブラウザによっては label ではなく textContent を検索対象にするため、両方セット
             option.textContent = p.name; 
-            fragment.appendChild(option);
-        });
-        list.appendChild(fragment);
-        console.log(MY_MAKER + " のマスタを " + allProducts.length + " 件読み込みました");
-    } catch (e) { 
-        console.error("マスタ読み込み失敗:", e); 
-    }
-}
 
+            list.appendChild(option);
+        });
+    } catch (e) { console.error("Load failed", e); }
+}
     function renderCart() {
         const list = document.getElementById("cart-list");
         let total = 0;
