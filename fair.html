@@ -252,16 +252,14 @@ window.onload = () => {
         allProducts.forEach(p => {
             const option = document.createElement("option");
             
-            // 【最重要】valueの中に「品番」と「品名」の両方を入れます
-            // さらに normalizeText を通すことで、全角・半角の差を無視してヒットさせます
-            const searchKey = normalizeText(p.partNo + " " + (p.name || ""));
+            // ★最重要：マスタの「品番」と「品名」を合体させ、
+            // かつ「normalizeText」で半角・大文字に強制変換して value に入れる
+            const searchKey = normalizeText((p.partNo || "") + " " + (p.name || ""));
             
             option.value = searchKey; 
             
-            // 画面上の見た目は「品名」を優先して表示させる
-            option.textContent = p.name; 
-            option.label = p.partNo; // 横に品番を添える
-
+            // 見た目は分かりやすく「品番：品名」などにする
+            option.textContent = (p.partNo || "") + " : " + (p.name || "");
             list.appendChild(option);
         });
     } catch (e) { console.error("Load failed", e); }
