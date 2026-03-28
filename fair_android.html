@@ -416,7 +416,56 @@ function holdOrder() {
     alert("この注文を一時保存しました（履歴から再開できます）");
     // 本来はローカルストレージに保存する処理などをここに入れます
 }
-// --- ここまで追加 ---
+// ページを表示する際、履歴ページならデータを読み込むように修正
+function showPage(id) {
+    document.querySelectorAll('.page-section').forEach(p => p.classList.remove('active'));
+    document.getElementById(id).classList.add('active');
+    document.querySelectorAll('nav button').forEach(b => b.classList.remove('active-nav'));
+    document.getElementById('n-' + (id==='scanner-page'?'home':id))?.classList.add('active-nav');
+
+    // --- ここを追加：履歴ページを開いた時にGASからデータを取る ---
+    if (id === 'history') {
+        loadHistory();
+    }
+}
+
+async function loadHistory() {
+    const listArea = document.getElementById("h-list");
+    listArea.innerHTML = "<p style='text-align:center; padding:20px;'>読み込み中...</p>";
+
+    try {
+        const res = await fetch(GAS_URL, { 
+            method: "POST", 
+            body: JSON.stringify({ action: "getOrderHistory", targetMaker: MY_MAKER }) 
+        });
+        const historyData = await res.json();
+
+        if (!historyData || historyData.length === 0) {
+            listArea.innerHTML = "<p style='text-align:center; color:#999; padding:20px;'>履歴はありません</p>";
+            return;
+        }
+
+        listArea.innerHTML = historyData.map(item => `
+            <div class="card" style="margin-bottom:10px; border-left:4px solid #3b5998;">
+                <div style="display:flex; justify-content:between; font-size:0.8em; color:#666; margin-bottom:5px;">
+                    <span>${item.displayDate}</span>
+                    <span style="margin-left:auto;">${item.customerName} 様</span>
+                </div>
+                <div style="font-weight:bold;">${item.name}</div>
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-top:5px;">
+                    <small>品番: ${item.partNo}</small>
+                    <div>
+                        <span style="color:#d32f2f; font-weight:bold;">${item.qty}</span> <small>個</small>
+                        <span style="margin-left:10px; font-size:0.9em;">¥${item.subtotal.toLocaleString()}</span>
+                    </div>
+                </div>
+            </div>
+        `).join('');
+
+    } catch (e) {
+        listArea.innerHTML = "<p style='text-align:center; color:red; padding:20px;'>読み込み失敗</p>";
+    }
+}
 </script>
 </body>
 </html>
