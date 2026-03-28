@@ -501,25 +501,25 @@ function stopCamera() {
     }
 
    function fetchProduct(code) {
-    const cleanCode = String(code).trim().toUpperCase();
-    if (!cleanCode) return;
+    if (!code) return;
+    
+    // 入力された文字を正規化（全角→半角、大文字化など）
+    const searchVal = normalizeText(code);
 
-    // 1. 品番またはJANで探す
+    // マスタの中から、品番・JAN・品名のいずれかが一致するものを探す
     let p = allProducts.find(item => {
-        const tP = String(item.partNo || "").trim().toUpperCase();
-        const tJ = String(item.jan || "").trim();
-        return (tP === cleanCode || tJ === cleanCode);
-    });
+        const targetPartNo = normalizeText(item.partNo);
+        const targetJan = normalizeText(item.jan);
+        const targetName = normalizeText(item.name);
 
-    // 2. 見つからない場合、商品名で探す（候補から商品名を選んだ場合対策）
-    if (!p) {
-        p = allProducts.find(item => item.name === code);
-    }
+        // 「品番」「JAN」の完全一致、または「品名」の完全一致をチェック
+        return (targetPartNo === searchVal || targetJan === searchVal || targetName === searchVal);
+    });
 
     if (p) {
         openQtyModal(p);
     } else {
-        alert("未登録または不明な商品です: [" + cleanCode + "]");
+        alert("該当する商品が見つかりません: [" + code + "]");
     }
 }
 
@@ -650,6 +650,17 @@ function stopCamera() {
             window.location.href = url.toString();
         }
     }
+    // 全角・半角・大文字・小文字の差をなくす関数
+function normalizeText(str) {
+    if (!str) return "";
+    return String(str)
+        .replace(/[！-～]/g, function(s) {
+            return String.fromCharCode(s.charCodeAt(0) - 0xFEE0);
+        })
+        .replace(/　/g, " ") // 全角スペースを半角に
+        .toUpperCase()      // 大文字に統一
+        .trim();            // 前後の空白を消す
+}
 </script>
 </body>
 </html>
