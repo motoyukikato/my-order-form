@@ -95,8 +95,8 @@
     </div>
     <div id="product-input-area" style="display:none; margin-bottom: 15px;">
         <div style="display: flex; gap: 8px;">
-          <input type="text" id="part-no-input" list="product-list" 
-       oninput="this.value = normalizeText(this.value)" 
+         <input type="text" id="part-no-input" list="product-list" 
+       oninput="if(this.value.includes(' ')) { this.value = this.value.split(' ')[0]; } " 
        autocomplete="off"
        placeholder="品番・品名を入力" 
        style="flex: 3; padding: 12px; border: 1px solid #ccc; border-radius: 8px; font-size: 16px;">
