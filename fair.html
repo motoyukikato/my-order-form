@@ -242,60 +242,66 @@
  function numIn(n) {
     let v = document.getElementById("qty-val");
     
-    // C（クリア）または B（バックスペース）の処理
+    // C（クリア）の処理
     if (n === 'C') {
-        v.innerText = isTelMode ? "" : (tempProduct && tempProduct.lot ? tempProduct.lot : "1");
-        v.dataset.isFirstInput = "true"; // クリア後も「最初の一打」扱いに戻す
+        // クリア時は、商品があればロット数、なければ空にする
+        v.innerText = (tempProduct && tempProduct.lot) ? tempProduct.lot : (isTelMode ? "" : "1");
+        v.dataset.isFirstInput = "true"; // 次の入力はまた「上書き」から始まるようにする
         return;
     }
     
+    // BS（バックスペース）の処理
     if (n === 'B') {
         v.innerText = v.innerText.length > 1 ? v.innerText.slice(0, -1) : (isTelMode ? "" : "0");
+        v.dataset.isFirstInput = "false"; // BSした後は追加モードにする
         return;
     }
     
+    // 数字入力のメインロジック
     if (isTelMode) {
         v.innerText += n;
     } else {
-        // ★数量入力の「上書き」ロジック
-        // モーダルを開いた直後、またはデータセットにフラグがある場合は「上書き」
+        // ★ここがポイント：最初の一打目なら、今の表示（ロット数）を消して入力値にする
         if (v.dataset.isFirstInput === "true") {
             v.innerText = n;
-            v.dataset.isFirstInput = "false"; // 二打目からは「追加」にする
+            v.dataset.isFirstInput = "false"; // 二打目からは「追加」モードへ
         } else {
             v.innerText += n;
-            // 先頭の0を消す処理
-            if (v.innerText.startsWith("0")) v.innerText = v.innerText.slice(1);
+            // 先頭の0を消す（例：0から始まって5を打ったら05ではなく5にする）
+            if (v.innerText === "0" + n) v.innerText = n;
         }
     }
 }
 
-    function openQtyModal(p) {
-        const modalTitle = document.getElementById("modal-p-name");
-        const modalInfo = document.getElementById("modal-p-info");
-        const qtyDisplay = document.getElementById("qty-val");
+   function openQtyModal(p) {
+    const modalTitle = document.getElementById("modal-p-name");
+    const modalInfo = document.getElementById("modal-p-info");
+    const qtyDisplay = document.getElementById("qty-val");
 
-        if (p) {
-            isTelMode = false;
-            tempProduct = p;
-            modalTitle.innerText = p.name;
-            const price = p.listPrice ? p.listPrice.toLocaleString() : (p.price ? p.price.toLocaleString() : "0");
-            modalInfo.innerHTML = `上代: ¥${price} / 在庫: ${p.stock || "--"} / ロット: ${p.lot || "1"}`;
-            
-            // ★ここを修正：1ではなく、商品のロット数を初期表示にする
-            // ロット数が設定されていない場合は「1」にします
-            qtyDisplay.innerText = p.lot ? p.lot : "1";
+    // 上書きフラグをセット
+    qtyDisplay.dataset.isFirstInput = "true";
 
-        } else {
-            isTelMode = true;
-            tempProduct = null;
-            modalTitle.innerText = "電話番号を手入力";
-            modalInfo.innerHTML = "ハイフンなしで入力してください";
-            qtyDisplay.innerText = "";
-        }
-        document.getElementById("qty-modal").style.display = "flex";
-        document.getElementById("confirm-btn").onclick = confirmQty;
+    if (p) {
+        isTelMode = false;
+        tempProduct = p;
+        modalTitle.innerText = p.name;
+        const price = p.listPrice ? p.listPrice.toLocaleString() : (p.price ? p.price.toLocaleString() : "0");
+        modalInfo.innerHTML = `上代: ¥${price} / 在庫: ${p.stock || "--"} / ロット: ${p.lot || "1"}`;
+        
+        // 初期表示をロット数にする（ロットがない場合は1）
+        qtyDisplay.innerText = p.lot ? p.lot : "1";
+
+    } else {
+        isTelMode = true;
+        tempProduct = null;
+        modalTitle.innerText = "電話番号を手入力";
+        modalInfo.innerHTML = "ハイフンなしで入力してください";
+        qtyDisplay.innerText = "";
+        qtyDisplay.dataset.isFirstInput = "false"; // 電話番号入力時は上書き不要
     }
+    document.getElementById("qty-modal").style.display = "flex";
+    document.getElementById("confirm-btn").onclick = confirmQty;
+}
 
     function confirmQty() {
         let val = document.getElementById("qty-val").innerText;
