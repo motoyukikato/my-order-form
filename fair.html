@@ -137,20 +137,24 @@
     </div>
     
     <div class="card" style="margin-top:20px;">
+        <h4 style="margin-top:0; color:#333;"><i class="fas fa-exchange-alt"></i> メーカー切替</h4>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 20px;">
+            <button class="btn-main" style="background:#007bff; font-size:0.9em;" onclick="switchMaker('カルナック')">カルナック</button>
+            <button class="btn-main" style="background:#6f42c1; font-size:0.9em;" onclick="switchMaker('星野㈱')">星野㈱</button>
+            </div>
+
+        <hr style="border:0; border-top:1px solid #eee; margin:20px 0;">
+
         <p style="font-size:0.9em; color:#666; text-align:center; margin-bottom:15px;">
-           <i class="fas fa-info-circle"></i> 最新の商品情報を取得します
+           <i class="fas fa-info-circle"></i> 商品情報を最新にします
         </p>
-        <button class="btn-main" style="background:#333; margin-bottom:12px;" onclick="preloadAllProducts(); alert('商品マスタを最新の状態に更新しました');">
+        <button class="btn-main" style="background:#333; margin-bottom:12px;" onclick="preloadAllProducts(); alert('マスタを更新しました');">
             <i class="fas fa-sync-alt"></i> 商品マスタを強制更新
         </button>
         
         <button class="btn-main" style="background:#6c757d;" onclick="showPage('home')">
-            <i class="fas fa-chevron-left"></i> メイン画面に戻る
+            <i class="fas fa-chevron-left"></i> 戻る
         </button>
-    </div>
-    
-    <div style="text-align:center; color:#ccc; font-size:0.8em; margin-top:20px;">
-        System Version 1.1 (2026.03)
     </div>
 </section>
 
@@ -193,7 +197,7 @@ window.onload = () => {
         if (headerTapCount === 5) {
             headerTapCount = 0;
             const pass = prompt("管理者パスワードを入力してください");
-            if (pass === "1977") { // パスワード：誕生年
+            if (pass === "7087") { // パスワード：誕生年
                 showPage('admin-page');
             } else if (pass !== null) {
                 alert("パスワードが違います");
@@ -613,6 +617,14 @@ function stopCamera() {
         if (newQty <= 0) return alert("数量は1以上にしてください");
         inputElem.value = newQty; // 先に画面の数字を変える
         await sendUpdateToGas(ts, partNo, newQty);
+    }
+    // メーカーを切り替えてリロードする関数
+    function switchMaker(makerName) {
+        if (confirm(makerName + " に切り替えますか？\n（現在の入力内容は消去されます）")) {
+            const url = new URL(window.location.href);
+            url.searchParams.set('m', makerName);
+            window.location.href = url.toString();
+        }
     }
 </script>
 </body>
