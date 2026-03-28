@@ -249,15 +249,12 @@ function openTelModal() {
             const list = document.getElementById("product-list");
             list.innerHTML = ""; 
 
-           allProducts.forEach(p => {
+          allProducts.forEach(p => {
       const option = document.createElement("option");
       
-      // 1. 決定した時に入力欄に残る値（品番）
-      option.value = p.partNo || ""; 
-      
-      // 2. 検索対象になり、かつ候補一覧に表示される文字（品番 + 品名）
-      // textContent を使うことで、ブラウザがこれを「検索ワード」として認識します
-      option.textContent = normalizeText((p.partNo || "") + " " + (p.name || ""));
+      // 検索にヒットさせるために、品番と品名を合体させたものを value に入れる
+      const fullText = normalizeText((p.partNo || "") + " " + (p.name || ""));
+      option.value = fullText; 
       
       list.appendChild(option);
   });
@@ -406,9 +403,18 @@ function openTelModal() {
     }
 
     function handleManualInput() {
-        const val = document.getElementById("part-no-input").value;
-        if (val) fetchProduct(val.trim());
+    let val = document.getElementById("part-no-input").value;
+    if (val) {
+        // スペースで区切って、最初の要素（品番）だけを取り出す
+        // 例：「A101 ﾊﾟﾘｼﾞｪﾝﾇ」 -> 「A101」
+        const partNoOnly = val.trim().split(" ")[0];
+        
+        fetchProduct(partNoOnly);
+        
+        // 追加ボタンを押したら、次の入力のためにすぐ空にする
+        document.getElementById("part-no-input").value = ""; 
     }
+}
 
     async function fetchCustomer(val) {
         const res = await fetch(GAS_URL, { method: "POST", body: JSON.stringify({ action: "customerSearch", val: val }) });
