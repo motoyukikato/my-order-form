@@ -95,9 +95,11 @@
     </div>
     <div id="product-input-area" style="display:none; margin-bottom: 15px;">
         <div style="display: flex; gap: 8px;">
-           <input type="text" id="part-no-input" list="product-list" 
+          <input type="text" id="part-no-input" list="product-list" 
        oninput="this.value = normalizeText(this.value)" 
-       placeholder="品番・品名を入力" style="flex: 3; padding: 12px; border: 1px solid #ccc; border-radius: 8px; font-size: 16px;">
+       autocomplete="off"
+       placeholder="品番・品名を入力" 
+       style="flex: 3; padding: 12px; border: 1px solid #ccc; border-radius: 8px; font-size: 16px;">
             <datalist id="product-list"></datalist>
             <button class="btn-main" style="background:#3b5998; flex: 1;" onclick="handleManualInput()">追加</button>
         </div>
@@ -240,26 +242,29 @@ function openTelModal() {
 }
     // --- 以下、既存の機能関数（そのまま統合） ---
 
-    async function preloadAllProducts() {
-        if (!MY_MAKER) return;
-        try {
-            const res = await fetch(GAS_URL, { method: "POST", body: JSON.stringify({ action: "getAllProducts", targetMaker: MY_MAKER }) });
-            allProducts = await res.json();
-            
-            const list = document.getElementById("product-list");
-            list.innerHTML = ""; 
+   async function preloadAllProducts() {
+    if (!MY_MAKER) return;
+    try {
+        const res = await fetch(GAS_URL, { method: "POST", body: JSON.stringify({ action: "getAllProducts", targetMaker: MY_MAKER }) });
+        allProducts = await res.json();
+        
+        const list = document.getElementById("product-list");
+        list.innerHTML = ""; 
 
-          allProducts.forEach(p => {
-      const option = document.createElement("option");
-      
-      // 検索にヒットさせるために、品番と品名を合体させたものを value に入れる
-      const fullText = normalizeText((p.partNo || "") + " " + (p.name || ""));
-      option.value = fullText; 
-      
-      list.appendChild(option);
-  });
-        } catch (e) { console.error("Load failed", e); }
-    }
+        allProducts.forEach(p => {
+            const option = document.createElement("option");
+            
+            // 【重要】タップした時にバーに入るのは「品番」
+            option.value = p.partNo || ""; 
+            
+            // 【重要】候補一覧に表示され、かつ「品名」でも検索にヒットさせるためのテキスト
+            // 品番と品名の両方をここに入れることで、どちらを打っても候補に出ます
+            option.textContent = (p.partNo || "") + " " + (p.name || "");
+            
+            list.appendChild(option);
+        });
+    } catch (e) { console.error("Load failed", e); }
+}
 
     function numIn(n) {
         let v = document.getElementById("qty-val");
