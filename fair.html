@@ -251,18 +251,15 @@ function openTelModal() {
         const list = document.getElementById("product-list");
         list.innerHTML = ""; 
 
-        allProducts.forEach(p => {
-            const option = document.createElement("option");
-            
-            // 【重要】タップした時にバーに入るのは「品番」
-            option.value = p.partNo || ""; 
-            
-            // 【重要】候補一覧に表示され、かつ「品名」でも検索にヒットさせるためのテキスト
-            // 品番と品名の両方をここに入れることで、どちらを打っても候補に出ます
-            option.textContent = (p.partNo || "") + " " + (p.name || "");
-            
-            list.appendChild(option);
-        });
+       allProducts.forEach(p => {
+    const option = document.createElement("option");
+    
+    // 検索をヒットさせるため、あえて「全部入り」を value に入れる
+    const fullText = (p.partNo || "") + " " + (p.name || "");
+    option.value = fullText; 
+    
+    list.appendChild(option);
+});
     } catch (e) { console.error("Load failed", e); }
 }
 
