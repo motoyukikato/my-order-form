@@ -116,6 +116,31 @@
     <hr style="border: 0; border-top: 1px solid #ddd; margin: 20px 0;">
     <div id="h-list"></div>
 </section>
+    
+
+<section id="admin-page" class="page-section">
+    <div style="text-align:center; padding:20px; background:#fff; border-bottom: 2px solid #d9534f;">
+        <i class="fas fa-user-shield fa-2x" style="color:#d9534f;"></i>
+        <div style="font-weight:bold; margin-top:5px;">管理者メニュー</div>
+    </div>
+    
+    <div class="card" style="margin-top:20px;">
+        <p style="font-size:0.9em; color:#666; text-align:center; margin-bottom:15px;">
+           <i class="fas fa-info-circle"></i> 最新の商品情報を取得します
+        </p>
+        <button class="btn-main" style="background:#333; margin-bottom:12px;" onclick="preloadAllProducts(); alert('商品マスタを最新の状態に更新しました');">
+            <i class="fas fa-sync-alt"></i> 商品マスタを強制更新
+        </button>
+        
+        <button class="btn-main" style="background:#6c757d;" onclick="showPage('home')">
+            <i class="fas fa-chevron-left"></i> メイン画面に戻る
+        </button>
+    </div>
+    
+    <div style="text-align:center; color:#ccc; font-size:0.8em; margin-top:20px;">
+        System Version 1.1 (2026.03)
+    </div>
+</section>
 
 <nav>
     <button onclick="showPage('home')" id="n-home" class="active-nav"><i class="fas fa-shopping-cart fa-2x"></i><br>カート</button>
