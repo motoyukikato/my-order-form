@@ -345,12 +345,16 @@
     } else {
         let q = parseInt(val);
         if (q > 0) {
-            // 商品情報をカートに追加（必要な項目を整理）
+            // --- ここを修正：JANコードやロット、価格情報などをすべて含めてカートに入れる ---
             cart.push({
                 name: tempProduct.name,
-                price: tempProduct.listPrice || 0,
+                price: tempProduct.price || 0,        // 下代
+                listPrice: tempProduct.listPrice || 0, // 上代
                 quantity: q,
-                partNo: tempProduct.partNo
+                partNo: tempProduct.partNo,
+                jan: tempProduct.jan || "",           // ★ここが抜けていました！
+                lot: tempProduct.lot || "1",          // ロットも追加
+                stock: tempProduct.stock || ""        // 在庫状況も追加
             });
             renderCart();
         }
@@ -358,7 +362,6 @@
         document.getElementById("part-no-input").value = "";
     }
 }
-
     function showPage(id) {
         document.querySelectorAll('.page-section').forEach(p => p.classList.remove('active'));
         document.getElementById(id).classList.add('active');
