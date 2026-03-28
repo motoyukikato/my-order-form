@@ -240,35 +240,35 @@
     }
 
  function numIn(n) {
-        let v = document.getElementById("qty-val");
-        
-        if (n === 'C') {
-            // クリア時は「1」ではなく「商品のロット数」に戻すのが親切です
-            v.innerText = isTelMode ? "" : (tempProduct && tempProduct.lot ? tempProduct.lot : "1");
-            return;
-        }
-        
-        if (n === 'B') {
-            v.innerText = v.innerText.length > 1 ? v.innerText.slice(0, -1) : (isTelMode ? "" : "0");
-            return;
-        }
-        
-        if (isTelMode) {
-            v.innerText += n;
+    let v = document.getElementById("qty-val");
+    
+    // C（クリア）または B（バックスペース）の処理
+    if (n === 'C') {
+        v.innerText = isTelMode ? "" : (tempProduct && tempProduct.lot ? tempProduct.lot : "1");
+        v.dataset.isFirstInput = "true"; // クリア後も「最初の一打」扱いに戻す
+        return;
+    }
+    
+    if (n === 'B') {
+        v.innerText = v.innerText.length > 1 ? v.innerText.slice(0, -1) : (isTelMode ? "" : "0");
+        return;
+    }
+    
+    if (isTelMode) {
+        v.innerText += n;
+    } else {
+        // ★数量入力の「上書き」ロジック
+        // モーダルを開いた直後、またはデータセットにフラグがある場合は「上書き」
+        if (v.dataset.isFirstInput === "true") {
+            v.innerText = n;
+            v.dataset.isFirstInput = "false"; // 二打目からは「追加」にする
         } else {
-            // ★数量入力のルール
-            // モーダルを開いた直後の状態（初期値と同じ）なら、打った数字で「上書き」
-            // すでに何か打ち始めた後なら、後ろに「追加」
-            // ただし、1文字目が「0」にならないように制御します
-            if (v.innerText === String(tempProduct ? tempProduct.lot : "1")) {
-                v.innerText = n;
-            } else {
-                v.innerText += n;
-                // 先頭の0を消す処理（010にならないように）
-                if (v.innerText.startsWith("0")) v.innerText = v.innerText.slice(1);
-            }
+            v.innerText += n;
+            // 先頭の0を消す処理
+            if (v.innerText.startsWith("0")) v.innerText = v.innerText.slice(1);
         }
     }
+}
 
     function openQtyModal(p) {
         const modalTitle = document.getElementById("modal-p-name");
