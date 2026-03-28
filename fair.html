@@ -20,7 +20,19 @@
     -webkit-user-select: none; 
     touch-action: manipulation; /* ←これを追加しました */
 }
-        header { background: #fff; text-align: center; padding: 12px; border-bottom: 3px solid #3b5998; font-weight: bold; position: sticky; top: 0; z-index: 100; }
+        header { 
+    background: #fff; 
+    text-align: center; 
+    padding: 12px; 
+    border-bottom: 3px solid #3b5998; 
+    font-weight: bold; 
+    position: sticky; 
+    top: 0; 
+    z-index: 100; 
+    /* --- ここを追加 --- */
+    touch-action: manipulation; 
+    user-select: none;
+}
         .page-section { display: none; padding: 10px; }
         .active { display: block; }
         .card { background: #fff; padding: 15px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); margin-bottom: 10px; }
@@ -156,12 +168,40 @@
     let html5QrCode = null, customer = null, cart = [], tempProduct = null, isTelMode = false;
     let allProducts = [], pendingOrders = [];
 
-    window.onload = () => {
-        if (MY_MAKER) {
-            document.getElementById("app-title").innerText = MY_MAKER + " 受注システム";
-            preloadAllProducts();
+// --- ここから書き換え ---
+let headerTapCount = 0;
+let headerTapTimer;
+
+window.onload = () => {
+    // 既存のタイトル表示とマスタ読み込み
+    if (MY_MAKER) {
+        document.getElementById("app-title").innerText = MY_MAKER + " 受注システム";
+        preloadAllProducts();
+    }
+
+    // --- 隠しコマンド用コードを追加 ---
+    document.getElementById("app-title").addEventListener('click', function() {
+        headerTapCount++;
+        
+        // 3秒以内に次のタップがなければカウントリセット
+        clearTimeout(headerTapTimer);
+        headerTapTimer = setTimeout(() => {
+            headerTapCount = 0;
+        }, 3000);
+
+        // 5回連打で発動
+        if (headerTapCount === 5) {
+            headerTapCount = 0;
+            const pass = prompt("管理者パスワードを入力してください");
+            if (pass === "1977") { // パスワード：誕生年
+                showPage('admin-page');
+            } else if (pass !== null) {
+                alert("パスワードが違います");
+            }
         }
-    };
+    });
+};
+// --- ここまで ---
 
     async function preloadAllProducts() {
         if (!MY_MAKER) return;
