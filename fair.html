@@ -249,13 +249,19 @@ function openTelModal() {
             const list = document.getElementById("product-list");
             list.innerHTML = ""; 
 
-            allProducts.forEach(p => {
-                const option = document.createElement("option");
-                const searchKey = normalizeText((p.partNo || "") + " " + (p.name || ""));
-                option.value = searchKey; 
-                option.textContent = (p.partNo || "") + " : " + (p.name || "");
-                list.appendChild(option);
-            });
+           allProducts.forEach(p => {
+      const option = document.createElement("option");
+      
+      // ★ ここを修正
+      // value には「品番」だけを入れる（決定時にバーに残る値）
+      option.value = p.partNo || ""; 
+      
+      // label または textContent に「品番＋品名」を入れる（候補一覧で見える文字）
+      // ブラウザの仕様上、label を設定すると検索対象になりつつ、表示もされます
+      option.label = normalizeText((p.partNo || "") + " " + (p.name || ""));
+      
+      list.appendChild(option);
+  });
         } catch (e) { console.error("Load failed", e); }
     }
 
