@@ -252,14 +252,15 @@ window.onload = () => {
         allProducts.forEach(p => {
             const option = document.createElement("option");
             
-            // ★ここが最大のポイント！
-            // value の中に「品番」と「品名」を合体させて入れてしまいます。
-            // これにより、品番を打っても品名を打っても、ブラウザが「あ、一致した！」と判断してくれます。
-            option.value = p.partNo; // 最終的に入力欄に残したいのは「品番」
-            option.label = p.name;   // 候補リストの横に表示される補足情報（品名）
+            // 【最重要】valueの中に「品番」と「品名」の両方を入れます
+            // さらに normalizeText を通すことで、全角・半角の差を無視してヒットさせます
+            const searchKey = normalizeText(p.partNo + " " + (p.name || ""));
             
-            // ブラウザによっては label ではなく textContent を検索対象にするため、両方セット
+            option.value = searchKey; 
+            
+            // 画面上の見た目は「品名」を優先して表示させる
             option.textContent = p.name; 
+            option.label = p.partNo; // 横に品番を添える
 
             list.appendChild(option);
         });
