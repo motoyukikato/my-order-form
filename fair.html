@@ -239,23 +239,24 @@ window.onload = () => {
 // --- ここまで ---
 
     async function preloadAllProducts() {
-    if (!MY_MAKER) return;
-    try {
-        const res = await fetch(GAS_URL, { method: "POST", body: JSON.stringify({ action: "getAllProducts", targetMaker: MY_MAKER }) });
-        allProducts = await res.json();
-        
-        const list = document.getElementById("product-list");
-        list.innerHTML = ""; 
+        if (!MY_MAKER) return;
+        try {
+            const res = await fetch(GAS_URL, { method: "POST", body: JSON.stringify({ action: "getAllProducts", targetMaker: MY_MAKER }) });
+            allProducts = await res.json();
+            
+            const list = document.getElementById("product-list");
+            list.innerHTML = ""; 
 
-        allProducts.forEach(p => {
-            const option = document.createElement("option");
-            // valueに品番、label(または中身)に商品名を入れることで両方ヒットします
-            option.value = p.partNo; 
-            option.innerHTML = p.name; // 商品名を表示
-            list.appendChild(option);
-        });
-    } catch (e) { console.error("Load failed", e); }
-}
+            allProducts.forEach(p => {
+                const option = document.createElement("option");
+                // ポイント：valueに「品番」、中身に「品名」を入れることで、
+                // ブラウザが「品番」でも「品名」でも部分一致で候補を出してくれるようになります。
+                option.value = p.partNo; 
+                option.textContent = p.name; // ここを textContent にすると確実です
+                list.appendChild(option);
+            });
+        } catch (e) { console.error("Load failed", e); }
+    }
 
     function renderCart() {
         const list = document.getElementById("cart-list");
