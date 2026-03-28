@@ -47,6 +47,17 @@
         <i class="fa-solid fa-circle-notch fa-spin fa-3x"></i><br><br>データを照合中...
     </div>
 
+    <div id="auth-view" style="display:none;" class="card">
+        <h3 style="text-align:center;">本人確認</h3>
+        <p style="font-size:14px; color:#666; text-align:center;">
+            ご登録電話番号の<strong>下4桁</strong>を入力してください。
+        </p>
+        <input type="tel" id="auth-code" maxlength="4" 
+               style="width:100%; padding:15px; font-size:24px; text-align:center; letter-spacing:10px; border:2px solid #4267B2; border-radius:8px; margin-bottom:15px; box-sizing: border-box;" 
+               placeholder="0000">
+        <button class="btn btn-scan" onclick="verifyAndShow()">確認して明細を表示</button>
+    </div>
+
     <div id="result-view" style="display:none;">
         <div class="card" style="border-left: 6px solid #4267B2; padding: 15px;">
             <small style="color:#888;">ご担当者様</small>
@@ -88,21 +99,45 @@
     let currentScannedId = "";
     let lastFetchedData = [];
 
-    async function startScan() {
+   async function startScan() {
         const scanner = new Html5Qrcode("reader");
         document.getElementById("start-btn").style.display = "none";
         try {
             await scanner.start({ facingMode: "environment" }, { fps: 15, qrbox: 250 }, 
                 async (text) => {
                     await scanner.stop();
-                    currentScannedId = text; // ここに顧客IDが入る
-                    fetchHistory(text);
+                    
+                    // 1. スキャンしたIDを一旦保存する
+                    currentScannedId = text.trim(); 
+                    
+                    // 2. すぐに fetchHistory(text) を呼ばず、入力画面を出す
+                    document.getElementById("scan-view").style.display = "none";
+                    document.getElementById("auth-view").style.display = "block";
+                    
+                    // 3. 入力欄に自動でカーソルを合わせる（スマホだとキーボードが出ます）
+                    document.getElementById("auth-code").focus();
                 }
             );
         } catch (err) {
             alert("カメラの起動に失敗しました");
             document.getElementById("start-btn").style.display = "block";
         }
+    }
+    // 新しく追加する関数
+    function verifyAndShow() {
+        const authCode = document.getElementById("auth-code").value;
+        if (authCode.length !== 4) {
+            return alert("下4桁を正しく入力してください");
+        }
+
+        // 認証画面を消して、ローディング（照合中）を出す
+        document.getElementById("auth-view").style.display = "none";
+        document.getElementById("loading").style.display = "block";
+
+        // ここで初めてGASに問い合わせる（IDと下4桁をセットで送る）
+        const script = document.createElement('script');
+        script.src = `${GAS_URL}?id=${encodeURIComponent(currentScannedId)}&auth=${authCode}&callback=showResult`;
+        document.body.appendChild(script);
     }
 
     // 履歴取得 (JSONP方式)
