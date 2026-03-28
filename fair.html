@@ -375,13 +375,19 @@
         }
     }
 
-    function stopCamera() { 
-    if (html5QrCode) {
-        html5QrCode.stop();
-        // ★これを追加：案内メッセージを隠す
-        document.getElementById('camera-guide').style.display = 'none';
+    // stopCamera関数を少し強化
+function stopCamera() { 
+    if (html5QrCode && html5QrCode.getState() !== 1) { // 1 = NOT_STARTED
+        html5QrCode.stop().then(() => {
+            document.getElementById('camera-guide').style.display = 'none';
+            showPage('home'); 
+        }).catch(err => {
+            console.error(err);
+            showPage('home');
+        });
+    } else {
+        showPage('home');
     }
-    showPage('home'); 
 }
 
     async function fetchCustomer(val) {
@@ -443,7 +449,7 @@
 
     async function loadHistory() {
         const list = document.getElementById("h-list");
-        list.innerHTML = "<p style='text-align:center; padding:20px;'>読み込み中...</p>";
+        list.innerHTML = "<div style='text-align:center; padding:20px;'><i class='fas fa-spinner fa-spin'></i> 読み込み中...</div>";
         try {
             const res = await fetch(GAS_URL, { 
                 method: "POST", 
@@ -452,7 +458,6 @@
             const data = await res.json();
             if (data.length === 0) { list.innerHTML = "<p style='text-align:center; color:#999; padding:20px;'>履歴はありません</p>"; return; }
 
-            // ★ここで「品番」「単価」「上代」を表示するように書き換えました！
             list.innerHTML = '<h4>▼ 送信済み履歴 (修正・削除可)</h4>' + data.map((item, i) => `
                 <div id="hist-card-${item.timestamp}-${item.partNo}" class="card" style="font-size:0.9em; border-left: 5px solid #3b5998; position: relative; margin-bottom:10px;">
                     <div style="display:flex; justify-content:space-between; margin-bottom:5px;">
@@ -466,11 +471,18 @@
                     </div>
                     <div style="display:flex; justify-content:space-between; align-items:center; border-top:1px solid #eee; padding-top:8px;">
                         <div style="font-size:0.85em; color:#333;">数量変更：</div>
-                        <div style="display:flex; align-items:center; gap:8px;">
-                            <button onclick="updateHistoryQty('${item.timestamp}', '${item.partNo}', -1)" style="width:32px;height:32px;border-radius:50%;border:1px solid #ccc;background:#fff;display:flex;align-items:center;justify-content:center;">−</button>
-                            <b id="hist-qty-${item.timestamp}-${item.partNo}" style="min-width:25px; text-align:center;">${item.qty}</b>
-                            <button onclick="updateHistoryQty('${item.timestamp}', '${item.partNo}', 1)" style="width:32px;height:32px;border-radius:50%;border:1px solid #ccc;background:#fff;display:flex;align-items:center;justify-content:center;">＋</button>
-                            <button onclick="deleteHistoryOrder('${item.timestamp}', '${item.partNo}', '${item.name}')" style="margin-left:10px; border:none; background:none; color:#d9534f; font-size:1.2em; padding:5px;">
+                        <div style="display:flex; align-items:center; gap:5px;">
+                            <button onclick="updateHistoryQty('${item.timestamp}', '${item.partNo}', -1)" style="width:36px;height:36px;border-radius:4px;border:1px solid #ccc;background:#fff;">−</button>
+                            
+                            <input type="number" value="${item.qty}" 
+    id="hist-input-${item.timestamp}-${item.partNo}"
+    style="width:55px; height:32px; text-align:center; font-size:1.1em; font-weight:bold; border:2px solid #3b5998; border-radius:4px;"
+    onchange="execDirectUpdate('${item.timestamp}', '${item.partNo}', this.value, ${item.qty})"
+    onkeydown="if(event.key==='Enter') this.blur();">
+                            
+                            <button onclick="updateHistoryQty('${item.timestamp}', '${item.partNo}', 1)" style="width:36px;height:36px;border-radius:4px;border:1px solid #ccc;background:#fff;">＋</button>
+                            
+                            <button onclick="deleteHistoryOrder('${item.timestamp}', '${item.partNo}', '${item.name}')" style="margin-left:10px; border:none; background:none; color:#d9534f; font-size:1.3em; padding:5px;">
                                 <i class="fas fa-trash-alt"></i>
                             </button>
                         </div>
@@ -479,6 +491,39 @@
         } catch (e) { list.innerHTML = "<p style='text-align:center; color:red; padding:20px;'>失敗しました</p>"; }
     }
 
+    // ★手入力確定時に実行される新しい関数
+    async function execDirectUpdate(ts, partNo, newQty, oldQty) {
+        if (newQty <= 0) {
+            alert("数量は1以上にしてください");
+            document.getElementById(`hist-input-${ts}-${partNo}`).value = oldQty;
+            return;
+        }
+        await sendUpdateToGas(ts, partNo, newQty);
+    }
+
+    // ★GASへ更新命令を送る共通関数（ボタンも手入力もここを通る）
+    async function sendUpdateToGas(ts, partNo, newQty) {
+        const inputElem = document.getElementById(`hist-input-${ts}-${partNo}`);
+        inputElem.style.background = "#fff3cd"; // 更新中を色で表現
+        try {
+            const res = await fetch(GAS_URL, { 
+                method: "POST", 
+                body: JSON.stringify({ action: "updateOrderQty", timestamp: ts, partNo: partNo, newQty: newQty, maker: MY_MAKER }) 
+            });
+            const result = await res.json();
+            if (result.success) {
+                inputElem.style.background = "#fff";
+                // 必要であればここで画面を再読み込みして金額等を更新
+                // loadHistory(); 
+            } else {
+                alert("更新に失敗しました");
+                loadHistory(); // 元に戻す
+            }
+        } catch (e) { 
+            alert("通信エラー"); 
+            loadHistory();
+        }
+    }
     async function deleteHistoryOrder(ts, partNo, name) {
         if (!confirm(`【削除確認】\n${name}\n\nこの注文行を完全に削除しますか？`)) return;
         const card = document.getElementById(`hist-card-${ts}-${partNo}`);
@@ -490,17 +535,13 @@
         } catch (e) { alert("通信エラー"); card.style.opacity = "1"; }
     }
 
+    // 既存の updateHistoryQty 関数もこれに合わせて少し修正
     async function updateHistoryQty(ts, partNo, diff) {
-        const qtyElem = document.getElementById(`hist-qty-${ts}-${partNo}`);
-        let currentQty = parseInt(qtyElem.innerText);
-        let newQty = currentQty + diff;
+        const inputElem = document.getElementById(`hist-input-${ts}-${partNo}`);
+        let newQty = parseInt(inputElem.value) + diff;
         if (newQty <= 0) return alert("数量は1以上にしてください");
-        qtyElem.innerText = "...";
-        try {
-            const res = await fetch(GAS_URL, { method: "POST", body: JSON.stringify({ action: "updateOrderQty", timestamp: ts, partNo: partNo, newQty: newQty, maker: MY_MAKER }) });
-            const result = await res.json();
-            if (result.success) qtyElem.innerText = newQty; else { alert("失敗"); qtyElem.innerText = currentQty; }
-        } catch (e) { alert("通信エラー"); qtyElem.innerText = currentQty; }
+        inputElem.value = newQty; // 先に画面の数字を変える
+        await sendUpdateToGas(ts, partNo, newQty);
     }
 </script>
 </body>
