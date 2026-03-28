@@ -238,24 +238,37 @@ window.onload = () => {
 };
 // --- ここまで ---
 
-    async function preloadAllProducts() {
-    if (!MY_MAKER) return;
+   async function preloadAllProducts() {
+    if (!MY_MAKER) {
+        console.warn("メーカーが指定されていないため、マスタを読み込めません。");
+        return;
+    }
     try {
-        const res = await fetch(GAS_URL, { method: "POST", body: JSON.stringify({ action: "getAllProducts", targetMaker: MY_MAKER }) });
+        const res = await fetch(GAS_URL, { 
+            method: "POST", 
+            body: JSON.stringify({ action: "getAllProducts", targetMaker: MY_MAKER }) 
+        });
         allProducts = await res.json();
         
         const list = document.getElementById("product-list");
+        if (!list) return;
         list.innerHTML = ""; 
 
+        // フラグメントを使って一気に流し込む（動作が安定します）
+        const fragment = document.createDocumentFragment();
         allProducts.forEach(p => {
             const option = document.createElement("option");
-            // 【重要】valueを品番に、textContentを品名にすることで、
-            // 入力中に「品名」を打ってもブラウザが候補として探してくれるようになります。
-            option.value = p.partNo; 
+            // valueに「品番」、表示名に「品番：品名」を入れると、どちらで打ってもヒットします
+            option.value = p.partNo;
+            option.label = p.name; // ブラウザによってはlabelを参照します
             option.textContent = p.name; 
-            list.appendChild(option);
+            fragment.appendChild(option);
         });
-    } catch (e) { console.error("Load failed", e); }
+        list.appendChild(fragment);
+        console.log(MY_MAKER + " のマスタを " + allProducts.length + " 件読み込みました");
+    } catch (e) { 
+        console.error("マスタ読み込み失敗:", e); 
+    }
 }
 
     function renderCart() {
@@ -674,6 +687,10 @@ function stopCamera() {
             window.location.href = url.toString();
         }
     }
+    window.onload = function() {
+    // ページ読み込み時にマスタをロードする
+    preloadAllProducts();
+};
 </script>
 </script>
 </body>
