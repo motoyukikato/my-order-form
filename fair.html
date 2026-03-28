@@ -252,13 +252,12 @@ function openTelModal() {
            allProducts.forEach(p => {
       const option = document.createElement("option");
       
-      // ★ ここを修正
-      // value には「品番」だけを入れる（決定時にバーに残る値）
+      // 1. 決定した時に入力欄に残る値（品番）
       option.value = p.partNo || ""; 
       
-      // label または textContent に「品番＋品名」を入れる（候補一覧で見える文字）
-      // ブラウザの仕様上、label を設定すると検索対象になりつつ、表示もされます
-      option.label = normalizeText((p.partNo || "") + " " + (p.name || ""));
+      // 2. 検索対象になり、かつ候補一覧に表示される文字（品番 + 品名）
+      // textContent を使うことで、ブラウザがこれを「検索ワード」として認識します
+      option.textContent = normalizeText((p.partNo || "") + " " + (p.name || ""));
       
       list.appendChild(option);
   });
