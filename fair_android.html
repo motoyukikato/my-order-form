@@ -431,7 +431,7 @@ function showPage(id) {
 
 async function loadHistory() {
     const listArea = document.getElementById("h-list");
-    listArea.innerHTML = "<p style='text-align:center; padding:20px;'>読み込み中...</p>";
+    listArea.innerHTML = "<div style='text-align:center; padding:20px;'><i class='fas fa-spinner fa-spin'></i> 読み込み中...</div>";
 
     try {
         const res = await fetch(GAS_URL, { 
@@ -446,17 +446,27 @@ async function loadHistory() {
         }
 
         listArea.innerHTML = historyData.map(item => `
-            <div class="card" style="margin-bottom:10px; border-left:4px solid #3b5998;">
-                <div style="display:flex; justify-content:between; font-size:0.8em; color:#666; margin-bottom:5px;">
+            <div class="card" style="margin-bottom:12px; border-left:4px solid #3b5998; padding:10px;">
+                <div style="display:flex; justify-content:between; font-size:0.75em; color:#666; margin-bottom:8px;">
                     <span>${item.displayDate}</span>
-                    <span style="margin-left:auto;">${item.customerName} 様</span>
+                    <span style="margin-left:auto; font-weight:bold; color:#333;">${item.customerName} 様</span>
                 </div>
-                <div style="font-weight:bold;">${item.name}</div>
-                <div style="display:flex; justify-content:space-between; align-items:center; margin-top:5px;">
-                    <small>品番: ${item.partNo}</small>
-                    <div>
-                        <span style="color:#d32f2f; font-weight:bold;">${item.qty}</span> <small>個</small>
-                        <span style="margin-left:10px; font-size:0.9em;">¥${item.subtotal.toLocaleString()}</span>
+                <div style="font-weight:bold; font-size:0.95em; margin-bottom:10px;">${item.name}</div>
+                
+                <div style="display:flex; justify-content:space-between; align-items:center;">
+                    <div style="font-size:0.8em; color:#666;">
+                        品番: ${item.partNo}<br>
+                        <span style="color:#d32f2f;">¥${item.subtotal.toLocaleString()}</span>
+                    </div>
+                    
+                    <div style="display:flex; align-items:center; gap:8px;">
+                        <button onclick="execUpdate('${item.timestamp}', '${item.partNo}', ${item.qty - 1})" class="qty-ctrl-btn" style="width:32px; height:32px; font-size:1em;">-</button>
+                        <div style="min-width:30px; text-align:center; font-weight:bold; font-size:1.1em;">${item.qty}</div>
+                        <button onclick="execUpdate('${item.timestamp}', '${item.partNo}', ${item.qty + 1})" class="qty-ctrl-btn" style="width:32px; height:32px; font-size:1em;">+</button>
+                        
+                        <button onclick="execDelete('${item.timestamp}', '${item.partNo}')" style="margin-left:10px; background:none; border:none; color:#bbb; padding:5px;">
+                            <i class="fas fa-trash-alt"></i>
+                        </button>
                     </div>
                 </div>
             </div>
@@ -465,6 +475,37 @@ async function loadHistory() {
     } catch (e) {
         listArea.innerHTML = "<p style='text-align:center; color:red; padding:20px;'>読み込み失敗</p>";
     }
+}
+
+// 数量更新を実行する関数
+async function execUpdate(ts, pn, newQty) {
+    if (newQty <= 0) return execDelete(ts, pn);
+    if (!confirm("数量を " + newQty + " に変更しますか？")) return;
+    
+    try {
+        const res = await fetch(GAS_URL, { 
+            method: "POST", 
+            body: JSON.stringify({ action: "updateOrderQty", timestamp: ts, partNo: pn, newQty: newQty, maker: MY_MAKER }) 
+        });
+        const r = await res.json();
+        if (r.success) loadHistory(); // 成功したらリロード
+        else alert("更新に失敗しました");
+    } catch(e) { alert("通信エラー"); }
+}
+
+// 削除を実行する関数
+async function execDelete(ts, pn) {
+    if (!confirm("この行を削除してもよろしいですか？\n(マスタとメーカーファイル両方から消去されます)")) return;
+    
+    try {
+        const res = await fetch(GAS_URL, { 
+            method: "POST", 
+            body: JSON.stringify({ action: "deleteOrderLine", timestamp: ts, partNo: pn, maker: MY_MAKER }) 
+        });
+        const r = await res.json();
+        if (r.success) loadHistory(); // 成功したらリロード
+        else alert("削除に失敗しました");
+    } catch(e) { alert("通信エラー"); }
 }
 </script>
 </body>
