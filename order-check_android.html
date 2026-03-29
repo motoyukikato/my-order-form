@@ -11,7 +11,14 @@
         header { background: #4267B2; color: white; text-align: center; padding: 20px; font-weight: bold; font-size: 1.2em; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
         .container { padding: 15px; max-width: 600px; margin: auto; }
         .card { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); margin-bottom: 20px; }
-        #reader { width: 100%; border-radius: 12px; overflow: hidden; background: #000; min-height: 250px; }
+       #reader { 
+    width: 100%; 
+    border-radius: 12px; 
+    overflow: hidden; 
+    background: #000; 
+    /* 高さをしっかり確保する */
+    min-height: 300px; 
+}
         table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 0.9em; }
         th { background: #f1f3f5; text-align: left; padding: 10px; border-bottom: 2px solid #dee2e6; color: #495057; }
         td { padding: 12px 10px; border-bottom: 1px solid #eee; vertical-align: middle; }
@@ -102,55 +109,50 @@
 
     // --- カメラ起動（Android対応・構文修正済版） ---
     async function startScan() {
-        // 1. 既存のスキャナーを完全にリセット
         if (html5QrCode) {
-            try { 
-                await html5QrCode.stop(); 
-                await html5QrCode.clear();
-            } catch (e) { console.log(e); }
+            try { await html5QrCode.stop(); } catch (e) {}
             html5QrCode = null;
         }
-        
-        // 画面表示のリセット
         document.getElementById("reader").innerHTML = "";
         document.getElementById("start-btn").style.display = "none";
 
-        // 2. 利用可能なカメラをすべて取得
-        Html5Qrcode.getCameras().then(cameras => {
-            if (cameras && cameras.length > 0) {
-                // 背面カメラ(back/rear/environment)を優先
-                const backCamera = cameras.find(c => /back|rear|environment|背面|後ろ/i.test(c.label));
-                const cameraId = backCamera ? backCamera.id : cameras[cameras.length - 1].id;
+        // 少し待機してからカメラ取得を開始（Androidの占有エラー対策）
+        await new Promise(resolve => setTimeout(resolve, 200));
+
+        try {
+            const devices = await Html5Qrcode.getCameras();
+            if (devices && devices.length > 0) {
+                const backCamera = devices.find(c => /back|rear|environment/i.test(c.label));
+                const cameraId = backCamera ? backCamera.id : devices[devices.length - 1].id;
 
                 html5QrCode = new Html5Qrcode("reader");
 
-                const config = { 
-                    fps: 10, 
-                    qrbox: { width: 250, height: 250 },
-                    aspectRatio: 1.0 
-                };
-
-                // 3. ID指定で起動
-                return html5QrCode.start(
+                await html5QrCode.start(
                     cameraId, 
-                    config, 
+                    { 
+                        fps: 10, 
+                        qrbox: 250,
+                        // 解像度をあえて指定して、Androidの「迷い」をなくす
+                        videoConstraints: {
+                            width: { ideal: 640 },
+                            height: { ideal: 480 }
+                        }
+                    }, 
                     async (text) => {
-                        // スキャン成功時
                         await html5QrCode.stop();
-                        await html5QrCode.clear();
-                        
                         currentScannedId = text.trim();
-                        
                         document.getElementById("scan-view").style.display = "none";
                         document.getElementById("auth-view").style.display = "block";
                         document.getElementById("auth-code").focus();
                     }
                 );
-            } else {
-                alert("カメラが見つかりません。");
-                document.getElementById("start-btn").style.display = "block";
             }
-        }).catch(err => {
+        } catch (err) {
+            console.error(err);
+            alert("再読み込みして、もう一度お試しください。");
+            document.getElementById("start-btn").style.display = "block";
+        }
+    }).catch(err => {
             console.error("Camera Error:", err);
             alert("カメラエラー: " + err);
             document.getElementById("start-btn").style.display = "block";
