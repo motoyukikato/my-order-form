@@ -108,63 +108,55 @@
     let html5QrCode = null;
 
     // --- カメラ起動（Android対応・構文エラー修正版） ---
-   async function startScan() {
+  async function startScan() {
         if (html5QrCode) {
-            try { await html5QrCode.stop(); } catch (e) {}
+            try { 
+                await html5QrCode.stop(); 
+                await html5QrCode.clear();
+            } catch (e) { console.log(e); }
             html5QrCode = null;
         }
         
         document.getElementById("reader").innerHTML = "";
         document.getElementById("start-btn").style.display = "none";
 
-        await new Promise(resolve => setTimeout(resolve, 200));
-
-        try {
-            const devices = await Html5Qrcode.getCameras();
-            if (devices && devices.length > 0) {
-                // 判定キーワードを増やしました（環境、背面、back、rear、0番など）
-                // Androidは通常、インデックスが後のほう（cameras.length - 1）にメインカメラが来ることが多いです
-                const backCamera = devices.find(c => /back|rear|environment|背面|外カメラ|後/i.test(c.label));
-                
-                // 背面キーワードが見つかればそれ、無ければ「最後のデバイス」を選択
-                const cameraId = backCamera ? backCamera.id : devices[devices.length - 1].id;
-
-                console.log("選択されたカメラ:", cameraId);
+        // 1. まず全カメラを取得
+        Html5Qrcode.getCameras().then(async cameras => {
+            if (cameras && cameras.length > 0) {
+                // 2. 「背面」っぽい名前のカメラを本気で探す
+                // ほとんどのAndroidは、配列の「最後」のカメラがメインの背面レンズです
+                const backCamera = cameras.find(c => /back|rear|environment|背面|外/i.test(c.label));
+                const cameraId = backCamera ? backCamera.id : cameras[cameras.length - 1].id;
 
                 html5QrCode = new Html5Qrcode("reader");
 
+                // 3. 複雑な制約を捨てて、IDだけでシンプルに起動
                 await html5QrCode.start(
                     cameraId, 
                     { 
                         fps: 10, 
-                        qrbox: 250,
-                        videoConstraints: {
-                            // 明示的に environment を指定し、ID指定とダブルで攻めます
-                            facingMode: { exact: "environment" }, 
-                            width: { ideal: 640 },
-                            height: { ideal: 480 }
-                        }
+                        qrbox: { width: 250, height: 250 }
                     }, 
                     async (text) => {
                         await html5QrCode.stop();
+                        await html5QrCode.clear();
                         currentScannedId = text.trim();
                         document.getElementById("scan-view").style.display = "none";
                         document.getElementById("auth-view").style.display = "block";
                         document.getElementById("auth-code").focus();
                     }
                 ).catch(err => {
-                    // もし exact: "environment" でエラーが出た場合のフォールバック（予備）
-                    return html5QrCode.start(cameraId, { fps:10, qrbox:250 }, async (text) => {
-                        await html5QrCode.stop();
-                        currentScannedId = text.trim();
-                        document.getElementById("scan-view").style.display = "none";
-                        document.getElementById("auth-view").style.display = "block";
-                    });
+                    console.error("Start Error:", err);
+                    alert("カメラを起動できません。他のタブでカメラを使っていないか確認してください。");
+                    document.getElementById("start-btn").style.display = "block";
                 });
             } else {
                 alert("カメラが見つかりません。");
-                document.getElementById("start-btn").style.display = "block";
             }
+        }).catch(err => {
+            alert("デバイス取得エラー: " + err);
+        });
+    }
         } catch (err) {
             console.error("Camera Error:", err);
             alert("カメラの起動に失敗しました。");
