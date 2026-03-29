@@ -105,23 +105,25 @@
 
     let currentScannedId = "";
     let lastFetchedData = [];
-    let html5QrCode = null; // スキャナーをグローバルで保持
+    let html5QrCode = null;
 
-    // --- カメラ起動（Android対応・構文修正済版） ---
+    // --- カメラ起動（Android対応・構文エラー修正版） ---
     async function startScan() {
         if (html5QrCode) {
             try { await html5QrCode.stop(); } catch (e) {}
             html5QrCode = null;
         }
+        
         document.getElementById("reader").innerHTML = "";
         document.getElementById("start-btn").style.display = "none";
 
-        // 少し待機してからカメラ取得を開始（Androidの占有エラー対策）
+        // Androidの占有エラー対策
         await new Promise(resolve => setTimeout(resolve, 200));
 
         try {
             const devices = await Html5Qrcode.getCameras();
             if (devices && devices.length > 0) {
+                // 背面カメラを特定
                 const backCamera = devices.find(c => /back|rear|environment/i.test(c.label));
                 const cameraId = backCamera ? backCamera.id : devices[devices.length - 1].id;
 
@@ -132,13 +134,13 @@
                     { 
                         fps: 10, 
                         qrbox: 250,
-                        // 解像度をあえて指定して、Androidの「迷い」をなくす
                         videoConstraints: {
                             width: { ideal: 640 },
                             height: { ideal: 480 }
                         }
                     }, 
                     async (text) => {
+                        // スキャン成功時
                         await html5QrCode.stop();
                         currentScannedId = text.trim();
                         document.getElementById("scan-view").style.display = "none";
@@ -146,17 +148,15 @@
                         document.getElementById("auth-code").focus();
                     }
                 );
+            } else {
+                alert("カメラが見つかりません。");
+                document.getElementById("start-btn").style.display = "block";
             }
         } catch (err) {
-            console.error(err);
-            alert("再読み込みして、もう一度お試しください。");
+            console.error("Camera Error:", err);
+            alert("カメラの起動に失敗しました。ページを再読み込みしてください。");
             document.getElementById("start-btn").style.display = "block";
         }
-    }).catch(err => {
-            console.error("Camera Error:", err);
-            alert("カメラエラー: " + err);
-            document.getElementById("start-btn").style.display = "block";
-        });
     }
 
     // --- 本人確認実行 ---
@@ -169,7 +169,6 @@
         document.getElementById("auth-view").style.display = "none";
         document.getElementById("loading").style.display = "block";
 
-        // GASへIDと認証コードを送信（JSONP方式）
         const script = document.createElement('script');
         script.src = `${GAS_URL}?id=${encodeURIComponent(currentScannedId)}&auth=${authCode}&callback=showResult`;
         document.body.appendChild(script);
@@ -238,6 +237,5 @@
         }
     }
 </script>
-
 </body>
 </html>
