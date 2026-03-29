@@ -103,44 +103,50 @@
 
     // --- カメラ起動（Android対応版） ---
     async function startScan() {
-        // すでに起動している場合は停止
-        if (html5QrCode && html5QrCode.getState() !== 1) {
-            try { await html5QrCode.stop(); } catch (e) {}
+        // 1. 既存のインスタンスを掃除（重要）
+        if (html5QrCode) {
+            try { await html5QrCode.stop(); } catch (e) { console.log(e); }
         }
-
-        document.getElementById("start-btn").style.display = "none";
         
-        if (!html5QrCode) {
-            html5QrCode = new Html5Qrcode("reader");
-        }
+        document.getElementById("start-btn").style.display = "none";
+        html5QrCode = new Html5Qrcode("reader");
 
-        const config = { 
-            fps: 10, 
-            qrbox: { width: 250, height: 250 },
-            aspectRatio: 1.0 
-        };
+        const qrConfig = { fps: 10, qrbox: 250 };
 
-        try {
-            await html5QrCode.start(
-                { facingMode: "environment" }, 
-                config,
-                async (text) => {
-                    await html5QrCode.stop();
-                    currentScannedId = text.trim(); 
-                    
-                    // 認証画面へ
-                    document.getElementById("scan-view").style.display = "none";
-                    document.getElementById("auth-view").style.display = "block";
-                    document.getElementById("auth-code").focus();
-                }
-            );
-        } catch (err) {
-            console.error(err);
-            alert("カメラの起動に失敗しました。他のタブでカメラを使っていないか、ブラウザの許可設定を確認してください。");
+        // 2. カメラデバイスを直接スキャンして選別する
+        Html5Qrcode.getCameras().then(cameras => {
+            if (cameras && cameras.length > 0) {
+                // 背面カメラっぽいラベルのものを探す（iPhone/Android両対応）
+                let backCamera = cameras.find(c => 
+                    /back|rear|environment|背面|後ろ/i.test(c.label)
+                );
+                
+                // 見つからなければ最後のカメラ（通常は背面）を使う
+                let cameraId = backCamera ? backCamera.id : cameras[cameras.length - 1].id;
+
+                html5QrCode.start(
+                    cameraId, 
+                    qrConfig, 
+                    async (text) => {
+                        await html5QrCode.stop();
+                        currentScannedId = text.trim();
+                        document.getElementById("scan-view").style.display = "none";
+                        document.getElementById("auth-view").style.display = "block";
+                        document.getElementById("auth-code").focus();
+                    }
+                ).catch(err => {
+                    alert("カメラ開始に失敗: " + err);
+                    document.getElementById("start-btn").style.display = "block";
+                });
+            } else {
+                alert("カメラが見つかりません。設定で許可されているか確認してください。");
+                document.getElementById("start-btn").style.display = "block";
+            }
+        }).catch(err => {
+            alert("カメラ取得に失敗: " + err);
             document.getElementById("start-btn").style.display = "block";
-        }
+        });
     }
-
     // --- 本人確認実行 ---
     function verifyAndShow() {
         const authCode = document.getElementById("auth-code").value;
