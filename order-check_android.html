@@ -116,42 +116,41 @@
         document.getElementById("reader").innerHTML = "";
         document.getElementById("start-btn").style.display = "none";
 
-        // カメラ取得
-        Html5Qrcode.getCameras().then(async cameras => {
-            if (cameras && cameras.length > 0) {
-                // 背面カメラを優先的に探す
-                const backCamera = cameras.find(c => /back|rear|environment|背面|外/i.test(c.label));
-                // 見つからなければ配列の最後を選択（Androidのメインカメラは大抵最後）
-                const cameraId = backCamera ? backCamera.id : cameras[cameras.length - 1].id;
+        // あえて少し待つ（カメラの切り替え時間を稼ぐ）
+        await new Promise(resolve => setTimeout(resolve, 300));
 
-                html5QrCode = new Html5Qrcode("reader");
+        html5QrCode = new Html5Qrcode("reader");
 
-                await html5QrCode.start(
-                    cameraId, 
-                    { 
-                        fps: 10, 
-                        qrbox: { width: 250, height: 250 }
-                    }, 
-                    async (text) => {
-                        await html5QrCode.stop();
-                        await html5QrCode.clear();
-                        currentScannedId = text.trim();
-                        document.getElementById("scan-view").style.display = "none";
-                        document.getElementById("auth-view").style.display = "block";
-                        document.getElementById("auth-code").focus();
-                    }
-                ).catch(err => {
-                    console.error("Start Error:", err);
-                    alert("カメラの起動に失敗しました。Chromeの設定でカメラ許可を確認してください。");
-                    document.getElementById("start-btn").style.display = "block";
-                });
-            } else {
-                alert("カメラが見つかりません。");
-                document.getElementById("start-btn").style.display = "block";
+        // ID指定ではなく「facingMode: environment」でブラウザに任せる
+        const config = { 
+            fps: 10, 
+            qrbox: { width: 250, height: 250 }
+        };
+
+        // この書き方が、一番Androidでエラーが出にくい「基本形」です
+        html5QrCode.start(
+            { facingMode: "environment" }, 
+            config, 
+            async (text) => {
+                await html5QrCode.stop();
+                await html5QrCode.clear();
+                currentScannedId = text.trim();
+                document.getElementById("scan-view").style.display = "none";
+                document.getElementById("auth-view").style.display = "block";
+                document.getElementById("auth-code").focus();
             }
-        }).catch(err => {
-            alert("デバイス取得エラー: " + err);
-            document.getElementById("start-btn").style.display = "block";
+        ).catch(err => {
+            console.error("Camera Start Error:", err);
+            // 万が一環境(背面)でエラーが出たら、カメラを選ばず起動
+            html5QrCode.start({ facingMode: "user" }, config, async (text) => {
+                await html5QrCode.stop();
+                currentScannedId = text.trim();
+                document.getElementById("scan-view").style.display = "none";
+                document.getElementById("auth-view").style.display = "block";
+            }).catch(e => {
+                alert("カメラを起動できません。Chromeの全タブを閉じてから、このページだけを開き直してください。");
+                document.getElementById("start-btn").style.display = "block";
+            });
         });
     }
 
