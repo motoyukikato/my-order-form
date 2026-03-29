@@ -92,7 +92,6 @@
         </button>
     </div>
 </div>
-
 <script>
     // 【重要】GASで「新しいデプロイ」を行ったら、URLを最新のものに差し替えてください
     const GAS_URL = "https://script.google.com/macros/s/AKfycbzNhwcuwGN8xQCSMu9vcu9gK6ZRi852JSwjXA5Buali39mtHlUqToa21m0lCzYQDUBx/exec"; 
@@ -101,23 +100,29 @@
     let lastFetchedData = [];
     let html5QrCode = null; // スキャナーをグローバルで保持
 
-    // --- カメラ起動（Android対応版） ---
-   async function startScan() {
-        // 1. 既存のスキャナーを完全にリセット（Androidでの二重起動防止）
+    // --- カメラ起動（Android対応・構文修正済版） ---
+    async function startScan() {
+        // 1. 既存のスキャナーを完全にリセット
         if (html5QrCode) {
-            try { await html5QrCode.stop(); } catch (e) { console.log(e); }
+            try { 
+                await html5QrCode.stop(); 
+                await html5QrCode.clear();
+            } catch (e) { console.log(e); }
+            html5QrCode = null;
         }
         
+        // 画面表示のリセット
+        document.getElementById("reader").innerHTML = "";
         document.getElementById("start-btn").style.display = "none";
-        html5QrCode = new Html5Qrcode("reader");
 
-        // 2. 利用可能なカメラをすべて取得する
+        // 2. 利用可能なカメラをすべて取得
         Html5Qrcode.getCameras().then(cameras => {
             if (cameras && cameras.length > 0) {
-                // 背面カメラ(back/rear)を優先的に探す
-                const backCamera = cameras.find(c => /back|rear|environment/i.test(c.label));
-                // 見つからなければ最後のカメラ（通常は背面メインレンズ）を使用
+                // 背面カメラ(back/rear/environment)を優先
+                const backCamera = cameras.find(c => /back|rear|environment|背面|後ろ/i.test(c.label));
                 const cameraId = backCamera ? backCamera.id : cameras[cameras.length - 1].id;
+
+                html5QrCode = new Html5Qrcode("reader");
 
                 const config = { 
                     fps: 10, 
@@ -125,29 +130,33 @@
                     aspectRatio: 1.0 
                 };
 
-                // 3. 名前（ID）を指定して直接起動
-                html5QrCode.start(
+                // 3. ID指定で起動
+                return html5QrCode.start(
                     cameraId, 
                     config, 
                     async (text) => {
+                        // スキャン成功時
                         await html5QrCode.stop();
+                        await html5QrCode.clear();
+                        
                         currentScannedId = text.trim();
+                        
                         document.getElementById("scan-view").style.display = "none";
                         document.getElementById("auth-view").style.display = "block";
                         document.getElementById("auth-code").focus();
                     }
-                ).catch(err => {
-                    console.error("Start Error:", err);
-                    alert("カメラの起動に失敗しました。Chromeの設定でカメラ許可を一度『リセット』してから再読み込みしてください。");
-                    document.getElementById("start-btn").style.display = "block";
-                });
+                );
             } else {
                 alert("カメラが見つかりません。");
+                document.getElementById("start-btn").style.display = "block";
             }
         }).catch(err => {
-            alert("カメラデバイスの取得に失敗しました: " + err);
+            console.error("Camera Error:", err);
+            alert("カメラエラー: " + err);
+            document.getElementById("start-btn").style.display = "block";
         });
     }
+
     // --- 本人確認実行 ---
     function verifyAndShow() {
         const authCode = document.getElementById("auth-code").value;
@@ -158,7 +167,7 @@
         document.getElementById("auth-view").style.display = "none";
         document.getElementById("loading").style.display = "block";
 
-        // GASへIDと認証コードを送信
+        // GASへIDと認証コードを送信（JSONP方式）
         const script = document.createElement('script');
         script.src = `${GAS_URL}?id=${encodeURIComponent(currentScannedId)}&auth=${authCode}&callback=showResult`;
         document.body.appendChild(script);
@@ -168,7 +177,6 @@
     function showResult(data) {
         document.getElementById("loading").style.display = "none";
         
-        // 取得したデータがない（または下4桁が違う）場合
         if (!data || data.length === 0) {
             alert("本人確認ができませんでした。IDまたは電話番号の下4桁が正しいかご確認ください。");
             document.getElementById("auth-view").style.display = "block";
@@ -211,7 +219,6 @@
         btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> 送信中...';
 
         const script = document.createElement('script');
-        // 送信時も一応IDを送る
         script.src = `${GAS_URL}?action=sendEmail&id=${encodeURIComponent(currentScannedId)}&email=${encodeURIComponent(newEmail.trim())}&callback=onEmailSent`;
         document.body.appendChild(script);
     }
