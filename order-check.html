@@ -99,75 +99,92 @@
     let currentScannedId = "";
     let lastFetchedData = [];
 
-   // スキャナーのインスタンスを関数の外で定義（二重起動を防ぐため）
-let html5QrCode = null;
-
-async function startScan() {
-    // 1. すでに動いていたら一度止める（Androidの競合対策）
-    if (html5QrCode && html5QrCode.getState() !== 1) {
+   async function startScan() {
+        const scanner = new Html5Qrcode("reader");
+        document.getElementById("start-btn").style.display = "none";
         try {
-            await html5QrCode.stop();
-        } catch (e) {
-            console.log("Stop error:", e);
+            await scanner.start({ facingMode: "environment" }, { fps: 15, qrbox: 250 }, 
+                async (text) => {
+                    await scanner.stop();
+                    
+                    // 1. スキャンしたIDを一旦保存する
+                    currentScannedId = text.trim(); 
+                    
+                    // 2. すぐに fetchHistory(text) を呼ばず、入力画面を出す
+                    document.getElementById("scan-view").style.display = "none";
+                    document.getElementById("auth-view").style.display = "block";
+                    
+                    // 3. 入力欄に自動でカーソルを合わせる（スマホだとキーボードが出ます）
+                    document.getElementById("auth-code").focus();
+                }
+            );
+        } catch (err) {
+            alert("カメラの起動に失敗しました");
+            document.getElementById("start-btn").style.display = "block";
+        }
+    }
+    // 新しく追加する関数
+    function verifyAndShow() {
+        const authCode = document.getElementById("auth-code").value;
+        if (authCode.length !== 4) {
+            return alert("下4桁を正しく入力してください");
+        }
+
+        // 認証画面を消して、ローディング（照合中）を出す
+        document.getElementById("auth-view").style.display = "none";
+        document.getElementById("loading").style.display = "block";
+
+        // ここで初めてGASに問い合わせる（IDと下4桁をセットで送る）
+        const script = document.createElement('script');
+        script.src = `${GAS_URL}?id=${encodeURIComponent(currentScannedId)}&auth=${authCode}&callback=showResult`;
+        document.body.appendChild(script);
+    }
+
+    // 履歴取得 (JSONP方式)
+    function fetchHistory(id) {
+        document.getElementById("scan-view").style.display = "none";
+        document.getElementById("loading").style.display = "block";
+        
+        // callback=showResult を指定してGASを叩く
+        const script = document.createElement('script');
+        script.src = `${GAS_URL}?id=${encodeURIComponent(id)}&callback=showResult`;
+        document.body.appendChild(script);
+    }
+
+    // GASからのデータを受け取って表示
+    function showResult(data) {
+        document.getElementById("loading").style.display = "none";
+        document.getElementById("result-view").style.display = "block";
+        const tableBody = document.getElementById("history-table-body");
+        let total = 0;
+        lastFetchedData = data;
+
+        if (data && data.length > 0) {
+            document.getElementById("email-btn").style.display = "block";
+            document.getElementById("cust-name").innerText = data[0].customerName + " 様";
+            
+            tableBody.innerHTML = data.map(item => {
+                total += Number(item.subtotal || 0);
+                return `
+                    <tr>
+                        <td>
+                            <span class="status-badge">${item.maker}</span> 
+                            <span class="status-badge" style="background:#fff3cd;">${item.stock || '通常'}</span><br>
+                            <span class="item-name">${item.name}</span>
+                            <span class="item-info">¥${Number(item.price).toLocaleString()} × ${item.qty}</span>
+                        </td>
+                        <td style="text-align:right; font-weight:bold; vertical-align:bottom;">
+                            ¥${Number(item.subtotal).toLocaleString()}
+                        </td>
+                    </tr>`;
+            }).join('');
+            document.getElementById("total-amount").innerText = total.toLocaleString();
+        } else {
+            tableBody.innerHTML = '<tr><td colspan="2" style="text-align:center; padding:30px; color:#999;">履歴がありません。<br><small>(ID: ' + currentScannedId + ')</small></td></tr>';
+            document.getElementById("email-btn").style.display = "none";
         }
     }
 
-    document.getElementById("start-btn").style.display = "none";
-    
-    // 2. インスタンスがなければ作成
-    if (!html5QrCode) {
-        html5QrCode = new Html5Qrcode("reader");
-    }
-
-    // 3. Android向けのカメラ設定（fpsを抑えて負荷を減らす）
-    const config = { 
-        fps: 10, 
-        qrbox: { width: 250, height: 250 },
-        aspectRatio: 1.0 
-    };
-
-    try {
-        await html5QrCode.start(
-            { facingMode: "environment" }, 
-            config,
-            async (text) => {
-                // スキャン成功
-                await html5QrCode.stop();
-                
-                // IDを保存
-                currentScannedId = text.trim();
-                
-                // 認証画面（下4桁入力）へ切り替え
-                document.getElementById("scan-view").style.display = "none";
-                document.getElementById("auth-view").style.display = "block";
-                
-                // 入力欄に自動フォーカス
-                const authInput = document.getElementById("auth-code");
-                authInput.focus();
-            }
-        );
-    } catch (err) {
-        console.error("Camera error:", err);
-        alert("カメラの起動に失敗しました。Chromeの設定でカメラ許可を確認し、他のタブを閉じて再試行してください。");
-        document.getElementById("start-btn").style.display = "block";
-    }
-}
-
-// ★続けて、ボタンを押した時の「認証・取得」関数もここに入れてください
-function verifyAndShow() {
-    const authCode = document.getElementById("auth-code").value;
-    if (authCode.length !== 4) {
-        return alert("下4桁を正しく入力してください");
-    }
-
-    document.getElementById("auth-view").style.display = "none";
-    document.getElementById("loading").style.display = "block";
-
-    // GASへ「ID」と「認証コード」を一緒に送る
-    const script = document.createElement('script');
-    script.src = `${GAS_URL}?id=${encodeURIComponent(currentScannedId)}&auth=${authCode}&callback=showResult`;
-    document.body.appendChild(script);
-}
     async function requestEmail() {
         let currentEmail = (lastFetchedData && lastFetchedData.length > 0) ? lastFetchedData[0].email : "";
         const newEmail = window.prompt("請書の送信先を確認・修正してください。", currentEmail);
