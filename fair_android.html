@@ -431,40 +431,49 @@ async function submitFinalOrder() {
     }
 }
 
-// 保留ボタンの機能（簡易版）
+// 保留ボタンの機能：ブラウザに一時保存する
 function holdOrder() {
+    if (!customer) return alert("顧客を選択してから保留してください");
     if (cart.length === 0) return alert("カートが空です");
-    alert("この注文を一時保存しました（履歴から再開できます）");
-    // 本来はローカルストレージに保存する処理などをここに入れます
-}
-// ページを表示する際、履歴ページならデータを読み込むように修正
-function showPage(id) {
-    document.querySelectorAll('.page-section').forEach(p => p.classList.remove('active'));
-    document.getElementById(id).classList.add('active');
-    document.querySelectorAll('nav button').forEach(b => b.classList.remove('active-nav'));
-    document.getElementById('n-' + (id==='scanner-page'?'home':id))?.classList.add('active-nav');
 
-    // --- ここを追加：履歴ページを開いた時にGASからデータを取る ---
-    if (id === 'history') {
-        loadHistory();
-    }
-}
+    // 保存するデータの塊を作る
+    const holdData = {
+        customer: customer,
+        cart: cart,
+        note: document.getElementById('common-note').value,
+        date: new Date().toLocaleString()
+    };
 
+    // ブラウザのLocalStorageに保存（pendingOrdersという名前で保存）
+    let currentPending = JSON.parse(localStorage.getItem("pendingOrders") || "[]");
+    currentPending.push(holdData);
+    localStorage.setItem("pendingOrders", JSON.stringify(currentPending));
+
+    alert("注文を保留リストに保存しました。履歴タブから再開できます。");
+    
+    // カートを空にしてリロード
+    location.reload();
+}
 async function loadHistory() {
+    const pendingArea = document.getElementById("pending-list-area");
     const listArea = document.getElementById("h-list");
-    listArea.innerHTML = "<div style='text-align:center; padding:20px;'><i class='fas fa-spinner fa-spin'></i> 読み込み中...</div>";
-
-    try {
-        const res = await fetch(GAS_URL, { 
-            method: "POST", 
-            body: JSON.stringify({ action: "getOrderHistory", targetMaker: MY_MAKER }) 
-        });
-        const historyData = await res.json();
-
-        if (!historyData || historyData.length === 0) {
-            listArea.innerHTML = "<p style='text-align:center; color:#999; padding:20px;'>履歴はありません</p>";
-            return;
-        }
+    
+    // --- 【追加】保留データの読み込み ---
+    const pendingData = JSON.parse(localStorage.getItem("pendingOrders") || "[]");
+    if (pendingData.length > 0) {
+        pendingArea.innerHTML = "<h3>保留中の注文</h3>" + pendingData.map((item, idx) => `
+            <div class="card" style="border-left: 6px solid #ffa000; background: #fffdf0;">
+                <div style="font-weight:bold;">${item.customer.customer} 様</div>
+                <div style="font-size:0.8em; color:#666;">${item.date} / 商品数: ${item.cart.length}点</div>
+                <div style="display:flex; gap:10px; margin-top:10px;">
+                    <button class="btn-main" style="background:#ffa000; font-size:0.8em; padding:8px;" onclick="restoreOrder(${idx})">再開する</button>
+                    <button class="btn-main" style="background:#ccc; font-size:0.8em; padding:8px;" onclick="deletePending(${idx})">削除</button>
+                </div>
+            </div>
+        `).join('');
+    } else {
+        pendingArea.innerHTML = "";
+    }
 
         listArea.innerHTML = historyData.map(item => `
             <div class="card" style="margin-bottom:12px; border-left:4px solid #3b5998; padding:10px;">
@@ -501,7 +510,32 @@ async function loadHistory() {
         listArea.innerHTML = "<p style='text-align:center; color:red; padding:20px;'>読み込み失敗</p>";
     }
 }
+// 保留から復元する関数
+function restoreOrder(idx) {
+    const pendingData = JSON.parse(localStorage.getItem("pendingOrders") || "[]");
+    const target = pendingData[idx];
+    
+    if (confirm(target.customer.customer + " 様の注文を再開しますか？\n(現在のカートは上書きされます)")) {
+        customer = target.customer;
+        cart = target.cart;
+        document.getElementById('common-note').value = target.note || "";
+        
+        // データを削除してからホームへ移動
+        deletePending(idx, false);
+        updateCustomerDisplay();
+        renderCart();
+        showPage('home');
+    }
+}
 
+// 保留データを削除する関数
+function deletePending(idx, ask = true) {
+    if (ask && !confirm("この保留データを削除しますか？")) return;
+    let pendingData = JSON.parse(localStorage.getItem("pendingOrders") || "[]");
+    pendingData.splice(idx, 1);
+    localStorage.setItem("pendingOrders", JSON.stringify(pendingData));
+    loadHistory();
+}
 // 数量更新を実行する関数
 async function execUpdate(ts, pn, newQty) {
     if (newQty <= 0) return execDelete(ts, pn);
