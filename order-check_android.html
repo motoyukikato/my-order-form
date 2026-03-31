@@ -91,7 +91,7 @@
     </div>
 </div>
 <script>
-    const GAS_URL = "https://script.google.com/macros/s/AKfycbzNhwcuwGN8xQCSMu9vcu9gK6ZRi852JSwjXA5Buali39mtHlUqToa21m0lCzYQDUBx/exec"; 
+    const GAS_URL = "https://script.google.com/macros/s/AKfycbw-CMg0W86nstanV6lu19rN4n2zQZlEE4z9e73C5Loy6HtzbgscKoYSs1h-nmXum2aE/exec"; 
 
     let currentScannedId = "";
     let html5QrCode = null;
@@ -173,25 +173,45 @@
         .getHistoryWithAuth(currentScannedId, authCode);
 }
 
-    function showResult(data) {
-        document.getElementById("loading").style.display = "none";
-        if (!data || data.length === 0) {
-            alert("本人確認ができませんでした。IDまたは電話番号の下4桁が正しいかご確認ください。");
-            document.getElementById("auth-view").style.display = "block";
-            return;
-        }
-        document.getElementById("result-view").style.display = "block";
-        const tableBody = document.getElementById("history-table-body");
-        let total = 0;
-        lastFetchedData = data;
-        document.getElementById("email-btn").style.display = "block";
-        document.getElementById("cust-name").innerText = data[0].customerName + " 様";
-        tableBody.innerHTML = data.map(item => {
-            total += Number(item.subtotal || 0);
-            return `<tr><td><span class="status-badge">${item.maker}</span><br><span class="item-name">${item.name}</span><span class="item-info">¥${Number(item.price).toLocaleString()} × ${item.qty}</span></td><td style="text-align:right; font-weight:bold; vertical-align:bottom;">¥${Number(item.subtotal).toLocaleString()}</td></tr>`;
-        }).join('');
-        document.getElementById("total-amount").innerText = total.toLocaleString();
+   // GASから戻ってきたデータを画面に表示する関数
+function showResult(data) {
+    document.getElementById("loading").style.display = "none";
+    
+    if (!data || data.length === 0) {
+        alert("該当するデータが見つかりませんでした。");
+        document.getElementById("auth-view").style.display = "block";
+        return;
     }
+
+    // グローバル変数に保存（メール送信時に使用）
+    lastFetchedData = data;
+    
+    document.getElementById("result-view").style.display = "block";
+    document.getElementById("cust-name").innerText = data[0].customerName + " 様";
+
+    const tableBody = document.getElementById("history-table-body");
+    let total = 0;
+
+    tableBody.innerHTML = data.map(item => {
+        total += Number(item.subtotal || 0);
+        
+        // GASから返ってくるプロパティ名（jan, name, qty, price, subtotal）を正確に使う
+        return `
+            <tr>
+                <td>
+                    <span style="font-size:0.7em; color:#666;">${item.maker} / ${item.jan}</span><br>
+                    <b style="font-size:1.1em;">${item.name}</b><br>
+                    <span style="font-size:0.9em;">¥${Number(item.price).toLocaleString()} × ${item.qty}</span>
+                </td>
+                <td style="text-align:right; font-weight:bold; vertical-align:bottom; font-size:1.1em;">
+                    ¥${Number(item.subtotal).toLocaleString()}
+                </td>
+            </tr>`;
+    }).join('');
+
+    document.getElementById("total-amount").innerText = total.toLocaleString();
+    document.getElementById("email-btn").style.display = "block";
+}
 
     function requestEmail() {
     // 1. 現在のメールアドレスを取得（データの1行目から引用）
