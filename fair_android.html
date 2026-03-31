@@ -224,26 +224,50 @@
         editContext = null;
     }
 
-    async function startCamera(mode) {
-        if (mode === 'product' && !customer) return alert("顧客を選択してください");
-        showPage('scanner-page');
-        if (html5QrCode) { try { await html5QrCode.stop(); } catch (e) {} html5QrCode = null; }
-        document.getElementById("reader").innerHTML = "";
-        try {
-            const devices = await Html5Qrcode.getCameras();
-            if (!devices || devices.length === 0) return alert("カメラが見つかりません");
-            const backCameras = devices.filter(d => d.label.toLowerCase().includes('back') || d.label.toLowerCase().includes('rear'));
-            const targetId = backCameras.length > 0 ? backCameras[backCameras.length - 1].id : devices[devices.length - 1].id;
-            html5QrCode = new Html5Qrcode("reader");
-            await html5QrCode.start(targetId, { fps: 10, qrbox: 250 }, (text) => {
-                html5QrCode.stop().then(() => {
-                    showPage('home');
-                    if (mode === 'customer') fetchCustomer(text.trim());
-                    else fetchProduct(text.trim());
-                });
-            });
-        } catch (err) { alert("カメラ起動エラー"); showPage('home'); }
+   async function startCamera() {
+    showPage('scanner-page');
+    
+    // 1. 既に起動している場合は確実に停止・クリアする
+    if (html5QrCode) { 
+        try { await html5QrCode.stop(); } catch (e) {} 
+        html5QrCode = null; 
     }
+    
+    // 2. 表示エリアを一旦リセット
+    document.getElementById("reader").innerHTML = "";
+    
+    try {
+        // 3. 端末のカメラ一覧を取得
+        const devices = await Html5Qrcode.getCameras();
+        if (!devices || devices.length === 0) return alert("カメラが見つかりません");
+
+        // 4. 背面（back/rear）カメラを探す。見つからなければ最後に見つかったカメラを使う
+        const backCameras = devices.filter(d => 
+            d.label.toLowerCase().includes('back') || 
+            d.label.toLowerCase().includes('rear')
+        );
+        const targetId = backCameras.length > 0 
+            ? backCameras[backCameras.length - 1].id 
+            : devices[devices.length - 1].id;
+
+        // 5. 特定したIDを使ってカメラを起動
+        html5QrCode = new Html5Qrcode("reader");
+        await html5QrCode.start(
+            targetId, 
+            { fps: 10, qrbox: 250 }, 
+            (text) => {
+                html5QrCode.stop().then(() => {
+                    // スキャン成功後の処理
+                    fetchHistory(text.trim());
+                });
+            }
+        );
+    } catch (err) {
+        console.error(err);
+        alert("カメラ起動エラーが発生しました。");
+        showPage('home');
+    }
+}
 
     function stopCamera() { if (html5QrCode) html5QrCode.stop(); showPage('home'); }
 
