@@ -131,26 +131,36 @@
         document.getElementById("stop-btn").style.display = "none";
     }
 
+    // 電話番号入力ボタンの処理
     function inputTel() {
-        const tel = window.prompt("検索する電話番号を入力してください");
-        if (!tel) return;
-        fetchHistory(tel, "tel");
+        const tel = window.prompt("検索する電話番号を入力してください\n(ハイフンなしで入力してください)");
+        if (!tel || tel.trim() === "") return;
+        
+        // 入力された値をそのまま「電話番号」として検索に回す
+        fetchHistory(tel.trim(), "tel");
     }
 
-    // データ取得処理
+    // データ取得処理（IDスキャンでも電話入力でもここを通る）
     function fetchHistory(val, type) {
         document.getElementById("scan-view").style.display = "none";
         document.getElementById("loading").style.display = "block";
         
+        // typeが"tel"なら電話用のアクション、そうでなければ顧客ID用のアクションを呼ぶ
         const actionName = (type === "tel") ? "getHistoryByTel" : "getCustomerSpecificHistory";
         
-        // 以前のscriptタグを掃除
         const oldScript = document.getElementById('gas-script');
         if (oldScript) oldScript.remove();
 
         const script = document.createElement('script');
         script.id = 'gas-script';
+        // valに「電話番号」または「顧客ID」が入ってGASに飛びます
         script.src = `${GAS_URL}?action=${actionName}&val=${encodeURIComponent(val)}&callback=showResult`;
+        
+        script.onerror = function() {
+            alert("通信に失敗しました。");
+            location.reload();
+        };
+        
         document.body.appendChild(script);
     }
 
