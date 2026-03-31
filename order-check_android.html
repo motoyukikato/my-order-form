@@ -4,15 +4,15 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>ご注文明細確認</title>
-   <script src="https://cdnjs.cloudflare.com/ajax/libs/html5-qrcode/2.3.8/html5-qrcode.min.js"></script>
+    <script src="https://unpkg.com/html5-qrcode"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
         body { font-family: sans-serif; margin: 0; background: #f4f7f9; color: #333; }
         header { background: #3b5998; color: white; text-align: center; padding: 15px; font-weight: bold; }
         .container { padding: 15px; max-width: 500px; margin: auto; }
         .card { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); margin-bottom: 20px; }
-        .btn-main { width: 100%; padding: 15px; border: none; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer; color: white; background: #3b5998; }
-        #reader { width: 100% !important; background: #000; border-radius: 12px; }
+        .btn-main { width: 100%; padding: 15px; border: none; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer; color: white; background: #3b5998; display: block; text-align: center; }
+        #reader { width: 100% !important; background: #000; border-radius: 12px; min-height: 300px; }
         .item-row { border-bottom: 1px solid #eee; padding: 15px 0; display: flex; justify-content: space-between; }
         .total-box { text-align: right; padding: 20px; font-size: 1.4em; color: #d9534f; font-weight: bold; border-top: 2px solid #eee; }
         .page-section { display: none; }
@@ -50,50 +50,138 @@
 </div>
 
 <script>
-   async function startCamera() {
+    // ★GASのURLをセット
+    const GAS_URL = "https://script.google.com/macros/s/AKfycbwjTY1GECS8D1t8ARVEadGnrD3PaOOrR5Ae34RVK2PlbQSsJB2zQz2HPaSvMmRwzA/exec";
+
+    let html5QrCode = null;
+
+    // ページ切り替え
+    function showPage(id) {
+        document.querySelectorAll('.page-section').forEach(p => p.classList.remove('active'));
+        const target = document.getElementById(id);
+        if (target) target.classList.add('active');
+    }
+
+    // カメラ開始
+    async function startCamera() {
+    // 1. まずページを切り替える
     showPage('scanner-page');
     
-    // 1. 既に起動している場合は確実に停止・クリアする
-    if (html5QrCode) { 
-        try { await html5QrCode.stop(); } catch (e) {} 
-        html5QrCode = null; 
-    }
-    
-    // 2. 表示エリアを一旦リセット
-    document.getElementById("reader").innerHTML = "";
-    
-    try {
-        // 3. 端末のカメラ一覧を取得
-        const devices = await Html5Qrcode.getCameras();
-        if (!devices || devices.length === 0) return alert("カメラが見つかりません");
+    // 2. DOMの描画を待つために一瞬だけ待機（100ミリ秒）
+    // これにより、Android Chromeでの「要素が見つからない」エラーを回避します
+    await new Promise(resolve => setTimeout(resolve, 100));
 
-        // 4. 背面（back/rear）カメラを探す。見つからなければ最後に見つかったカメラを使う
+    // 既存の停止処理
+    if (html5QrCode) {
+        try { await html5QrCode.stop(); } catch (e) {}
+        html5QrCode = null;
+    }
+
+    const readerElem = document.getElementById("reader");
+    if (!readerElem) {
+        alert("スキャン画面の準備に失敗しました。");
+        return;
+    }
+    readerElem.innerHTML = "";
+
+    try {
+        // 3. 先にデバイスを取得
+        const devices = await Html5Qrcode.getCameras();
+        if (!devices || devices.length === 0) {
+            alert("カメラが見つかりません。権限設定を確認してください。");
+            showPage('home');
+            return;
+        }
+
+        // 背面カメラ特定
         const backCameras = devices.filter(d => 
-            d.label.toLowerCase().includes('back') || 
-            d.label.toLowerCase().includes('rear')
+            d.label.toLowerCase().includes('back') || d.label.toLowerCase().includes('rear')
         );
         const targetId = backCameras.length > 0 
             ? backCameras[backCameras.length - 1].id 
-            : devices[devices.length - 1].id;
+            : devices[0].id;
 
-        // 5. 特定したIDを使ってカメラを起動
+        // 4. ここでインスタンスを作成（要素が確実にある状態で）
         html5QrCode = new Html5Qrcode("reader");
+
+        // 5. 起動
         await html5QrCode.start(
             targetId, 
-            { fps: 10, qrbox: 250 }, 
+            { fps: 10, qrbox: { width: 250, height: 250 } }, // qrboxをオブジェクト形式に
             (text) => {
                 html5QrCode.stop().then(() => {
-                    // スキャン成功後の処理
+                    fetchHistory(text.trim());
+                }).catch(() => {
                     fetchHistory(text.trim());
                 });
-            }
+            },
+            (errorMessage) => { /* 読み取り中無視 */ }
         );
     } catch (err) {
-        console.error(err);
-        alert("カメラ起動エラーが発生しました。");
+        // エラーを詳細に表示して原因を特定しやすくする
+        console.error("Camera Error:", err);
+        alert("カメラを起動できませんでした。\nエラー詳細: " + err);
         showPage('home');
     }
 }
+
+    // カメラ停止
+    function stopCamera() {
+        if (html5QrCode) {
+            html5QrCode.stop().then(() => {
+                html5QrCode = null;
+                showPage('home');
+            }).catch(() => {
+                html5QrCode = null;
+                showPage('home');
+            });
+        } else {
+            showPage('home');
+        }
+    }
+
+    // データ取得
+    async function fetchHistory(id) {
+        showPage('home');
+        try {
+            const res = await fetch(`${GAS_URL}?action=getHistory&id=${id}`);
+            const data = await res.json();
+            
+            if (!data || data.length === 0) {
+                alert("明細が見つかりませんでした。");
+                return;
+            }
+            renderResult(data);
+        } catch (e) {
+            alert("通信エラーが発生しました。");
+        }
+    }
+
+    // 結果表示
+    function renderResult(data) {
+        showPage('result-page');
+        document.getElementById("cust-name").innerText = data[0].customerName + " 様";
+        
+        let total = 0;
+        const html = data.map(item => {
+            const sub = Number(item.subtotal || 0);
+            total += sub;
+            return `
+                <div class="item-row">
+                    <div>
+                        <small style="color:#666;">${item.maker}</small><br>
+                        <strong>${item.name}</strong><br>
+                        <small>¥${Number(item.price).toLocaleString()} × ${item.qty}</small>
+                    </div>
+                    <div style="font-weight:bold; align-self:center;">
+                        ¥${sub.toLocaleString()}
+                    </div>
+                </div>`;
+        }).join('');
+        
+        document.getElementById("history-list").innerHTML = html;
+        document.getElementById("total-amount").innerText = total.toLocaleString();
+    }
 </script>
 </body>
 </html>
