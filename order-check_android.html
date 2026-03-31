@@ -85,7 +85,7 @@
 </div>
 
 <script>
-    const GAS_URL = "https://script.google.com/macros/s/AKfycbwwOLmcWdTtibIAqmOie9t88_RBSzb-F9yOu6Z9d-mII9QA_bM6sJDbNbV0YYqssHad/exec"; 
+    const GAS_URL = "https://script.google.com/macros/s/AKfycbzk-JGRLE5KrO1fIgxyaHqJRL7oeR3skPmh2GtI8sbTYdl4kzPjsS1YHcJuIHmUHVnH/exec"; 
 
     let html5QrCode = null;
     let currentCustomerId = ""; // 顧客IDを保持
@@ -145,23 +145,19 @@
         document.getElementById("scan-view").style.display = "none";
         document.getElementById("loading").style.display = "block";
         
-        // typeが"tel"なら電話用のアクション、そうでなければ顧客ID用のアクションを呼ぶ
         const actionName = (type === "tel") ? "getHistoryByTel" : "getCustomerSpecificHistory";
-        
-        const oldScript = document.getElementById('gas-script');
-        if (oldScript) oldScript.remove();
+        const url = `${GAS_URL}?action=${actionName}&val=${encodeURIComponent(val)}`;
 
-        const script = document.createElement('script');
-        script.id = 'gas-script';
-        // valに「電話番号」または「顧客ID」が入ってGASに飛びます
-        script.src = `${GAS_URL}?action=${actionName}&val=${encodeURIComponent(val)}&callback=showResult`;
-        
-        script.onerror = function() {
-            alert("通信に失敗しました。");
-            location.reload();
-        };
-        
-        document.body.appendChild(script);
+        // 元の fetch 方式に戻しました
+        fetch(url)
+            .then(res => res.json())
+            .then(data => {
+                showResult(data);
+            })
+            .catch(err => {
+                alert("通信に失敗しました。");
+                location.reload();
+            });
     }
 
     // 結果表示（メール送信ボタンの制御含む）
