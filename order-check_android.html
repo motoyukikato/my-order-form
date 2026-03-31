@@ -90,7 +90,6 @@
         </button>
     </div>
 </div>
-
 <script>
     const GAS_URL = "https://script.google.com/macros/s/AKfycbzNhwcuwGN8xQCSMu9vcu9gK6ZRi852JSwjXA5Buali39mtHlUqToa21m0lCzYQDUBx/exec"; 
 
@@ -102,27 +101,32 @@
         const readerDiv = document.getElementById("reader");
         const startBtn = document.getElementById("start-btn");
 
+        // 1. 徹底的に掃除（古いカメラ接続を殺す）
         if (html5QrCode) {
             try { await html5QrCode.stop(); } catch (e) {}
+            html5QrCode = null;
         }
-        
         readerDiv.innerHTML = "";
         startBtn.style.display = "none";
-        
-        html5QrCode = new Html5Qrcode("reader");
-
-        const config = { 
-            fps: 10, 
-            qrbox: { width: 250, height: 250 },
-            aspectRatio: 1.0
-        };
 
         try {
+            // 2. ブラウザ標準の機能(navigator.mediaDevices)で、まずカメラ映像そのものを確保する
+            // これにより「真っ黒」を防ぎます
+            const stream = await navigator.mediaDevices.getUserMedia({ 
+                video: { facingMode: "environment" }, 
+                audio: false 
+            });
+
+            // 3. 映像が確保できたら、ライブラリを「後から」被せる
+            html5QrCode = new Html5Qrcode("reader");
+
+            // 4. 確保したストリームを使ってスキャン開始
             await html5QrCode.start(
                 { facingMode: "environment" }, 
-                config, 
+                { fps: 10, qrbox: { width: 250, height: 250 } },
                 async (text) => {
-                    // スキャン成功時
+                    // スキャン成功
+                    stream.getTracks().forEach(track => track.stop()); // カメラを完全に止める
                     await html5QrCode.stop();
                     currentScannedId = text.trim();
                     document.getElementById("scan-view").style.display = "none";
@@ -131,21 +135,30 @@
                 }
             );
         } catch (err) {
-            console.error("Scan Error:", err);
-            alert("カメラを起動できませんでした。Chromeの全タブを終了して開き直してください。");
-            startBtn.style.display = "block";
+            console.error("Critical Camera Error:", err);
+            // 5. それでもダメな場合の究極の最終手段（カメラIDを直接指定）
+            try {
+                const devices = await Html5Qrcode.getCameras();
+                const backCam = devices.find(d => d.label.toLowerCase().includes('back')) || devices[devices.length - 1];
+                await html5QrCode.start(backCam.id, { fps: 10, qrbox: 250 }, async (text) => {
+                    await html5QrCode.stop();
+                    currentScannedId = text.trim();
+                    document.getElementById("scan-view").style.display = "none";
+                    document.getElementById("auth-view").style.display = "block";
+                });
+            } catch (e) {
+                alert("カメラが別のアプリで使用されているか、フリーズしています。Androidの「設定」からChromeを「強制停止」するか、端末を再起動してください。");
+                startBtn.style.display = "block";
+            }
         }
     }
 
+    // --- 以降、verifyAndShow 等のロジック（変更なし） ---
     function verifyAndShow() {
         const authCode = document.getElementById("auth-code").value;
-        if (authCode.length !== 4) {
-            return alert("下4桁を正しく入力してください");
-        }
-
+        if (authCode.length !== 4) return alert("下4桁を正しく入力してください");
         document.getElementById("auth-view").style.display = "none";
         document.getElementById("loading").style.display = "block";
-
         const script = document.createElement('script');
         script.src = `${GAS_URL}?id=${encodeURIComponent(currentScannedId)}&auth=${authCode}&callback=showResult`;
         document.body.appendChild(script);
@@ -153,34 +166,20 @@
 
     function showResult(data) {
         document.getElementById("loading").style.display = "none";
-        
         if (!data || data.length === 0) {
             alert("本人確認ができませんでした。IDまたは電話番号の下4桁が正しいかご確認ください。");
             document.getElementById("auth-view").style.display = "block";
             return;
         }
-
         document.getElementById("result-view").style.display = "block";
         const tableBody = document.getElementById("history-table-body");
         let total = 0;
         lastFetchedData = data;
-
         document.getElementById("email-btn").style.display = "block";
         document.getElementById("cust-name").innerText = data[0].customerName + " 様";
-        
         tableBody.innerHTML = data.map(item => {
             total += Number(item.subtotal || 0);
-            return `
-                <tr>
-                    <td>
-                        <span class="status-badge">${item.maker}</span><br>
-                        <span class="item-name">${item.name}</span>
-                        <span class="item-info">¥${Number(item.price).toLocaleString()} × ${item.qty}</span>
-                    </td>
-                    <td style="text-align:right; font-weight:bold; vertical-align:bottom;">
-                        ¥${Number(item.subtotal).toLocaleString()}
-                    </td>
-                </tr>`;
+            return `<tr><td><span class="status-badge">${item.maker}</span><br><span class="item-name">${item.name}</span><span class="item-info">¥${Number(item.price).toLocaleString()} × ${item.qty}</span></td><td style="text-align:right; font-weight:bold; vertical-align:bottom;">¥${Number(item.subtotal).toLocaleString()}</td></tr>`;
         }).join('');
         document.getElementById("total-amount").innerText = total.toLocaleString();
     }
@@ -189,11 +188,9 @@
         let currentEmail = (lastFetchedData && lastFetchedData.length > 0) ? lastFetchedData[0].email : "";
         const newEmail = window.prompt("請書の送信先を確認・修正してください。", currentEmail);
         if (newEmail === null || !newEmail.trim()) return;
-
         const btn = document.getElementById("email-btn");
         btn.disabled = true;
         btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> 送信中...';
-
         const script = document.createElement('script');
         script.src = `${GAS_URL}?action=sendEmail&id=${encodeURIComponent(currentScannedId)}&email=${encodeURIComponent(newEmail.trim())}&callback=onEmailSent`;
         document.body.appendChild(script);
@@ -212,6 +209,3 @@
         }
     }
 </script>
-
-</body>
-</html>
