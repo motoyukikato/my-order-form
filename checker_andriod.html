@@ -11,20 +11,17 @@
         header { background: #4267B2; color: white; text-align: center; padding: 20px; font-weight: bold; font-size: 1.2em; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
         .container { padding: 15px; max-width: 600px; margin: auto; }
         .card { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); margin-bottom: 20px; }
-        #reader { width: 100%; border-radius: 12px; overflow: hidden; background: #000; }
+        #reader { width: 100% !important; border-radius: 12px; overflow: hidden; background: #000; min-height: 250px; }
         table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 0.9em; }
         th { background: #f1f3f5; text-align: left; padding: 10px; border-bottom: 2px solid #dee2e6; color: #495057; }
         td { padding: 12px 10px; border-bottom: 1px solid #eee; vertical-align: middle; }
-        .item-name { font-weight: bold; display: block; margin-bottom: 2px; }
-        .item-info { color: #666; font-size: 0.85em; }
-        .status-badge { display: inline-block; padding: 2px 8px; border-radius: 12px; font-size: 0.75em; font-weight: bold; background: #e9ecef; color: #495057; }
         .total-box { background: #343a40; color: white; padding: 20px; border-radius: 12px; text-align: right; margin-top: 15px; }
         .total-label { font-size: 0.9em; opacity: 0.8; }
         .total-price { font-size: 1.6em; color: #ffeb3b; font-weight: bold; margin-left: 10px; }
         .btn { border: none; width: 100%; padding: 16px; border-radius: 8px; font-size: 17px; font-weight: bold; cursor: pointer; transition: 0.2s; margin-top: 10px; }
         .btn-scan { background: #28a745; color: white; }
+        .btn-tel { background: #6c757d; color: white; margin-top: 10px; }
         .btn-email { background: #007bff; color: white; display: none; }
-        .btn-email:disabled { background: #adb5bd; }
         .loading { text-align: center; padding: 40px; display: none; color: #4267B2; }
     </style>
 </head>
@@ -35,16 +32,18 @@
 <div class="container">
     <div id="scan-view">
         <div class="card">
-            <p style="text-align:center; font-weight:bold;">お客様QRをスキャンしてください</p>
+            <p style="text-align:center; font-weight:bold;">お客様QRをスキャン<br>または電話番号を入力してください</p>
             <div id="reader"></div>
-            <button id="start-btn" class="btn btn-scan" onclick="startScan()">
-                <i class="fa-solid fa-camera"></i> スキャン開始
-            </button>
+            <div id="button-group" style="display: flex; gap: 10px;">
+                <button id="start-btn" class="btn btn-scan" style="flex: 2;" onclick="startScan()">
+                    <i class="fa-solid fa-camera"></i> スキャン
+                </button>
+                <button id="tel-btn" class="btn btn-tel" style="flex: 1;" onclick="inputTel()">
+                    <i class="fa-solid fa-phone"></i> 手入力
+                </button>
+            </div>
+            <button id="stop-btn" class="btn" style="display:none; background:#666; color:white;" onclick="stopScan()">キャンセル</button>
         </div>
-    </div>
-
-    <div id="loading" class="loading">
-        <i class="fa-solid fa-circle-notch fa-spin fa-3x"></i><br><br>データを照合中...
     </div>
 
     <div id="auth-view" style="display:none;" class="card">
@@ -52,10 +51,15 @@
         <p style="font-size:14px; color:#666; text-align:center;">
             ご登録電話番号の<strong>下4桁</strong>を入力してください。
         </p>
-        <input type="tel" id="auth-code" maxlength="4" 
+        <input type="tel" id="auth-code" maxlength="4" inputmode="numeric" 
                style="width:100%; padding:15px; font-size:24px; text-align:center; letter-spacing:10px; border:2px solid #4267B2; border-radius:8px; margin-bottom:15px; box-sizing: border-box;" 
                placeholder="0000">
         <button class="btn btn-scan" onclick="verifyAndShow()">確認して明細を表示</button>
+        <button onclick="location.reload()" style="width:100%; margin-top:10px; background:none; border:none; color:#888; font-size:14px;">キャンセル</button>
+    </div>
+
+    <div id="loading" class="loading">
+        <i class="fa-solid fa-circle-notch fa-spin fa-3x"></i><br><br>データを照合中...
     </div>
 
     <div id="result-view" style="display:none;">
@@ -87,130 +91,165 @@
         </button>
         
         <button onclick="location.reload()" style="width:100%; margin-top:20px; padding:12px; background:none; border:1px solid #ccc; border-radius:8px; color:#666; font-size:14px;">
-            別のQRを読み取る
+            戻る
         </button>
     </div>
 </div>
 
 <script>
     // 【重要】GASで新しいデプロイを行ったら、URLを最新のものに差し替えてください
-    const GAS_URL = "https://script.google.com/macros/s/AKfycbxkdpyh0y36H_CMW6VI8p_YBUg0u4OPzfEeJ4ODdYwrnwxjbosG2KSnupuoEjdLiDEv/exec"; 
+    const GAS_URL = "https://script.google.com/macros/s/AKfycbzk-JGRLE5KrO1fIgxyaHqJRL7oeR3skPmh2GtI8sbTYdl4kzPjsS1YHcJuIHmUHVnH/exec"; 
 
-    let currentScannedId = "";
+    let html5QrCode = null;
+    let currentCustomerId = ""; 
+    let currentInputType = ""; // "id" か "tel" を保持
     let lastFetchedData = [];
 
-   async function startScan() {
-        const scanner = new Html5Qrcode("reader");
-        document.getElementById("start-btn").style.display = "none";
+    // カメラ開始
+    async function startScan() {
+        document.getElementById("button-group").style.display = "none";
+        document.getElementById("stop-btn").style.display = "block";
+        document.getElementById("reader").innerHTML = "";
+
+        const config = { 
+            fps: 15, 
+            qrbox: 250,
+            videoConstraints: {
+                facingMode: { ideal: "environment" },
+                focusMode: "continuous"
+            }
+        };
+
         try {
-            await scanner.start({ facingMode: "environment" }, { fps: 15, qrbox: 250 }, 
+            html5QrCode = new Html5Qrcode("reader");
+            await html5QrCode.start(
+                { facingMode: "environment" }, 
+                config,
                 async (text) => {
-                    await scanner.stop();
-                    
-                    // 1. スキャンしたIDを一旦保存する
-                    currentScannedId = text.trim(); 
-                    
-                    // 2. すぐに fetchHistory(text) を呼ばず、入力画面を出す
-                    document.getElementById("scan-view").style.display = "none";
-                    document.getElementById("auth-view").style.display = "block";
-                    
-                    // 3. 入力欄に自動でカーソルを合わせる（スマホだとキーボードが出ます）
-                    document.getElementById("auth-code").focus();
+                    await stopScan();
+                    currentCustomerId = text.trim();
+                    currentInputType = "id";
+                    showAuthView();
                 }
             );
         } catch (err) {
-            alert("カメラの起動に失敗しました");
-            document.getElementById("start-btn").style.display = "block";
+            alert("カメラ起動エラー: " + err);
+            stopScan();
         }
     }
-    // 新しく追加する関数
+
+    async function stopScan() {
+        if (html5QrCode) {
+            try { await html5QrCode.stop(); } catch (e) {}
+            html5QrCode = null;
+        }
+        document.getElementById("button-group").style.display = "flex";
+        document.getElementById("stop-btn").style.display = "none";
+    }
+
+    // 電話番号入力
+    function inputTel() {
+        const tel = window.prompt("検索する電話番号を入力してください\n(ハイフンなし)");
+        if (!tel || tel.trim() === "") return;
+        currentCustomerId = tel.trim();
+        currentInputType = "tel";
+        showAuthView();
+    }
+
+    // 認証画面を表示
+    function showAuthView() {
+        document.getElementById("scan-view").style.display = "none";
+        document.getElementById("auth-view").style.display = "block";
+        setTimeout(() => {
+            document.getElementById("auth-code").focus();
+        }, 300);
+    }
+
+    // GASへデータ取得リクエスト
     function verifyAndShow() {
         const authCode = document.getElementById("auth-code").value;
-        if (authCode.length !== 4) {
-            return alert("下4桁を正しく入力してください");
-        }
+        if (authCode.length !== 4) return alert("下4桁を入力してください");
 
-        // 認証画面を消して、ローディング（照合中）を出す
         document.getElementById("auth-view").style.display = "none";
         document.getElementById("loading").style.display = "block";
-
-        // ここで初めてGASに問い合わせる（IDと下4桁をセットで送る）
-        const script = document.createElement('script');
-        script.src = `${GAS_URL}?id=${encodeURIComponent(currentScannedId)}&auth=${authCode}&callback=showResult`;
-        document.body.appendChild(script);
-    }
-
-    // 履歴取得 (JSONP方式)
-    function fetchHistory(id) {
-        document.getElementById("scan-view").style.display = "none";
-        document.getElementById("loading").style.display = "block";
         
-        // callback=showResult を指定してGASを叩く
-        const script = document.createElement('script');
-        script.src = `${GAS_URL}?id=${encodeURIComponent(id)}&callback=showResult`;
-        document.body.appendChild(script);
+        const actionName = (currentInputType === "tel") ? "getHistoryByTel" : "getCustomerSpecificHistory";
+        // authパラメータを追加して送信
+        const url = `${GAS_URL}?action=${actionName}&val=${encodeURIComponent(currentCustomerId)}&auth=${authCode}`;
+
+        fetch(url)
+            .then(res => res.json())
+            .then(data => {
+                showResult(data);
+            })
+            .catch(err => {
+                alert("通信に失敗しました。");
+                location.reload();
+            });
     }
 
-    // GASからのデータを受け取って表示
     function showResult(data) {
         document.getElementById("loading").style.display = "none";
         document.getElementById("result-view").style.display = "block";
         const tableBody = document.getElementById("history-table-body");
-        let total = 0;
-        lastFetchedData = data;
+        let total = 0; 
+        lastFetchedData = data; 
 
-        if (data && data.length > 0) {
+        if (data && data.length > 0 && !data.error) {
             document.getElementById("email-btn").style.display = "block";
-            document.getElementById("cust-name").innerText = data[0].customerName + " 様";
-            
+            const firstItem = data[0];
+            document.getElementById("cust-name").innerText = (firstItem.customerName || "お客様") + " 様";
+            currentCustomerId = firstItem.customerId || currentCustomerId;
+
             tableBody.innerHTML = data.map(item => {
-                total += Number(item.subtotal || 0);
+                const p = Number(String(item.price || "0").replace(/[^0-9.-]/g, ''));
+                const q = Number(String(item.qty || "0").replace(/[^0-9.-]/g, ''));
+                const subtotal = p * q; 
+                total += subtotal; 
+
                 return `
                     <tr>
-                        <td>
-                            <span class="status-badge">${item.maker}</span> 
-                            <span class="status-badge" style="background:#fff3cd;">${item.stock || '通常'}</span><br>
-                            <span class="item-name">${item.name}</span>
-                            <span class="item-info">¥${Number(item.price).toLocaleString()} × ${item.qty}</span>
+                        <td style="font-size: 0.85em; padding: 12px 10px;">
+                            <span style="color:#888;">${item.displayDate || ''}</span><br>
+                            <strong style="font-size: 1.1em; display: block; margin: 3px 0;">${item.name || '---'}</strong>
+                            <div style="color:#666; line-height: 1.4;">
+                                単価：<span style="color:#333; font-weight:bold;">¥${p.toLocaleString()}</span> / 数量：${q}
+                            </div>
                         </td>
-                        <td style="text-align:right; font-weight:bold; vertical-align:bottom;">
-                            ¥${Number(item.subtotal).toLocaleString()}
+                        <td style="text-align:right; font-weight:bold; vertical-align:bottom; font-size: 1.1em; padding-bottom: 15px;">
+                            ¥${subtotal.toLocaleString()}
                         </td>
                     </tr>`;
             }).join('');
             document.getElementById("total-amount").innerText = total.toLocaleString();
         } else {
-            tableBody.innerHTML = '<tr><td colspan="2" style="text-align:center; padding:30px; color:#999;">履歴がありません。<br><small>(ID: ' + currentScannedId + ')</small></td></tr>';
+            tableBody.innerHTML = '<tr><td colspan="2" style="text-align:center; padding:30px; color:#999;">履歴が見つからないか、認証に失敗しました。</td></tr>';
             document.getElementById("email-btn").style.display = "none";
         }
     }
 
-    async function requestEmail() {
-        let currentEmail = (lastFetchedData && lastFetchedData.length > 0) ? lastFetchedData[0].email : "";
-        const newEmail = window.prompt("請書の送信先を確認・修正してください。", currentEmail);
-        if (newEmail === null || !newEmail.trim()) return;
+    function requestEmail() {
+        let defaultEmail = "";
+        if (lastFetchedData && lastFetchedData.length > 0) {
+            const found = lastFetchedData.find(d => d.email && d.email.includes("@"));
+            defaultEmail = found ? found.email : "";
+        }
+        const newEmail = window.prompt("送信先を確認してください。", defaultEmail);
+        if (!newEmail) return;
 
         const btn = document.getElementById("email-btn");
         btn.disabled = true;
         btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> 送信中...';
 
-        const script = document.createElement('script');
-        script.src = `${GAS_URL}?action=sendEmail&id=${encodeURIComponent(currentScannedId)}&email=${encodeURIComponent(newEmail.trim())}&callback=onEmailSent`;
-        document.body.appendChild(script);
-
-        setTimeout(() => {
-            if (btn.disabled && btn.innerHTML.includes('送信中')) onEmailSent({success: true});
-        }, 5000);
-    }
-
-    function onEmailSent(response) {
-        const btn = document.getElementById("email-btn");
-        if (!btn.disabled || btn.innerHTML.includes('送信完了')) return;
-        alert("請書メールを送信しました！");
-        btn.style.background = "#6c757d";
-        btn.innerHTML = '<i class="fa-solid fa-check"></i> 送信完了';
+        fetch(`${GAS_URL}?action=sendEmail&val=${encodeURIComponent(currentCustomerId)}&email=${encodeURIComponent(newEmail.trim())}`)
+            .then(res => res.json())
+            .then(res => {
+                alert("送信しました！");
+                btn.innerHTML = '<i class="fa-solid fa-check"></i> 送信完了';
+                btn.style.background = "#28a745";
+            })
+            .catch(err => alert("送信エラー"));
     }
 </script>
-
 </body>
 </html>
