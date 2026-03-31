@@ -50,88 +50,50 @@
 </div>
 
 <script>
-    const GAS_URL = "https://script.google.com/macros/s/AKfycbwjTY1GECS8D1t8ARVEadGnrD3PaOOrR5Ae34RVK2PlbQSsJB2zQz2HPaSvMmRwzA/exec"; // ★ここにURLを貼る
-
-    let html5QrCode = null;
-
    async function startCamera() {
-    // ライブラリ自体が読み込まれているかチェック
-    if (typeof Html5Qrcode === 'undefined') {
-        alert("ライブラリが読み込まれていません。再読み込みしてください。");
-        return;
-    }
-
     showPage('scanner-page');
     
+    // 1. 既に起動している場合は確実に停止・クリアする
+    if (html5QrCode) { 
+        try { await html5QrCode.stop(); } catch (e) {} 
+        html5QrCode = null; 
+    }
+    
+    // 2. 表示エリアを一旦リセット
+    document.getElementById("reader").innerHTML = "";
+    
     try {
-        // 既存のインスタンスがあれば停止・クリア
-        if (html5QrCode) {
-            await html5QrCode.clear();
-        }
-        
+        // 3. 端末のカメラ一覧を取得
+        const devices = await Html5Qrcode.getCameras();
+        if (!devices || devices.length === 0) return alert("カメラが見つかりません");
+
+        // 4. 背面（back/rear）カメラを探す。見つからなければ最後に見つかったカメラを使う
+        const backCameras = devices.filter(d => 
+            d.label.toLowerCase().includes('back') || 
+            d.label.toLowerCase().includes('rear')
+        );
+        const targetId = backCameras.length > 0 
+            ? backCameras[backCameras.length - 1].id 
+            : devices[devices.length - 1].id;
+
+        // 5. 特定したIDを使ってカメラを起動
         html5QrCode = new Html5Qrcode("reader");
-        
         await html5QrCode.start(
-            { facingMode: "environment" },
-            { fps: 10, qrbox: 250 },
+            targetId, 
+            { fps: 10, qrbox: 250 }, 
             (text) => {
                 html5QrCode.stop().then(() => {
+                    // スキャン成功後の処理
                     fetchHistory(text.trim());
                 });
             }
         );
     } catch (err) {
-        // undefinedを避けるため、エラーの中身を詳細に表示
         console.error(err);
-        alert("詳細エラー: " + (err.message || JSON.stringify(err) || "不明なエラー"));
+        alert("カメラ起動エラーが発生しました。");
         showPage('home');
     }
 }
-    async function fetchHistory(id) {
-        showPage('home'); // 一旦戻して待機
-        try {
-            // GET方式でデータを取得（action=getHistory を送る）
-            const res = await fetch(`${GAS_URL}?action=getHistory&id=${id}`);
-            const data = await res.json();
-            
-            if (!data || data.length === 0) {
-                alert("明細が見つかりませんでした。");
-                return;
-            }
-            renderResult(data);
-        } catch (e) {
-            alert("通信エラーが発生しました。");
-        }
-    }
-
-    function renderResult(data) {
-        showPage('result-page');
-        document.getElementById("cust-name").innerText = data[0].customerName + " 様";
-        
-        let total = 0;
-        const html = data.map(item => {
-            total += Number(item.subtotal || 0);
-            return `
-                <div class="item-row">
-                    <div>
-                        <small style="color:#666;">${item.maker}</small><br>
-                        <strong>${item.name}</strong><br>
-                        <small>¥${Number(item.price).toLocaleString()} × ${item.qty}</small>
-                    </div>
-                    <div style="font-weight:bold; align-self:center;">
-                        ¥${Number(item.subtotal).toLocaleString()}
-                    </div>
-                </div>`;
-        }).join('');
-        
-        document.getElementById("history-list").innerHTML = html;
-        document.getElementById("total-amount").innerText = total.toLocaleString();
-    }
-
-    function showPage(id) {
-        document.querySelectorAll('.page-section').forEach(p => p.classList.remove('active'));
-        document.getElementById(id).classList.add('active');
-    }
 </script>
 </body>
 </html>
