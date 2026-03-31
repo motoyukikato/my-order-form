@@ -100,67 +100,38 @@
 <script>
     const GAS_URL = "https://script.google.com/macros/s/AKfycbzNhwcuwGN8xQCSMu9vcu9gK6ZRi852JSwjXA5Buali39mtHlUqToa21m0lCzYQDUBx/exec"; 
 
-    let currentScannedId = "";
-    let html5QrCode = null;
-
     async function startScan() {
         const readerDiv = document.getElementById("reader");
         const startBtn = document.getElementById("start-btn");
-        
-        // 1. 既存のインスタンスがあれば破棄
-        if (html5QrCode) {
-            try { await html5QrCode.stop(); } catch (e) {}
-        }
-        
-        readerDiv.innerHTML = "";
-        startBtn.style.display = "none";
-        html5QrCode = new Html5Qrcode("reader");
 
         try {
-            // 2. 利用可能なカメラリストを取得
-            const devices = await Html5Qrcode.getCameras();
+            startBtn.style.display = "none";
             
-            if (!devices || devices.length === 0) {
-                throw new Error("カメラが見つかりません。設定を確認してください。");
-            }
+            // ライブラリを無視！ブラウザに直接「背面カメラを映せ」と命令
+            const stream = await navigator.mediaDevices.getUserMedia({ 
+                video: { 
+                    facingMode: "environment",
+                    width: { ideal: 1280 },
+                    height: { ideal: 720 }
+                }, 
+                audio: false 
+            });
 
-            // 3. 背面カメラ(back/rear)を優先的に探す
-            const backCamera = devices.find(d => 
-                d.label.toLowerCase().includes('back') || 
-                d.label.toLowerCase().includes('rear') ||
-                d.label.toLowerCase().includes('背面')
-            );
+            // 表示用のvideoタグを自前で作る
+            readerDiv.innerHTML = `
+                <video id="webcam-video" autoplay playsinline muted 
+                    style="width:100%; height:auto; border-radius:12px; background:#000;">
+                </video>`;
+            
+            const video = document.getElementById("webcam-video");
+            video.srcObject = stream;
 
-            // 選択するカメラID（背面があれば優先、なければ最初のカメラ）
-            const targetCameraId = backCamera ? backCamera.id : devices[0].id;
-
-            const config = { 
-                fps: 10, 
-                qrbox: { width: 250, height: 250 },
-                // アスペクト比などを固定せず、Androidの相性に任せる設定
-                aspectRatio: 1.0 
-            };
-
-            // 4. カメラ起動実行
-            await html5QrCode.start(
-                targetCameraId, 
-                config, 
-                onScanSuccess
-            );
+            alert("映像が出ました！映像が出れば、あとは読み取り機能を乗せるだけです。");
 
         } catch (err) {
-            console.error("Camera Error:", err);
-            // 5. 失敗した場合の最終手段：標準のfacingModeで再試行
-            try {
-                await html5QrCode.start(
-                    { facingMode: "environment" }, 
-                    { fps: 10, qrbox: 250 }, 
-                    onScanSuccess
-                );
-            } catch (lastErr) {
-                alert("カメラを起動できませんでした。\n・他のタブでカメラを使っていないか\n・ブラウザのカメラ権限が許可されているか\nを確認してください。");
-                startBtn.style.display = "block";
-            }
+            console.error("Fatal Error:", err);
+            alert("エラー: " + err.name + "\n" + err.message);
+            startBtn.style.display = "block";
         }
     }
 
