@@ -3,184 +3,254 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>ご注文明細確認</title>
+    <title>ご注文内容確認</title>
     <script src="https://unpkg.com/html5-qrcode"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
-        body { font-family: sans-serif; margin: 0; background: #f4f7f9; color: #333; }
-        header { background: #3b5998; color: white; text-align: center; padding: 15px; font-weight: bold; }
-        .container { padding: 15px; max-width: 500px; margin: auto; }
-        .card { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); margin-bottom: 20px; }
-        .btn-main { width: 100%; padding: 15px; border: none; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer; color: white; background: #3b5998; display: block; text-align: center; }
-        #reader { width: 100% !important; background: #000; border-radius: 12px; min-height: 300px; }
-        .item-row { border-bottom: 1px solid #eee; padding: 15px 0; display: flex; justify-content: space-between; }
-        .total-box { text-align: right; padding: 20px; font-size: 1.4em; color: #d9534f; font-weight: bold; border-top: 2px solid #eee; }
-        .page-section { display: none; }
-        .active { display: block; }
+        body { font-family: -apple-system, "Helvetica Neue", Arial, sans-serif; margin: 0; background: #f8f9fa; color: #333; line-height: 1.6; }
+        header { background: #4267B2; color: white; text-align: center; padding: 20px; font-weight: bold; font-size: 1.2em; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        .container { padding: 15px; max-width: 600px; margin: auto; }
+        .card { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); margin-bottom: 20px; }
+        #reader { width: 100% !important; border-radius: 12px; overflow: hidden; background: #000; min-height: 250px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 0.9em; }
+        th { background: #f1f3f5; text-align: left; padding: 10px; border-bottom: 2px solid #dee2e6; color: #495057; }
+        td { padding: 12px 10px; border-bottom: 1px solid #eee; vertical-align: middle; }
+        .total-box { background: #343a40; color: white; padding: 20px; border-radius: 12px; text-align: right; margin-top: 15px; }
+        .total-label { font-size: 0.9em; opacity: 0.8; }
+        .total-price { font-size: 1.6em; color: #ffeb3b; font-weight: bold; margin-left: 10px; }
+        .btn { border: none; width: 100%; padding: 16px; border-radius: 8px; font-size: 17px; font-weight: bold; cursor: pointer; transition: 0.2s; margin-top: 10px; }
+        .btn-scan { background: #28a745; color: white; }
+        .btn-tel { background: #6c757d; color: white; margin-top: 10px; }
+        .btn-email { background: #007bff; color: white; display: none; }
+        .loading { text-align: center; padding: 40px; display: none; color: #4267B2; }
     </style>
 </head>
 <body>
 
-<header>ご注文明細確認</header>
+<header>ご注文履歴・請書発行</header>
 
 <div class="container">
-    <section id="home" class="page-section active">
-        <div class="card" style="text-align:center;">
-            <i class="fas fa-qrcode fa-5x" style="color:#3b5998; margin-bottom:20px;"></i>
-            <p>QRコードをスキャンして<br>明細を確認してください。</p>
-            <button class="btn-main" onclick="startCamera()">
-                <i class="fas fa-camera"></i> スキャンを開始する
-            </button>
-        </div>
-    </section>
-
-    <section id="scanner-page" class="page-section">
-        <div id="reader"></div>
-        <button class="btn-main" style="background:#666; margin-top:15px;" onclick="stopCamera()">キャンセル</button>
-    </section>
-
-    <section id="result-page" class="page-section">
+    <div id="scan-view">
         <div class="card">
-            <h3 id="cust-name" style="color:#3b5998; border-bottom:2px solid #3b5998; padding-bottom:10px;"></h3>
-            <div id="history-list"></div>
-            <div class="total-box">合計：¥<span id="total-amount">0</span></div>
+            <p style="text-align:center; font-weight:bold;">お客様QRをスキャン<br>または電話番号を入力してください</p>
+            <div id="reader"></div>
+            <div id="button-group" style="display: flex; gap: 10px;">
+                <button id="start-btn" class="btn btn-scan" style="flex: 2;" onclick="startScan()">
+                    <i class="fa-solid fa-camera"></i> スキャン
+                </button>
+                <button id="tel-btn" class="btn btn-tel" style="flex: 1;" onclick="inputTel()">
+                    <i class="fa-solid fa-phone"></i> 手入力
+                </button>
+            </div>
+            <button id="stop-btn" class="btn" style="display:none; background:#666; color:white;" onclick="stopScan()">キャンセル</button>
         </div>
-        <button class="btn-main" style="background:#666;" onclick="location.reload()">TOPへ戻る</button>
-    </section>
+    </div>
+
+    <div id="loading" class="loading">
+        <i class="fa-solid fa-circle-notch fa-spin fa-3x"></i><br><br>データを照合中...
+    </div>
+
+    <div id="result-view" style="display:none;">
+        <div class="card" style="border-left: 6px solid #4267B2; padding: 15px;">
+            <small style="color:#888;">ご担当者様</small>
+            <div id="cust-name" style="font-size: 1.3em; font-weight: bold;">---</div>
+        </div>
+
+        <div class="card">
+            <h4 style="margin-top:0; border-bottom:1px solid #eee; padding-bottom:10px;">ご注文明細</h4>
+            <table>
+                <thead>
+                    <tr>
+                        <th>商品内容</th>
+                        <th style="text-align:right;">小計</th>
+                    </tr>
+                </thead>
+                <tbody id="history-table-body"></tbody>
+            </table>
+
+            <div class="total-box">
+                <span class="total-label">合計金額(税込)</span>
+                <span class="total-price">¥<span id="total-amount">0</span></span>
+            </div>
+        </div>
+
+        <button id="email-btn" class="btn btn-email" onclick="requestEmail()">
+            <i class="fa-solid fa-paper-plane"></i> この内容で請書を発行
+        </button>
+        
+        <button onclick="location.reload()" style="width:100%; margin-top:20px; padding:12px; background:none; border:1px solid #ccc; border-radius:8px; color:#666; font-size:14px;">
+            戻る
+        </button>
+    </div>
 </div>
 
 <script>
-    // ★GASのURLをセット
-    const GAS_URL = "https://script.google.com/macros/s/AKfycbwjTY1GECS8D1t8ARVEadGnrD3PaOOrR5Ae34RVK2PlbQSsJB2zQz2HPaSvMmRwzA/exec";
+    const GAS_URL = "https://script.google.com/macros/s/AKfycbwwWew158iAJ54RJilVAWA0QpcZlh_-3EY14NMIHRX6Ny_hNc-qokM6uF1YJ0_cN74vaA/exec"; 
 
     let html5QrCode = null;
+    let currentCustomerId = ""; // 顧客IDを保持
+    let lastFetchedData = [];
 
-    // ページ切り替え
-    function showPage(id) {
-        document.querySelectorAll('.page-section').forEach(p => p.classList.remove('active'));
-        const target = document.getElementById(id);
-        if (target) target.classList.add('active');
-    }
+    async function startScan() {
+        document.getElementById("button-group").style.display = "none";
+        document.getElementById("stop-btn").style.display = "block";
+        document.getElementById("reader").innerHTML = "";
 
-    // カメラ開始
-    async function startCamera() {
-    // 1. まずページを切り替える
-    showPage('scanner-page');
-    
-    // 2. DOMの描画を待つために一瞬だけ待機（100ミリ秒）
-    // これにより、Android Chromeでの「要素が見つからない」エラーを回避します
-    await new Promise(resolve => setTimeout(resolve, 100));
-
-    // 既存の停止処理
-    if (html5QrCode) {
-        try { await html5QrCode.stop(); } catch (e) {}
-        html5QrCode = null;
-    }
-
-    const readerElem = document.getElementById("reader");
-    if (!readerElem) {
-        alert("スキャン画面の準備に失敗しました。");
-        return;
-    }
-    readerElem.innerHTML = "";
-
-    try {
-        // 3. 先にデバイスを取得
-        const devices = await Html5Qrcode.getCameras();
-        if (!devices || devices.length === 0) {
-            alert("カメラが見つかりません。権限設定を確認してください。");
-            showPage('home');
-            return;
-        }
-
-        // 背面カメラ特定
-        const backCameras = devices.filter(d => 
-            d.label.toLowerCase().includes('back') || d.label.toLowerCase().includes('rear')
-        );
-        const targetId = backCameras.length > 0 
-            ? backCameras[backCameras.length - 1].id 
-            : devices[0].id;
-
-        // 4. ここでインスタンスを作成（要素が確実にある状態で）
-        html5QrCode = new Html5Qrcode("reader");
-
-        // 5. 起動
-        await html5QrCode.start(
-            targetId, 
-            { fps: 10, qrbox: { width: 250, height: 250 } }, // qrboxをオブジェクト形式に
-            (text) => {
-                html5QrCode.stop().then(() => {
-                    fetchHistory(text.trim());
-                }).catch(() => {
-                    fetchHistory(text.trim());
-                });
-            },
-            (errorMessage) => { /* 読み取り中無視 */ }
-        );
-    } catch (err) {
-        // エラーを詳細に表示して原因を特定しやすくする
-        console.error("Camera Error:", err);
-        alert("カメラを起動できませんでした。\nエラー詳細: " + err);
-        showPage('home');
-    }
-}
-
-    // カメラ停止
-    function stopCamera() {
-        if (html5QrCode) {
-            html5QrCode.stop().then(() => {
-                html5QrCode = null;
-                showPage('home');
-            }).catch(() => {
-                html5QrCode = null;
-                showPage('home');
-            });
-        } else {
-            showPage('home');
-        }
-    }
-
-    // データ取得
-    async function fetchHistory(id) {
-        showPage('home');
         try {
-            const res = await fetch(`${GAS_URL}?action=getHistory&id=${id}`);
-            const data = await res.json();
-            
-            if (!data || data.length === 0) {
-                alert("明細が見つかりませんでした。");
-                return;
-            }
-            renderResult(data);
-        } catch (e) {
-            alert("通信エラーが発生しました。");
+            const devices = await Html5Qrcode.getCameras();
+            if (!devices || devices.length === 0) throw new Error("カメラが見つかりません");
+
+            const backCameras = devices.filter(d => 
+                d.label.toLowerCase().includes('back') || d.label.toLowerCase().includes('rear')
+            );
+            const targetId = backCameras.length > 0 
+                ? backCameras[backCameras.length - 1].id 
+                : devices[devices.length - 1].id;
+
+            html5QrCode = new Html5Qrcode("reader");
+            await html5QrCode.start(
+                targetId, 
+                { fps: 15, qrbox: 250 },
+                async (text) => {
+                    await stopScan();
+                    fetchHistory(text.trim(), "id");
+                }
+            );
+        } catch (err) {
+            alert("カメラ起動エラー: " + err);
+            stopScan();
         }
     }
 
-    // 結果表示
-    function renderResult(data) {
-        showPage('result-page');
-        document.getElementById("cust-name").innerText = data[0].customerName + " 様";
+    async function stopScan() {
+        if (html5QrCode) {
+            try { await html5QrCode.stop(); } catch (e) {}
+            html5QrCode = null;
+        }
+        document.getElementById("button-group").style.display = "flex";
+        document.getElementById("stop-btn").style.display = "none";
+    }
+
+    function inputTel() {
+        const tel = window.prompt("検索する電話番号を入力してください");
+        if (!tel) return;
+        fetchHistory(tel, "tel");
+    }
+
+    // データ取得処理
+    function fetchHistory(val, type) {
+        document.getElementById("scan-view").style.display = "none";
+        document.getElementById("loading").style.display = "block";
         
-        let total = 0;
-        const html = data.map(item => {
-            const sub = Number(item.subtotal || 0);
-            total += sub;
-            return `
-                <div class="item-row">
-                    <div>
-                        <small style="color:#666;">${item.maker}</small><br>
-                        <strong>${item.name}</strong><br>
-                        <small>¥${Number(item.price).toLocaleString()} × ${item.qty}</small>
-                    </div>
-                    <div style="font-weight:bold; align-self:center;">
-                        ¥${sub.toLocaleString()}
-                    </div>
-                </div>`;
-        }).join('');
+        const actionName = (type === "tel") ? "getHistoryByTel" : "getCustomerSpecificHistory";
         
-        document.getElementById("history-list").innerHTML = html;
-        document.getElementById("total-amount").innerText = total.toLocaleString();
+        // 以前のscriptタグを掃除
+        const oldScript = document.getElementById('gas-script');
+        if (oldScript) oldScript.remove();
+
+        const script = document.createElement('script');
+        script.id = 'gas-script';
+        script.src = `${GAS_URL}?action=${actionName}&val=${encodeURIComponent(val)}&callback=showResult`;
+        document.body.appendChild(script);
+    }
+
+    // 結果表示（メール送信ボタンの制御含む）
+    function showResult(data) {
+        document.getElementById("loading").style.display = "none";
+        document.getElementById("result-view").style.display = "block";
+        const tableBody = document.getElementById("history-table-body");
+        let total = 0; 
+        lastFetchedData = data; 
+
+        if (data && data.length > 0 && !data.error) {
+            document.getElementById("email-btn").style.display = "block";
+            const firstItem = data[0];
+            document.getElementById("cust-name").innerText = (firstItem.customerName || "お客様") + " 様";
+            
+            // 重要：ここで顧客IDを保存しておく
+            currentCustomerId = firstItem.customerId || "";
+
+            tableBody.innerHTML = data.map(item => {
+                const p = Number(String(item.price || "0").replace(/[^0-9.-]/g, ''));
+                const q = Number(String(item.qty || "0").replace(/[^0-9.-]/g, ''));
+                const lp = Number(String(item.listPrice || "0").replace(/[^0-9.-]/g, ''));
+                const subtotal = p * q; 
+                total += subtotal; 
+
+                return `
+                    <tr>
+                        <td style="font-size: 0.85em; padding: 12px 10px;">
+                            <span style="color:#888;">${item.displayDate || ''}</span><br>
+                            <strong style="font-size: 1.1em; display: block; margin: 3px 0;">${item.name || '---'}</strong>
+                            <div style="margin-bottom: 5px;">
+                                <span style="color:#d9534f; font-weight:bold;">品番：${item.partNo || '---'}</span> 
+                                <span style="background:#fff3cd; padding:1px 6px; border-radius:4px; margin-left:5px; font-weight:bold; color:#856404;">L：${item.lot || '1'}</span>
+                            </div>
+                            <div style="color:#666; line-height: 1.4;">
+                                単価：<span style="color:#333; font-weight:bold;">¥${p.toLocaleString()}</span> / 
+                                上代：<span style="font-weight:bold;">¥${lp.toLocaleString()}</span><br>
+                                <span style="font-size: 0.9em;">(数量：${q})</span>
+                            </div>
+                        </td>
+                        <td style="text-align:right; font-weight:bold; vertical-align:bottom; font-size: 1.1em; padding-bottom: 15px;">
+                            ¥${subtotal.toLocaleString()}
+                        </td>
+                    </tr>`;
+            }).join('');
+            document.getElementById("total-amount").innerText = total.toLocaleString();
+        } else {
+            tableBody.innerHTML = '<tr><td colspan="2" style="text-align:center; padding:30px; color:#999;">履歴が見つかりませんでした。</td></tr>';
+            document.getElementById("email-btn").style.display = "none";
+        }
+    }
+
+    // メール送信リクエスト（ここが修正ポイント）
+    function requestEmail() {
+        let defaultEmail = "";
+        if (lastFetchedData && lastFetchedData.length > 0) {
+            const found = lastFetchedData.find(d => d.email && d.email.includes("@"));
+            defaultEmail = found ? found.email : "";
+        }
+        
+        const newEmail = window.prompt("送信先を確認・修正してください。", defaultEmail);
+        if (!newEmail) return;
+
+        const btn = document.getElementById("email-btn");
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> 送信中...';
+
+        // 以前の送信スクリプトを掃除
+        const oldScript = document.getElementById('email-script');
+        if (oldScript) oldScript.remove();
+
+        // JSONP方式でGASのメール送信アクションを叩く
+        const script = document.createElement('script');
+        script.id = 'email-script';
+        // valには保存しておいた顧客IDを渡す
+        script.src = `${GAS_URL}?action=sendEmail&val=${encodeURIComponent(currentCustomerId)}&email=${encodeURIComponent(newEmail.trim())}&callback=onEmailSent`;
+        
+        script.onerror = function() {
+            alert("送信リクエストに失敗しました。ネットワーク環境を確認してください。");
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fa-solid fa-paper-plane"></i> 再送信を試みる';
+        };
+
+        document.body.appendChild(script);
+    }
+
+    // メール送信完了時のコールバック
+    function onEmailSent(response) {
+        const btn = document.getElementById("email-btn");
+        if (response && response.error) {
+            alert("送信エラー: " + response.error);
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fa-solid fa-paper-plane"></i> 再送信を試みる';
+        } else {
+            alert("請書メールを送信しました！");
+            btn.innerHTML = '<i class="fa-solid fa-check"></i> 送信完了';
+            btn.style.background = "#28a745";
+            btn.disabled = true;
+        }
     }
 </script>
 </body>
