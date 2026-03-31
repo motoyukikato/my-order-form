@@ -93,13 +93,18 @@
         if (devices && devices.length > 0) {
             const backCamera = devices.find(d => d.label.toLowerCase().includes('back')) || devices[devices.length - 1];
             html5QrCode = new Html5Qrcode("reader");
-            await html5QrCode.start(backCamera.id, { fps: 10, qrbox: 250 }, (text) => {
-                currentScannedId = text.trim();
-                document.getElementById("scanned-id-label").innerText = currentScannedId;
-                html5QrCode.stop();
-                document.getElementById("scan-view").style.display = "none";
-                document.getElementById("auth-view").style.display = "block";
-            });
+            // ここを丸ごと差し替え
+await html5QrCode.start(
+    { facingMode: "environment" }, // ID指定ではなく「背面モード」を指定
+    { fps: 10, qrbox: 250 }, 
+    (text) => {
+        currentScannedId = text.trim();
+        document.getElementById("scanned-id-label").innerText = currentScannedId;
+        html5QrCode.stop();
+        document.getElementById("scan-view").style.display = "none";
+        document.getElementById("auth-view").style.display = "block";
+    }
+);
         }
     }
 
