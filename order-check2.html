@@ -11,7 +11,7 @@
         header { background: #4267B2; color: white; text-align: center; padding: 20px; font-weight: bold; font-size: 1.2em; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
         .container { padding: 15px; max-width: 600px; margin: auto; }
         .card { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); margin-bottom: 20px; }
-        #reader { width: 100%; border-radius: 12px; overflow: hidden; background: #000; }
+        #reader { width: 100% !important; border-radius: 12px; overflow: hidden; background: #000; min-height: 250px; }
         table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 0.9em; }
         th { background: #f1f3f5; text-align: left; padding: 10px; border-bottom: 2px solid #dee2e6; color: #495057; }
         td { padding: 12px 10px; border-bottom: 1px solid #eee; vertical-align: middle; }
@@ -34,7 +34,7 @@
         <div class="card">
             <p style="text-align:center; font-weight:bold;">お客様QRをスキャン<br>または電話番号を入力してください</p>
             <div id="reader"></div>
-            <div style="display: flex; gap: 10px;">
+            <div id="button-group" style="display: flex; gap: 10px;">
                 <button id="start-btn" class="btn btn-scan" style="flex: 2;" onclick="startScan()">
                     <i class="fa-solid fa-camera"></i> スキャン
                 </button>
@@ -42,6 +42,7 @@
                     <i class="fa-solid fa-phone"></i> 手入力
                 </button>
             </div>
+            <button id="stop-btn" class="btn" style="display:none; background:#666; color:white;" onclick="stopScan()">キャンセル</button>
         </div>
     </div>
 
@@ -86,24 +87,50 @@
 <script>
     const GAS_URL = "https://script.google.com/macros/s/AKfycbwwWew158iAJ54RJilVAWA0QpcZlh_-3EY14NMIHRX6Ny_hNc-qokM6uF1YJ0_cN74vaA/exec"; 
 
+    let html5QrCode = null;
     let currentScannedId = "";
     let lastFetchedData = [];
 
+    // カメラ開始（指名打ち方式）
     async function startScan() {
-        const scanner = new Html5Qrcode("reader");
-        document.getElementById("start-btn").parentElement.style.display = "none";
+        document.getElementById("button-group").style.display = "none";
+        document.getElementById("stop-btn").style.display = "block";
+        document.getElementById("reader").innerHTML = "";
+
         try {
-            await scanner.start({ facingMode: "environment" }, { fps: 15, qrbox: 250 }, 
+            const devices = await Html5Qrcode.getCameras();
+            if (!devices || devices.length === 0) throw new Error("カメラが見つかりません");
+
+            const backCameras = devices.filter(d => 
+                d.label.toLowerCase().includes('back') || d.label.toLowerCase().includes('rear')
+            );
+            const targetId = backCameras.length > 0 
+                ? backCameras[backCameras.length - 1].id 
+                : devices[devices.length - 1].id;
+
+            html5QrCode = new Html5Qrcode("reader");
+            await html5QrCode.start(
+                targetId, 
+                { fps: 15, qrbox: 250 },
                 async (text) => {
-                    await scanner.stop();
-                    currentScannedId = text;
-                    fetchHistory(text, "id");
+                    await stopScan();
+                    currentScannedId = text.trim();
+                    fetchHistory(currentScannedId, "id");
                 }
             );
         } catch (err) {
-            alert("カメラの起動に失敗しました");
-            document.getElementById("start-btn").parentElement.style.display = "flex";
+            alert("カメラ起動エラー: " + err);
+            stopScan();
         }
+    }
+
+    async function stopScan() {
+        if (html5QrCode) {
+            try { await html5QrCode.stop(); } catch (e) {}
+            html5QrCode = null;
+        }
+        document.getElementById("button-group").style.display = "flex";
+        document.getElementById("stop-btn").style.display = "none";
     }
 
     function inputTel() {
@@ -115,12 +142,10 @@
     function fetchHistory(val, type) {
         document.getElementById("scan-view").style.display = "none";
         document.getElementById("loading").style.display = "block";
-        const script = document.createElement('script');
         
-        // --- 修正箇所：GASの doGet で待ち構えている action名に合わせます ---
         const actionName = (type === "tel") ? "getHistoryByTel" : "getCustomerSpecificHistory";
+        const script = document.createElement('script');
         script.src = `${GAS_URL}?action=${actionName}&val=${encodeURIComponent(val)}&callback=showResult`;
-        
         document.body.appendChild(script);
     }
 
@@ -133,16 +158,14 @@
 
         if (data && data.length > 0 && !data.error) {
             document.getElementById("email-btn").style.display = "block";
-            // 最初のデータから顧客名を取得
             const firstItem = data[0];
             document.getElementById("cust-name").innerText = (firstItem.customerName || "お客様") + " 様";
-            currentScannedId = firstItem.customerId;
+            currentScannedId = firstItem.customerId || currentScannedId;
 
             tableBody.innerHTML = data.map(item => {
-                // 文字列を数値に変換（カンマなどが入っていても動くように）
-                const p = typeof item.price === 'number' ? item.price : parseFloat(String(item.price || "0").replace(/[^0-9.]/g, ''));
-                const q = typeof item.qty === 'number' ? item.qty : parseFloat(String(item.qty || "0").replace(/[^0-9.]/g, ''));
-                const lp = typeof item.listPrice === 'number' ? item.listPrice : parseFloat(String(item.listPrice || "0").replace(/[^0-9.]/g, ''));
+                const p = Number(String(item.price || "0").replace(/[^0-9.-]/g, ''));
+                const q = Number(String(item.qty || "0").replace(/[^0-9.-]/g, ''));
+                const lp = Number(String(item.listPrice || "0").replace(/[^0-9.-]/g, ''));
                 
                 const subtotal = p * q; 
                 total += subtotal; 
@@ -152,12 +175,10 @@
                         <td style="font-size: 0.85em; padding: 12px 10px;">
                             <span style="color:#888;">${item.displayDate || ''}</span><br>
                             <strong style="font-size: 1.1em; display: block; margin: 3px 0;">${item.name || '---'}</strong>
-                            
                             <div style="margin-bottom: 5px;">
                                 <span style="color:#d9534f; font-weight:bold;">品番：${item.partNo || '---'}</span> 
                                 <span style="background:#fff3cd; padding:1px 6px; border-radius:4px; margin-left:5px; font-weight:bold; color:#856404;">L：${item.lot || '1'}</span>
                             </div>
-                            
                             <div style="color:#666; line-height: 1.4;">
                                 単価：<span style="color:#333; font-weight:bold;">¥${p.toLocaleString()}</span> / 
                                 <span style="color:#000;">上代：<span style="font-weight:bold;">¥${lp.toLocaleString()}</span></span><br>
@@ -167,8 +188,7 @@
                         <td style="text-align:right; font-weight:bold; vertical-align:bottom; font-size: 1.1em; padding-bottom: 15px;">
                             ¥${subtotal.toLocaleString()}
                         </td>
-                    </tr>
-                `;
+                    </tr>`;
             }).join('');
             document.getElementById("total-amount").innerText = total.toLocaleString();
         } else {
@@ -195,13 +215,16 @@
         const script = document.createElement('script');
         script.src = `${GAS_URL}?action=sendEmail&val=${encodeURIComponent(currentScannedId)}&email=${encodeURIComponent(newEmail.trim())}&callback=onEmailSent`;
         document.body.appendChild(script);
-        setTimeout(() => { if (btn.disabled) onEmailSent({success: true}); }, 6000);
+        
+        // タイムアウト設定
+        setTimeout(() => { if (btn.disabled) { btn.disabled = false; btn.innerHTML = '再送信する'; } }, 8000);
     }
 
     function onEmailSent(response) {
         alert("請書メールを送信しました！");
         const btn = document.getElementById("email-btn");
         btn.innerHTML = '送信完了';
+        btn.style.background = "#28a745";
     }
 </script>
 </body>
