@@ -151,15 +151,27 @@
 }
 
     // --- 以降、verifyAndShow 等のロジック（変更なし） ---
-    function verifyAndShow() {
-        const authCode = document.getElementById("auth-code").value;
-        if (authCode.length !== 4) return alert("下4桁を正しく入力してください");
-        document.getElementById("auth-view").style.display = "none";
-        document.getElementById("loading").style.display = "block";
-        const script = document.createElement('script');
-        script.src = `${GAS_URL}?id=${encodeURIComponent(currentScannedId)}&auth=${authCode}&callback=showResult`;
-        document.body.appendChild(script);
-    }
+   function verifyAndShow() {
+    const authCode = document.getElementById("auth-code").value;
+    if (authCode.length !== 4) return alert("下4桁を正しく入力してください");
+
+    document.getElementById("auth-view").style.display = "none";
+    document.getElementById("loading").style.display = "block";
+
+    // GAS側の getHistoryWithAuth(id, auth) を呼び出す
+    google.script.run
+        .withSuccessHandler(function(data) {
+            // 成功したら表示処理へ
+            showResult(data);
+        })
+        .withFailureHandler(function(err) {
+            // 失敗時
+            alert("エラーが発生しました: " + err);
+            document.getElementById("loading").style.display = "none";
+            document.getElementById("auth-view").style.display = "block";
+        })
+        .getHistoryWithAuth(currentScannedId, authCode);
+}
 
     function showResult(data) {
         document.getElementById("loading").style.display = "none";
@@ -181,17 +193,41 @@
         document.getElementById("total-amount").innerText = total.toLocaleString();
     }
 
-    async function requestEmail() {
-        let currentEmail = (lastFetchedData && lastFetchedData.length > 0) ? lastFetchedData[0].email : "";
-        const newEmail = window.prompt("請書の送信先を確認・修正してください。", currentEmail);
-        if (newEmail === null || !newEmail.trim()) return;
-        const btn = document.getElementById("email-btn");
-        btn.disabled = true;
-        btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> 送信中...';
-        const script = document.createElement('script');
-        script.src = `${GAS_URL}?action=sendEmail&id=${encodeURIComponent(currentScannedId)}&email=${encodeURIComponent(newEmail.trim())}&callback=onEmailSent`;
-        document.body.appendChild(script);
-    }
+    function requestEmail() {
+    // 1. 現在のメールアドレスを取得（データの1行目から引用）
+    let currentEmail = (lastFetchedData && lastFetchedData.length > 0) ? lastFetchedData[0].email : "";
+    
+    // 2. 確認ダイアログを表示
+    const newEmail = window.prompt("請書の送信先を確認・修正してください。", currentEmail);
+    if (newEmail === null || !newEmail.trim()) return;
+
+    // 3. ボタンを「送信中」状態にする
+    const btn = document.getElementById("email-btn");
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> 送信中...';
+
+    // 4. GASの関数を直接呼び出す（ここが最大の変更点！）
+    google.script.run
+        .withSuccessHandler(function(response) {
+            // 送信成功時（responseはGASの sendOrderEmail が返した {success: true} など）
+            if (response.success) {
+                alert("請書メールを送信しました！");
+                btn.style.background = "#6c757d"; // グレーに変更
+                btn.innerHTML = '<i class="fa-solid fa-check"></i> 送信完了';
+            } else {
+                alert("送信に失敗しました: " + response.error);
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fa-solid fa-paper-plane"></i> 請書を発行';
+            }
+        })
+        .withFailureHandler(function(err) {
+            // 通信そのものが失敗した時
+            alert("システムエラーが発生しました: " + err);
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fa-solid fa-paper-plane"></i> 請書を発行';
+        })
+        .sendOrderEmail(currentScannedId, newEmail.trim()); // GAS側の関数名と引数を指定
+}
 
     function onEmailSent(response) {
         const btn = document.getElementById("email-btn");
