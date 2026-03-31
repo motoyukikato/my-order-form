@@ -110,17 +110,27 @@
 
     // 照合
     function verifyAndShow() {
-        const auth = document.getElementById("auth-code").value;
-        if (auth.length !== 4) return alert("電話番号の下4桁を入力してください");
+    const auth = document.getElementById("auth-code").value;
+    if (auth.length !== 4) return alert("4桁入力してください");
 
-        document.getElementById("auth-view").style.display = "none";
-        document.getElementById("loading-view").style.display = "block";
+    document.getElementById("auth-view").style.display = "none";
+    document.getElementById("loading-view").style.display = "block";
 
-        google.script.run
-            .withSuccessHandler(renderResult)
-            .withFailureHandler(onErr)
-            .getHistoryWithAuth(currentScannedId, auth);
-    }
+    // ★ここに、先ほどコピーしたGASのURLを貼り付けてください
+    const GAS_URL = "https://script.google.com/macros/s/AKfycbwjTY1GECS8D1t8ARVEadGnrD3PaOOrR5Ae34RVK2PlbQSsJB2zQz2HPaSvMmRwzA/exec"; 
+
+    // GitHubからGASへ「データちょうだい」とリクエストを送る
+    fetch(`${GAS_URL}?action=getHistory&id=${currentScannedId}&auth=${auth}`)
+        .then(response => response.json())
+        .then(data => {
+            renderResult(data); // 届いたデータを画面に表示
+        })
+        .catch(err => {
+            alert("通信エラー: " + err);
+            document.getElementById("loading-view").style.display = "none";
+            document.getElementById("auth-view").style.display = "block";
+        });
+}
 
     function renderResult(data) {
         document.getElementById("loading-view").style.display = "none";
