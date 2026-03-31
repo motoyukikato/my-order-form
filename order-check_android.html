@@ -7,14 +7,20 @@
     <script src="https://unpkg.com/html5-qrcode"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
-        body { font-family: -apple-system, sans-serif; margin: 0; background: #f8f9fa; }
-        header { background: #4267B2; color: white; text-align: center; padding: 20px; font-weight: bold; }
+        body { font-family: -apple-system, "Helvetica Neue", Arial, sans-serif; margin: 0; background: #f8f9fa; color: #333; line-height: 1.6; }
+        header { background: #4267B2; color: white; text-align: center; padding: 20px; font-weight: bold; font-size: 1.2em; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
         .container { padding: 15px; max-width: 600px; margin: auto; }
         .card { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); margin-bottom: 20px; }
-        #reader { width: 100% !important; border-radius: 12px; background: #000; min-height: 250px; }
-        .btn { border: none; width: 100%; padding: 16px; border-radius: 8px; font-size: 17px; font-weight: bold; cursor: pointer; margin-top: 10px; }
+        #reader { width: 100% !important; border-radius: 12px; overflow: hidden; background: #000; min-height: 250px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 0.9em; }
+        th { background: #f1f3f5; text-align: left; padding: 10px; border-bottom: 2px solid #dee2e6; color: #495057; }
+        td { padding: 12px 10px; border-bottom: 1px solid #eee; vertical-align: middle; }
+        .total-box { background: #343a40; color: white; padding: 20px; border-radius: 12px; text-align: right; margin-top: 15px; }
+        .total-label { font-size: 0.9em; opacity: 0.8; }
+        .total-price { font-size: 1.6em; color: #ffeb3b; font-weight: bold; margin-left: 10px; }
+        .btn { border: none; width: 100%; padding: 16px; border-radius: 8px; font-size: 17px; font-weight: bold; cursor: pointer; transition: 0.2s; margin-top: 10px; }
         .btn-scan { background: #28a745; color: white; }
-        .btn-tel { background: #6c757d; color: white; }
+        .btn-email { background: #007bff; color: white; display: none; }
         .loading { text-align: center; padding: 40px; display: none; color: #4267B2; }
     </style>
 </head>
@@ -25,105 +31,198 @@
 <div class="container">
     <div id="scan-view">
         <div class="card">
-            <p style="text-align:center;">お客様QRスキャン または 電話番号入力</p>
+            <p style="text-align:center; font-weight:bold;">お客様QRをスキャンしてください</p>
             <div id="reader"></div>
-            <div id="button-group" style="display: flex; gap: 10px;">
-                <button class="btn btn-scan" style="flex: 2;" onclick="startScan()">カメラ開始</button>
-                <button class="btn btn-tel" style="flex: 1;" onclick="inputTel()">手入力</button>
-            </div>
+            <button id="start-btn" class="btn btn-scan" onclick="startScan()">
+                <i class="fa-solid fa-camera"></i> スキャン開始
+            </button>
             <button id="stop-btn" class="btn" style="display:none; background:#666; color:white;" onclick="stopScan()">キャンセル</button>
         </div>
     </div>
 
     <div id="auth-view" style="display:none;" class="card">
         <h3 style="text-align:center;">本人確認</h3>
-        <p style="text-align:center;">電話番号の<strong>下4桁</strong>を入力</p>
+        <p style="font-size:14px; color:#666; text-align:center;">
+            ご登録電話番号の<strong>下4桁</strong>を入力してください。
+        </p>
         <input type="tel" id="auth-code" maxlength="4" inputmode="numeric" 
-               style="width:100%; padding:15px; font-size:24px; text-align:center; border:2px solid #4267B2; border-radius:8px; margin-bottom:15px;">
-        <button class="btn btn-scan" onclick="submitAuth()">照合する</button>
-        <button onclick="location.reload()" style="width:100%; border:none; background:none; color:#888;">戻る</button>
+               style="width:100%; padding:15px; font-size:24px; text-align:center; letter-spacing:10px; border:2px solid #4267B2; border-radius:8px; margin-bottom:15px; box-sizing: border-box;" 
+               placeholder="0000">
+        <button class="btn btn-scan" onclick="submitAuth()">確認して明細を表示</button>
+        <button onclick="location.reload()" style="width:100%; margin-top:10px; background:none; border:none; color:#888; font-size:14px;">キャンセル</button>
     </div>
 
-    <div id="loading" class="loading">照合中...</div>
+    <div id="loading" class="loading">
+        <i class="fa-solid fa-circle-notch fa-spin fa-3x"></i><br><br>データを照合中...
+    </div>
 
     <div id="result-view" style="display:none;">
-        <div class="card"><div id="cust-name" style="font-size: 1.2em; font-weight: bold;">---</div></div>
-        <div id="result-content"></div>
-        <button onclick="location.reload()" class="btn">戻る</button>
+        <div class="card" style="border-left: 6px solid #4267B2; padding: 15px;">
+            <small style="color:#888;">ご担当者様</small>
+            <div id="cust-name" style="font-size: 1.3em; font-weight: bold;">---</div>
+        </div>
+
+        <div class="card">
+            <h4 style="margin-top:0; border-bottom:1px solid #eee; padding-bottom:10px;">ご注文明細</h4>
+            <table>
+                <thead>
+                    <tr>
+                        <th>商品内容</th>
+                        <th style="text-align:right;">小計</th>
+                    </tr>
+                </thead>
+                <tbody id="history-table-body"></tbody>
+            </table>
+
+            <div class="total-box">
+                <span class="total-label">合計金額(税込)</span>
+                <span class="total-price">¥<span id="total-amount">0</span></span>
+            </div>
+        </div>
+
+        <button id="email-btn" class="btn btn-email" onclick="requestEmail()">
+            <i class="fa-solid fa-paper-plane"></i> この内容で請書を発行
+        </button>
+        
+        <button onclick="location.reload()" style="width:100%; margin-top:20px; padding:12px; background:none; border:1px solid #ccc; border-radius:8px; color:#666; font-size:14px;">
+            戻る
+        </button>
     </div>
 </div>
 
 <script>
-    // ※ここを新しいデプロイURLに書き換えてください
-    const GAS_URL = "https://script.google.com/macros/s/AKfycbzk-JGRLE5KrO1fIgxyaHqJRL7oeR3skPmh2GtI8sbTYdl4kzPjsS1YHcJuIHmUHVnH/exec";
+    // 【重要】GASで新しいデプロイを行ったら、URLを最新のものに差し替えてください
+    const GAS_URL = "https://script.google.com/macros/s/AKfycbzk-JGRLE5KrO1fIgxyaHqJRL7oeR3skPmh2GtI8sbTYdl4kzPjsS1YHcJuIHmUHVnH/exec"; 
 
     let html5QrCode = null;
-    let tempVal = "";
-    let tempType = "";
+    let currentId = ""; 
+    let lastFetchedData = [];
 
     async function startScan() {
-        document.getElementById("button-group").style.display = "none";
+        document.getElementById("start-btn").style.display = "none";
         document.getElementById("stop-btn").style.display = "block";
-        html5QrCode = new Html5Qrcode("reader");
+        document.getElementById("reader").innerHTML = "";
+
         try {
-            // 以前機能していた背面カメラ自動選択ロジック
+            // 以前機能していたデバイス取得ロジック
             const devices = await Html5Qrcode.getCameras();
-            const backCameras = devices.filter(d => d.label.toLowerCase().includes('back') || d.label.toLowerCase().includes('rear'));
-            const targetId = backCameras.length > 0 ? backCameras[backCameras.length - 1].id : devices[0].id;
+            if (!devices || devices.length === 0) throw new Error("カメラが見つかりません");
 
-            await html5QrCode.start(targetId, { fps: 10, qrbox: 250 }, (text) => {
-                stopScan();
-                tempVal = text.trim();
-                tempType = "id";
-                showAuth();
-            });
-        } catch (e) { alert("カメラエラー: " + e); stopScan(); }
+            const backCameras = devices.filter(d => 
+                d.label.toLowerCase().includes('back') || d.label.toLowerCase().includes('rear')
+            );
+            const targetId = backCameras.length > 0 
+                ? backCameras[backCameras.length - 1].id 
+                : devices[0].id;
+
+            html5QrCode = new Html5Qrcode("reader");
+            await html5QrCode.start(
+                targetId, 
+                { fps: 15, qrbox: 250 },
+                async (text) => {
+                    await stopScan();
+                    currentId = text.trim();
+                    showAuth();
+                }
+            );
+        } catch (err) {
+            alert("カメラ起動エラー: " + err);
+            stopScan();
+        }
     }
 
-    function stopScan() {
-        if (html5QrCode) html5QrCode.stop().then(() => html5QrCode.clear());
-        document.getElementById("button-group").style.display = "flex";
+    async function stopScan() {
+        if (html5QrCode) {
+            try { await html5QrCode.stop(); await html5QrCode.clear(); } catch (e) {}
+            html5QrCode = null;
+        }
+        document.getElementById("start-btn").style.display = "block";
         document.getElementById("stop-btn").style.display = "none";
-    }
-
-    function inputTel() {
-        const tel = window.prompt("電話番号(ハイフンなし)");
-        if (!tel) return;
-        tempVal = tel.trim();
-        tempType = "tel";
-        showAuth();
     }
 
     function showAuth() {
         document.getElementById("scan-view").style.display = "none";
         document.getElementById("auth-view").style.display = "block";
+        setTimeout(() => { document.getElementById("auth-code").focus(); }, 300);
     }
 
     function submitAuth() {
         const auth = document.getElementById("auth-code").value;
-        if (auth.length !== 4) return alert("4桁入力してください");
-        
+        if (auth.length !== 4) return alert("下4桁を入力してください");
+
         document.getElementById("auth-view").style.display = "none";
         document.getElementById("loading").style.display = "block";
 
-        const action = (tempType === "tel") ? "getHistoryByTel" : "getCustomerSpecificHistory";
+        // JSONP方式でGASを呼び出し
         const script = document.createElement('script');
-        // JSONP方式でリクエスト
-        script.src = `${GAS_URL}?action=${action}&val=${encodeURIComponent(tempVal)}&auth=${auth}&callback=onDone`;
+        script.src = `${GAS_URL}?action=getCustomerSpecificHistory&val=${encodeURIComponent(currentId)}&auth=${auth}&callback=onDataReceived`;
         document.body.appendChild(script);
     }
 
-    function onDone(data) {
+    function onDataReceived(data) {
         document.getElementById("loading").style.display = "none";
         document.getElementById("result-view").style.display = "block";
+        const tableBody = document.getElementById("history-table-body");
+        let total = 0; 
+        lastFetchedData = data; 
+
         if (data && data.length > 0 && !data.error) {
-            document.getElementById("cust-name").innerText = data[0].customerName + " 様";
-            // ... ここにテーブル表示のロジック（以前のもの）が入ります ...
-            // 簡易表示テスト
-            document.getElementById("result-content").innerHTML = `<div class="card">合計: ¥${data.length}件のデータ</div>`;
+            document.getElementById("email-btn").style.display = "block";
+            const firstItem = data[0];
+            document.getElementById("cust-name").innerText = (firstItem.customerName || "お客様") + " 様";
+
+            tableBody.innerHTML = data.map(item => {
+                const p = Number(String(item.price || "0").replace(/[^0-9.-]/g, ''));
+                const q = Number(String(item.qty || "0").replace(/[^0-9.-]/g, ''));
+                const subtotal = p * q; 
+                total += subtotal; 
+
+                return `
+                    <tr>
+                        <td style="font-size: 0.85em; padding: 12px 10px;">
+                            <span style="color:#888;">${item.displayDate || ''}</span><br>
+                            <strong style="font-size: 1.1em; display: block; margin: 3px 0;">${item.name || '---'}</strong>
+                            <div style="color:#666;">単価：¥${p.toLocaleString()} / 数量：${q}</div>
+                        </td>
+                        <td style="text-align:right; font-weight:bold; vertical-align:bottom; font-size: 1.1em; padding-bottom: 15px;">
+                            ¥${subtotal.toLocaleString()}
+                        </td>
+                    </tr>`;
+            }).join('');
+            document.getElementById("total-amount").innerText = total.toLocaleString();
         } else {
-            alert("認証失敗またはデータなし");
-            location.reload();
+            tableBody.innerHTML = '<tr><td colspan="2" style="text-align:center; padding:30px; color:#999;">データが見つからないか、認証に失敗しました。</td></tr>';
+        }
+    }
+
+    function requestEmail() {
+        let defaultEmail = "";
+        if (lastFetchedData && lastFetchedData.length > 0) {
+            const found = lastFetchedData.find(d => d.email && d.email.includes("@"));
+            defaultEmail = found ? found.email : "";
+        }
+        const newEmail = window.prompt("送信先を確認・修正してください。", defaultEmail);
+        if (!newEmail) return;
+
+        const btn = document.getElementById("email-btn");
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> 送信中...';
+
+        const script = document.createElement('script');
+        script.src = `${GAS_URL}?action=sendEmail&val=${encodeURIComponent(currentId)}&email=${encodeURIComponent(newEmail.trim())}&callback=onEmailSent`;
+        document.body.appendChild(script);
+    }
+
+    function onEmailSent(res) {
+        const btn = document.getElementById("email-btn");
+        if (res && res.error) {
+            alert("エラー: " + res.error);
+            btn.disabled = false;
+            btn.innerHTML = '再送信';
+        } else {
+            alert("送信しました！");
+            btn.innerHTML = '送信完了';
+            btn.style.background = "#28a745";
         }
     }
 </script>
