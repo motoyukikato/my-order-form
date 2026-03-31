@@ -55,19 +55,35 @@
     let html5QrCode = null;
 
     async function startCamera() {
-        showPage('scanner-page');
-        html5QrCode = new Html5Qrcode("reader");
-        await html5QrCode.start(
-            { facingMode: "environment" },
-            { fps: 10, qrbox: 250 },
-            (text) => {
-                html5QrCode.stop().then(() => {
-                    fetchHistory(text.trim());
-                });
-            }
-        ).catch(err => alert("カメラ起動エラー"));
+    showPage('scanner-page');
+    // インスタンスが既にある場合は止めるなどの処理を入れるとより安全
+    if (html5QrCode) {
+        await html5QrCode.clear();
     }
+    
+    html5QrCode = new Html5Qrcode("reader");
+    
+    const config = { 
+        fps: 10, 
+        qrbox: { width: 250, height: 250 },
+        // 一部のAndroid端末でアスペクト比の問題で起動しないのを防ぐ
+        aspectRatio: 1.0 
+    };
 
+    html5QrCode.start(
+        { facingMode: "environment" },
+        config,
+        (text) => {
+            html5QrCode.stop().then(() => {
+                fetchHistory(text.trim());
+            });
+        }
+    ).catch(err => {
+        // エラー内容を具体的に表示させる
+        console.error(err);
+        alert("カメラ起動エラー: " + err); 
+    });
+}
     function stopCamera() {
         if (html5QrCode) html5QrCode.stop();
         showPage('home');
