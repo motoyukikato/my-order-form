@@ -54,48 +54,38 @@
 
     let html5QrCode = null;
 
-    async function startCamera() {
-    showPage('scanner-page');
-    
-    // 既存のインスタンスがあれば確実に破棄
-    if (html5QrCode) {
-        try {
-            await html5QrCode.stop();
-        } catch (e) {
-            // 停止エラーは無視
-        }
+   async function startCamera() {
+    // ライブラリ自体が読み込まれているかチェック
+    if (typeof Html5Qrcode === 'undefined') {
+        alert("ライブラリが読み込まれていません。再読み込みしてください。");
+        return;
     }
 
-    html5QrCode = new Html5Qrcode("reader");
-
-    const config = { 
-        fps: 10, 
-        qrbox: { width: 250, height: 250 },
-        aspectRatio: 1.0 // Androidでの描画エラーを防ぐ
-    };
-
-    // カメラの制約をより具体的に記述
-    const cameraConfig = { 
-        video: { 
-            facingMode: { ideal: "environment" }, // "exact"ではなく"ideal"にすると柔軟性が増します
-            width: { ideal: 1280 },
-            height: { ideal: 720 }
-        } 
-    };
-
-    html5QrCode.start(
-        cameraConfig.video, // 制約を直接渡す
-        config,
-        (text) => {
-            html5QrCode.stop().then(() => {
-                fetchHistory(text.trim());
-            });
+    showPage('scanner-page');
+    
+    try {
+        // 既存のインスタンスがあれば停止・クリア
+        if (html5QrCode) {
+            await html5QrCode.clear();
         }
-    ).catch(err => {
-        // エラー詳細をアラートで出す（原因特定のため）
+        
+        html5QrCode = new Html5Qrcode("reader");
+        
+        await html5QrCode.start(
+            { facingMode: "environment" },
+            { fps: 10, qrbox: 250 },
+            (text) => {
+                html5QrCode.stop().then(() => {
+                    fetchHistory(text.trim());
+                });
+            }
+        );
+    } catch (err) {
+        // undefinedを避けるため、エラーの中身を詳細に表示
         console.error(err);
-        alert("カメラ起動エラー: " + err.name + "\n" + err.message);
-    });
+        alert("詳細エラー: " + (err.message || JSON.stringify(err) || "不明なエラー"));
+        showPage('home');
+    }
 }
     async function fetchHistory(id) {
         showPage('home'); // 一旦戻して待機
