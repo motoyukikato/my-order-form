@@ -46,18 +46,6 @@
         </div>
     </div>
 
-    <div id="auth-view" style="display:none;" class="card">
-        <h3 style="text-align:center;">本人確認</h3>
-        <p style="font-size:14px; color:#666; text-align:center;">
-            ご登録電話番号の<strong>下4桁</strong>を入力してください。
-        </p>
-        <input type="tel" id="auth-code" maxlength="4" inputmode="numeric" 
-               style="width:100%; padding:15px; font-size:24px; text-align:center; letter-spacing:10px; border:2px solid #4267B2; border-radius:8px; margin-bottom:15px; box-sizing: border-box;" 
-               placeholder="0000">
-        <button class="btn btn-scan" onclick="submitAuth()">確認して明細を表示</button>
-        <button onclick="location.reload()" style="width:100%; margin-top:10px; background:none; border:none; color:#888; font-size:14px;">キャンセル</button>
-    </div>
-
     <div id="loading" class="loading">
         <i class="fa-solid fa-circle-notch fa-spin fa-3x"></i><br><br>データを照合中...
     </div>
@@ -97,12 +85,10 @@
 </div>
 
 <script>
-    // 【重要】新しいデプロイURLに差し替えてください
-    const GAS_URL = "https://script.google.com/macros/s/AKfycbwwWew158iAJ54RJilVAWA0QpcZlh_-3EY14NMIHRX6Ny_hNc-qokM6uF1YJ0_cN74vaA/exec"; 
+    const GAS_URL = "https://script.google.com/macros/s/AKfycbzk-JGRLE5KrO1fIgxyaHqJRL7oeR3skPmh2GtI8sbTYdl4kzPjsS1YHcJuIHmUHVnH/exec"; 
 
     let html5QrCode = null;
-    let currentVal = ""; 
-    let currentType = ""; // "id" または "tel"
+    let currentCustomerId = ""; 
     let lastFetchedData = [];
 
     async function startScan() {
@@ -127,9 +113,7 @@
                 { fps: 15, qrbox: 250 },
                 async (text) => {
                     await stopScan();
-                    currentVal = text.trim();
-                    currentType = "id";
-                    showAuth();
+                    fetchHistory(text.trim(), "id");
                 }
             );
         } catch (err) {
@@ -150,28 +134,18 @@
     function inputTel() {
         const tel = window.prompt("検索する電話番号を入力してください\n(ハイフンなし)");
         if (!tel || tel.trim() === "") return;
-        currentVal = tel.trim();
-        currentType = "tel";
-        showAuth();
+        fetchHistory(tel.trim(), "tel");
     }
 
-    function showAuth() {
+    function fetchHistory(val, type) {
         document.getElementById("scan-view").style.display = "none";
-        document.getElementById("auth-view").style.display = "block";
-        setTimeout(() => { document.getElementById("auth-code").focus(); }, 300);
-    }
-
-    function submitAuth() {
-        const auth = document.getElementById("auth-code").value;
-        if (auth.length !== 4) return alert("下4桁を入力してください");
-
-        document.getElementById("auth-view").style.display = "none";
         document.getElementById("loading").style.display = "block";
-
-        const action = (currentType === "tel") ? "getHistoryByTel" : "getCustomerSpecificHistory";
         
+        const action = (type === "tel") ? "getHistoryByTel" : "getCustomerSpecificHistory";
+        
+        // 【重要】以前機能していたJSONP方式で通信
         const script = document.createElement('script');
-        script.src = `${GAS_URL}?action=${action}&val=${encodeURIComponent(currentVal)}&auth=${auth}&callback=onDataReceived`;
+        script.src = `${GAS_URL}?action=${action}&val=${encodeURIComponent(val)}&callback=onDataReceived`;
         document.body.appendChild(script);
     }
 
@@ -186,8 +160,7 @@
             document.getElementById("email-btn").style.display = "block";
             const firstItem = data[0];
             document.getElementById("cust-name").innerText = (firstItem.customerName || "お客様") + " 様";
-            // 顧客IDを上書き保持（メール送信時に必要）
-            currentVal = firstItem.customerId || currentVal;
+            currentCustomerId = firstItem.customerId || "";
 
             tableBody.innerHTML = data.map(item => {
                 const p = Number(String(item.price || "0").replace(/[^0-9.-]/g, ''));
@@ -209,7 +182,8 @@
             }).join('');
             document.getElementById("total-amount").innerText = total.toLocaleString();
         } else {
-            tableBody.innerHTML = '<tr><td colspan="2" style="text-align:center; padding:30px; color:#999;">データが見つからないか、認証に失敗しました。</td></tr>';
+            tableBody.innerHTML = '<tr><td colspan="2" style="text-align:center; padding:30px; color:#999;">履歴が見つかりませんでした。</td></tr>';
+            document.getElementById("email-btn").style.display = "none";
         }
     }
 
@@ -227,7 +201,7 @@
         btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> 送信中...';
 
         const script = document.createElement('script');
-        script.src = `${GAS_URL}?action=sendEmail&val=${encodeURIComponent(currentVal)}&email=${encodeURIComponent(newEmail.trim())}&callback=onEmailSent`;
+        script.src = `${GAS_URL}?action=sendEmail&val=${encodeURIComponent(currentCustomerId)}&email=${encodeURIComponent(newEmail.trim())}&callback=onEmailSent`;
         document.body.appendChild(script);
     }
 
