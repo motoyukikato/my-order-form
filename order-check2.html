@@ -92,7 +92,7 @@
     let lastFetchedData = [];
 
     // カメラ開始（指名打ち方式）
-    async function startScan() {
+  async function startScan() {
         document.getElementById("button-group").style.display = "none";
         document.getElementById("stop-btn").style.display = "block";
         document.getElementById("reader").innerHTML = "";
@@ -101,17 +101,37 @@
             const devices = await Html5Qrcode.getCameras();
             if (!devices || devices.length === 0) throw new Error("カメラが見つかりません");
 
+            // 背面カメラの優先選別
             const backCameras = devices.filter(d => 
-                d.label.toLowerCase().includes('back') || d.label.toLowerCase().includes('rear')
+                d.label.toLowerCase().includes('back') || 
+                d.label.toLowerCase().includes('rear') ||
+                d.label.toLowerCase().includes('0') // iPhoneのメインカメラを指すことが多い
             );
+            
+            // 望遠（Telephoto）が含まれる場合はそれを避ける（ピントが遠いため）
             const targetId = backCameras.length > 0 
-                ? backCameras[backCameras.length - 1].id 
-                : devices[devices.length - 1].id;
+                ? backCameras[0].id // 0番目（標準広角）が最も接写に強いことが多い
+                : devices[0].id;
 
             html5QrCode = new Html5Qrcode("reader");
+            
+            // 設定のポイント：高解像度を指定することで、OSにマクロモードを誘発させる
+            const config = { 
+                fps: 20, 
+                qrbox: { width: 250, height: 250 },
+                aspectRatio: 1.0,
+                // iOSのSafariでピントを合わせやすくするための設定
+                videoConstraints: {
+                    facingMode: { exact: "environment" },
+                    width: { min: 640, ideal: 1280, max: 1920 },
+                    height: { min: 480, ideal: 720, max: 1080 },
+                    focusMode: "continuous" // 継続的なオートフォーカスをリクエスト
+                }
+            };
+
             await html5QrCode.start(
-                targetId, 
-                { fps: 15, qrbox: 250 },
+                { facingMode: "environment" }, // ID指定より facingMode 指定の方がiOSでは安定します
+                config,
                 async (text) => {
                     await stopScan();
                     currentScannedId = text.trim();
@@ -119,8 +139,17 @@
                 }
             );
         } catch (err) {
-            alert("カメラ起動エラー: " + err);
-            stopScan();
+            // エラーが出た場合は、ID指定のフォールバックを試みる
+            console.error("Primary camera failed, trying fallback:", err);
+            try {
+                await html5QrCode.start({ facingMode: "environment" }, { fps: 15, qrbox: 250 }, async (text) => {
+                    await stopScan();
+                    fetchHistory(text.trim(), "id");
+                });
+            } catch (fallbackErr) {
+                alert("カメラ起動エラー: " + fallbackErr);
+                stopScan();
+            }
         }
     }
 
