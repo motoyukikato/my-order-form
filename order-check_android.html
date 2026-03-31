@@ -7,16 +7,20 @@
     <script src="https://unpkg.com/html5-qrcode"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
-        body { font-family: sans-serif; margin: 0; background: #f4f7f9; padding-bottom: 30px; }
-        header { background: #3b5998; color: white; text-align: center; padding: 15px; font-weight: bold; }
-        .container { padding: 15px; }
-        .card { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); margin-bottom: 20px; }
-        .btn { width: 100%; padding: 15px; border: none; border-radius: 5px; font-size: 16px; font-weight: bold; cursor: pointer; color: white; }
-        #reader { width: 100% !important; background: black; border-radius: 8px; }
-        input { width: 100%; padding: 12px; margin: 10px 0; border: 1px solid #ccc; border-radius: 4px; font-size: 18px; box-sizing: border-box; }
-        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
-        th, td { border-bottom: 1px solid #eee; padding: 12px 5px; text-align: left; }
-        #status-msg { color: #666; text-align: center; margin-top: 10px; font-size: 14px; }
+        body { font-family: sans-serif; margin: 0; background: #f4f7f9; padding-bottom: 30px; color: #333; }
+        header { background: #3b5998; color: white; text-align: center; padding: 15px; font-weight: bold; font-size: 1.2em; }
+        .container { padding: 15px; max-width: 500px; margin: auto; }
+        .card { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); margin-bottom: 20px; }
+        .btn { width: 100%; padding: 15px; border: none; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer; color: white; transition: 0.3s; }
+        .btn-primary { background: #3b5998; }
+        .btn-primary:active { background: #2d4373; }
+        #reader { width: 100% !important; border-radius: 12px; overflow: hidden; background: #000; }
+        input { width: 100%; padding: 15px; margin: 15px 0; border: 2px solid #ddd; border-radius: 8px; font-size: 20px; text-align: center; box-sizing: border-box; }
+        input:focus { border-color: #3b5998; outline: none; }
+        .scan-msg { text-align: center; color: #666; margin-top: 10px; }
+        .id-display { background: #eee; padding: 10px; border-radius: 5px; font-family: monospace; font-size: 1.1em; margin-bottom: 15px; text-align: center; }
+        table { width: 100%; border-collapse: collapse; }
+        td { border-bottom: 1px solid #eee; padding: 12px 5px; }
     </style>
 </head>
 <body>
@@ -24,39 +28,54 @@
 <header>ご注文明細確認</header>
 
 <div class="container">
-    <div id="scan-view">
+    
+    <div id="start-view">
+        <div class="card" style="text-align:center;">
+            <i class="fas fa-qrcode fa-5x" style="color:#3b5998; margin-bottom:20px;"></i>
+            <p>お手元のQRコードをスキャンして<br>ご注文明細を確認してください。</p>
+            <button class="btn btn-primary" onclick="showScanner()">
+                <i class="fas fa-camera"></i> スキャンを開始する
+            </button>
+        </div>
+    </div>
+
+    <div id="scan-view" style="display:none;">
         <div id="reader"></div>
-        <p id="status-msg">QRコードをスキャンしてください</p>
+        <div class="scan-msg">枠内にQRコードを合わせてください</div>
+        <button class="btn" style="background:#666; margin-top:15px;" onclick="location.reload()">キャンセル</button>
     </div>
 
     <div id="auth-view" style="display:none;">
         <div class="card">
-            <h3>本人確認</h3>
+            <div class="id-display">スキャンID: <span id="scanned-id-label"></span></div>
+            <h3 style="margin-top:0;">本人確認</h3>
             <p>ご登録電話番号の<strong>下4桁</strong>を入力してください。</p>
-            <input type="tel" id="auth-code" placeholder="例：1234" maxlength="4">
-            <button class="btn" style="background:#3b5998;" onclick="verifyAndShow()">明細を表示する</button>
-            <button class="btn" style="background:#ccc; margin-top:10px; color:#333;" onclick="location.reload()">戻る</button>
+            <input type="tel" id="auth-code" placeholder="0000" maxlength="4" pattern="\gt[0-9]*">
+            <button class="btn btn-primary" onclick="verifyAndShow()">
+                <i class="fas fa-search"></i> 明細を表示する
+            </button>
         </div>
     </div>
 
-    <div id="loading-view" style="display:none; text-align:center; padding:40px;">
+    <div id="loading-view" style="display:none; text-align:center; padding:50px;">
         <i class="fas fa-spinner fa-spin fa-3x" style="color:#3b5998;"></i>
-        <p id="loading-text" style="margin-top:15px;">データを照合中...</p>
+        <p style="margin-top:20px; font-weight:bold;">データを照合しています...</p>
     </div>
 
     <div id="result-view" style="display:none;">
         <div class="card">
-            <h2 id="cust-name" style="margin-top:0; color:#3b5998;"></h2>
+            <h2 id="cust-name" style="margin-top:0; color:#3b5998; border-bottom:2px solid #3b5998; padding-bottom:10px;"></h2>
             <table>
                 <tbody id="history-table-body"></tbody>
             </table>
-            <div style="text-align:right; margin-top:15px; font-size:1.4em; font-weight:bold; color:#d9534f;">
+            <div style="text-align:right; margin-top:20px; font-size:1.5em; font-weight:bold; color:#d9534f;">
                 合計：¥<span id="total-amount">0</span>
             </div>
         </div>
         <button id="email-btn" class="btn" style="background:#2e7d32;" onclick="requestEmail()">
-            <i class="fas fa-paper-plane"></i> 請書をメールで受け取る
+            <i class="fas fa-paper-plane"></i> この内容をメールで送る
         </button>
+        <button class="btn" style="background:#666; margin-top:15px;" onclick="location.reload()">TOPへ戻る</button>
     </div>
 </div>
 
@@ -65,51 +84,43 @@
     let currentScannedId = "";
     let lastFetchedData = [];
 
-    // 1. カメラ起動
-    window.onload = () => {
-        startCamera();
-    };
-
-    async function startCamera() {
-        try {
-            const devices = await Html5Qrcode.getCameras();
-            if (devices && devices.length > 0) {
-                const backCamera = devices.find(d => d.label.toLowerCase().includes('back')) || devices[devices.length - 1];
-                html5QrCode = new Html5Qrcode("reader");
-                await html5QrCode.start(backCamera.id, { fps: 10, qrbox: 250 }, (text) => {
-                    currentScannedId = text.trim();
-                    html5QrCode.stop();
-                    document.getElementById("scan-view").style.display = "none";
-                    document.getElementById("auth-view").style.display = "block";
-                    document.getElementById("auth-code").focus();
-                });
-            }
-        } catch (e) {
-            alert("カメラ起動エラー: " + e);
+    // スキャナー表示
+    async function showScanner() {
+        document.getElementById("start-view").style.display = "none";
+        document.getElementById("scan-view").style.display = "block";
+        
+        const devices = await Html5Qrcode.getCameras();
+        if (devices && devices.length > 0) {
+            const backCamera = devices.find(d => d.label.toLowerCase().includes('back')) || devices[devices.length - 1];
+            html5QrCode = new Html5Qrcode("reader");
+            await html5QrCode.start(backCamera.id, { fps: 10, qrbox: 250 }, (text) => {
+                currentScannedId = text.trim();
+                document.getElementById("scanned-id-label").innerText = currentScannedId;
+                html5QrCode.stop();
+                document.getElementById("scan-view").style.display = "none";
+                document.getElementById("auth-view").style.display = "block";
+            });
         }
     }
 
-    // 2. 照合開始
+    // 照合
     function verifyAndShow() {
         const auth = document.getElementById("auth-code").value;
-        if (auth.length !== 4) return alert("4桁入力してください");
+        if (auth.length !== 4) return alert("電話番号の下4桁を入力してください");
 
         document.getElementById("auth-view").style.display = "none";
         document.getElementById("loading-view").style.display = "block";
-        document.getElementById("loading-text").innerText = "サーバーと通信中...";
 
-        // GASの関数呼び出し
         google.script.run
             .withSuccessHandler(renderResult)
             .withFailureHandler(onErr)
             .getHistoryWithAuth(currentScannedId, auth);
     }
 
-    // 3. 結果表示
     function renderResult(data) {
         document.getElementById("loading-view").style.display = "none";
         if (!data || data.length === 0) {
-            alert("データが見つかりませんでした。IDか下4桁が間違っている可能性があります。");
+            alert("データが見つかりませんでした。\nID: " + currentScannedId + "\n下4桁が正しいかご確認ください。");
             document.getElementById("auth-view").style.display = "block";
             return;
         }
@@ -122,8 +133,12 @@
         const html = data.map(item => {
             total += Number(item.subtotal || 0);
             return `<tr>
-                <td>${item.name}<br><small>${item.jan} / ¥${Number(item.price).toLocaleString()} × ${item.qty}</small></td>
-                <td style="text-align:right;">¥${Number(item.subtotal).toLocaleString()}</td>
+                <td>
+                    <span style="font-size:0.8em; color:#666;">${item.maker} / ${item.jan}</span><br>
+                    <strong>${item.name}</strong><br>
+                    <small>¥${Number(item.price).toLocaleString()} × ${item.qty}</small>
+                </td>
+                <td style="text-align:right; font-weight:bold;">¥${Number(item.subtotal).toLocaleString()}</td>
             </tr>`;
         }).join('');
 
@@ -132,18 +147,18 @@
     }
 
     function onErr(e) {
-        alert("システムエラー: " + e);
+        alert("エラー: " + e);
         document.getElementById("loading-view").style.display = "none";
         document.getElementById("auth-view").style.display = "block";
     }
 
     function requestEmail() {
         let email = lastFetchedData[0].email || "";
-        const target = window.prompt("送信先メールアドレス:", email);
+        const target = window.prompt("送信先メールアドレスを確認してください:", email);
         if (!target) return;
 
         google.script.run
-            .withSuccessHandler(res => alert(res.success ? "送信しました" : "エラー: " + res.error))
+            .withSuccessHandler(res => alert(res.success ? "メールを送信しました！" : "送信エラー: " + res.error))
             .sendOrderEmail(currentScannedId, target);
     }
 </script>
