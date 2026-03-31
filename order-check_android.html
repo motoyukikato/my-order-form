@@ -56,22 +56,35 @@
 
     async function startCamera() {
     showPage('scanner-page');
-    // インスタンスが既にある場合は止めるなどの処理を入れるとより安全
+    
+    // 既存のインスタンスがあれば確実に破棄
     if (html5QrCode) {
-        await html5QrCode.clear();
+        try {
+            await html5QrCode.stop();
+        } catch (e) {
+            // 停止エラーは無視
+        }
     }
-    
+
     html5QrCode = new Html5Qrcode("reader");
-    
+
     const config = { 
         fps: 10, 
         qrbox: { width: 250, height: 250 },
-        // 一部のAndroid端末でアスペクト比の問題で起動しないのを防ぐ
-        aspectRatio: 1.0 
+        aspectRatio: 1.0 // Androidでの描画エラーを防ぐ
+    };
+
+    // カメラの制約をより具体的に記述
+    const cameraConfig = { 
+        video: { 
+            facingMode: { ideal: "environment" }, // "exact"ではなく"ideal"にすると柔軟性が増します
+            width: { ideal: 1280 },
+            height: { ideal: 720 }
+        } 
     };
 
     html5QrCode.start(
-        { facingMode: "environment" },
+        cameraConfig.video, // 制約を直接渡す
         config,
         (text) => {
             html5QrCode.stop().then(() => {
@@ -79,16 +92,11 @@
             });
         }
     ).catch(err => {
-        // エラー内容を具体的に表示させる
+        // エラー詳細をアラートで出す（原因特定のため）
         console.error(err);
-        alert("カメラ起動エラー: " + err); 
+        alert("カメラ起動エラー: " + err.name + "\n" + err.message);
     });
 }
-    function stopCamera() {
-        if (html5QrCode) html5QrCode.stop();
-        showPage('home');
-    }
-
     async function fetchHistory(id) {
         showPage('home'); // 一旦戻して待機
         try {
