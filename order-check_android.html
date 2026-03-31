@@ -98,60 +98,57 @@
     let lastFetchedData = [];
 
     async function startScan() {
-        const readerDiv = document.getElementById("reader");
-        const startBtn = document.getElementById("start-btn");
+    const readerDiv = document.getElementById("reader");
+    const startBtn = document.getElementById("start-btn");
 
-        // 1. 徹底的に掃除（古いカメラ接続を殺す）
-        if (html5QrCode) {
-            try { await html5QrCode.stop(); } catch (e) {}
-            html5QrCode = null;
-        }
-        readerDiv.innerHTML = "";
-        startBtn.style.display = "none";
-
-        try {
-            // 2. ブラウザ標準の機能(navigator.mediaDevices)で、まずカメラ映像そのものを確保する
-            // これにより「真っ黒」を防ぎます
-            const stream = await navigator.mediaDevices.getUserMedia({ 
-                video: { facingMode: "environment" }, 
-                audio: false 
-            });
-
-            // 3. 映像が確保できたら、ライブラリを「後から」被せる
-            html5QrCode = new Html5Qrcode("reader");
-
-            // 4. 確保したストリームを使ってスキャン開始
-            await html5QrCode.start(
-                { facingMode: "environment" }, 
-                { fps: 10, qrbox: { width: 250, height: 250 } },
-                async (text) => {
-                    // スキャン成功
-                    stream.getTracks().forEach(track => track.stop()); // カメラを完全に止める
-                    await html5QrCode.stop();
-                    currentScannedId = text.trim();
-                    document.getElementById("scan-view").style.display = "none";
-                    document.getElementById("auth-view").style.display = "block";
-                    document.getElementById("auth-code").focus();
-                }
-            );
-        } catch (err) {
-            console.error("Critical Camera Error:", err);
-            // 5. それでもダメな場合の究極の最終手段（カメラIDを直接指定）
-            try {
-                const devices = await Html5Qrcode.getCameras();
-                const backCam = devices.find(d => d.label.toLowerCase().includes('back')) || devices[devices.length - 1];
-                await html5QrCode.start(backCam.id, { fps: 10, qrbox: 250 }, async (text) => {
-                    await html5QrCode.stop();
-                    currentScannedId = text.trim();
-                    document.getElementById("scan-view").style.display = "none";
-                    document.getElementById("auth-view").style.display = "block";
-                });
-            } catch (e) {
-                alert("カメラが別のアプリで使用されているか、フリーズしています。Androidの「設定」からChromeを「強制停止」するか、端末を再起動してください。");
-                startBtn.style.display = "block";
-            }
-        }
+    // 1. 既存のインスタンスがあれば停止して掃除
+    if (html5QrCode) {
+        try { await html5QrCode.stop(); } catch (e) {}
+        html5QrCode = null;
     }
+    readerDiv.innerHTML = "";
+    startBtn.style.display = "none";
+
+    try {
+        // 2. カメラデバイスの一覧を取得
+        const devices = await Html5Qrcode.getCameras();
+        if (!devices || devices.length === 0) {
+            alert("カメラが見つかりません");
+            startBtn.style.display = "block";
+            return;
+        }
+
+        // 3. 背面カメラ(back/rear)を優先的に探す
+        const backCameras = devices.filter(d => 
+            d.label.toLowerCase().includes('back') || 
+            d.label.toLowerCase().includes('rear')
+        );
+        
+        // 背面があればその最後（広角レンズなど）を、なければデバイスリストの最後を選択
+        const targetId = backCameras.length > 0 
+            ? backCameras[backCameras.length - 1].id 
+            : devices[devices.length - 1].id;
+
+        // 4. 特定したカメラIDで起動
+        html5QrCode = new Html5Qrcode("reader");
+        await html5QrCode.start(
+            targetId, 
+            { fps: 10, qrbox: 250 }, 
+            async (text) => {
+                // スキャン成功時の処理
+                await html5QrCode.stop();
+                currentScannedId = text.trim();
+                document.getElementById("scan-view").style.display = "none";
+                document.getElementById("auth-view").style.display = "block";
+                document.getElementById("auth-code").focus();
+            }
+        );
+    } catch (err) {
+        console.error("Camera start error:", err);
+        alert("カメラの起動に失敗しました。ブラウザの設定でカメラ権限を許可してください。");
+        startBtn.style.display = "block";
+    }
+}
 
     // --- 以降、verifyAndShow 等のロジック（変更なし） ---
     function verifyAndShow() {
