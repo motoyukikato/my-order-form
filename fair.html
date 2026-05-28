@@ -591,7 +591,7 @@ function renderPendingList() {
         listDiv.style.display = "block";
     }
 
-    document.addEventListener("click", function (e) {
+  document.addEventListener("click", function (e) {
         if (e.target.id !== "part-no-input") {
             const listDiv = document.getElementById("autocomplete-list");
             if (listDiv) listDiv.style.display = "none";
@@ -599,8 +599,13 @@ function renderPendingList() {
     });
     // ▲▲ ここまで貼り付ける ▲▲
 
-</script>
+    // ↓↓↓ ここに「売上更新ボタン」の処理コードを貼り付ける ↓↓↓
+    document.getElementById("sales-update-btn").addEventListener("click", async function() {
+        // ...（お渡ししたコードの中身）...
+    });
+    // ↑↑↑ ここまで ↑↑↑
 
+</script>
 
 
 </body>
