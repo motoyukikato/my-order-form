@@ -599,11 +599,16 @@ function renderPendingList() {
     });
     // ▲▲ ここまで貼り付ける ▲▲
 
-    // ↓↓↓ ここに「売上更新ボタン」の処理コードを貼り付ける ↓↓↓
-    document.getElementById("sales-update-btn").addEventListener("click", async function() {
-        // ...（お渡ししたコードの中身）...
+    // ↓↓↓ ここから新しい「保留・復元」のコードに丸ごと入れ替わります ↓↓↓
+    document.getElementById("hold-order-btn").addEventListener("click", function() {
+        // ...（保留の処理）...
+    });
+
+    document.getElementById("resume-order-btn").addEventListener("click", function() {
+        // ...（復元の処理）...
     });
     // ↑↑↑ ここまで ↑↑↑
+
 
 </script>
 
