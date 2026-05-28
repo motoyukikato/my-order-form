@@ -384,14 +384,38 @@
     async function submitFinalOrder() {
         if (!customer || cart.length === 0) return alert("顧客またはカートを確認してください");
         if (!confirm("送信しますか？")) return;
+        
         const btn = document.getElementById('submit-btn');
-        btn.disabled = true; btn.innerText = "送信中...";
+        btn.disabled = true; 
+        btn.innerText = "送信中...";
+        
         try {
-            const res = await fetch(GAS_URL, { method: "POST", body: JSON.stringify({ action: "submitOrder", customer: customer, cart: cart, note: document.getElementById('common-note').value, maker: MY_MAKER }) });
-            if (res.ok) { alert("送信完了！"); location.reload(); } else throw new Error();
-        } catch (e) { alert("送信失敗"); btn.disabled = false; btn.innerText = "送信"; }
+            const res = await fetch(GAS_URL, { 
+                method: "POST", 
+                body: JSON.stringify({ 
+                    action: "orderSubmit", 
+                    data: { 
+                        ...customer, 
+                        items: cart,       
+                        commonNote: document.getElementById('common-note').value, 
+                        maker: MY_MAKER 
+                    } 
+                }) 
+            });
+            
+            const result = await res.json();
+            if (result.success) { 
+                alert("送信完了！"); 
+                location.reload(); 
+            } else {
+                throw new Error();
+            }
+        } catch (e) { 
+            alert("送信失敗"); 
+            btn.disabled = false; 
+            btn.innerText = "送信"; 
+        }
     }
-
     function holdOrder() {
         if (!customer || cart.length === 0) return alert("顧客と商品を選択してください");
         const holdData = { customer: customer, cart: cart, note: document.getElementById('common-note').value, date: new Date().toLocaleString() };
