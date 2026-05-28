@@ -93,16 +93,18 @@
         <button class="btn-main" style="background:#28a745; flex: 2;" onclick="startCamera('customer')"><i class="fas fa-qrcode"></i> 顧客スキャン</button>
         <button class="btn-main" style="background:#6c757d; flex: 1;" onclick="openTelModal()">手入力</button>
     </div>
-    <div id="product-input-area" style="display:none; margin-bottom: 15px;">
-        <div style="display: flex; gap: 8px;">
-         <input type="text" id="part-no-input" list="product-list" 
-       oninput="if(this.value.includes(' ')) { this.value = this.value.split(' ')[0]; } " 
-       autocomplete="off"
-       placeholder="品番・品名を入力" 
-       style="flex: 3; padding: 12px; border: 1px solid #ccc; border-radius: 8px; font-size: 16px;">
-            <datalist id="product-list"></datalist>
-            <button class="btn-main" style="background:#3b5998; flex: 1;" onclick="handleManualInput()">追加</button>
+   <div id="product-input-area" style="display:none; margin-bottom: 15px;">
+        <div style="position: relative;">
+            <div style="display: flex; gap: 8px;">
+                <input type="text" id="part-no-input" autocomplete="off" 
+                       placeholder="データを読み込み中..." disabled
+                       oninput="showSuggestions(this.value)"
+                       style="flex: 3; padding: 12px; border: 1px solid #ccc; border-radius: 8px; font-size: 16px;">
+                <button class="btn-main" style="background:#3b5998; flex: 1;" onclick="handleManualInput()">追加</button>
+            </div>
+            <div id="autocomplete-list" style="display:none; position:absolute; top:52px; left:0; width:100%; max-height:250px; overflow-y:auto; background:#fff; border:1px solid #ccc; border-radius:8px; box-shadow:0 6px 12px rgba(0,0,0,0.15); z-index:1000;"></div>
         </div>
+    </div>
     </div>
     <div id="cart-area" style="display:none;">
         <div id="cart-list" class="card" style="padding: 0 15px;"></div>
