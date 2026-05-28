@@ -538,11 +538,64 @@ async function startCamera(mode) {
         } else { showPage('home'); }
     }
 
-    function renderPendingList() {
+function renderPendingList() {
         const area = document.getElementById("pending-list-area");
         if (pendingOrders.length === 0) { area.innerHTML = ""; return; }
         area.innerHTML = '<h4>▼ 保留中</h4>' + pendingOrders.map((ord, i) => `<div class="card" onclick="resumeOrder(${i})"><b>${ord.customer.customer} 様</b></div>`).join('');
     }
+
+    // ▼▼ ここから貼り付ける ▼▼
+    function showSuggestions(val) {
+        const listDiv = document.getElementById("autocomplete-list");
+        if (!listDiv) return;
+        
+        listDiv.innerHTML = "";
+        
+        if (!val) {
+            listDiv.style.display = "none";
+            return;
+        }
+
+        const searchVal = normalizeText(val);
+
+        const matches = allProducts.filter(item => {
+            const targetPartNo = normalizeText(item.partNo);
+            const targetJan = normalizeText(item.jan || "");
+            const targetName = normalizeText(item.name);
+            return (targetPartNo.includes(searchVal) || targetJan.includes(searchVal) || targetName.includes(searchVal));
+        }).slice(0, 50);
+
+        if (matches.length === 0) {
+            listDiv.style.display = "none";
+            return;
+        }
+
+        matches.forEach(p => {
+            const itemDiv = document.createElement("div");
+            itemDiv.style.padding = "12px 15px";
+            itemDiv.style.borderBottom = "1px solid #eee";
+            itemDiv.style.cursor = "pointer";
+            itemDiv.innerHTML = `<b style="color:#3b5998;">${p.partNo || ""}</b> <span style="font-size:0.9em; color:#555; margin-left:8px;">${p.name || ""}</span>`;
+            
+            itemDiv.onclick = () => {
+                listDiv.style.display = "none";
+                document.getElementById("part-no-input").value = ""; 
+                openQtyModal(p); 
+            };
+            listDiv.appendChild(itemDiv);
+        });
+        
+        listDiv.style.display = "block";
+    }
+
+    document.addEventListener("click", function (e) {
+        if (e.target.id !== "part-no-input") {
+            const listDiv = document.getElementById("autocomplete-list");
+            if (listDiv) listDiv.style.display = "none";
+        }
+    });
+    // ▲▲ ここまで貼り付ける ▲▲
+
 </script>
 
 
