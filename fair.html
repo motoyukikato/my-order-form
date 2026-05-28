@@ -146,7 +146,6 @@
     <div class="card" style="margin-top:20px;">
         <h4 style="margin-top:0; color:#333;"><i class="fas fa-exchange-alt"></i> メーカー切替</h4>
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 20px;">
-  <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 20px;">
     <button class="btn-main" style="background:#007bff; font-size:0.9em;" onclick="switchMaker('カルナック')">カルナック</button>
     <button class="btn-main" style="background:#0056b3; font-size:0.9em;" onclick="switchMaker('星野㈱')">星野㈱</button>
     
@@ -323,7 +322,12 @@ function openTelModal() {
             closeQtyModal(); fetchCustomer(val);
         } else {
             let q = parseInt(val);
-            if (q > 0) { cart.push({ ...tempProduct, quantity: q }); renderCart(); }
+            if (q > 0) { 
+    // マスタによってpriceかlistPriceのどちらが入っていても動くようにします
+    const productPrice = tempProduct.price || tempProduct.listPrice || 0;
+    cart.push({ ...tempProduct, price: productPrice, quantity: q }); 
+    renderCart(); 
+}
             closeQtyModal(); document.getElementById("part-no-input").value = ""; 
         }
     }
@@ -339,12 +343,13 @@ function openTelModal() {
             return;
         }
         list.innerHTML = cart.map((item, i) => {
-            total += (item.price * item.quantity);
+            const itemPrice = item.price || 0;
+total += (itemPrice * item.quantity);
             return `
             <div class="item-row">
                 <div style="flex: 1;">
                     <b>${item.name}</b><br>
-                    <small>${item.partNo} / ¥${item.price.toLocaleString()}</small>
+                    <small>${item.partNo} / ¥${itemPrice.toLocaleString()}</small>
                 </div>
                 <div style="display: flex; align-items: center; gap: 8px;">
                     <button class="qty-ctrl-btn" onclick="changeQty(${i}, -1)">−</button>
@@ -599,16 +604,66 @@ function renderPendingList() {
     });
     // ▲▲ ここまで貼り付ける ▲▲
 
-    // ↓↓↓ ここから新しい「保留・復元」のコードに丸ごと入れ替わります ↓↓↓
-    document.getElementById("hold-order-btn").addEventListener("click", function() {
-        // ...（保留の処理）...
-    });
+    // ↓↓↓ 【修正】御社の既存システムと完全に連動させた「保留・復元」の正しい処理 ↓↓↓
+    
+    // ① 最初の画面の「保留」ボタンを押したときの処理
+    window.holdOrder = function() {
+        if (!customer && cart.length === 0) {
+            alert("保留する注文データがありません。");
+            return;
+        }
 
-    document.getElementById("resume-order-btn").addEventListener("click", function() {
-        // ...（復元の処理）...
-    });
+        // 現在入力中のデータをオブジェクトにまとめる
+        const currentOrder = {
+            customer: customer || { customer: "顧客未選択" },
+            cart: [...cart],
+            commonNote: document.getElementById("common-note").value || ""
+        };
+
+        // アプリ内の保留リスト（配列）に追加
+        pendingOrders.push(currentOrder);
+        
+        alert(`${currentOrder.customer.customer} 様の注文を一時保留しました。次の注文を入力できます。`);
+        
+        // 画面をクリアして初期状態に戻す
+        resetUI();
+    };
+
+    // ② 「保留/履歴」ページで、保留したカードをタップしたときに復元する処理
+    window.resumeOrder = function(index) {
+        const targetOrder = pendingOrders[index];
+        if (!targetOrder) return;
+
+        if (!confirm(`${targetOrder.customer.customer} 様の注文をカートに復元しますか？\n（現在カートにある内容は上書きされます）`)) {
+            return;
+        }
+
+        // 顧客情報を復元
+        if (targetOrder.customer && targetOrder.customer.customer !== "顧客未選択") {
+            customer = targetOrder.customer;
+            updateCustomerDisplay();
+        } else {
+            customer = null;
+            document.getElementById("c-none").style.display = "block";
+            document.getElementById("c-detail").style.display = "none";
+            document.getElementById("product-input-area").style.display = "block"; // 商品入力だけは可能にする
+        }
+
+        // カートの中身とメモを復元
+        cart = [...targetOrder.cart];
+        document.getElementById("common-note").value = targetOrder.commonNote;
+        
+        // カートの再描画
+        renderCart();
+
+        // 復元したデータは保留リストから削除する
+        pendingOrders.splice(index, 1);
+
+        // カート画面（home）に戻す
+        showPage('home');
+        alert("注文を復元しました。");
+    };
     // ↑↑↑ ここまで ↑↑↑
-
 
 </script>
 
