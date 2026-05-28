@@ -250,19 +250,20 @@ function openTelModal() {
         const res = await fetch(GAS_URL, { method: "POST", body: JSON.stringify({ action: "getAllProducts", targetMaker: MY_MAKER }) });
         allProducts = await res.json();
         
-        const list = document.getElementById("product-list");
-        list.innerHTML = ""; 
-
-       allProducts.forEach(p => {
-    const option = document.createElement("option");
-    
-    // 検索をヒットさせるため、あえて「全部入り」を value に入れる
-    const fullText = (p.partNo || "") + " " + (p.name || "");
-    option.value = fullText; 
-    
-    list.appendChild(option);
-});
-    } catch (e) { console.error("Load failed", e); }
+        // ▼ 変更点：datalistへの追加をやめ、入力欄を有効化する ▼
+        const inputElem = document.getElementById("part-no-input");
+        if (inputElem) {
+            inputElem.placeholder = "品番・品名・JANを入力";
+            inputElem.disabled = false;
+        }
+    } catch (e) { 
+        console.error("Load failed", e);
+        // エラー時はプレースホルダーを変更して知らせる
+        const inputElem = document.getElementById("part-no-input");
+        if (inputElem) {
+            inputElem.placeholder = "読み込みエラー";
+        }
+    }
 }
 
     function numIn(n) {
