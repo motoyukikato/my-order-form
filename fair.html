@@ -475,9 +475,12 @@ function openTelModal() {
 
     function normalizeText(str) {
         if (!str) return "";
-        return String(str).replace(/[！-～]/g, s => String.fromCharCode(s.charCodeAt(0) - 0xFEE0)).replace(/　/g, " ").toUpperCase().trim();
+        return String(str)
+            .normalize("NFKC") // 全角英数→半角、半角カナ→全角に一括統一
+            .replace(/[\u3041-\u3096]/g, match => String.fromCharCode(match.charCodeAt(0) + 0x60)) // ひらがなをカタカナに変換
+            .toUpperCase() // 大文字・小文字を統一
+            .trim();
     }
-
     function switchMaker(makerName) {
         if (confirm(makerName + " に切り替えますか？")) {
             const url = new URL(window.location.href);
