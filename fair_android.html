@@ -378,7 +378,7 @@
         if (id === 'history') loadHistory();
     }
 
-    function openTelModal() { openQtyModal(null); }
+function openTelModal() { openQtyModal(null); }
     function handleManualInput() { fetchProduct(document.getElementById("part-no-input").value); }
 
     async function submitFinalOrder() {
@@ -390,28 +390,43 @@
         btn.innerText = "送信中...";
         
         try {
+            const payload = { 
+                action: "orderSubmit", 
+                data: { 
+                    ...customer, 
+                    items: cart,       
+                    commonNote: document.getElementById('common-note').value, 
+                    maker: MY_MAKER 
+                } 
+            };
+            
+            // GASへ送信
             const res = await fetch(GAS_URL, { 
                 method: "POST", 
-                body: JSON.stringify({ 
-                    action: "orderSubmit", 
-                    data: { 
-                        ...customer, 
-                        items: cart,       
-                        commonNote: document.getElementById('common-note').value, 
-                        maker: MY_MAKER 
-                    } 
-                }) 
+                body: JSON.stringify(payload) 
             });
             
-            const result = await res.json();
-            if (result.success) { 
-                alert("送信完了！"); 
-                location.reload(); 
-            } else {
-                throw new Error();
+            // いきなりJSONに変換せず、まずはテキストとして結果を受け取る
+            const rawText = await res.text();
+            
+            try {
+                // テキストをJSONに変換できるかチェック
+                const result = JSON.parse(rawText);
+                if (result.success) { 
+                    alert("送信完了！"); 
+                    location.reload(); 
+                } else {
+                    throw new Error("GAS側でエラー: " + JSON.stringify(result));
+                }
+            } catch (parseError) {
+                // JSONに変換できなかった場合（HTMLのエラー画面などが返ってきている）
+                throw new Error("システムエラー返答: " + rawText.substring(0, 100));
             }
+            
         } catch (e) { 
-            alert("送信失敗"); 
+            // 何が原因で失敗したのかをアラートで表示する
+            alert("【送信失敗の原因】\n" + e.message); 
+            console.error("詳細エラー:", e);
             btn.disabled = false; 
             btn.innerText = "送信"; 
         }
