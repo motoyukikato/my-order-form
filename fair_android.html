@@ -134,7 +134,8 @@
 <script>
     const urlParams = new URLSearchParams(window.location.search);
     const MY_MAKER = urlParams.get('m');
-    const GAS_URL = "https://script.google.com/macros/s/AKfycbwV0RYNLecbkQhlkjlKH0vnKVLoW9wATNjw5PVnUq2C4PusfrWlrfwZNWdm1RgemPbrDA/exec";
+    // ↓こちらが元の動いていたURLです
+const GAS_URL = "https://script.google.com/macros/s/AKfycbyPlUjGjzUJPSuSoWhBZsK51M0-1H5ipUdkKuDSwOrFKOveXuosyaoG0pSS156-bb-x/exec";
 
     let html5QrCode = null, customer = null, cart = [], tempProduct = null, isTelMode = false;
     let editContext = null; // 修正対象の情報を保持用
