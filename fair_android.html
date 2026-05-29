@@ -391,43 +391,29 @@ function openTelModal() { openQtyModal(null); }
         btn.innerText = "送信中...";
         
         try {
+            // Android用のGASが待っている正しいデータ形式
             const payload = { 
-                action: "orderSubmit", 
-                data: { 
-                    ...customer, 
-                    items: cart,       
-                    commonNote: document.getElementById('common-note').value, 
-                    maker: MY_MAKER 
-                } 
+                action: "submitOrder", 
+                customer: customer, 
+                cart: cart, 
+                note: document.getElementById('common-note').value, 
+                maker: MY_MAKER 
             };
             
-            // GASへ送信
             const res = await fetch(GAS_URL, { 
                 method: "POST", 
                 body: JSON.stringify(payload) 
             });
             
-            // いきなりJSONに変換せず、まずはテキストとして結果を受け取る
-            const rawText = await res.text();
-            
-            try {
-                // テキストをJSONに変換できるかチェック
-                const result = JSON.parse(rawText);
-                if (result.success) { 
-                    alert("送信完了！"); 
-                    location.reload(); 
-                } else {
-                    throw new Error("GAS側でエラー: " + JSON.stringify(result));
-                }
-            } catch (parseError) {
-                // JSONに変換できなかった場合（HTMLのエラー画面などが返ってきている）
-                throw new Error("システムエラー返答: " + rawText.substring(0, 100));
+            if (res.ok) { 
+                alert("送信完了！"); 
+                location.reload(); 
+            } else {
+                throw new Error("HTTPエラー: " + res.status);
             }
-            
         } catch (e) { 
-            // 何が原因で失敗したのかをアラートで表示する
-            alert("【送信失敗の原因】\n" + e.message); 
-            console.error("詳細エラー:", e);
+            // エラー時もボタンを元に戻して再操作できるようにする
+            alert("送信失敗\n\n※URLが「/exec」で終わっているか、GASのアクセス権限が「全員」になっているか確認してください。"); 
             btn.disabled = false; 
             btn.innerText = "送信"; 
         }
