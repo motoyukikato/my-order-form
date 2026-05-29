@@ -225,50 +225,64 @@ const GAS_URL = "https://script.google.com/macros/s/AKfycbxNVtl8xeJhxLlB6uQk0uYW
         editContext = null;
     }
 
-   async function startCamera() {
-    showPage('scanner-page');
-    
-    // 1. 既に起動している場合は確実に停止・クリアする
-    if (html5QrCode) { 
-        try { await html5QrCode.stop(); } catch (e) {} 
-        html5QrCode = null; 
-    }
-    
-    // 2. 表示エリアを一旦リセット
-    document.getElementById("reader").innerHTML = "";
-    
-    try {
-        // 3. 端末のカメラ一覧を取得
-        const devices = await Html5Qrcode.getCameras();
-        if (!devices || devices.length === 0) return alert("カメラが見つかりません");
+ async function startCamera(mode) {
+        // もし商品スキャンモードなのに顧客が選ばれていなければ警告
+        if (mode === 'product' && !customer) {
+            return alert("先に顧客を選択してください");
+        }
 
-        // 4. 背面（back/rear）カメラを探す。見つからなければ最後に見つかったカメラを使う
-        const backCameras = devices.filter(d => 
-            d.label.toLowerCase().includes('back') || 
-            d.label.toLowerCase().includes('rear')
-        );
-        const targetId = backCameras.length > 0 
-            ? backCameras[backCameras.length - 1].id 
-            : devices[devices.length - 1].id;
+        showPage('scanner-page');
+        
+        // 1. 既に起動している場合は確実に停止・クリアする
+        if (html5QrCode) { 
+            try { await html5QrCode.stop(); } catch (e) {} 
+            html5QrCode = null; 
+        }
+        
+        // 2. 表示エリアを一旦リセット
+        document.getElementById("reader").innerHTML = "";
+        
+        try {
+            // 3. 端末のカメラ一覧を取得
+            const devices = await Html5Qrcode.getCameras();
+            if (!devices || devices.length === 0) return alert("カメラが見つかりません");
 
-        // 5. 特定したIDを使ってカメラを起動
-        html5QrCode = new Html5Qrcode("reader");
-        await html5QrCode.start(
-            targetId, 
-            { fps: 10, qrbox: 250 }, 
-            (text) => {
-                html5QrCode.stop().then(() => {
-                    // スキャン成功後の処理
-                    fetchHistory(text.trim());
-                });
-            }
-        );
-    } catch (err) {
-        console.error(err);
-        alert("カメラ起動エラーが発生しました。");
-        showPage('home');
+            // 4. 背面（back/rear）カメラを探す
+            const backCameras = devices.filter(d => 
+                d.label.toLowerCase().includes('back') || 
+                d.label.toLowerCase().includes('rear')
+            );
+            const targetId = backCameras.length > 0 
+                ? backCameras[backCameras.length - 1].id 
+                : devices[devices.length - 1].id;
+
+            // 5. 特定したIDを使ってカメラを起動
+            html5QrCode = new Html5Qrcode("reader");
+            await html5QrCode.start(
+                targetId, 
+                { fps: 10, qrbox: 250 }, 
+                (text) => {
+                    // スキャン成功時の処理
+                    html5QrCode.stop().then(() => {
+                        showPage('home'); // スキャン画面を閉じてホームに戻る
+                        
+                        const scannedText = text.trim();
+                        
+                        // 顧客スキャンか商品スキャンかで処理を分ける
+                        if (mode === 'customer') {
+                            fetchCustomer(scannedText);
+                        } else {
+                            fetchProduct(scannedText);
+                        }
+                    }).catch(err => console.error("カメラ停止エラー", err));
+                }
+            );
+        } catch (err) {
+            console.error(err);
+            alert("カメラ起動エラーが発生しました。");
+            showPage('home');
+        }
     }
-}
 
     function stopCamera() { if (html5QrCode) html5QrCode.stop(); showPage('home'); }
 
