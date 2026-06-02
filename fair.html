@@ -483,6 +483,7 @@ total += (itemPrice * item.quantity);
         if (p) { openQtyModal(p); } else { alert("商品が見つかりません: [" + code + "]"); }
     }
 
+    // ▼ 1. ゴミ箱ボタンを復活させた履歴読み込み関数
     async function loadHistory() {
         const list = document.getElementById("h-list");
         list.innerHTML = "<div style='text-align:center; padding:20px;'><i class='fas fa-spinner fa-spin'></i> 読み込み中...</div>";
@@ -494,17 +495,45 @@ total += (itemPrice * item.quantity);
                 <div class="card" style="font-size:0.9em; border-left: 5px solid #3b5998; margin-bottom:10px;">
                     <b>${item.customerName} 様</b> <small>${item.displayDate}</small><br>
                     品番：${item.partNo} | ${item.name}<br>
-                    数量：<input type="number" value="${item.qty}" style="width:50px;" onchange="execDirectUpdate('${item.timestamp}', '${item.partNo}', this.value, ${item.qty})">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 5px;">
+                        <span>数量：<input type="number" value="${item.qty}" style="width:50px; padding:4px;" onchange="execDirectUpdate('${item.timestamp}', '${item.partNo}', this.value, ${item.qty})"></span>
+                        
+                        <span class="del-btn" style="cursor:pointer; font-size:1.1em; padding:4px 10px;" onclick="execDirectDelete('${item.timestamp}', '${item.partNo}')">
+                            <i class="fas fa-trash-alt"></i>
+                        </span>
+                    </div>
                 </div>`).join('');
         } catch (e) { list.innerHTML = "失敗"; }
     }
 
+    // ▼ 2. 履歴の数量更新の関数
     async function execDirectUpdate(ts, partNo, newQty, oldQty) {
         if (newQty <= 0) return loadHistory();
         try {
             await fetch(GAS_URL, { method: "POST", body: JSON.stringify({ action: "updateOrderQty", timestamp: ts, partNo: partNo, newQty: newQty, maker: MY_MAKER }) });
             loadHistory();
         } catch (e) { alert("通信エラー"); }
+    }
+
+    // ▼ 3. 【新規追加】履歴から完全に削除するための関数
+    async function execDirectDelete(ts, partNo) {
+        if (!confirm("この注文履歴を削除しますか？\n（スプレッドシートからも完全に消去されます）")) return;
+        
+        // 削除中は履歴一覧をローディング表示にする
+        const list = document.getElementById("h-list");
+        list.innerHTML = "<div style='text-align:center; padding:20px;'><i class='fas fa-spinner fa-spin'></i> 削除中...</div>";
+        
+        try {
+            await fetch(GAS_URL, { 
+                method: "POST", 
+                body: JSON.stringify({ action: "deleteOrderLine", timestamp: ts, partNo: partNo, maker: MY_MAKER }) 
+            });
+            // 削除が終わったら履歴を再読み込み
+            loadHistory();
+        } catch (e) { 
+            alert("通信エラー"); 
+            loadHistory();
+        }
     }
 
     function normalizeText(str) {
