@@ -109,6 +109,8 @@
                     
                     // 1. スキャンしたIDを一旦保存する
                     currentScannedId = text.trim(); 
+                    // ★ここに追加！スキャンした内容を画面に表示して確認します
+                    alert("読み取ったID: " + currentScannedId);
                     
                     // 2. すぐに fetchHistory(text) を呼ばず、入力画面を出す
                     document.getElementById("scan-view").style.display = "none";
