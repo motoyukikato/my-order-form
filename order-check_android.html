@@ -20,7 +20,6 @@
         .total-price { font-size: 1.6em; color: #ffeb3b; font-weight: bold; margin-left: 10px; }
         .btn { border: none; width: 100%; padding: 16px; border-radius: 8px; font-size: 17px; font-weight: bold; cursor: pointer; transition: 0.2s; margin-top: 10px; }
         .btn-scan { background: #28a745; color: white; }
-        .btn-tel { background: #6c757d; color: white; margin-top: 10px; }
         .btn-email { background: #007bff; color: white; display: none; }
         .loading { text-align: center; padding: 40px; display: none; color: #4267B2; }
     </style>
@@ -32,14 +31,11 @@
 <div class="container">
     <div id="scan-view">
         <div class="card">
-            <p style="text-align:center; font-weight:bold;">お客様QRをスキャン<br>または電話番号を入力してください</p>
+            <p style="text-align:center; font-weight:bold;">お客様QRをスキャンしてください</p>
             <div id="reader"></div>
-            <div id="button-group" style="display: flex; gap: 10px;">
-                <button id="start-btn" class="btn btn-scan" style="flex: 2;" onclick="startScan()">
+            <div id="button-group">
+                <button id="start-btn" class="btn btn-scan" onclick="startScan()">
                     <i class="fa-solid fa-camera"></i> スキャン
-                </button>
-                <button id="tel-btn" class="btn btn-tel" style="flex: 1;" onclick="inputTel()">
-                    <i class="fa-solid fa-phone"></i> 手入力
                 </button>
             </div>
             <button id="stop-btn" class="btn" style="display:none; background:#666; color:white;" onclick="stopScan()">キャンセル</button>
@@ -113,7 +109,7 @@
                 { fps: 15, qrbox: 250 },
                 async (text) => {
                     await stopScan();
-                    fetchHistory(text.trim(), "id");
+                    fetchHistory(text.trim());
                 }
             );
         } catch (err) {
@@ -127,23 +123,17 @@
             try { await html5QrCode.stop(); await html5QrCode.clear(); } catch (e) {}
             html5QrCode = null;
         }
-        document.getElementById("button-group").style.display = "flex";
+        document.getElementById("button-group").style.display = "block";
         document.getElementById("stop-btn").style.display = "none";
     }
 
-    function inputTel() {
-        const tel = window.prompt("検索する電話番号を入力してください\n(ハイフンなし)");
-        if (!tel || tel.trim() === "") return;
-        fetchHistory(tel.trim(), "tel");
-    }
-
-    function fetchHistory(val, type) {
+    function fetchHistory(val) {
         document.getElementById("scan-view").style.display = "none";
         document.getElementById("loading").style.display = "block";
         
-        const action = (type === "tel") ? "getHistoryByTel" : "getCustomerSpecificHistory";
+        const action = "getCustomerSpecificHistory";
         
-        // 【重要】以前機能していたJSONP方式で通信
+        // 【重要】JSONP方式で通信
         const script = document.createElement('script');
         script.src = `${GAS_URL}?action=${action}&val=${encodeURIComponent(val)}&callback=onDataReceived`;
         document.body.appendChild(script);
