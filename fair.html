@@ -308,7 +308,11 @@ function openTelModal() {
             modalTitle.innerText = p.name;
             const price = p.listPrice ? p.listPrice.toLocaleString() : (p.price ? p.price.toLocaleString() : "0");
             modalInfo.innerHTML = `上代: ¥${price} / 在庫: ${p.stock || "--"} / ロット: ${p.lot || "1"}`;
-            qtyDisplay.innerText = p.lot ? p.lot : "1";
+            
+            // ▼ 修正箇所: ロットの全角数字を半角にし、数字以外（スペース等）を取り除く
+            let cleanLot = p.lot ? String(p.lot).normalize("NFKC").replace(/[^0-9]/g, '') : "1";
+            qtyDisplay.innerText = cleanLot || "1"; // もし空っぽになれば強制的に1にする
+
         } else {
             isTelMode = true;
             tempProduct = null;
@@ -327,13 +331,15 @@ function openTelModal() {
             if (val.length < 9) return alert("番号が短いです");
             closeQtyModal(); fetchCustomer(val);
         } else {
-            let q = parseInt(val);
+            // ▼ 修正箇所: 決定ボタンを押した時も、確実に半角数字に変換してから処理する
+            let cleanVal = String(val).normalize("NFKC").replace(/[^0-9]/g, '');
+            let q = parseInt(cleanVal);
+            
             if (q > 0) { 
-    // マスタによってpriceかlistPriceのどちらが入っていても動くようにします
-    const productPrice = tempProduct.price || tempProduct.listPrice || 0;
-    cart.push({ ...tempProduct, price: productPrice, quantity: q }); 
-    renderCart(); 
-}
+                const productPrice = tempProduct.price || tempProduct.listPrice || 0;
+                cart.push({ ...tempProduct, price: productPrice, quantity: q }); 
+                renderCart(); 
+            }
             closeQtyModal(); document.getElementById("part-no-input").value = ""; 
         }
     }
