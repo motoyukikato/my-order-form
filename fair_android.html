@@ -146,7 +146,7 @@ const GAS_URL = "https://script.google.com/macros/s/AKfycbyKuMsohxqG-LK_pVHddVv-
     let html5QrCode = null, customer = null, cart = [], tempProduct = null, isTelMode = false;
     let editContext = null; // 修正対象の情報を保持用
     let allProducts = [];
-
+　　let cachedHistory = [];
     window.addEventListener('popstate', function(e) {
         if (document.getElementById('qty-modal').style.display === 'flex') {
             closeQtyModal();
@@ -469,26 +469,79 @@ function openTelModal() { openQtyModal(null); }
                 </div>
             </div>`).join('') : "";
 
-        listArea.innerHTML = "読み込み中...";
+        listArea.innerHTML = "<div style='text-align:center; padding:20px;'><i class='fas fa-spinner fa-spin'></i> 読み込み中...</div>";
         try {
             const res = await fetch(GAS_URL, { method: "POST", body: JSON.stringify({ action: "getOrderHistory", targetMaker: MY_MAKER }) });
             const historyData = await res.json();
-            listArea.innerHTML = historyData.length ? historyData.map(item => `
-                <div class="card" style="border-left:4px solid #3b5998;">
-                    <small>${item.displayDate} / ${item.customerName}</small><br><b>${item.name}</b><br>
-                    <div style="display:flex; justify-content:space-between; align-items:center; margin-top:5px;">
-                        <span>¥${item.subtotal.toLocaleString()}</span>
-                        <div style="display:flex; align-items:center; gap:8px;">
-                            <button onclick="execUpdate('${item.timestamp}','${item.partNo}',${item.qty-1})" class="qty-ctrl-btn" style="width:36px; height:36px;">-</button>
-                            <div class="qty-num-box" style="min-width:50px;" onclick="openQtyEditDirect('history', null, ${item.qty}, '${item.timestamp}', '${item.partNo}', '${item.name}')">${item.qty}</div>
-                            <button onclick="execUpdate('${item.timestamp}','${item.partNo}',${item.qty+1})" class="qty-ctrl-btn" style="width:36px; height:36px;">+</button>
-                            <button onclick="execDelete('${item.timestamp}','${item.partNo}')" style="border:none; background:none; color:#ccc; margin-left:5px;"><i class="fas fa-trash fa-lg"></i></button>
-                        </div>
+            cachedHistory = historyData; // ★ここで取得したデータを保存します
+            renderHistoryList(cachedHistory); // ★描画専用の関数にパスします
+        } catch (e) { 
+            listArea.innerHTML = "<p style='text-align:center; color:#d32f2f;'>読込失敗</p>"; 
+        }
+    }
+　　function renderHistoryList(data) {
+        const listArea = document.getElementById("h-list");
+        if (data.length === 0) {
+            listArea.innerHTML = "<p style='text-align:center; color:#999; padding:20px;'>履歴はありません</p>";
+            return;
+        }
+        
+        listArea.innerHTML = data.map(item => `
+            <div class="card" style="border-left:4px solid #3b5998;">
+                <small>${item.displayDate} / ${item.customerName}</small><br><b>${item.name}</b><br>
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-top:5px;">
+                    <span>¥${item.subtotal.toLocaleString()}</span>
+                    <div style="display:flex; align-items:center; gap:8px;">
+                        <button onclick="execUpdate('${item.timestamp}','${item.partNo}',${item.qty-1})" class="qty-ctrl-btn" style="width:36px; height:36px;">-</button>
+                        <div class="qty-num-box" style="min-width:50px;" onclick="openQtyEditDirect('history', null, ${item.qty}, '${item.timestamp}', '${item.partNo}', '${item.name}')">${item.qty}</div>
+                        <button onclick="execUpdate('${item.timestamp}','${item.partNo}',${item.qty+1})" class="qty-ctrl-btn" style="width:36px; height:36px;">+</button>
+                        <button onclick="execDelete('${item.timestamp}','${item.partNo}')" style="border:none; background:none; color:#ccc; margin-left:5px;"><i class="fas fa-trash fa-lg"></i></button>
                     </div>
-                </div>`).join('') : "履歴なし";
-        } catch (e) { listArea.innerHTML = "読込失敗"; }
+                </div>
+                <!-- ★ 新規注文ボタン ★ -->
+                <div style="margin-top: 12px; text-align: right;">
+                    <button class="btn-main" style="background:#2e7d32; font-size:0.85em; padding:8px 12px; width:auto; display:inline-block;" onclick="setCustomerFromHistory('${item.customerName}')">
+                        <i class="fas fa-user-check"></i> この顧客で新規注文
+                    </button>
+                </div>
+            </div>`).join('');
     }
 
+    function filterHistory() {
+        const keyword = document.getElementById("history-filter-input").value.trim().toLowerCase();
+        if (!keyword) {
+            renderHistoryList(cachedHistory);
+            return;
+        }
+        const filtered = cachedHistory.filter(item => 
+            (item.customerName && item.customerName.toLowerCase().includes(keyword)) ||
+            (item.partNo && item.partNo.toLowerCase().includes(keyword))
+        );
+        renderHistoryList(filtered);
+    }
+
+    async function setCustomerFromHistory(customerName) {
+        if (!confirm(customerName + " 様を現在の注文の宛先に設定しますか？")) return;
+        
+        showPage('home');
+        document.getElementById("c-none").innerHTML = "<i class='fas fa-spinner fa-spin'></i> 顧客情報を取得中...";
+        
+        try {
+            const res = await fetch(GAS_URL, { method: "POST", body: JSON.stringify({ action: "customerSearch", val: customerName }) });
+            const d = await res.json();
+            
+            if (d && d.customer) { 
+                customer = d; 
+                updateCustomerDisplay(); 
+            } else { 
+                alert("詳細情報の取得に失敗しました。");
+                document.getElementById("c-none").innerHTML = "顧客を選択してください";
+            }
+        } catch (e) {
+            alert("通信エラーが発生しました");
+            document.getElementById("c-none").innerHTML = "顧客を選択してください";
+        }
+    }
     function restoreOrder(idx) {
         const pending = JSON.parse(localStorage.getItem("pendingOrders") || "[]");
         const t = pending[idx];
