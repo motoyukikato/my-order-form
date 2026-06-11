@@ -374,7 +374,7 @@ const GAS_URL = "https://script.google.com/macros/s/AKfycbyKuMsohxqG-LK_pVHddVv-
             closeQtyModal(); 
             fetchCustomer(val); 
         } else {
-            // ▼ 修正: 決定ボタンを押した時も、確実に半角数字に変換してから処理する
+            // 全角数字対策
             let cleanVal = String(val).normalize("NFKC").replace(/[^0-9]/g, '');
             let q = parseInt(cleanVal);
             if (isNaN(q)) q = 0;
@@ -387,8 +387,15 @@ const GAS_URL = "https://script.google.com/macros/s/AKfycbyKuMsohxqG-LK_pVHddVv-
                     renderCart();
                     closeQtyModal();
                 } else if (editContext.type === 'history') {
+                    // ▼ 修正: 画面を閉じて記憶が消える「前」に、必要なデータを抜き出しておく
+                    let targetTs = editContext.timestamp;
+                    let targetPn = editContext.partNo;
                     closeQtyModal();
-                    execUpdate(editContext.timestamp, editContext.partNo, q);
+                    
+                    // ▼ 追加: 押した瞬間に「更新中」と表示させて、止まっているように見えないようにする
+                    document.getElementById("h-list").innerHTML = "<div style='text-align:center; padding:20px;'><i class='fas fa-spinner fa-spin'></i> 数量を更新中...</div>";
+                    
+                    execUpdate(targetTs, targetPn, q);
                 }
             } else {
                 // 新規追加モード
