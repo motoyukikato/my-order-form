@@ -183,28 +183,36 @@ const GAS_URL = "https://script.google.com/macros/s/AKfycbyKuMsohxqG-LK_pVHddVv-
 
     function numIn(n) {
         let v = document.getElementById("qty-val");
-        const defaultLot = String(tempProduct && tempProduct.lot ? tempProduct.lot : "1");
+        const defaultLot = String(tempProduct && tempProduct.lot ? String(tempProduct.lot).normalize("NFKC").replace(/[^0-9]/g, '') : "1") || "1";
         
-        if (n === 'C') { v.innerText = isTelMode ? "" : defaultLot; return; }
-        if (n === 'B') { v.innerText = v.innerText.length > 1 ? v.innerText.slice(0, -1) : (isTelMode ? "" : "0"); return; }
+        if (n === 'C') { 
+            v.innerText = isTelMode ? "" : defaultLot; 
+            v.dataset.isFirstInput = "true"; // クリアした時は「最初の入力」に戻す
+            return; 
+        }
+        if (n === 'B') { 
+            v.innerText = v.innerText.length > 1 ? v.innerText.slice(0, -1) : (isTelMode ? "" : "0"); 
+            v.dataset.isFirstInput = "false"; // 1文字消した後は「追記モード」にする
+            return; 
+        }
         
         if (isTelMode) {
             v.innerText += n;
         } else {
-            if (v.innerText === defaultLot || v.innerText === "0") {
+            // ★ 初回入力、または現在の数字が「0」の時は上書きし、それ以外は横に繋げる
+            if (v.dataset.isFirstInput === "true" || v.innerText === "0") {
                 v.innerText = n;
+                v.dataset.isFirstInput = "false"; // 1文字打ったら「追記モード」に切り替え
             } else {
                 v.innerText += n;
             }
         }
     }
 
-    // 数量入力モーダルを開く（新規追加・カート修正・履歴修正を兼用）
-    // 数量入力モーダルを開く（新規追加・カート修正・履歴修正を兼用）
     function openQtyModal(p, context = null) {
         isTelMode = !p;
         tempProduct = p;
-        editContext = context; // { type: 'cart'|'history', index: i, timestamp: ts }
+        editContext = context; 
         
         const v = document.getElementById("qty-val");
         const title = document.getElementById("modal-p-name");
@@ -215,22 +223,20 @@ const GAS_URL = "https://script.google.com/macros/s/AKfycbyKuMsohxqG-LK_pVHddVv-
             const price = p.listPrice ? p.listPrice.toLocaleString() : "0";
             info.innerHTML = `上代: ¥${price} | ロット: ${p.lot || 1}`;
             
-            // ▼ 修正: ロットの全角数字を半角にし、数字以外（スペース等）を取り除く
             let cleanLot = p.lot ? String(p.lot).normalize("NFKC").replace(/[^0-9]/g, '') : "1";
-            
-            // 修正モードなら現在の数量、新規ならきれいになったロットを表示
             v.innerText = context ? context.currentQty : (cleanLot || "1");
+            v.dataset.isFirstInput = "true"; // ★ 画面を開いた時は「最初の入力」にする
         } else {
             title.innerText = "電話番号入力";
             info.innerText = "ハイフンなし";
             v.innerText = "";
+            v.dataset.isFirstInput = "false"; // ★ 電話番号は最初から「追記モード」
         }
         
         document.getElementById("qty-modal").style.display = "flex";
         document.getElementById("confirm-btn").onclick = confirmQty;
         history.pushState(null, null, null);
     }
-
     function closeQtyModal() { 
         document.getElementById("qty-modal").style.display = "none"; 
         editContext = null;
