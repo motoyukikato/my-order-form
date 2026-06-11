@@ -122,6 +122,12 @@
 <section id="history" class="page-section">
     <div id="pending-list-area"></div>
     <hr>
+    
+    <div style="margin-bottom: 15px; padding: 0 10px;">
+        <input type="text" id="history-filter-input" placeholder="顧客名や品番で絞り込み..." 
+               oninput="filterHistory()" 
+               style="width: 100%; padding: 12px; border: 2px solid #3b5998; border-radius: 4px; font-size: 16px; box-sizing: border-box;">
+    </div>
     <div id="h-list"></div>
 </section>
 
@@ -194,6 +200,7 @@ const GAS_URL = "https://script.google.com/macros/s/AKfycbyKuMsohxqG-LK_pVHddVv-
     }
 
     // 数量入力モーダルを開く（新規追加・カート修正・履歴修正を兼用）
+    // 数量入力モーダルを開く（新規追加・カート修正・履歴修正を兼用）
     function openQtyModal(p, context = null) {
         isTelMode = !p;
         tempProduct = p;
@@ -207,8 +214,12 @@ const GAS_URL = "https://script.google.com/macros/s/AKfycbyKuMsohxqG-LK_pVHddVv-
             title.innerText = (context ? "【数量変更】" : "") + p.name;
             const price = p.listPrice ? p.listPrice.toLocaleString() : "0";
             info.innerHTML = `上代: ¥${price} | ロット: ${p.lot || 1}`;
-            // 修正モードなら現在の数量、新規ならロットを表示
-            v.innerText = context ? context.currentQty : (p.lot || "1");
+            
+            // ▼ 修正: ロットの全角数字を半角にし、数字以外（スペース等）を取り除く
+            let cleanLot = p.lot ? String(p.lot).normalize("NFKC").replace(/[^0-9]/g, '') : "1";
+            
+            // 修正モードなら現在の数量、新規ならきれいになったロットを表示
+            v.innerText = context ? context.currentQty : (cleanLot || "1");
         } else {
             title.innerText = "電話番号入力";
             info.innerText = "ハイフンなし";
@@ -357,7 +368,9 @@ const GAS_URL = "https://script.google.com/macros/s/AKfycbyKuMsohxqG-LK_pVHddVv-
             closeQtyModal(); 
             fetchCustomer(val); 
         } else {
-            let q = parseInt(val);
+            // ▼ 修正: 決定ボタンを押した時も、確実に半角数字に変換してから処理する
+            let cleanVal = String(val).normalize("NFKC").replace(/[^0-9]/g, '');
+            let q = parseInt(cleanVal);
             if (isNaN(q)) q = 0;
 
             if (editContext) {
