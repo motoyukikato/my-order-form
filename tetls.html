@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Simple Tetris</title>
+    <title>Tetris with Next & LevelUp</title>
     <style>
         body {
             background: #202023;
@@ -16,37 +16,92 @@
             height: 100vh;
             margin: 0;
         }
-        #info {
+        #game-container {
+            display: flex;
+            gap: 20px;
+            align-items: flex-start;
+        }
+        .panel {
+            background: #111;
+            border: 2px solid #fff;
+            padding: 15px;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            min-width: 120px;
+        }
+        .info-label {
+            font-size: 14px;
+            color: #aaa;
+            margin-bottom: 5px;
+        }
+        .info-value {
             font-size: 24px;
-            margin-bottom: 10px;
+            font-weight: bold;
         }
         canvas {
             border: 2px solid #fff;
+            background-color: #111;
+        }
+        #nextCanvas {
+            border: 1px solid #444;
             background-color: #111;
         }
         #game-over {
             color: #ff4a4a;
             font-size: 32px;
             font-weight: bold;
-            margin-top: 10px;
+            margin-top: 15px;
             height: 40px;
         }
     </style>
 </head>
 <body>
 
-    <div id="info">SCORE: <span id="score">0</span></div>
-    <canvas id="tetris" width="240" height="480"></canvas>
+    <div id="game-container">
+        <canvas id="tetris" width="240" height="480"></canvas>
+
+        <div class="panel">
+            <div>
+                <div class="info-label">SCORE</div>
+                <div id="score" class="info-value">0</div>
+            </div>
+            <div>
+                <div class="info-label">LEVEL</div>
+                <div id="level" class="info-value">1</div>
+            </div>
+            <div>
+                <div class="info-label">NEXT</div>
+                <canvas id="nextCanvas" width="96" height="96"></canvas>
+            </div>
+        </div>
+    </div>
+    
     <div id="game-over"></div>
 
 <script>
 const canvas = document.getElementById('tetris');
 const context = canvas.getContext('2d');
-
-// 1マスのサイズを24pxに設定（10x20マスで240x480）
 context.scale(24, 24);
 
-// ライン消去時のスコア計算用
+// ネクストブロック用のキャンバス設定
+const nextCanvas = document.getElementById('nextCanvas');
+const nextContext = nextCanvas.getContext('2d');
+nextContext.scale(24, 24);
+
+// 色の定義（0は空、1〜7が各ブロック）
+const colors = [
+    null,
+    '#FF0D72', // T
+    '#0DC2FF', // O
+    '#FF8E0D', // L
+    '#3877FF', // J
+    '#0DFF72', // I
+    '#FFE138', // S
+    '#F538FF'  // Z
+];
+
+// ライン消去とスコア・レベル計算
 function arenaSweep() {
     let rowCount = 1;
     outer: for (let y = arena.length - 1; y > 0; --y) {
@@ -55,13 +110,20 @@ function arenaSweep() {
                 continue outer;
             }
         }
-        // 埋まった行を削除して上に追加
         const row = arena.splice(y, 1)[0].fill(0);
         arena.unshift(row);
         ++y;
 
         player.score += rowCount * 10;
         rowCount *= 2;
+    }
+    
+    // レベルアップロジック (100点ごとにレベルアップ、最大10)
+    const newLevel = Math.floor(player.score / 100) + 1;
+    if (newLevel !== player.level) {
+        player.level = Math.min(newLevel, 10);
+        // レベルが上がるごとに落下間隔を短くする（最速で100ms）
+        dropInterval = Math.max(1000 - (player.level - 1) * 100, 100);
     }
 }
 
@@ -80,7 +142,6 @@ function collide(arena, player) {
     return false;
 }
 
-// 2次元配列の作成（ステージ用）
 function createMatrix(w, h) {
     const matrix = [];
     while (h--) {
@@ -89,86 +150,51 @@ function createMatrix(w, h) {
     return matrix;
 }
 
-// テトリミノの形状定義
+// ブロックの形状
 function createPiece(type) {
-    if (type === 'T') {
-        return [
-            [0, 0, 0],
-            [1, 1, 1],
-            [0, 1, 0],
-        ];
-    } else if (type === 'O') {
-        return [
-            [2, 2],
-            [2, 2],
-        ];
-    } else if (type === 'L') {
-        return [
-            [0, 3, 0],
-            [0, 3, 0],
-            [0, 3, 3],
-        ];
-    } else if (type === 'J') {
-        return [
-            [0, 4, 0],
-            [0, 4, 0],
-            [4, 4, 0],
-        ];
-    } else if (type === 'I') {
-        return [
-            [0, 5, 0, 0],
-            [0, 5, 0, 0],
-            [0, 5, 0, 0],
-            [0, 5, 0, 0],
-        ];
-    } else if (type === 'S') {
-        return [
-            [0, 6, 6],
-            [6, 6, 0],
-            [0, 0, 0],
-        ];
-    } else if (type === 'Z') {
-        return [
-            [7, 7, 0],
-            [0, 7, 7],
-            [0, 0, 0],
-        ];
-    }
+    if (type === 'T') return [[0,0,0],[1,1,1],[0,1,0]];
+    if (type === 'O') return [[2,2],[2,2]];
+    if (type === 'L') return [[0,3,0],[0,3,0],[0,3,3]];
+    if (type === 'J') return [[0,4,0],[0,4,0],[4,4,0]];
+    if (type === 'I') return [[0,5,0,0],[0,5,0,0],[0,5,0,0],[0,5,0,0]];
+    if (type === 'S') return [[0,6,6],[6,6,0],[0,0,0]];
+    if (type === 'Z') return [[7,7,0],[0,7,7],[0,0,0]];
 }
 
-// 描画処理
+// メイン描画
 function draw() {
     context.fillStyle = '#000';
     context.fillRect(0, 0, canvas.width, canvas.height);
 
-    drawMatrix(arena, {x: 0, y: 0});
-    drawMatrix(player.matrix, player.pos);
+    drawMatrix(arena, {x: 0, y: 0}, context);
+    drawMatrix(player.matrix, player.pos, context);
 }
 
-// 配列を画面に色付きで描画
-const colors = [
-    null,
-    '#FF0D72', // T
-    '#0DC2FF', // O
-    '#0DFF72', // L
-    '#F538FF', // J
-    '#FF8E0D', // I
-    '#FFE138', // S
-    '#3877FF'  // Z
-];
+// ネクストブロックの描画
+function drawNext() {
+    nextContext.fillStyle = '#000';
+    nextContext.fillRect(0, 0, nextCanvas.width, nextCanvas.height);
 
-function drawMatrix(matrix, offset) {
+    // 4x4マスの中心に収まるようにオフセットを調整
+    const matrix = player.nextMatrix;
+    const offsetX = (4 - matrix[0].length) / 2;
+    const offsetY = (4 - matrix.length) / 2;
+
+    drawMatrix(matrix, {x: offsetX, y: offsetY}, nextContext);
+}
+
+// 汎用マトリックス描画関数
+function drawMatrix(matrix, offset, ctx) {
     matrix.forEach((row, y) => {
         row.forEach((value, x) => {
             if (value !== 0) {
-                context.fillStyle = colors[value];
-                context.fillRect(x + offset.x, y + offset.y, 1, 1);
+                ctx.fillStyle = colors[value];
+                ctx.fillRect(x + offset.x, y + offset.y, 1, 1);
             }
         });
     });
 }
 
-// ステージとブロックの合体
 function merge(arena, player) {
     player.matrix.forEach((row, y) => {
         row.forEach((value, x) => {
@@ -179,7 +205,6 @@ function merge(arena, player) {
     });
 }
 
-// ブロックの落下処理
 function playerDrop() {
     player.pos.y++;
     if (collide(arena, player)) {
@@ -187,12 +212,11 @@ function playerDrop() {
         merge(arena, player);
         playerReset();
         arenaSweep();
-        updateScore();
+        updateLinesAndScore();
     }
     dropCounter = 0;
 }
 
-// 左右移動
 function playerMove(dir) {
     player.pos.x += dir;
     if (collide(arena, player)) {
@@ -200,21 +224,31 @@ function playerMove(dir) {
     }
 }
 
-// 次のブロックを生成 / ゲームオーバー判定
+// 世代交代（Nextを現在のブロックにし、新しいNextを作る）
 function playerReset() {
     const pieces = 'ILJOTSZ';
-    player.matrix = createPiece(pieces[pieces.length * Math.random() | 0]);
+    
+    // 初回起動時のみ、現在のブロックもランダム生成
+    if (!player.nextMatrix) {
+        player.nextMatrix = createPiece(pieces[pieces.length * Math.random() | 0]);
+    }
+
+    // ネクストを現在に持ってくる
+    player.matrix = player.nextMatrix;
+    // 次のネクストを予約
+    player.nextMatrix = createPiece(pieces[pieces.length * Math.random() | 0]);
+
     player.pos.y = 0;
     player.pos.x = (arena[0].length / 2 | 0) - (player.matrix[0].length / 2 | 0);
     
-    // 生成した瞬間に衝突したらゲームオーバー
     if (collide(arena, player)) {
         document.getElementById('game-over').innerText = 'GAME OVER';
         gameOver = true;
     }
+
+    drawNext();
 }
 
-// 回転処理
 function playerRotate(dir) {
     const pos = player.pos.x;
     let offset = 1;
@@ -230,28 +264,18 @@ function playerRotate(dir) {
     }
 }
 
-// 行列の回転アルゴリズム
 function rotate(matrix, dir) {
     for (let y = 0; y < matrix.length; ++y) {
         for (let x = 0; x < y; ++x) {
-            [
-                matrix[x][y],
-                matrix[y][x],
-            ] = [
-                matrix[y][x],
-                matrix[x][y],
-            ];
+            [matrix[x][y], matrix[y][x]] = [matrix[y][x], matrix[x][y]];
         }
     }
-    if (dir > 0) {
-        matrix.forEach(row => row.reverse());
-    } else {
-        matrix.reverse();
-    }
+    if (dir > 0) matrix.forEach(row => row.reverse());
+    else matrix.reverse();
 }
 
 let dropCounter = 0;
-let dropInterval = 1000; // 1秒ごとに落下
+let dropInterval = 1000; // 初期速度は1秒(1000ms)
 let lastTime = 0;
 let gameOver = false;
 
@@ -270,32 +294,25 @@ function update(time = 0) {
     requestAnimationFrame(update);
 }
 
-function updateScore() {
+function updateLinesAndScore() {
     document.getElementById('score').innerText = player.score;
+    document.getElementById('level').innerText = player.level;
 }
 
-// キーボード操作
 document.addEventListener('keydown', event => {
     if (gameOver) return;
 
-    if (event.keyCode === 37) {
-        playerMove(-1); // 左
-    } else if (event.keyCode === 39) {
-        playerMove(1);  // 右
-    } else if (event.keyCode === 40) {
-        playerDrop();   // 下
-    } else if (event.keyCode === 38) {
-        playerRotate(1); // 上（回転）
-    } else if (event.keyCode === 32) {
-        // スペースキーでハードドロップ
-        while (!collide(arena, player)) {
-            player.pos.y++;
-        }
+    if (event.keyCode === 37) playerMove(-1);        // 左
+    else if (event.keyCode === 39) playerMove(1);     // 右
+    else if (event.keyCode === 40) playerDrop();      // 下
+    else if (event.keyCode === 38) playerRotate(1);   // 上（回転）
+    else if (event.keyCode === 32) {                  // スペース（ハードドロップ）
+        while (!collide(arena, player)) { player.pos.y++; }
         player.pos.y--;
         merge(arena, player);
         playerReset();
         arenaSweep();
-        updateScore();
+        updateLinesAndScore();
     }
 });
 
@@ -304,11 +321,13 @@ const arena = createMatrix(10, 20);
 const player = {
     pos: {x: 0, y: 0},
     matrix: null,
+    nextMatrix: null,
     score: 0,
+    level: 1,
 };
 
 playerReset();
-updateScore();
+updateLinesAndScore();
 update();
 </script>
 </body>
