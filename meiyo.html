@@ -3,10 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Puyo Pop Maze</title>
+    <title>Puyo Pop Maze - Custom Edition</title>
     <style>
         body {
-            background: #2b1055; /* ぷよ風の深紫背景 */
+            background: #2b1055;
             background-image: radial-gradient(#51279b 20%, transparent 20%), radial-gradient(#51279b 20%, transparent 20%);
             background-size: 30px 30px;
             background-position: 0 0, 15px 15px;
@@ -19,29 +19,76 @@
             min-height: 100vh;
             margin: 0;
             overflow: hidden;
-            touch-action: none; /* 画面全体のズーム・スクロールを徹底防御 */
+            touch-action: none;
         }
         h1 {
-            font-size: 24px;
+            font-size: 22px;
             margin: 5px 0;
             color: #ffeb3b;
             text-shadow: 2px 2px 0px #ff4081;
         }
+
+        /* --- 【新設】設定コントロールパネル --- */
+        #config-panel {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 10px;
+            background: rgba(255, 255, 255, 0.1);
+            padding: 8px 12px;
+            border-radius: 15px;
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            z-index: 5;
+        }
+        .config-group {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 3px;
+        }
+        .config-label {
+            font-size: 11px;
+            color: #ffeb3b;
+            font-weight: bold;
+        }
+        .config-btn {
+            background: #00e676;
+            border: 2px solid #fff;
+            color: #fff;
+            font-size: 13px;
+            font-weight: bold;
+            padding: 5px 12px;
+            border-radius: 10px;
+            box-shadow: 0 3px 0 #00c853;
+            cursor: pointer;
+            user-select: none;
+            -webkit-user-select: none;
+            touch-action: none;
+        }
+        .config-btn:active {
+            transform: translateY(2px);
+            box-shadow: none;
+        }
+        /* レベルボタンは青色に */
+        #btn-config-level {
+            background: #00b0ff;
+            box-shadow: 0 3px 0 #0091ea;
+        }
+
         #game-container {
             position: relative;
             box-shadow: 0 0 20px rgba(0,0,0,0.5);
             border-radius: 15px;
             overflow: hidden;
-            border: 4px solid #ffd700; /* ポップな金枠 */
+            border: 4px solid #ffd700;
             background-color: rgba(20, 10, 40, 0.9);
         }
         canvas {
             display: block;
         }
-        #clear-overlay {
+        
+        .overlay {
             position: absolute;
             top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0, 230, 118, 0.9); /* ポップなグリーンのクリア画面 */
             display: none;
             flex-direction: column;
             align-items: center;
@@ -49,13 +96,16 @@
             z-index: 10;
             cursor: pointer;
         }
-        #clear-text {
+        #clear-overlay { background: rgba(0, 230, 118, 0.9); }
+        #gameover-overlay { background: rgba(255, 64, 129, 0.9); }
+        
+        .overlay-title {
             font-size: 36px;
             font-weight: bold;
             text-shadow: 3px 3px 0px #2b1055;
             animation: bounce 0.5s infinite alternate;
         }
-        #next-text {
+        .overlay-btn {
             font-size: 18px;
             margin-top: 15px;
             background: #2b1055;
@@ -68,7 +118,6 @@
             to { transform: translateY(-10px); }
         }
 
-        /* --- 連打ズームを完全に防止するスマホ用十字キー --- */
         #controls {
             display: none;
             width: 100%;
@@ -93,7 +142,7 @@
             box-shadow: 0 4px 0 #c2185b;
             user-select: none;
             -webkit-user-select: none;
-            touch-action: none; /* ボタン単体でもズーム・スクロールを無効化 */
+            touch-action: none;
         }
         .ctrl-btn:active {
             transform: translateY(4px);
@@ -107,21 +156,38 @@
 </head>
 <body>
 
-    <h1>ぷよぷよ風・めいろゲーム</h1>
+    <h1>カスタマイズ・めいろゲーム</h1>
+
+    <div id="config-panel">
+        <div class="config-group">
+            <span class="config-label">てきの数</span>
+            <div class="config-btn" id="btn-config-count">2ひき</div>
+        </div>
+        <div class="config-group">
+            <span class="config-label">てきの強さ</span>
+            <div class="config-btn" id="btn-config-level">ふつう</div>
+        </div>
+    </div>
 
     <div id="game-container">
         <canvas id="mazeCanvas"></canvas>
         
-        <div id="clear-overlay" onclick="nextStage()">
-            <div id="clear-text">くりあ！</div>
-            <div id="next-text">つぎのステージへ</div>
+        <div id="clear-overlay" class="overlay" onclick="nextStage()">
+            <div class="overlay-title">くりあ！</div>
+            <div class="overlay-btn">つぎのステージへ</div>
+        </div>
+
+        <div id="gameover-overlay" class="overlay" onclick="restartStage()">
+            <div class="overlay-title">ばたんきゅー</div>
+            <div class="overlay-btn">もういちど挑戦！</div>
         </div>
     </div>
 
     <div id="controls">
         <div class="ctrl-btn" id="btn-up">↑</div>
         <div class="ctrl-btn" id="btn-left">←</div>
-        <div></div> <div class="ctrl-btn" id="btn-right">→</div>
+        <div></div>
+        <div class="ctrl-btn" id="btn-right">→</div>
         <div class="ctrl-btn" id="btn-down">↓</div>
     </div>
 
@@ -129,99 +195,103 @@
 const canvas = document.getElementById('mazeCanvas');
 const ctx = canvas.getContext('2d');
 
-// 迷路の設定（15×15マスの奇数にするのが自動生成の基本です）
 const MAZE_SIZE = 15; 
-const TILE_SIZE = 24; // 1マスのサイズ（スマホ画面に収まるように調整）
+const TILE_SIZE = 24; 
 canvas.width = MAZE_SIZE * TILE_SIZE;
 canvas.height = MAZE_SIZE * TILE_SIZE;
 
-// パステルカラーの配色
 const colors = {
-    wall: '#cc33ff',   // 壁：紫ぷよっぽい色
-    path: 'rgba(20, 10, 40, 0.6)', // 通路
-    player: '#33ccff', // プレイヤー：水色ぷよ
-    goal: '#ffff33'    // ゴール：黄ぷよ
+    wall: '#cc33ff',   
+    path: 'rgba(20, 10, 40, 0.6)', 
+    player: '#33ccff', 
+    goal: '#ffff33',    
+    enemy: '#ff3366'    
 };
 
 let maze = [];
 let player = { x: 1, y: 1 };
 let goal = { x: MAZE_SIZE - 2, y: MAZE_SIZE - 2 };
-let isCleared = false;
+let enemies = [];
+let isGameOver = false;
+let enemyTimer = null;
 
-// --- 迷路の自動生成（穴掘り法アルゴリズム） ---
+// 【新設】設定用の現在のステート
+let currentEnemyCount = 2; // 最初は2匹
+let currentSpeedLevel = 'normal'; // 最初は「ふつう」
+const speedSettings = {
+    'easy': 650,    // かんたん（ゆっくりおっとり）
+    'normal': 400,  // ふつう
+    'hard': 220     // むずかしい（けっこう速い！）
+};
+
+// --- 迷路の自動生成 ---
 function generateMaze() {
-    // 1. 最初はすべてを「壁(1)」で埋める
     maze = [];
     for (let y = 0; y < MAZE_SIZE; y++) {
         maze.push(new Array(MAZE_SIZE).fill(1));
     }
-
-    // 2. 開始地点を「通路(0)」にする
     maze[1][1] = 0;
-    
-    // 3. 穴掘り開始
     dig(1, 1);
-    
-    // 4. ゴール地点を確実に「通路(0)」にする
     maze[goal.y][goal.x] = 0;
+
+    // ボタンで設定された数（0〜2）だけ敵を生成
+    enemies = [];
+    const positions = [
+        { x: MAZE_SIZE - 2, y: 1, lastDx: 0, lastDy: 0 }, // 右上
+        { x: 1, y: MAZE_SIZE - 2, lastDx: 0, lastDy: 0 }  // 左下
+    ];
+
+    for (let i = 0; i < currentEnemyCount; i++) {
+        enemies.push(positions[i]);
+        maze[positions[i].y][positions[i].x] = 0; // 通路を保証
+    }
 }
 
 function dig(x, y) {
-    // 進む方向をランダムにシャッフル（上、下、左、右）
     const dirs = [
-        {dx: 0, dy: -2},
-        {dx: 0, dy: 2},
-        {dx: -2, dy: 0},
-        {dx: 2, dy: 0}
+        {dx: 0, dy: -2}, {dx: 0, dy: 2}, {dx: -2, dy: 0}, {dx: 2, dy: 0}
     ].sort(() => Math.random() - 0.5);
 
     for (let dir of dirs) {
         const nx = x + dir.dx;
         const ny = y + dir.dy;
-
-        // 画面外でなく、まだ壁であるなら、2マス先まで掘り進める
         if (nx > 0 && nx < MAZE_SIZE - 1 && ny > 0 && ny < MAZE_SIZE - 1) {
             if (maze[ny][nx] === 1) {
-                maze[y + dir.dy / 2][x + dir.dx / 2] = 0; // 間のマスを掘る
-                maze[ny][nx] = 0;                         // 2マス先を掘る
-                dig(nx, ny);                              // 再帰的に掘り進める
+                maze[y + dir.dy / 2][x + dir.dx / 2] = 0;
+                maze[ny][nx] = 0;
+                dig(nx, ny);
             }
         }
     }
 }
 
-// --- ぷよぷよ風キャラクター・壁の描画 ---
+// --- 描画 ---
 function drawPuyo(x, y, colorStr, hasEyes) {
     const px = x * TILE_SIZE + TILE_SIZE / 2;
     const py = y * TILE_SIZE + TILE_SIZE / 2;
-    const r = TILE_SIZE * 0.46; // ぷにっと丸いサイズ
+    const r = TILE_SIZE * 0.46;
 
     ctx.save();
     ctx.translate(px, py);
 
-    // 1. 体
     ctx.beginPath();
     ctx.fillStyle = colorStr;
     ctx.arc(0, 0, r, 0, Math.PI * 2);
     ctx.fill();
 
-    // 2. 目（プレイヤーとゴールのみ）
     if (hasEyes) {
         const eyeOffset = r * 0.35;
         const eyeRadius = r * 0.28;
-        // 白目
         ctx.fillStyle = '#fff';
         ctx.beginPath();
         ctx.arc(-eyeOffset, -r*0.05, eyeRadius, 0, Math.PI * 2);
         ctx.arc(eyeOffset, -r*0.05, eyeRadius, 0, Math.PI * 2);
         ctx.fill();
-        // 黒目（少し内寄り）
         ctx.fillStyle = '#000';
         ctx.beginPath();
         ctx.arc(-eyeOffset + r*0.05, -r*0.05, r*0.14, 0, Math.PI * 2);
         ctx.arc(eyeOffset - r*0.05, -r*0.05, r*0.14, 0, Math.PI * 2);
         ctx.fill();
-        // 目の輝き
         ctx.fillStyle = '#fff';
         ctx.beginPath();
         ctx.arc(-eyeOffset + r*0.02, -r*0.1, r*0.06, 0, Math.PI * 2);
@@ -229,7 +299,6 @@ function drawPuyo(x, y, colorStr, hasEyes) {
         ctx.fill();
     }
 
-    // 3. ハイライト（ツヤ感）
     ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
     ctx.beginPath();
     ctx.arc(0, -r*0.4, r*0.2, 0, Math.PI * 2);
@@ -244,55 +313,150 @@ function draw() {
     for (let y = 0; y < MAZE_SIZE; y++) {
         for (let x = 0; x < MAZE_SIZE; x++) {
             if (maze[y][x] === 1) {
-                // 壁を紫ぷよ（目はなし）で埋め尽くす
                 drawPuyo(x, y, colors.wall, false);
             } else {
-                // 通路の背景
                 ctx.fillStyle = colors.path;
                 ctx.fillRect(x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
             }
         }
     }
 
-    // ゴール（黄ぷよ・目あり）を描画
     drawPuyo(goal.x, goal.y, colors.goal, true);
-
-    // プレイヤー（水色ぷよ・目あり）を描画
+    enemies.forEach(e => drawPuyo(e.x, e.y, colors.enemy, true));
     drawPuyo(player.x, player.y, colors.player, true);
 }
 
-// --- プレイヤーの移動と判定 ---
+// --- 敵の自動移動 ---
+function updateEnemies() {
+    if (isGameOver) return;
+
+    enemies.forEach(e => {
+        const possibleMoves = [];
+        const dirs = [{dx: 0, dy: -1}, {dx: 0, dy: 1}, {dx: -1, dy: 0}, {dx: 1, dy: 0}];
+
+        dirs.forEach(d => {
+            const nx = e.x + d.dx;
+            const ny = e.y + d.dy;
+            if (maze[ny] && maze[ny][nx] === 0) possibleMoves.push(d);
+        });
+
+        if (possibleMoves.length > 0) {
+            let move = possibleMoves.find(m => m.dx === e.lastDx && m.dy === e.lastDy);
+            if (!move || Math.random() < 0.3) {
+                move = possibleMoves[Math.floor(Math.random() * possibleMoves.length)];
+            }
+            e.x += move.dx; e.y += move.dy;
+            e.lastDx = move.dx; e.lastDy = move.dy;
+        }
+    });
+
+    draw();
+    checkCollision();
+}
+
+// --- プレイヤー移動 ---
 function movePlayer(dx, dy) {
-    if (isCleared) return;
+    if (isGameOver) return;
 
     const nextX = player.x + dx;
     const nextY = player.y + dy;
 
-    // 移動先が壁(1)でなければ進む
     if (maze[nextY] && maze[nextY][nextX] === 0) {
         player.x = nextX;
         player.y = nextY;
         draw();
+        checkCollision();
         checkGoal();
+    }
+}
+
+function checkCollision() {
+    const hit = enemies.some(e => e.x === player.x && e.y === player.y);
+    if (hit) {
+        isGameOver = true;
+        clearInterval(enemyTimer);
+        document.getElementById('gameover-overlay').style.display = 'flex';
     }
 }
 
 function checkGoal() {
     if (player.x === goal.x && player.y === goal.y) {
+        isGameOver = true;
+        clearInterval(enemyTimer);
         document.getElementById('clear-overlay').style.display = 'flex';
-        isCleared = true;
+    }
+}
+
+function startGameLoop() {
+    isGameOver = false;
+    clearInterval(enemyTimer);
+    
+    // 敵が1匹以上いるときだけタイマーを作動させる
+    if (currentEnemyCount > 0) {
+        const speed = speedSettings[currentSpeedLevel];
+        enemyTimer = setInterval(updateEnemies, speed);
     }
 }
 
 function nextStage() {
     document.getElementById('clear-overlay').style.display = 'none';
-    isCleared = false;
     player = { x: 1, y: 1 };
     generateMaze();
     draw();
+    startGameLoop();
 }
 
-// --- キーボード入力 ---
+function restartStage() {
+    document.getElementById('gameover-overlay').style.display = 'none';
+    player = { x: 1, y: 1 };
+    startGameLoop();
+    draw();
+}
+
+// --- 【新設】設定ボタンの切り替え処理 ---
+function setupConfigButtons() {
+    const countBtn = document.getElementById('btn-config-count');
+    const levelBtn = document.getElementById('btn-config-level');
+
+    // 敵の数： 2匹 -> 0匹 -> 1匹 -> 2匹... の順に切り替え
+    const changeCount = () => {
+        if (currentEnemyCount === 2) currentEnemyCount = 0;
+        else if (currentEnemyCount === 0) currentEnemyCount = 1;
+        else currentEnemyCount = 2;
+
+        countBtn.innerText = currentEnemyCount === 0 ? "0ひき" : `${currentEnemyCount}ひき`;
+        
+        // 設定が変わったらその場で迷路と敵をリセット
+        restartStage();
+    };
+
+    // 敵の強さ： ふつう -> むずかしい -> かんたん...
+    const changeLevel = () => {
+        if (currentSpeedLevel === 'normal') {
+            currentSpeedLevel = 'hard';
+            levelBtn.innerText = "むずかしい";
+        } else if (currentSpeedLevel === 'hard') {
+            currentSpeedLevel = 'easy';
+            levelBtn.innerText = "かんたん";
+        } else {
+            currentSpeedLevel = 'normal';
+            levelBtn.innerText = "ふつう";
+        }
+        // スピードが変わったらタイマーを再スタート
+        startGameLoop();
+    };
+
+    // パソコン・スマホ両方で快適に動くようにイベント登録
+    if ('ontouchstart' in window) {
+        countBtn.addEventListener('touchstart', e => { e.preventDefault(); changeCount(); });
+        levelBtn.addEventListener('touchstart', e => { e.preventDefault(); changeLevel(); });
+    } else {
+        countBtn.addEventListener('click', changeCount);
+        levelBtn.addEventListener('click', changeLevel);
+    }
+}
+
+// --- 操作・初期化 ---
 document.addEventListener('keydown', event => {
     if (event.key === 'ArrowUp' || event.key === 'w') movePlayer(0, -1);
     else if (event.key === 'ArrowDown' || event.key === 's') movePlayer(0, 1);
@@ -300,41 +464,33 @@ document.addEventListener('keydown', event => {
     else if (event.key === 'ArrowRight' || event.key === 'd') movePlayer(1, 0);
 });
 
-// --- スマホ用連打・ズーム対策入力 ---
 const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
 if (isTouchDevice) {
     document.getElementById('controls').style.display = 'grid';
-    
-    // 画面全体のジェスチャーを遮断
     document.body.addEventListener('touchmove', e => e.preventDefault(), {passive: false});
     
-    // ダブルタップによるズームをJavaScript側でも完全に無効化
     let lastTouchEnd = 0;
     document.addEventListener('touchend', event => {
         const now = (new Date()).getTime();
-        if (now - lastTouchEnd <= 300) {
-            event.preventDefault();
-        }
+        if (now - lastTouchEnd <= 300) event.preventDefault();
         lastTouchEnd = now;
     }, false);
 
     const setupBtn = (id, action) => {
         const btn = document.getElementById(id);
-        btn.addEventListener('touchstart', e => {
-            e.preventDefault(); // 連打ズームの主因となる標準挙動をキル
-            action();
-        });
+        btn.addEventListener('touchstart', e => { e.preventDefault(); action(); });
     };
-
     setupBtn('btn-up', () => movePlayer(0, -1));
     setupBtn('btn-left', () => movePlayer(-1, 0));
     setupBtn('btn-right', () => movePlayer(1, 0));
     setupBtn('btn-down', () => movePlayer(0, 1));
 }
 
-// ゲーム開始
+// 起動
+setupConfigButtons();
 generateMaze();
 draw();
+startGameLoop();
 </script>
 </body>
 </html>
