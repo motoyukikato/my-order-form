@@ -2,139 +2,330 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Tetris with Next & LevelUp</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Tetris with Effects & Touch</title>
     <style>
         body {
             background: #202023;
             color: #fff;
-            font-family: sans-serif;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            height: 100vh;
+            min-height: 100vh;
             margin: 0;
+            overflow: hidden; /* スマホでのスクロール防止 */
         }
         #game-container {
             display: flex;
-            gap: 20px;
+            gap: 15px;
             align-items: flex-start;
+            position: relative; /* エフェクトの基準点 */
+        }
+        /* キャンバスを重ねるためのコンテナ */
+        #stage-container {
+            position: relative;
+            width: 240px;
+            height: 480px;
+        }
+        canvas {
+            position: absolute;
+            left: 0;
+            top: 0;
+            border: 2px solid #fff;
+            box-sizing: border-box; /* ボーダーを含めたサイズ */
+        }
+        #tetris {
+            background-color: #111;
+            z-index: 1; /* ゲーム画面は下 */
+        }
+        /* エフェクト用キャンバス。ゲーム画面の上に重ねる */
+        #effectCanvas {
+            pointer-events: none; /* クリックを透過させる */
+            z-index: 2; /* エフェクトは上 */
+            border: 2px solid transparent; /* 位置合わせ用 */
         }
         .panel {
-            background: #111;
+            background: rgba(17, 17, 17, 0.8);
             border: 2px solid #fff;
             padding: 15px;
             display: flex;
             flex-direction: column;
             gap: 15px;
-            min-width: 120px;
+            min-width: 100px;
+            z-index: 3;
         }
         .info-label {
-            font-size: 14px;
+            font-size: 12px;
             color: #aaa;
-            margin-bottom: 5px;
+            text-transform: uppercase;
         }
         .info-value {
-            font-size: 24px;
+            font-size: 28px;
             font-weight: bold;
-        }
-        canvas {
-            border: 2px solid #fff;
-            background-color: #111;
+            color: #0DC2FF;
         }
         #nextCanvas {
             border: 1px solid #444;
-            background-color: #111;
+            background-color: rgba(0, 0, 0, 0.5);
+            display: block;
+            margin-top: 5px;
         }
-        #game-over {
+        #game-over-overlay {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.85);
+            display: none; /* 通常は非表示 */
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 10;
+            cursor: pointer;
+        }
+        #game-over-text {
             color: #ff4a4a;
-            font-size: 32px;
+            font-size: 40px;
             font-weight: bold;
-            margin-top: 15px;
-            height: 40px;
+            text-shadow: 0 0 10px #ff4a4a;
         }
+        #restart-text {
+            font-size: 18px;
+            margin-top: 10px;
+            color: #aaa;
+        }
+
+        /* --- タッチ操作用のボタン --- */
+        #controls {
+            display: none; /* デフォルトは非表示。JSでスマホの時だけ表示 */
+            width: 100%;
+            max-width: 360px;
+            margin-top: 20px;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 10px;
+            padding: 10px;
+            box-sizing: border-box;
+            z-index: 5;
+        }
+        .ctrl-btn {
+            background: rgba(255, 255, 255, 0.1);
+            border: 2px solid #fff;
+            color: #fff;
+            height: 60px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            font-weight: bold;
+            border-radius: 10px;
+            user-select: none; /* テキスト選択防止 */
+            -webkit-user-select: none;
+            touch-action: manipulation; /* ダブルタップズーム防止 */
+        }
+        .ctrl-btn:active {
+            background: rgba(255, 255, 255, 0.3);
+            transform: scale(0.95);
+        }
+        #btn-rotate { grid-column: span 2; background: rgba(13, 194, 255, 0.2); border-color: #0DC2FF;}
+        #btn-drop { grid-column: span 2; background: rgba(255, 13, 114, 0.2); border-color: #FF0D72;}
+
     </style>
 </head>
 <body>
 
     <div id="game-container">
-        <canvas id="tetris" width="240" height="480"></canvas>
+        <div id="stage-container">
+            <canvas id="tetris" width="240" height="480"></canvas>
+            <canvas id="effectCanvas" width="240" height="480"></canvas>
+            
+            <div id="game-over-overlay" onclick="resetGame()">
+                <div id="game-over-text">GAME OVER</div>
+                <div id="restart-text">Tap to Restart</div>
+            </div>
+        </div>
 
         <div class="panel">
             <div>
-                <div class="info-label">SCORE</div>
+                <div class="info-label">Score</div>
                 <div id="score" class="info-value">0</div>
             </div>
             <div>
-                <div class="info-label">LEVEL</div>
+                <div class="info-label">Level</div>
                 <div id="level" class="info-value">1</div>
             </div>
             <div>
-                <div class="info-label">NEXT</div>
-                <canvas id="nextCanvas" width="96" height="96"></canvas>
+                <div class="info-label">Next</div>
+                <canvas id="nextCanvas" width="80" height="80"></canvas>
             </div>
         </div>
     </div>
-    
-    <div id="game-over"></div>
+
+    <div id="controls">
+        <div class="ctrl-btn" id="btn-left">←</div>
+        <div class="ctrl-btn" id="btn-right">→</div>
+        <div class="ctrl-btn" id="btn-down">↓</div>
+        <div class="ctrl-btn" id="btn-space">⚡</div> <div class="ctrl-btn" id="btn-rotate">ROTATE (↑)</div>
+        <div class="ctrl-btn" id="btn-drop">DROP (Space)</div>
+    </div>
 
 <script>
+// --- 基本設定 ---
 const canvas = document.getElementById('tetris');
 const context = canvas.getContext('2d');
-context.scale(24, 24);
+const GRID_SIZE = 24; // 1マスのピクセル数
+const STAGE_WIDTH = 10;
+const STAGE_HEIGHT = 20;
+context.scale(GRID_SIZE, GRID_SIZE);
 
-// ネクストブロック用のキャンバス設定
+// エフェクト用キャンバス
+const effectCanvas = document.getElementById('effectCanvas');
+const effectContext = effectCanvas.getContext('2d');
+// エフェクト用はスケールせず、ピクセル単位で描画する（パーティクルのため）
+
+// ネクストブロック用
 const nextCanvas = document.getElementById('nextCanvas');
 const nextContext = nextCanvas.getContext('2d');
-nextContext.scale(24, 24);
+const NEXT_GRID_SIZE = 20; // 少し小さめに
+nextContext.scale(NEXT_GRID_SIZE, NEXT_GRID_SIZE);
 
-// 色の定義（0は空、1〜7が各ブロック）
+// 色の定義
 const colors = [
     null,
-    '#FF0D72', // T
-    '#0DC2FF', // O
-    '#FF8E0D', // L
-    '#3877FF', // J
-    '#0DFF72', // I
-    '#FFE138', // S
-    '#F538FF'  // Z
+    '#FF0D72', // T (マゼンタ)
+    '#0DC2FF', // O (シアン)
+    '#FF8E0D', // L (オレンジ)
+    '#3877FF', // J (ブルー)
+    '#0DFF72', // I (グリーン)
+    '#FFE138', // S (イエロー)
+    '#F538FF'  // Z (パープル)
 ];
 
-// ライン消去とスコア・レベル計算
+// --- ゲームの状態 ---
+let arena = createMatrix(STAGE_WIDTH, STAGE_HEIGHT);
+const player = {
+    pos: {x: 0, y: 0},
+    matrix: null,
+    nextMatrix: null,
+    score: 0,
+    level: 1,
+};
+
+let dropCounter = 0;
+let dropInterval = 1000;
+let lastTime = 0;
+let gameOver = false;
+let particles = []; // パーティクルを管理する配列
+
+// --- エフェクト処理 (パーティクル) ---
+
+// パーティクルクラスの定義
+class Particle {
+    constructor(x, y, color) {
+        this.x = x;
+        this.y = y;
+        // 弾ける速度（ランダム）
+        this.vx = (Math.random() - 0.5) * 10;
+        this.vy = (Math.random() - 0.5) * 10 - 2; // 少し上に弾けさせる
+        this.color = color;
+        this.alpha = 1; // 透明度
+        this.gravity = 0.2; // 重力
+        this.size = Math.random() * 4 + 2; // サイズ
+    }
+
+    update() {
+        this.vx *= 0.95; // 空気抵抗
+        this.vy += this.gravity; // 重力
+        this.x += this.vx;
+        this.y += this.vy;
+        this.alpha -= 0.02; // 徐々に消える
+    }
+
+    draw(ctx) {
+        ctx.globalAlpha = this.alpha;
+        ctx.fillStyle = this.color;
+        ctx.fillRect(this.x, this.y, this.size, this.size);
+    }
+}
+
+// ライン消去時のエフェクト生成
+function triggerLineEffect(yRow, colorArray) {
+    // 1. まずその行を白く光らせる（簡易的に描画を上書き）
+    context.fillStyle = 'rgba(255, 255, 255, 0.8)';
+    context.fillRect(0, yRow, STAGE_WIDTH, 1);
+
+    // 2. パーティクルを生成
+    for (let x = 0; x < STAGE_WIDTH; x++) {
+        const colorIndex = colorArray[x];
+        if (colorIndex === 0) continue;
+        
+        // 1マスあたり数個のパーティクル
+        for (let i = 0; i < 5; i++) {
+            // ピクセル座標に変換
+            const px = x * GRID_SIZE + GRID_SIZE / 2;
+            const py = yRow * GRID_SIZE + GRID_SIZE / 2;
+            particles.push(new Particle(px, py, colors[colorIndex]));
+        }
+    }
+}
+
+// エフェクト専用の更新・描画ループ
+function updateEffects() {
+    effectContext.clearRect(0, 0, effectCanvas.width, effectCanvas.height);
+    
+    // 透明度をリセット
+    effectContext.globalAlpha = 1;
+
+    // パーティクルの更新と描画
+    particles = particles.filter(p => p.alpha > 0); // 消えたものを削除
+    particles.forEach(p => {
+        p.update();
+        p.draw(effectContext);
+    });
+}
+
+// --- ゲームロジック ---
+
+// ライン消去
 function arenaSweep() {
-    let rowCount = 1;
+    let rowCount = 0;
+    let linesCleared = [];
+
     outer: for (let y = arena.length - 1; y > 0; --y) {
         for (let x = 0; x < arena[y].length; ++x) {
             if (arena[y][x] === 0) {
                 continue outer;
             }
         }
+        // 消える行を記録
+        linesCleared.push({y: y, colors: [...arena[y]]});
+        
         const row = arena.splice(y, 1)[0].fill(0);
         arena.unshift(row);
         ++y;
-
-        player.score += rowCount * 10;
-        rowCount *= 2;
+        rowCount++;
     }
-    
-    // レベルアップロジック (100点ごとにレベルアップ、最大10)
-    const newLevel = Math.floor(player.score / 100) + 1;
-    if (newLevel !== player.level) {
-        player.level = Math.min(newLevel, 10);
-        // レベルが上がるごとに落下間隔を短くする（最速で100ms）
-        dropInterval = Math.max(1000 - (player.level - 1) * 100, 100);
+
+    // 消えたラインがあればエフェクトを発動
+    if (rowCount > 0) {
+        linesCleared.forEach(line => {
+            // 衝突判定用に補正されたyではなく、元のy位置にエフェクトを出す
+            // arena.unshiftでずれるので、正確な位置ではないが、演出として
+            triggerLineEffect(line.y, line.colors);
+        });
+
+        // テトリス（4列消し）はボーナス
+        const scoreBonus = (rowCount === 4) ? 80 : 0;
+        player.score += (rowCount * 10) + scoreBonus;
+        updateScoreAndLevel();
     }
 }
 
-// 衝突判定
 function collide(arena, player) {
     const [m, o] = [player.matrix, player.pos];
     for (let y = 0; y < m.length; ++y) {
         for (let x = 0; x < m[y].length; ++x) {
             if (m[y][x] !== 0 &&
-               (arena[y + o.y] &&
-                arena[y + o.y][x + o.x]) !== 0) {
+               (arena[y + o.y] && arena[y + o.y][x + o.x]) !== 0) {
                 return true;
             }
         }
@@ -144,13 +335,10 @@ function collide(arena, player) {
 
 function createMatrix(w, h) {
     const matrix = [];
-    while (h--) {
-        matrix.push(new Array(w).fill(0));
-    }
+    while (h--) { matrix.push(new Array(w).fill(0)); }
     return matrix;
 }
 
-// ブロックの形状
 function createPiece(type) {
     if (type === 'T') return [[0,0,0],[1,1,1],[0,1,0]];
     if (type === 'O') return [[2,2],[2,2]];
@@ -161,35 +349,64 @@ function createPiece(type) {
     if (type === 'Z') return [[7,7,0],[0,7,7],[0,0,0]];
 }
 
-// メイン描画
+// 描画
 function draw() {
-    context.fillStyle = '#000';
+    // メインキャンバスのクリア
+    context.fillStyle = '#111'; // 背景色
     context.fillRect(0, 0, canvas.width, canvas.height);
 
     drawMatrix(arena, {x: 0, y: 0}, context);
+    
+    // 落下位置の予測（ゴースト）を描画
+    drawGhost(player);
+
     drawMatrix(player.matrix, player.pos, context);
 }
 
-// ネクストブロックの描画
+// ゴースト（落下予測）の描画
+function drawGhost(player) {
+    const ghostPos = {x: player.pos.x, y: player.pos.y};
+    while (!collide(arena, {pos: ghostPos, matrix: player.matrix})) {
+        ghostPos.y++;
+    }
+    ghostPos.y--; // 衝突した位置の1つ上
+
+    context.globalAlpha = 0.2; // 薄く
+    drawMatrix(player.matrix, ghostPos, context);
+    context.globalAlpha = 1; // リセット
+}
+
 function drawNext() {
-    nextContext.fillStyle = '#000';
+    nextContext.fillStyle = '#111';
     nextContext.fillRect(0, 0, nextCanvas.width, nextCanvas.height);
 
-    // 4x4マスの中心に収まるようにオフセットを調整
     const matrix = player.nextMatrix;
+    if (!matrix) return;
+    
+    // 4x4の中心に配置
     const offsetX = (4 - matrix[0].length) / 2;
     const offsetY = (4 - matrix.length) / 2;
 
     drawMatrix(matrix, {x: offsetX, y: offsetY}, nextContext);
 }
 
-// 汎用マトリックス描画関数
 function drawMatrix(matrix, offset, ctx) {
     matrix.forEach((row, y) => {
         row.forEach((value, x) => {
             if (value !== 0) {
+                // ブロックのメイン色
                 ctx.fillStyle = colors[value];
                 ctx.fillRect(x + offset.x, y + offset.y, 1, 1);
+                
+                // 立体感を出すためのハイライト（キャンバスのスケールが1のアリーナ描画時のみ）
+                if(ctx === context && context.getTransform().a === GRID_SIZE) {
+                    ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
+                    ctx.fillRect(x + offset.x, y + offset.y, 1, 0.1);
+                    ctx.fillRect(x + offset.x, y + offset.y, 0.1, 1);
+                    ctx.fillStyle = 'rgba(0, 0, 0, 0.2)';
+                    ctx.fillRect(x + offset.x + 0.9, y + offset.y, 0.1, 1);
+                    ctx.fillRect(x + offset.x, y + offset.y + 0.9, 1, 0.1);
+                }
             }
         });
     });
@@ -210,10 +427,32 @@ function playerDrop() {
     if (collide(arena, player)) {
         player.pos.y--;
         merge(arena, player);
+        arenaSweep(); // エフェクトはここ
         playerReset();
-        arenaSweep();
-        updateLinesAndScore();
     }
+    dropCounter = 0;
+}
+
+function playerHardDrop() {
+    if (gameOver) return;
+    let count = 0;
+    while (!collide(arena, player)) {
+        player.pos.y++;
+        count++;
+    }
+    player.pos.y--;
+    
+    // 落下距離に応じた少しのスコア
+    player.score += count;
+    
+    merge(arena, player);
+    
+    // ハードドロップ時は少し画面を揺らす演出（簡易）
+    canvas.style.transform = 'translateY(2px)';
+    setTimeout(()=> canvas.style.transform = 'translateY(0)', 50);
+
+    arenaSweep();
+    playerReset();
     dropCounter = 0;
 }
 
@@ -224,28 +463,22 @@ function playerMove(dir) {
     }
 }
 
-// 世代交代（Nextを現在のブロックにし、新しいNextを作る）
 function playerReset() {
     const pieces = 'ILJOTSZ';
-    
-    // 初回起動時のみ、現在のブロックもランダム生成
     if (!player.nextMatrix) {
         player.nextMatrix = createPiece(pieces[pieces.length * Math.random() | 0]);
     }
-
-    // ネクストを現在に持ってくる
     player.matrix = player.nextMatrix;
-    // 次のネクストを予約
     player.nextMatrix = createPiece(pieces[pieces.length * Math.random() | 0]);
 
     player.pos.y = 0;
     player.pos.x = (arena[0].length / 2 | 0) - (player.matrix[0].length / 2 | 0);
     
     if (collide(arena, player)) {
-        document.getElementById('game-over').innerText = 'GAME OVER';
+        // ゲームオーバー表示
+        document.getElementById('game-over-overlay').style.display = 'flex';
         gameOver = true;
     }
-
     drawNext();
 }
 
@@ -274,11 +507,34 @@ function rotate(matrix, dir) {
     else matrix.reverse();
 }
 
-let dropCounter = 0;
-let dropInterval = 1000; // 初期速度は1秒(1000ms)
-let lastTime = 0;
-let gameOver = false;
+function updateScoreAndLevel() {
+    document.getElementById('score').innerText = player.score;
+    
+    // レベルアップ (500点ごと、少し緩やかに)
+    const newLevel = Math.floor(player.score / 500) + 1;
+    if (newLevel !== player.level) {
+        player.level = Math.min(newLevel, 15); // 最大レベル15
+        document.getElementById('level').innerText = player.level;
+        // 速度アップ
+        dropInterval = Math.max(1000 - (player.level - 1) * 60, 50); // 最速50ms
+    }
+}
 
+// ゲームリセット（再挑戦用）
+function resetGame() {
+    arena = createMatrix(STAGE_WIDTH, STAGE_HEIGHT);
+    player.score = 0;
+    player.level = 1;
+    dropInterval = 1000;
+    gameOver = false;
+    particles = [];
+    document.getElementById('game-over-overlay').style.display = 'none';
+    updateScoreAndLevel();
+    playerReset();
+    update();
+}
+
+// メインループ
 function update(time = 0) {
     if (gameOver) return;
 
@@ -291,44 +547,53 @@ function update(time = 0) {
     }
 
     draw();
+    updateEffects(); // エフェクトも毎回更新
     requestAnimationFrame(update);
 }
 
-function updateLinesAndScore() {
-    document.getElementById('score').innerText = player.score;
-    document.getElementById('level').innerText = player.level;
-}
+// --- 入力処理 ---
 
+// キーボード
 document.addEventListener('keydown', event => {
     if (gameOver) return;
-
-    if (event.keyCode === 37) playerMove(-1);        // 左
-    else if (event.keyCode === 39) playerMove(1);     // 右
-    else if (event.keyCode === 40) playerDrop();      // 下
-    else if (event.keyCode === 38) playerRotate(1);   // 上（回転）
-    else if (event.keyCode === 32) {                  // スペース（ハードドロップ）
-        while (!collide(arena, player)) { player.pos.y++; }
-        player.pos.y--;
-        merge(arena, player);
-        playerReset();
-        arenaSweep();
-        updateLinesAndScore();
-    }
+    if (event.keyCode === 37) playerMove(-1);        // ←
+    else if (event.keyCode === 39) playerMove(1);     // →
+    else if (event.keyCode === 40) playerDrop();      // ↓
+    else if (event.keyCode === 38) playerRotate(1);   // ↑
+    else if (event.keyCode === 32) playerHardDrop();  // Space
 });
 
-const arena = createMatrix(10, 20);
+// タッチ操作（コントローラー）
+// スマホ（またはタッチデバイス）かどうかの簡易判定
+const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+if (isTouchDevice) {
+    document.getElementById('controls').style.display = 'grid'; // ボタンを表示
+    
+    // スクロールなどのデフォルト動作を防止
+    document.body.addEventListener('touchmove', e => e.preventDefault(), {passive: false});
 
-const player = {
-    pos: {x: 0, y: 0},
-    matrix: null,
-    nextMatrix: null,
-    score: 0,
-    level: 1,
-};
+    const setupBtn = (id, action) => {
+        const btn = document.getElementById(id);
+        // touchstartで即反応させる
+        btn.addEventListener('touchstart', e => {
+            e.preventDefault();
+            if(!gameOver) action();
+        });
+    };
 
+    setupBtn('btn-left', () => playerMove(-1));
+    setupBtn('btn-right', () => playerMove(1));
+    setupBtn('btn-down', () => playerDrop());
+    setupBtn('btn-rotate', () => playerRotate(1));
+    setupBtn('btn-space', () => playerHardDrop()); // ⚡ボタン
+    setupBtn('btn-drop', () => playerHardDrop()); // 大きいDROPボタン
+}
+
+// --- ゲーム開始 ---
 playerReset();
-updateLinesAndScore();
+updateScoreAndLevel();
 update();
+
 </script>
 </body>
 </html>
