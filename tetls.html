@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Puyo Tetris Fixed</title>
+    <title>Puyo Tetris Anti-Zoom</title>
     <style>
         body {
             background: #2b1055;
@@ -19,6 +19,8 @@
             min-height: 100vh;
             margin: 0;
             overflow: hidden;
+            /* 画面全体のダブルタップズームやピンチイン・アウトをブラウザレベルで禁止 */
+            touch-action: none; 
         }
         #game-container {
             display: flex;
@@ -133,7 +135,9 @@
             box-shadow: 0 4px 0 #c2185b;
             user-select: none;
             -webkit-user-select: none;
-            touch-action: manipulation;
+            
+            /* 【修正】ボタン上でのスクロールやダブルタップズームを完全に無効化 */
+            touch-action: none; 
         }
         .ctrl-btn:active {
             transform: translateY(4px);
@@ -460,7 +464,7 @@ function playerDrop() {
 function playerHardDrop() {
     if (gameOver) return;
     let count = 0;
-    while (!collide(arena, player)) { player.pos.y++; count++; }
+    while (!collide(arena, {pos: player.pos, matrix: player.matrix})) { player.pos.y++; count++; }
     player.pos.y--;
     player.score += count;
     merge(arena, player);
@@ -481,7 +485,6 @@ function playerMove(dir) {
 function playerReset() {
     const pieces = 'ILJOTSZ';
     
-    // 【修正箇所】初回起動時のオブジェクト構造を100%保証
     if (!player.nextMatrix) {
         player.nextMatrix = createPiece(pieces[pieces.length * Math.random() | 0]);
     }
@@ -571,10 +574,26 @@ document.addEventListener('keydown', event => {
 const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
 if (isTouchDevice) {
     document.getElementById('controls').style.display = 'grid';
+    
+    // 【重要】ゲーム画面全体での不要なスクロールやピンチズームを徹底防止
     document.body.addEventListener('touchmove', e => e.preventDefault(), {passive: false});
+    
+    // 【重要】ダブルタップによる画面ズームをスクリプト側でも完全に遮断
+    document.addEventListener('touchend', event => {
+        const now = (new Date()).getTime();
+        if (now - lastTouchEnd <= 300) {
+            event.preventDefault(); // 300ms以内の連続タップ（ダブルタップ）を無効化
+        }
+        lastTouchEnd = now;
+    }, false);
+    let lastTouchEnd = 0;
+
     const setupBtn = (id, action) => {
         const btn = document.getElementById(id);
-        btn.addEventListener('touchstart', e => { e.preventDefault(); if(!gameOver) action(); });
+        btn.addEventListener('touchstart', e => { 
+            e.preventDefault(); // タップした瞬間のブラウザ標準イベントを殺す（最重要）
+            if(!gameOver) action(); 
+        });
     };
     setupBtn('btn-left', () => playerMove(-1));
     setupBtn('btn-right', () => playerMove(1));
@@ -584,7 +603,6 @@ if (isTouchDevice) {
     setupBtn('btn-drop', () => playerHardDrop());
 }
 
-// 【重要】最初のブロック生成とNext表示の順番を完全に同期
 playerReset();
 updateScoreAndLevel();
 update();
