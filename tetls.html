@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simple Tetris</title>
+    <style>
+        body {
+            background: #202023;
+            color: #fff;
+            font-family: sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+        }
+        #info {
+            font-size: 24px;
+            margin-bottom: 10px;
+        }
+        canvas {
+            border: 2px solid #fff;
+            background-color: #111;
+        }
+        #game-over {
+            color: #ff4a4a;
+            font-size: 32px;
+            font-weight: bold;
+            margin-top: 10px;
+            height: 40px;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="info">SCORE: <span id="score">0</span></div>
+    <canvas id="tetris" width="240" height="480"></canvas>
+    <div id="game-over"></div>
+
+<script>
+const canvas = document.getElementById('tetris');
+const context = canvas.getContext('2d');
+
+// 1マスのサイズを24pxに設定（10x20マスで240x480）
+context.scale(24, 24);
+
+// ライン消去時のスコア計算用
+function arenaSweep() {
+    let rowCount = 1;
+    outer: for (let y = arena.length - 1; y > 0; --y) {
+        for (let x = 0; x < arena[y].length; ++x) {
+            if (arena[y][x] === 0) {
+                continue outer;
+            }
+        }
+        // 埋まった行を削除して上に追加
+        const row = arena.splice(y, 1)[0].fill(0);
+        arena.unshift(row);
+        ++y;
+
+        player.score += rowCount * 10;
+        rowCount *= 2;
+    }
+}
+
+// 衝突判定
+function collide(arena, player) {
+    const [m, o] = [player.matrix, player.pos];
+    for (let y = 0; y < m.length; ++y) {
+        for (let x = 0; x < m[y].length; ++x) {
+            if (m[y][x] !== 0 &&
+               (arena[y + o.y] &&
+                arena[y + o.y][x + o.x]) !== 0) {
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
+// 2次元配列の作成（ステージ用）
+function createMatrix(w, h) {
+    const matrix = [];
+    while (h--) {
+        matrix.push(new Array(w).fill(0));
+    }
+    return matrix;
+}
+
+// テトリミノの形状定義
+function createPiece(type) {
+    if (type === 'T') {
+        return [
+            [0, 0, 0],
+            [1, 1, 1],
+            [0, 1, 0],
+        ];
+    } else if (type === 'O') {
+        return [
+            [2, 2],
+            [2, 2],
+        ];
+    } else if (type === 'L') {
+        return [
+            [0, 3, 0],
+            [0, 3, 0],
+            [0, 3, 3],
+        ];
+    } else if (type === 'J') {
+        return [
+            [0, 4, 0],
+            [0, 4, 0],
+            [4, 4, 0],
+        ];
+    } else if (type === 'I') {
+        return [
+            [0, 5, 0, 0],
+            [0, 5, 0, 0],
+            [0, 5, 0, 0],
+            [0, 5, 0, 0],
+        ];
+    } else if (type === 'S') {
+        return [
+            [0, 6, 6],
+            [6, 6, 0],
+            [0, 0, 0],
+        ];
+    } else if (type === 'Z') {
+        return [
+            [7, 7, 0],
+            [0, 7, 7],
+            [0, 0, 0],
+        ];
+    }
+}
+
+// 描画処理
+function draw() {
+    context.fillStyle = '#000';
+    context.fillRect(0, 0, canvas.width, canvas.height);
+
+    drawMatrix(arena, {x: 0, y: 0});
+    drawMatrix(player.matrix, player.pos);
+}
+
+// 配列を画面に色付きで描画
+const colors = [
+    null,
+    '#FF0D72', // T
+    '#0DC2FF', // O
+    '#0DFF72', // L
+    '#F538FF', // J
+    '#FF8E0D', // I
+    '#FFE138', // S
+    '#3877FF'  // Z
+];
+
+function drawMatrix(matrix, offset) {
+    matrix.forEach((row, y) => {
+        row.forEach((value, x) => {
+            if (value !== 0) {
+                context.fillStyle = colors[value];
+                context.fillRect(x + offset.x, y + offset.y, 1, 1);
+            }
+        });
+    });
+}
+
+// ステージとブロックの合体
+function merge(arena, player) {
+    player.matrix.forEach((row, y) => {
+        row.forEach((value, x) => {
+            if (value !== 0) {
+                arena[y + player.pos.y][x + player.pos.x] = value;
+            }
+        });
+    });
+}
+
+// ブロックの落下処理
+function playerDrop() {
+    player.pos.y++;
+    if (collide(arena, player)) {
+        player.pos.y--;
+        merge(arena, player);
+        playerReset();
+        arenaSweep();
+        updateScore();
+    }
+    dropCounter = 0;
+}
+
+// 左右移動
+function playerMove(dir) {
+    player.pos.x += dir;
+    if (collide(arena, player)) {
+        player.pos.x -= dir;
+    }
+}
+
+// 次のブロックを生成 / ゲームオーバー判定
+function playerReset() {
+    const pieces = 'ILJOTSZ';
+    player.matrix = createPiece(pieces[pieces.length * Math.random() | 0]);
+    player.pos.y = 0;
+    player.pos.x = (arena[0].length / 2 | 0) - (player.matrix[0].length / 2 | 0);
+    
+    // 生成した瞬間に衝突したらゲームオーバー
+    if (collide(arena, player)) {
+        document.getElementById('game-over').innerText = 'GAME OVER';
+        gameOver = true;
+    }
+}
+
+// 回転処理
+function playerRotate(dir) {
+    const pos = player.pos.x;
+    let offset = 1;
+    rotate(player.matrix, dir);
+    while (collide(arena, player)) {
+        player.pos.x += offset;
+        offset = -(offset + (offset > 0 ? 1 : -1));
+        if (offset > player.matrix[0].length) {
+            rotate(player.matrix, -dir);
+            player.pos.x = pos;
+            return;
+        }
+    }
+}
+
+// 行列の回転アルゴリズム
+function rotate(matrix, dir) {
+    for (let y = 0; y < matrix.length; ++y) {
+        for (let x = 0; x < y; ++x) {
+            [
+                matrix[x][y],
+                matrix[y][x],
+            ] = [
+                matrix[y][x],
+                matrix[x][y],
+            ];
+        }
+    }
+    if (dir > 0) {
+        matrix.forEach(row => row.reverse());
+    } else {
+        matrix.reverse();
+    }
+}
+
+let dropCounter = 0;
+let dropInterval = 1000; // 1秒ごとに落下
+let lastTime = 0;
+let gameOver = false;
+
+function update(time = 0) {
+    if (gameOver) return;
+
+    const deltaTime = time - lastTime;
+    lastTime = time;
+
+    dropCounter += deltaTime;
+    if (dropCounter > dropInterval) {
+        playerDrop();
+    }
+
+    draw();
+    requestAnimationFrame(update);
+}
+
+function updateScore() {
+    document.getElementById('score').innerText = player.score;
+}
+
+// キーボード操作
+document.addEventListener('keydown', event => {
+    if (gameOver) return;
+
+    if (event.keyCode === 37) {
+        playerMove(-1); // 左
+    } else if (event.keyCode === 39) {
+        playerMove(1);  // 右
+    } else if (event.keyCode === 40) {
+        playerDrop();   // 下
+    } else if (event.keyCode === 38) {
+        playerRotate(1); // 上（回転）
+    } else if (event.keyCode === 32) {
+        // スペースキーでハードドロップ
+        while (!collide(arena, player)) {
+            player.pos.y++;
+        }
+        player.pos.y--;
+        merge(arena, player);
+        playerReset();
+        arenaSweep();
+        updateScore();
+    }
+});
+
+const arena = createMatrix(10, 20);
+
+const player = {
+    pos: {x: 0, y: 0},
+    matrix: null,
+    score: 0,
+};
+
+playerReset();
+updateScore();
+update();
+</script>
+</body>
+</html>
