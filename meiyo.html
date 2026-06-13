@@ -2,84 +2,116 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Puyo Pac-Man - Control Edition</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Puyo Pac-Man - Landscape Edition</title>
     <style>
+        * { box-sizing: border-box; }
         body {
-            background: #2b1055;
-            background-image: radial-gradient(#51279b 20%, transparent 20%), radial-gradient(#51279b 20%, transparent 20%);
-            background-size: 30px 30px;
-            background-position: 0 0, 15px 15px;
+            background: #190a35;
             color: #fff;
-            font-family: 'Arial Rounded MT Bold', 'Comic Sans MS', sans-serif;
+            font-family: 'Arial Rounded MT Bold', sans-serif;
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            width: 100vw;
+            height: 100vh;
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            min-height: 100vh;
-            margin: 0;
-            overflow: hidden;
             touch-action: none;
+            -webkit-user-select: none;
+            user-select: none;
         }
 
-        /* --- コントロールパネル（リスタート・一時停止） --- */
-        #control-panel {
+        /* 画面上部の操作パネルとスコア */
+        #top-bar {
+            width: 100%;
+            height: 40px;
             display: flex;
-            gap: 12px;
-            margin-bottom: 8px;
-            background: rgba(255, 255, 255, 0.1);
-            padding: 6px 12px;
-            border-radius: 12px;
-            border: 2px solid rgba(255, 255, 255, 0.15);
-            z-index: 5;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0 20px;
+            background: rgba(0,0,0,0.3);
+            font-size: 16px;
+            font-weight: bold;
         }
         .panel-btn {
             color: #fff;
-            font-size: 13px;
-            font-weight: bold;
-            padding: 6px 14px;
-            border-radius: 8px;
+            font-size: 12px;
+            padding: 4px 12px;
+            border-radius: 6px;
             border: 2px solid #fff;
             cursor: pointer;
-            user-select: none;
-            -webkit-user-select: none;
-            touch-action: none;
+            font-weight: bold;
         }
-        .panel-btn:active {
-            transform: translateY(2px);
-            box-shadow: none !important;
-        }
-        #btn-restart {
-            background: #ff1744;
-            box-shadow: 0 3px 0 #b30000;
-        }
-        #btn-pause {
-            background: #ff9100;
-            box-shadow: 0 3px 0 #b36600;
+        #btn-restart { background: #ff1744; }
+        #btn-pause { background: #ff9100; }
+
+        /* メインのゲームプレイエリア（横並び） */
+        #main-layout {
+            display: flex;
+            flex: 1;
+            width: 100%;
+            align-items: center;
+            justify-content: space-between;
+            padding: 10px;
+            gap: 10px;
         }
 
-        #info-bar {
-            display: flex;
-            justify-content: space-between;
-            width: 100%;
-            max-width: 340px;
-            margin-bottom: 5px;
-            font-size: 18px;
-            font-weight: bold;
-            color: #ffeb3b;
-            text-shadow: 1px 1px 2px #000;
-        }
+        /* ゲーム画面（中央） */
         #game-container {
             position: relative;
-            box-shadow: 0 0 20px rgba(0,0,0,0.5);
-            border-radius: 15px;
-            overflow: hidden;
             border: 4px solid #ffd700;
+            border-radius: 12px;
             background-color: rgba(20, 10, 40, 0.9);
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
         canvas {
             display: block;
+            max-height: calc(100vh - 70px); /* 画面の高さに合わせて自動縮小 */
+            max-width: 100%;
+            object-fit: contain;
         }
+
+        /* 左右の仮想コントローラー */
+        .pad-cluster {
+            display: none; /* スマホ（タッチ環境）のみJavaScriptで表示 */
+            width: 110px;
+            height: 110px;
+            position: relative;
+        }
+        .ctrl-btn {
+            position: absolute;
+            background: rgba(255, 64, 129, 0.85);
+            border: 2px solid #fff;
+            color: #fff;
+            width: 50px;
+            height: 50px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            font-weight: bold;
+            border-radius: 15px;
+            box-shadow: 0 4px 0 #c2185b;
+        }
+        .ctrl-btn:active {
+            transform: scale(0.95);
+            background: #ff4081;
+            box-shadow: none;
+        }
+
+        /* 左手側：左右ボタン */
+        #btn-left  { top: 30px; left: 0; }
+        #btn-right { top: 30px; right: 0; }
+        /* 右手側：上下ボタン */
+        #btn-up    { top: 0; left: 30px; background: rgba(0, 176, 255, 0.85); box-shadow: 0 4px 0 #0091ea; }
+        #btn-down  { bottom: 0; left: 30px; background: rgba(0, 176, 255, 0.85); box-shadow: 0 4px 0 #0091ea; }
+
+        /* オーバーレイ表示 */
         .overlay {
             position: absolute;
             top: 0; left: 0; width: 100%; height: 100%;
@@ -88,112 +120,65 @@
             align-items: center;
             justify-content: center;
             z-index: 10;
-            cursor: pointer;
+            border-radius: 8px;
         }
-        #clear-overlay { background: rgba(0, 230, 118, 0.9); }
-        #gameover-overlay { background: rgba(255, 64, 129, 0.9); }
-        #pause-overlay { background: rgba(43, 16, 85, 0.85); cursor: default; }
+        #clear-overlay { background: rgba(0, 230, 118, 0.95); }
+        #gameover-overlay { background: rgba(255, 64, 129, 0.95); }
+        #pause-overlay { background: rgba(43, 16, 85, 0.9); }
         
-        .overlay-title {
-            font-size: 36px;
-            font-weight: bold;
-            text-shadow: 3px 3px 0px #2b1055;
-            animation: bounce 0.5s infinite alternate;
-        }
-        .overlay-btn {
-            font-size: 18px;
-            margin-top: 15px;
-            background: #2b1055;
-            padding: 8px 20px;
-            border-radius: 20px;
-            box-shadow: 0 4px 0 #000;
-        }
-        @keyframes bounce {
-            from { transform: translateY(0); }
-            to { transform: translateY(-10px); }
-        }
-
-        #controls {
-            display: none;
-            width: 100%;
-            max-width: 240px;
-            margin-top: 15px;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 8px;
-            padding: 5px;
-            box-sizing: border-box;
-        }
-        .ctrl-btn {
-            background: #ff4081;
-            border: 3px solid #fff;
-            color: #fff;
-            height: 60px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 28px;
-            font-weight: bold;
-            border-radius: 20px;
-            box-shadow: 0 4px 0 #c2185b;
-            user-select: none;
-            -webkit-user-select: none;
-            touch-action: none;
-        }
-        .ctrl-btn:active {
-            transform: translateY(4px);
-            box-shadow: none;
-        }
-        #btn-up { grid-column: 2; background: #00b0ff; box-shadow: 0 4px 0 #0091ea; }
-        #btn-left { grid-column: 1; }
-        #btn-right { grid-column: 3; }
-        #btn-down { grid-column: 2; }
+        .overlay-title { font-size: 28px; font-weight: bold; text-shadow: 2px 2px 0px #000; }
+        .overlay-btn { font-size: 14px; margin-top: 10px; background: #2b1055; padding: 6px 16px; border-radius: 15px; }
     </style>
 </head>
 <body>
 
-    <div id="control-panel">
-        <div class="panel-btn" id="btn-restart">さいしょから</div>
-        <div class="panel-btn" id="btn-pause">いちじていし</div>
-    </div>
-
-    <div id="info-bar">
+    <div id="top-bar">
+        <div style="display:flex; gap:8px;">
+            <div class="panel-btn" id="btn-restart">さいしょから</div>
+            <div class="panel-btn" id="btn-pause">ていし</div>
+        </div>
+        <div id="mode-status" style="color: #00e676; font-size:14px;">エサをあつめろ！</div>
         <div>SCORE: <span id="score-val">0</span></div>
-        <div id="mode-status" style="color: #00e676;">エサをあつめろ！</div>
     </div>
 
-    <div id="game-container">
-        <canvas id="mazeCanvas"></canvas>
-        
-        <div id="clear-overlay" class="overlay" onclick="nextStage()">
-            <div class="overlay-title">ぱーふぇくと！</div>
-            <div class="overlay-btn">つぎのステージへ</div>
+    <div id="main-layout">
+        <div class="pad-cluster" id="left-pad">
+            <div class="ctrl-btn" id="btn-left">←</div>
+            <div class="ctrl-btn" id="btn-right">→</div>
         </div>
 
-        <div id="gameover-overlay" class="overlay" onclick="restartStage()">
-            <div class="overlay-title">ばたんきゅー</div>
-            <div class="overlay-btn">もういちど挑戦！</div>
+        <div id="game-container">
+            <canvas id="mazeCanvas"></canvas>
+            
+            <div id="clear-overlay" class="overlay" onclick="nextStage()">
+                <div class="overlay-title">ぱーふぇくと！</div>
+                <div class="overlay-btn">つぎのステージへ</div>
+            </div>
+
+            <div id="gameover-overlay" class="overlay" onclick="restartStage()">
+                <div class="overlay-title">ばたんきゅー</div>
+                <div class="overlay-btn">もういちど挑戦！</div>
+            </div>
+
+            <div id="pause-overlay" class="overlay">
+                <div class="overlay-title" style="color: #ff9100;">ぽーず中</div>
+                <div class="overlay-btn" onclick="togglePause()">ゲームを再開する</div>
+            </div>
         </div>
 
-        <div id="pause-overlay" class="overlay">
-            <div class="overlay-title" style="color: #ff9100; animation: none;">ぽーず中</div>
-            <div class="overlay-btn" onclick="togglePause()">ゲームを再開する</div>
+        <div class="pad-cluster" id="right-pad">
+            <div class="ctrl-btn" id="btn-up">↑</div>
+            <div class="ctrl-btn" id="btn-down">↓</div>
         </div>
-    </div>
-
-    <div id="controls">
-        <div class="ctrl-btn" id="btn-up">↑</div>
-        <div class="ctrl-btn" id="btn-left">←</div>
-        <div></div>
-        <div class="ctrl-btn" id="btn-right">→</div>
-        <div class="ctrl-btn" id="btn-down">↓</div>
     </div>
 
 <script>
 const canvas = document.getElementById('mazeCanvas');
 const ctx = canvas.getContext('2d');
 
-const MAZE_SIZE = 15; 
-const TILE_SIZE = 24; 
+// ★【大画面化！】さらに広い23×23マス。1マスのドット幅は画面比率に応じて自動で綺麗に描画されます
+const MAZE_SIZE = 23; 
+const TILE_SIZE = 16; 
 canvas.width = MAZE_SIZE * TILE_SIZE;
 canvas.height = MAZE_SIZE * TILE_SIZE;
 
@@ -213,14 +198,14 @@ let player = { x: 1, y: 1 };
 let enemies = [];
 let score = 0;
 let isGameOver = false;
-let isPaused = false; // 【新設】一時停止のフラグ
+let isPaused = false;
 
 let enemyTimer = null;
 let powerModeTimer = null;
 let isPowerMode = false;
-let powerRemainingTime = 0; // 【新設】一時停止時に無敵の残り時間を記憶する用
+let powerRemainingTime = 0;
+let powerModeStartTime = 0;
 
-// --- 迷路とエサの自動配置 ---
 function generateMaze() {
     maze = [];
     dotGrid = [];
@@ -233,21 +218,26 @@ function generateMaze() {
 
     for (let y = 0; y < MAZE_SIZE; y++) {
         for (let x = 0; x < MAZE_SIZE; x++) {
-            if (maze[y][x] === 0) {
-                dotGrid[y][x] = 1; 
-            }
+            if (maze[y][x] === 0) dotGrid[y][x] = 1;
         }
     }
     dotGrid[1][1] = 0;
 
-    const powerPos = [{x:1, y:MAZE_SIZE-2}, {x:MAZE_SIZE-2, y:1}, {x:MAZE_SIZE-2, y:MAZE_SIZE-2}];
+    // パワーエサを4隅＋中央付近の計5箇所にバランスよく配置
+    const mid = Math.floor(MAZE_SIZE / 2);
+    const powerPos = [
+        {x: 1, y: MAZE_SIZE - 2}, {x: MAZE_SIZE - 2, y: 1}, 
+        {x: MAZE_SIZE - 2, y: MAZE_SIZE - 2}, {x: 1, y: mid}, {x: MAZE_SIZE - 2, y: mid}
+    ];
     powerPos.forEach(p => {
         if(maze[p.y][p.x] === 0) dotGrid[p.y][p.x] = 2;
     });
 
+    // 広いマップに合わせておばけは3匹体制を維持
     enemies = [
-        { x: MAZE_SIZE - 2, y: 1, lastDx: 0, lastDy: 0, isDead: false },
-        { x: 1, y: MAZE_SIZE - 2, lastDx: 0, lastDy: 0, isDead: false }
+        { x: MAZE_SIZE - 2, y: 1, lastDx: 0, lastDy: 0, isDead: false, spawnX: MAZE_SIZE - 2, spawnY: 1 },
+        { x: 1, y: MAZE_SIZE - 2, lastDx: 0, lastDy: 0, isDead: false, spawnX: 1, spawnY: MAZE_SIZE - 2 },
+        { x: MAZE_SIZE - 2, y: MAZE_SIZE - 2, lastDx: 0, lastDy: 0, isDead: false, spawnX: MAZE_SIZE - 2, spawnY: MAZE_SIZE - 2 }
     ];
     enemies.forEach(e => maze[e.y][e.x] = 0);
 }
@@ -266,7 +256,6 @@ function dig(x, y) {
     }
 }
 
-// --- キャラクターやエサの描画 ---
 function drawPuyo(x, y, colorStr, hasEyes) {
     const px = x * TILE_SIZE + TILE_SIZE / 2;
     const py = y * TILE_SIZE + TILE_SIZE / 2;
@@ -297,10 +286,10 @@ function draw() {
 
                 if (dotGrid[y][x] === 1) { 
                     ctx.fillStyle = colors.dot;
-                    ctx.beginPath(); ctx.arc(x * TILE_SIZE + TILE_SIZE/2, y * TILE_SIZE + TILE_SIZE/2, 4, 0, Math.PI * 2); ctx.fill();
+                    ctx.beginPath(); ctx.arc(x * TILE_SIZE + TILE_SIZE/2, y * TILE_SIZE + TILE_SIZE/2, 2.5, 0, Math.PI * 2); ctx.fill();
                 } else if (dotGrid[y][x] === 2) { 
                     ctx.fillStyle = colors.powerDot;
-                    ctx.beginPath(); ctx.arc(x * TILE_SIZE + TILE_SIZE/2, y * TILE_SIZE + TILE_SIZE/2, 8, 0, Math.PI * 2); ctx.fill();
+                    ctx.beginPath(); ctx.arc(x * TILE_SIZE + TILE_SIZE/2, y * TILE_SIZE + TILE_SIZE/2, 5, 0, Math.PI * 2); ctx.fill();
                 }
             }
         }
@@ -315,13 +304,11 @@ function draw() {
     drawPuyo(player.x, player.y, colors.player, true);
 }
 
-// --- おばけのウロウロAI ---
 function updateEnemies() {
-    if (isGameOver || isPaused) return; // 一時停止中なら動かない
+    if (isGameOver || isPaused) return;
 
     enemies.forEach(e => {
         if (e.isDead) return;
-
         const possibleMoves = [];
         const dirs = [{dx:0, dy:-1}, {dx:0, dy:1}, {dx:-1, dy:0}, {dx:1, dy:0}];
 
@@ -332,7 +319,7 @@ function updateEnemies() {
 
         if (possibleMoves.length > 0) {
             let move = possibleMoves.find(m => m.dx === e.lastDx && m.dy === e.lastDy);
-            if (!move || Math.random() < 0.25) {
+            if (!move || Math.random() < 0.2) {
                 move = possibleMoves[Math.floor(Math.random() * possibleMoves.length)];
             }
             e.x += move.dx; e.y += move.dy;
@@ -344,10 +331,8 @@ function updateEnemies() {
     checkCollision();
 }
 
-// --- プレイヤーの移動とパクパク判定 ---
 function movePlayer(dx, dy) {
-    if (isGameOver || isPaused) return; // 一時停止中なら動かない
-
+    if (isGameOver || isPaused) return;
     const nextX = player.x + dx; const nextY = player.y + dy;
 
     if (maze[nextY] && maze[nextY][nextX] === 0) {
@@ -357,12 +342,11 @@ function movePlayer(dx, dy) {
             dotGrid[player.y][player.x] = 0;
             score += 10;
             updateScoreDisplay();
-        } 
-        else if (dotGrid[player.y][player.x] === 2) {
+        } else if (dotGrid[player.y][player.x] === 2) {
             dotGrid[player.y][player.x] = 0;
             score += 50;
             updateScoreDisplay();
-            activatePowerMode(7000); // 7秒間無敵
+            activatePowerMode(8000); // マップが広いので無敵時間をちょっと長めの8秒に
         }
 
         draw();
@@ -371,15 +355,12 @@ function movePlayer(dx, dy) {
     }
 }
 
-// --- パワーモード（形勢逆転！）の処理 ---
 function activatePowerMode(duration) {
     isPowerMode = true;
-    document.getElementById('mode-status').innerText = "おばけをやっつけろ！";
+    document.getElementById('mode-status').innerText = "おばけを倒せ！";
     document.getElementById('mode-status').style.color = '#ffeb3b';
 
     clearTimeout(powerModeTimer);
-    
-    // タイマー開始時間を記録（ポーズ時の計算用）
     powerModeStartTime = Date.now();
     powerRemainingTime = duration;
 
@@ -392,60 +373,39 @@ function activatePowerMode(duration) {
     }, duration);
 }
 
-// --- 【新設】一時停止（ポーズ）の切り替え ---
 function togglePause() {
     if (isGameOver) return;
-
     const pauseOverlay = document.getElementById('pause-overlay');
     const pauseBtn = document.getElementById('btn-pause');
 
     if (!isPaused) {
-        // --- 一時停止するとき ---
         isPaused = true;
-        clearInterval(enemyTimer); // おばけの動きをストップ
+        clearInterval(enemyTimer); 
         pauseOverlay.style.display = 'flex';
-        pauseBtn.innerText = "つづける";
-        pauseBtn.style.background = '#00e676';
-        pauseBtn.style.boxShadow = '0 3px 0 #00c853';
-
-        // パワーモード中の場合は、残り時間を計算してタイマーを止める
-        if (isPowerMode) {
-            clearTimeout(powerModeTimer);
-            const elapsed = Date.now() - powerModeStartTime;
-            powerRemainingTime = Math.max(0, powerRemainingTime - elapsed);
-        }
+        pauseBtn.innerText = "再開";
     } else {
-        // --- 再開するとき ---
         isPaused = false;
         pauseOverlay.style.display = 'none';
-        pauseBtn.innerText = "いちじていし";
-        pauseBtn.style.background = '#ff9100';
-        pauseBtn.style.boxShadow = '0 3px 0 #b36600';
+        pauseBtn.innerText = "ていし";
+        enemyTimer = setInterval(updateEnemies, 330); // 広いマップ用に敵の速度をさらに調整
 
-        // おばけの動きを再開
-        enemyTimer = setInterval(updateEnemies, 380);
-
-        // パワーモード中だった場合は残り時間でタイマーを再開
         if (isPowerMode && powerRemainingTime > 0) {
             activatePowerMode(powerRemainingTime);
         }
     }
 }
 
-// --- 衝突判定 ---
 function checkCollision() {
     enemies.forEach(e => {
         if (e.isDead) return;
-
         if (e.x === player.x && e.y === player.y) {
             if (isPowerMode) {
                 e.isDead = true;
                 score += 200;
                 updateScoreDisplay();
-                
                 setTimeout(() => {
                     e.isDead = false;
-                    e.x = (e.lastDx === 0) ? MAZE_SIZE - 2 : 1; 
+                    e.x = e.spawnX; e.y = e.spawnY;
                     draw();
                 }, 4000);
             } else {
@@ -462,11 +422,9 @@ function checkStageClear() {
     let hasDots = false;
     for (let y = 0; y < MAZE_SIZE; y++) {
         if (dotGrid[y].includes(1) || dotGrid[y].includes(2)) {
-            hasDots = true;
-            break;
+            hasDots = true; break;
         }
     }
-
     if (!hasDots) {
         isGameOver = true;
         clearInterval(enemyTimer);
@@ -479,21 +437,15 @@ function updateScoreDisplay() {
     document.getElementById('score-val').innerText = score;
 }
 
-// --- ゲームループ管理 ---
 function startGameLoop() {
-    isGameOver = false;
-    isPaused = false;
-    isPowerMode = false;
-    powerRemainingTime = 0;
+    isGameOver = false; isPaused = false; isPowerMode = false; powerRemainingTime = 0;
     document.getElementById('pause-overlay').style.display = 'none';
-    document.getElementById('btn-pause').innerText = "いちじていし";
-    document.getElementById('btn-pause').style.background = '#ff9100';
-    document.getElementById('btn-pause').style.boxShadow = '0 3px 0 #b36600';
+    document.getElementById('btn-pause').innerText = "ていし";
     document.getElementById('mode-status').innerText = "エサをあつめろ！";
     document.getElementById('mode-status').style.color = '#00e676';
     
     clearInterval(enemyTimer);
-    enemyTimer = setInterval(updateEnemies, 380); 
+    enemyTimer = setInterval(updateEnemies, 330); 
 }
 
 function nextStage() {
@@ -506,68 +458,49 @@ function nextStage() {
 
 function restartStage() {
     document.getElementById('gameover-overlay').style.display = 'none';
-    score = 0;
-    updateScoreDisplay();
+    score = 0; updateScoreDisplay();
     player = { x: 1, y: 1 };
     generateMaze();
     draw();
     startGameLoop();
 }
 
-// --- 【新設】上部管理ボタンの設定 ---
-function setupAdminButtons() {
-    const restartBtn = document.getElementById('btn-restart');
-    const pauseBtn = document.getElementById('btn-pause');
+// 共通ボタン設定
+const setupBtn = (id, action) => {
+    const btn = document.getElementById(id);
+    btn.addEventListener('touchstart', e => { e.preventDefault(); action(); }, {passive: false});
+    btn.addEventListener('mousedown', e => { action(); });
+};
 
-    const handleRestart = () => {
-        if(confirm("ゲームを最初からやりなおしますか？")) {
-            restartStage();
-        }
-    };
-
-    if ('ontouchstart' in window) {
-        restartBtn.addEventListener('touchstart', e => { e.preventDefault(); handleRestart(); });
-        pauseBtn.addEventListener('touchstart', e => { e.preventDefault(); togglePause(); });
-    } else {
-        restartBtn.addEventListener('click', handleRestart);
-        pauseBtn.addEventListener('click', togglePause);
-    }
-}
-
-// --- コントローラー ---
+// パソコン用のキーボード移動
 document.addEventListener('keydown', event => {
     if (event.key === 'p' || event.key === 'P' || event.key === 'Escape') togglePause();
-    
     if (event.key === 'ArrowUp' || event.key === 'w') movePlayer(0, -1);
     else if (event.key === 'ArrowDown' || event.key === 's') movePlayer(0, 1);
     else if (event.key === 'ArrowLeft' || event.key === 'a') movePlayer(-1, 0);
     else if (event.key === 'ArrowRight' || event.key === 'd') movePlayer(1, 0);
 });
 
+// スマホ（タッチパネル）でのみ十字キーを表示
 const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
 if (isTouchDevice) {
-    document.getElementById('controls').style.display = 'grid';
-    document.body.addEventListener('touchmove', e => e.preventDefault(), {passive: false});
+    document.getElementById('left-pad').style.display = 'block';
+    document.getElementById('right-pad').style.display = 'block';
     
-    let lastTouchEnd = 0;
-    document.addEventListener('touchend', event => {
-        const now = (new Date()).getTime();
-        if (now - lastTouchEnd <= 300) event.preventDefault();
-        lastTouchEnd = now;
-    }, false);
-
-    const setupBtn = (id, action) => {
-        const btn = document.getElementById(id);
-        btn.addEventListener('touchstart', e => { e.preventDefault(); action(); });
-    };
-    setupBtn('btn-up', () => movePlayer(0, -1));
-    setupBtn('btn-left', () => movePlayer(-1, 0));
-    setupBtn('btn-right', () => movePlayer(1, 0));
-    setupBtn('btn-down', () => movePlayer(0, 1));
+    // 画面スクロールやダブルタップ拡大を防止
+    document.body.addEventListener('touchmove', e => e.preventDefault(), {passive: false});
 }
 
-// 初期起動
-setupAdminButtons();
+// ボタンと機能の紐付け
+setupBtn('btn-up', () => movePlayer(0, -1));
+setupBtn('btn-left', () => movePlayer(-1, 0));
+setupBtn('btn-right', () => movePlayer(1, 0));
+setupBtn('btn-down', () => movePlayer(0, 1));
+
+document.getElementById('btn-restart').addEventListener('click', () => { if(confirm("やりなおしますか？")) restartStage(); });
+document.getElementById('btn-pause').addEventListener('click', togglePause);
+
+// ゲーム開始
 generateMaze();
 draw();
 startGameLoop();
