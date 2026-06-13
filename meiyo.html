@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Puyo Pac-Man - Landscape Edition</title>
+    <title>Puyo Pac-Man - Wide Landscape Edition</title>
     <style>
         * { box-sizing: border-box; }
         body {
@@ -35,6 +35,7 @@
             background: rgba(0,0,0,0.3);
             font-size: 16px;
             font-weight: bold;
+            z-index: 20;
         }
         .panel-btn {
             color: #fff;
@@ -55,8 +56,9 @@
             width: 100%;
             align-items: center;
             justify-content: space-between;
-            padding: 10px;
-            gap: 10px;
+            /* 画面端から少し内側に余白を取ることで、ノッチや画面外へのハミ出しを完全に防止 */
+            padding: 10px 25px; 
+            gap: 15px;
         }
 
         /* ゲーム画面（中央） */
@@ -71,12 +73,12 @@
         }
         canvas {
             display: block;
-            max-height: calc(100vh - 70px); /* 画面の高さに合わせて自動縮小 */
+            max-height: calc(100vh - 75px); /* 上部バーを引いた高さに自動で合わせる */
             max-width: 100%;
             object-fit: contain;
         }
 
-        /* 左右の仮想コントローラー */
+        /* 左右の仮想コントローラー（位置を確実にするため横幅を少し広く確保） */
         .pad-cluster {
             display: none; /* スマホ（タッチ環境）のみJavaScriptで表示 */
             width: 110px;
@@ -88,8 +90,8 @@
             background: rgba(255, 64, 129, 0.85);
             border: 2px solid #fff;
             color: #fff;
-            width: 50px;
-            height: 50px;
+            width: 52px;
+            height: 52px;
             display: flex;
             align-items: center;
             justify-content: center;
@@ -104,9 +106,10 @@
             box-shadow: none;
         }
 
-        /* 左手側：左右ボタン */
+        /* 左手側：左右ボタン（画面端から消えないよう、少し内側に寄せる調整） */
         #btn-left  { top: 30px; left: 0; }
         #btn-right { top: 30px; right: 0; }
+        
         /* 右手側：上下ボタン */
         #btn-up    { top: 0; left: 30px; background: rgba(0, 176, 255, 0.85); box-shadow: 0 4px 0 #0091ea; }
         #btn-down  { bottom: 0; left: 30px; background: rgba(0, 176, 255, 0.85); box-shadow: 0 4px 0 #0091ea; }
@@ -176,11 +179,12 @@
 const canvas = document.getElementById('mazeCanvas');
 const ctx = canvas.getContext('2d');
 
-// ★【大画面化！】さらに広い23×23マス。1マスのドット幅は画面比率に応じて自動で綺麗に描画されます
-const MAZE_SIZE = 23; 
+// ★【ここを変更！】横長画面に最適化（横27マス × 縦15マスの完全横長）
+const MAZE_W = 27; 
+const MAZE_H = 15; 
 const TILE_SIZE = 16; 
-canvas.width = MAZE_SIZE * TILE_SIZE;
-canvas.height = MAZE_SIZE * TILE_SIZE;
+canvas.width = MAZE_W * TILE_SIZE;
+canvas.height = MAZE_H * TILE_SIZE;
 
 const colors = {
     wall: '#cc33ff',       
@@ -209,44 +213,46 @@ let powerModeStartTime = 0;
 function generateMaze() {
     maze = [];
     dotGrid = [];
-    for (let y = 0; y < MAZE_SIZE; y++) {
-        maze.push(new Array(MAZE_SIZE).fill(1));
-        dotGrid.push(new Array(MAZE_SIZE).fill(0));
+    for (let y = 0; y < MAZE_H; y++) {
+        maze.push(new Array(MAZE_W).fill(1));
+        dotGrid.push(new Array(MAZE_W).fill(0));
     }
     maze[1][1] = 0;
     dig(1, 1);
 
-    for (let y = 0; y < MAZE_SIZE; y++) {
-        for (let x = 0; x < MAZE_SIZE; x++) {
+    for (let y = 0; y < MAZE_H; y++) {
+        for (let x = 0; x < MAZE_W; x++) {
             if (maze[y][x] === 0) dotGrid[y][x] = 1;
         }
     }
     dotGrid[1][1] = 0;
 
-    // パワーエサを4隅＋中央付近の計5箇所にバランスよく配置
-    const mid = Math.floor(MAZE_SIZE / 2);
+    // 横長マップのバランスに合わせてパワーエサを4箇所に配置
     const powerPos = [
-        {x: 1, y: MAZE_SIZE - 2}, {x: MAZE_SIZE - 2, y: 1}, 
-        {x: MAZE_SIZE - 2, y: MAZE_SIZE - 2}, {x: 1, y: mid}, {x: MAZE_SIZE - 2, y: mid}
+        {x: 1, y: MAZE_H - 2}, 
+        {x: MAZE_W - 2, y: 1}, 
+        {x: MAZE_W - 2, y: MAZE_H - 2}, 
+        {x: Math.floor(MAZE_W / 2), y: Math.floor(MAZE_H / 2)} // マップ中央付近
     ];
     powerPos.forEach(p => {
-        if(maze[p.y][p.x] === 0) dotGrid[p.y][p.x] = 2;
+        if(maze[p.y] && maze[p.y][p.x] === 0) dotGrid[p.y][p.x] = 2;
     });
 
-    // 広いマップに合わせておばけは3匹体制を維持
+    // おばけ3匹の初期位置を横長用に調整
     enemies = [
-        { x: MAZE_SIZE - 2, y: 1, lastDx: 0, lastDy: 0, isDead: false, spawnX: MAZE_SIZE - 2, spawnY: 1 },
-        { x: 1, y: MAZE_SIZE - 2, lastDx: 0, lastDy: 0, isDead: false, spawnX: 1, spawnY: MAZE_SIZE - 2 },
-        { x: MAZE_SIZE - 2, y: MAZE_SIZE - 2, lastDx: 0, lastDy: 0, isDead: false, spawnX: MAZE_SIZE - 2, spawnY: MAZE_SIZE - 2 }
+        { x: MAZE_W - 2, y: 1, lastDx: 0, lastDy: 0, isDead: false, spawnX: MAZE_W - 2, spawnY: 1 },
+        { x: 1, y: MAZE_H - 2, lastDx: 0, lastDy: 0, isDead: false, spawnX: 1, spawnY: MAZE_H - 2 },
+        { x: MAZE_W - 2, y: MAZE_H - 2, lastDx: 0, lastDy: 0, isDead: false, spawnX: MAZE_W - 2, spawnY: MAZE_H - 2 }
     ];
     enemies.forEach(e => maze[e.y][e.x] = 0);
 }
 
+// 横長対応の穴掘り法
 function dig(x, y) {
     const dirs = [{dx:0, dy:-2}, {dx:0, dy:2}, {dx:-2, dy:0}, {dx:2, dy:0}].sort(() => Math.random() - 0.5);
     for (let dir of dirs) {
         const nx = x + dir.dx; const ny = y + dir.dy;
-        if (nx > 0 && nx < MAZE_SIZE - 1 && ny > 0 && ny < MAZE_SIZE - 1) {
+        if (nx > 0 && nx < MAZE_W - 1 && ny > 0 && ny < MAZE_H - 1) {
             if (maze[ny][nx] === 1) {
                 maze[y + dir.dy / 2][x + dir.dx / 2] = 0;
                 maze[ny][nx] = 0;
@@ -276,8 +282,8 @@ function drawPuyo(x, y, colorStr, hasEyes) {
 function draw() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    for (let y = 0; y < MAZE_SIZE; y++) {
-        for (let x = 0; x < MAZE_SIZE; x++) {
+    for (let y = 0; y < MAZE_H; y++) {
+        for (let x = 0; x < MAZE_W; x++) {
             if (maze[y][x] === 1) {
                 drawPuyo(x, y, colors.wall, false);
             } else {
@@ -346,7 +352,7 @@ function movePlayer(dx, dy) {
             dotGrid[player.y][player.x] = 0;
             score += 50;
             updateScoreDisplay();
-            activatePowerMode(8000); // マップが広いので無敵時間をちょっと長めの8秒に
+            activatePowerMode(7000); 
         }
 
         draw();
@@ -387,7 +393,7 @@ function togglePause() {
         isPaused = false;
         pauseOverlay.style.display = 'none';
         pauseBtn.innerText = "ていし";
-        enemyTimer = setInterval(updateEnemies, 330); // 広いマップ用に敵の速度をさらに調整
+        enemyTimer = setInterval(updateEnemies, 330);
 
         if (isPowerMode && powerRemainingTime > 0) {
             activatePowerMode(powerRemainingTime);
@@ -420,7 +426,7 @@ function checkCollision() {
 
 function checkStageClear() {
     let hasDots = false;
-    for (let y = 0; y < MAZE_SIZE; y++) {
+    for (let y = 0; y < MAZE_H; y++) {
         if (dotGrid[y].includes(1) || dotGrid[y].includes(2)) {
             hasDots = true; break;
         }
@@ -487,7 +493,6 @@ if (isTouchDevice) {
     document.getElementById('left-pad').style.display = 'block';
     document.getElementById('right-pad').style.display = 'block';
     
-    // 画面スクロールやダブルタップ拡大を防止
     document.body.addEventListener('touchmove', e => e.preventDefault(), {passive: false});
 }
 
