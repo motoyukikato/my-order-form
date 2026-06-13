@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Puyo Pop Maze</title>
+    <style>
+        body {
+            background: #2b1055; /* ぷよ風の深紫背景 */
+            background-image: radial-gradient(#51279b 20%, transparent 20%), radial-gradient(#51279b 20%, transparent 20%);
+            background-size: 30px 30px;
+            background-position: 0 0, 15px 15px;
+            color: #fff;
+            font-family: 'Arial Rounded MT Bold', 'Comic Sans MS', sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            margin: 0;
+            overflow: hidden;
+            touch-action: none; /* 画面全体のズーム・スクロールを徹底防御 */
+        }
+        h1 {
+            font-size: 24px;
+            margin: 5px 0;
+            color: #ffeb3b;
+            text-shadow: 2px 2px 0px #ff4081;
+        }
+        #game-container {
+            position: relative;
+            box-shadow: 0 0 20px rgba(0,0,0,0.5);
+            border-radius: 15px;
+            overflow: hidden;
+            border: 4px solid #ffd700; /* ポップな金枠 */
+            background-color: rgba(20, 10, 40, 0.9);
+        }
+        canvas {
+            display: block;
+        }
+        #clear-overlay {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0, 230, 118, 0.9); /* ポップなグリーンのクリア画面 */
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 10;
+            cursor: pointer;
+        }
+        #clear-text {
+            font-size: 36px;
+            font-weight: bold;
+            text-shadow: 3px 3px 0px #2b1055;
+            animation: bounce 0.5s infinite alternate;
+        }
+        #next-text {
+            font-size: 18px;
+            margin-top: 15px;
+            background: #2b1055;
+            padding: 8px 20px;
+            border-radius: 20px;
+            box-shadow: 0 4px 0 #000;
+        }
+        @keyframes bounce {
+            from { transform: translateY(0); }
+            to { transform: translateY(-10px); }
+        }
+
+        /* --- 連打ズームを完全に防止するスマホ用十字キー --- */
+        #controls {
+            display: none;
+            width: 100%;
+            max-width: 240px;
+            margin-top: 15px;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 8px;
+            padding: 5px;
+            box-sizing: border-box;
+        }
+        .ctrl-btn {
+            background: #ff4081;
+            border: 3px solid #fff;
+            color: #fff;
+            height: 60px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 28px;
+            font-weight: bold;
+            border-radius: 20px;
+            box-shadow: 0 4px 0 #c2185b;
+            user-select: none;
+            -webkit-user-select: none;
+            touch-action: none; /* ボタン単体でもズーム・スクロールを無効化 */
+        }
+        .ctrl-btn:active {
+            transform: translateY(4px);
+            box-shadow: none;
+        }
+        #btn-up { grid-column: 2; background: #00b0ff; box-shadow: 0 4px 0 #0091ea; }
+        #btn-left { grid-column: 1; }
+        #btn-right { grid-column: 3; }
+        #btn-down { grid-column: 2; }
+    </style>
+</head>
+<body>
+
+    <h1>ぷよぷよ風・めいろゲーム</h1>
+
+    <div id="game-container">
+        <canvas id="mazeCanvas"></canvas>
+        
+        <div id="clear-overlay" onclick="nextStage()">
+            <div id="clear-text">くりあ！</div>
+            <div id="next-text">つぎのステージへ</div>
+        </div>
+    </div>
+
+    <div id="controls">
+        <div class="ctrl-btn" id="btn-up">↑</div>
+        <div class="ctrl-btn" id="btn-left">←</div>
+        <div></div> <div class="ctrl-btn" id="btn-right">→</div>
+        <div class="ctrl-btn" id="btn-down">↓</div>
+    </div>
+
+<script>
+const canvas = document.getElementById('mazeCanvas');
+const ctx = canvas.getContext('2d');
+
+// 迷路の設定（15×15マスの奇数にするのが自動生成の基本です）
+const MAZE_SIZE = 15; 
+const TILE_SIZE = 24; // 1マスのサイズ（スマホ画面に収まるように調整）
+canvas.width = MAZE_SIZE * TILE_SIZE;
+canvas.height = MAZE_SIZE * TILE_SIZE;
+
+// パステルカラーの配色
+const colors = {
+    wall: '#cc33ff',   // 壁：紫ぷよっぽい色
+    path: 'rgba(20, 10, 40, 0.6)', // 通路
+    player: '#33ccff', // プレイヤー：水色ぷよ
+    goal: '#ffff33'    // ゴール：黄ぷよ
+};
+
+let maze = [];
+let player = { x: 1, y: 1 };
+let goal = { x: MAZE_SIZE - 2, y: MAZE_SIZE - 2 };
+let isCleared = false;
+
+// --- 迷路の自動生成（穴掘り法アルゴリズム） ---
+function generateMaze() {
+    // 1. 最初はすべてを「壁(1)」で埋める
+    maze = [];
+    for (let y = 0; y < MAZE_SIZE; y++) {
+        maze.push(new Array(MAZE_SIZE).fill(1));
+    }
+
+    // 2. 開始地点を「通路(0)」にする
+    maze[1][1] = 0;
+    
+    // 3. 穴掘り開始
+    dig(1, 1);
+    
+    // 4. ゴール地点を確実に「通路(0)」にする
+    maze[goal.y][goal.x] = 0;
+}
+
+function dig(x, y) {
+    // 進む方向をランダムにシャッフル（上、下、左、右）
+    const dirs = [
+        {dx: 0, dy: -2},
+        {dx: 0, dy: 2},
+        {dx: -2, dy: 0},
+        {dx: 2, dy: 0}
+    ].sort(() => Math.random() - 0.5);
+
+    for (let dir of dirs) {
+        const nx = x + dir.dx;
+        const ny = y + dir.dy;
+
+        // 画面外でなく、まだ壁であるなら、2マス先まで掘り進める
+        if (nx > 0 && nx < MAZE_SIZE - 1 && ny > 0 && ny < MAZE_SIZE - 1) {
+            if (maze[ny][nx] === 1) {
+                maze[y + dir.dy / 2][x + dir.dx / 2] = 0; // 間のマスを掘る
+                maze[ny][nx] = 0;                         // 2マス先を掘る
+                dig(nx, ny);                              // 再帰的に掘り進める
+            }
+        }
+    }
+}
+
+// --- ぷよぷよ風キャラクター・壁の描画 ---
+function drawPuyo(x, y, colorStr, hasEyes) {
+    const px = x * TILE_SIZE + TILE_SIZE / 2;
+    const py = y * TILE_SIZE + TILE_SIZE / 2;
+    const r = TILE_SIZE * 0.46; // ぷにっと丸いサイズ
+
+    ctx.save();
+    ctx.translate(px, py);
+
+    // 1. 体
+    ctx.beginPath();
+    ctx.fillStyle = colorStr;
+    ctx.arc(0, 0, r, 0, Math.PI * 2);
+    ctx.fill();
+
+    // 2. 目（プレイヤーとゴールのみ）
+    if (hasEyes) {
+        const eyeOffset = r * 0.35;
+        const eyeRadius = r * 0.28;
+        // 白目
+        ctx.fillStyle = '#fff';
+        ctx.beginPath();
+        ctx.arc(-eyeOffset, -r*0.05, eyeRadius, 0, Math.PI * 2);
+        ctx.arc(eyeOffset, -r*0.05, eyeRadius, 0, Math.PI * 2);
+        ctx.fill();
+        // 黒目（少し内寄り）
+        ctx.fillStyle = '#000';
+        ctx.beginPath();
+        ctx.arc(-eyeOffset + r*0.05, -r*0.05, r*0.14, 0, Math.PI * 2);
+        ctx.arc(eyeOffset - r*0.05, -r*0.05, r*0.14, 0, Math.PI * 2);
+        ctx.fill();
+        // 目の輝き
+        ctx.fillStyle = '#fff';
+        ctx.beginPath();
+        ctx.arc(-eyeOffset + r*0.02, -r*0.1, r*0.06, 0, Math.PI * 2);
+        ctx.arc(eyeOffset - r*0.08, -r*0.1, r*0.06, 0, Math.PI * 2);
+        ctx.fill();
+    }
+
+    // 3. ハイライト（ツヤ感）
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
+    ctx.beginPath();
+    ctx.arc(0, -r*0.4, r*0.2, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.restore();
+}
+
+function draw() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    for (let y = 0; y < MAZE_SIZE; y++) {
+        for (let x = 0; x < MAZE_SIZE; x++) {
+            if (maze[y][x] === 1) {
+                // 壁を紫ぷよ（目はなし）で埋め尽くす
+                drawPuyo(x, y, colors.wall, false);
+            } else {
+                // 通路の背景
+                ctx.fillStyle = colors.path;
+                ctx.fillRect(x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
+            }
+        }
+    }
+
+    // ゴール（黄ぷよ・目あり）を描画
+    drawPuyo(goal.x, goal.y, colors.goal, true);
+
+    // プレイヤー（水色ぷよ・目あり）を描画
+    drawPuyo(player.x, player.y, colors.player, true);
+}
+
+// --- プレイヤーの移動と判定 ---
+function movePlayer(dx, dy) {
+    if (isCleared) return;
+
+    const nextX = player.x + dx;
+    const nextY = player.y + dy;
+
+    // 移動先が壁(1)でなければ進む
+    if (maze[nextY] && maze[nextY][nextX] === 0) {
+        player.x = nextX;
+        player.y = nextY;
+        draw();
+        checkGoal();
+    }
+}
+
+function checkGoal() {
+    if (player.x === goal.x && player.y === goal.y) {
+        document.getElementById('clear-overlay').style.display = 'flex';
+        isCleared = true;
+    }
+}
+
+function nextStage() {
+    document.getElementById('clear-overlay').style.display = 'none';
+    isCleared = false;
+    player = { x: 1, y: 1 };
+    generateMaze();
+    draw();
+}
+
+// --- キーボード入力 ---
+document.addEventListener('keydown', event => {
+    if (event.key === 'ArrowUp' || event.key === 'w') movePlayer(0, -1);
+    else if (event.key === 'ArrowDown' || event.key === 's') movePlayer(0, 1);
+    else if (event.key === 'ArrowLeft' || event.key === 'a') movePlayer(-1, 0);
+    else if (event.key === 'ArrowRight' || event.key === 'd') movePlayer(1, 0);
+});
+
+// --- スマホ用連打・ズーム対策入力 ---
+const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+if (isTouchDevice) {
+    document.getElementById('controls').style.display = 'grid';
+    
+    // 画面全体のジェスチャーを遮断
+    document.body.addEventListener('touchmove', e => e.preventDefault(), {passive: false});
+    
+    // ダブルタップによるズームをJavaScript側でも完全に無効化
+    let lastTouchEnd = 0;
+    document.addEventListener('touchend', event => {
+        const now = (new Date()).getTime();
+        if (now - lastTouchEnd <= 300) {
+            event.preventDefault();
+        }
+        lastTouchEnd = now;
+    }, false);
+
+    const setupBtn = (id, action) => {
+        const btn = document.getElementById(id);
+        btn.addEventListener('touchstart', e => {
+            e.preventDefault(); // 連打ズームの主因となる標準挙動をキル
+            action();
+        });
+    };
+
+    setupBtn('btn-up', () => movePlayer(0, -1));
+    setupBtn('btn-left', () => movePlayer(-1, 0));
+    setupBtn('btn-right', () => movePlayer(1, 0));
+    setupBtn('btn-down', () => movePlayer(0, 1));
+}
+
+// ゲーム開始
+generateMaze();
+draw();
+</script>
+</body>
+</html>
