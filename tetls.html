@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Puyo-Style Pop Tetris (Fixed)</title>
+    <title>Puyo Tetris Fixed</title>
     <style>
         body {
             background: #2b1055;
@@ -108,7 +108,6 @@
             padding: 5px 15px;
             border-radius: 20px;
         }
-
         #controls {
             display: none;
             width: 100%;
@@ -188,7 +187,6 @@ const context = canvas.getContext('2d');
 const GRID_SIZE = 24;
 const STAGE_WIDTH = 10;
 const STAGE_HEIGHT = 20;
-context.scale(GRID_SIZE, GRID_SIZE);
 
 const effectCanvas = document.getElementById('effectCanvas');
 const effectContext = effectCanvas.getContext('2d');
@@ -196,7 +194,6 @@ const effectContext = effectCanvas.getContext('2d');
 const nextCanvas = document.getElementById('nextCanvas');
 const nextContext = nextCanvas.getContext('2d');
 const NEXT_GRID_SIZE = 20;
-nextContext.scale(NEXT_GRID_SIZE, NEXT_GRID_SIZE);
 
 const colors = [
     null,
@@ -355,7 +352,6 @@ function createMatrix(w, h) {
     return matrix;
 }
 
-// 【修正箇所】文字とブロック番号を正しく紐付け
 function createPiece(type) {
     if (type === 'T') return [[0,1,0],[1,1,1],[0,0,0]];
     if (type === 'O') return [[2,2],[2,2]];
@@ -394,7 +390,6 @@ function drawNext() {
     drawMatrix(matrix, {x: offsetX, y: offsetY}, nextContext, NEXT_GRID_SIZE);
 }
 
-// ぷよぷよ風描画（バグを修正し、少しサイズを最適化）
 function drawMatrix(matrix, offset, ctx, size) {
     if (!matrix) return;
     matrix.forEach((row, y) => {
@@ -402,7 +397,7 @@ function drawMatrix(matrix, offset, ctx, size) {
             if (value !== 0) {
                 const px = (x + offset.x) * size;
                 const py = (y + offset.y) * size;
-                const r = size * 0.48; // ぷにっと感を出すために少し大きめに
+                const r = size * 0.48;
 
                 ctx.save();
                 ctx.translate(px + size/2, py + size/2);
@@ -412,7 +407,6 @@ function drawMatrix(matrix, offset, ctx, size) {
                 ctx.arc(0, 0, r, 0, Math.PI * 2);
                 ctx.fill();
 
-                // 目（サイズに合わせて比率を調整）
                 const eyeOffset = r * 0.35;
                 const eyeRadius = r * 0.28;
                 ctx.fillStyle = '#fff';
@@ -486,6 +480,8 @@ function playerMove(dir) {
 
 function playerReset() {
     const pieces = 'ILJOTSZ';
+    
+    // 【修正箇所】初回起動時のオブジェクト構造を100%保証
     if (!player.nextMatrix) {
         player.nextMatrix = createPiece(pieces[pieces.length * Math.random() | 0]);
     }
@@ -588,6 +584,7 @@ if (isTouchDevice) {
     setupBtn('btn-drop', () => playerHardDrop());
 }
 
+// 【重要】最初のブロック生成とNext表示の順番を完全に同期
 playerReset();
 updateScoreAndLevel();
 update();
