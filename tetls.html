@@ -3,15 +3,15 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Puyo-Style Pop Tetris</title>
+    <title>Puyo-Style Pop Tetris (Fixed)</title>
     <style>
         body {
-            background: #2b1055; /* ぷよぷよっぽい深紫の背景 */
+            background: #2b1055;
             background-image: radial-gradient(#51279b 20%, transparent 20%), radial-gradient(#51279b 20%, transparent 20%);
             background-size: 30px 30px;
             background-position: 0 0, 15px 15px;
             color: #fff;
-            font-family: 'Arial Rounded MT Bold', 'Comic Sans MS', sans-serif; /* コミカルなフォント */
+            font-family: 'Arial Rounded MT Bold', 'Comic Sans MS', sans-serif;
             display: flex;
             flex-direction: column;
             align-items: center;
@@ -38,7 +38,7 @@
             position: absolute;
             left: 0;
             top: 0;
-            border: 4px solid #ffd700; /* ポップな金色の枠 */
+            border: 4px solid #ffd700;
             border-radius: 10px;
             box-sizing: border-box;
         }
@@ -86,7 +86,7 @@
         #game-over-overlay {
             position: absolute;
             top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(255, 64, 129, 0.85); /* ポップなピンクのゲームオーバー */
+            background: rgba(255, 64, 129, 0.85);
             display: none;
             flex-direction: column;
             align-items: center;
@@ -109,7 +109,6 @@
             border-radius: 20px;
         }
 
-        /* --- タッチコントローラー（丸みを持たせてポップに） --- */
         #controls {
             display: none;
             width: 100%;
@@ -153,7 +152,8 @@
             <canvas id="effectCanvas" width="240" height="480"></canvas>
             
             <div id="game-over-overlay" onclick="resetGame()">
-                <div id="game-over-text">ばたんきゅー</div> <div id="restart-text">もういちど！</div>
+                <div id="game-over-text">ばたんきゅー</div>
+                <div id="restart-text">もういちど！</div>
             </div>
         </div>
 
@@ -198,16 +198,15 @@ const nextContext = nextCanvas.getContext('2d');
 const NEXT_GRID_SIZE = 20;
 nextContext.scale(NEXT_GRID_SIZE, NEXT_GRID_SIZE);
 
-// ぷよぷよ風のパステル・ポップカラーに変更
 const colors = [
     null,
-    '#ff3366', // 赤ぷよ風 (T)
-    '#33ccff', // 水色ぷよ風 (O)
-    '#ff9933', // 橙ぷよ風 (L)
-    '#3333ff', // 青ぷよ風 (J)
-    '#33cc33', // 緑ぷよ風 (I)
-    '#ffff33', // 黄ぷよ風 (S)
-    '#cc33ff'  // 紫ぷよ風 (Z)
+    '#ff3366', // 赤 (T)
+    '#33ccff', // 水色 (O)
+    '#ff9933', // 橙 (L)
+    '#3333ff', // 青 (J)
+    '#33cc33', // 緑 (I)
+    '#ffff33', // 黄 (S)
+    '#cc33ff'  // 紫 (Z)
 ];
 
 let arena = createMatrix(STAGE_WIDTH, STAGE_HEIGHT);
@@ -217,7 +216,7 @@ const player = {
     nextMatrix: null,
     score: 0,
     level: 1,
-    combo: 0 // 連鎖カウンター
+    combo: 0
 };
 
 let dropCounter = 0;
@@ -225,9 +224,8 @@ let dropInterval = 1000;
 let lastTime = 0;
 let gameOver = false;
 let particles = [];
-let comboTexts = []; // 連鎖テキストエフェクト用
+let comboTexts = [];
 
-// --- コミカルなエフェクト・テキストクラス ---
 class ComboText {
     constructor(text, x, y) {
         this.text = text;
@@ -266,11 +264,11 @@ class PopParticle {
         this.vy = (Math.random() - 0.5) * 8 - 3;
         this.color = color;
         this.alpha = 1;
-        this.radius = Math.random() * 6 + 4; // 四角から丸い粒子へ
+        this.radius = Math.random() * 6 + 4;
     }
     update() {
         this.vx *= 0.96;
-        this.vy += 0.15; // 重力
+        this.vy += 0.15;
         this.x += this.vx;
         this.y += this.vy;
         this.alpha -= 0.025;
@@ -281,7 +279,6 @@ class PopParticle {
         ctx.fillStyle = this.color;
         ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
         ctx.fill();
-        // 白いハイライトを入れてツヤ感をだす
         ctx.fillStyle = 'rgba(255,255,255,0.6)';
         ctx.beginPath();
         ctx.arc(this.x - this.radius/3, this.y - this.radius/3, this.radius/3, 0, Math.PI * 2);
@@ -303,17 +300,12 @@ function triggerLineEffect(yRow, colorArray) {
 
 function updateEffects() {
     effectContext.clearRect(0, 0, effectCanvas.width, effectCanvas.height);
-    
-    // 粒子の更新
     particles = particles.filter(p => p.alpha > 0);
     particles.forEach(p => { p.update(); p.draw(effectContext); });
-
-    // 連鎖文字の更新
     comboTexts = comboTexts.filter(t => t.alpha > 0);
     comboTexts.forEach(t => { t.update(); t.draw(effectContext); });
 }
 
-// --- ゲームロジック ---
 function arenaSweep() {
     let rowCount = 0;
     let linesCleared = [];
@@ -331,21 +323,17 @@ function arenaSweep() {
 
     if (rowCount > 0) {
         linesCleared.forEach(line => triggerLineEffect(line.y, line.colors));
-        
-        // 連鎖（コンボ）の計算
         player.combo++;
         const comboBonus = player.combo * 15;
         player.score += (rowCount * 20) + comboBonus;
 
-        // 連鎖数をコミカルに表示
         if (player.combo >= 1) {
             const lastLineY = linesCleared[linesCleared.length - 1].y * GRID_SIZE;
             comboTexts.push(new ComboText(`${player.combo}連鎖!`, canvas.width / 2, lastLineY));
         }
-
         updateScoreAndLevel();
     } else {
-        player.combo = 0; // ラインが消えなければ連鎖ストップ
+        player.combo = 0;
     }
 }
 
@@ -367,12 +355,13 @@ function createMatrix(w, h) {
     return matrix;
 }
 
+// 【修正箇所】文字とブロック番号を正しく紐付け
 function createPiece(type) {
-    if (type === 'T') return [[0,0,0],[1,1,1],[0,1,0]];
+    if (type === 'T') return [[0,1,0],[1,1,1],[0,0,0]];
     if (type === 'O') return [[2,2],[2,2]];
-    if (type === 'L') return [[0,3,0],[0,3,0],[0,3,3]];
-    if (type === 'J') return [[0,4,0],[0,4,0],[4,4,0]];
-    if (type === 'I') return [[0,5,0,0],[0,5,0,0],[0,5,0,0],[0,5,0,0]];
+    if (type === 'L') return [[0,0,3],[3,3,3],[0,0,0]];
+    if (type === 'J') return [[4,0,0],[4,4,4],[0,0,0]];
+    if (type === 'I') return [[0,0,0,0],[5,5,5,5],[0,0,0,0],[0,0,0,0]];
     if (type === 'S') return [[0,6,6],[6,6,0],[0,0,0]];
     if (type === 'Z') return [[7,7,0],[0,7,7],[0,0,0]];
 }
@@ -382,14 +371,12 @@ function draw() {
     context.fillRect(0, 0, canvas.width, canvas.height);
 
     drawMatrix(arena, {x: 0, y: 0}, context, GRID_SIZE);
-    
-    // ゴーストも丸みを持って薄く描画
     drawGhost(player);
-
     drawMatrix(player.matrix, player.pos, context, GRID_SIZE);
 }
 
 function drawGhost(player) {
+    if (!player.matrix) return;
     const ghostPos = {x: player.pos.x, y: player.pos.y};
     while (!collide(arena, {pos: ghostPos, matrix: player.matrix})) { ghostPos.y++; }
     ghostPos.y--;
@@ -407,50 +394,48 @@ function drawNext() {
     drawMatrix(matrix, {x: offsetX, y: offsetY}, nextContext, NEXT_GRID_SIZE);
 }
 
-// ★★★ ここが最大の変更点：ブロックを「ぷよぷよ風」に描画する ★★★
+// ぷよぷよ風描画（バグを修正し、少しサイズを最適化）
 function drawMatrix(matrix, offset, ctx, size) {
+    if (!matrix) return;
     matrix.forEach((row, y) => {
         row.forEach((value, x) => {
             if (value !== 0) {
                 const px = (x + offset.x) * size;
                 const py = (y + offset.y) * size;
-                const r = size * 0.45; // 角丸・円の半径
+                const r = size * 0.48; // ぷにっと感を出すために少し大きめに
 
                 ctx.save();
                 ctx.translate(px + size/2, py + size/2);
 
-                // 1. ぷよ本体の丸っこい形を描画
                 ctx.beginPath();
                 ctx.fillStyle = colors[value];
                 ctx.arc(0, 0, r, 0, Math.PI * 2);
                 ctx.fill();
 
-                // 2. コミカルな「目」を描画（ブロックのインデックスが0じゃない時＝空じゃない時）
-                // 白目
+                // 目（サイズに合わせて比率を調整）
+                const eyeOffset = r * 0.35;
+                const eyeRadius = r * 0.28;
                 ctx.fillStyle = '#fff';
                 ctx.beginPath();
-                ctx.arc(-r*0.35, -r*0.1, r*0.28, 0, Math.PI * 2);
-                ctx.arc(r*0.35, -r*0.1, r*0.28, 0, Math.PI * 2);
+                ctx.arc(-eyeOffset, -r*0.05, eyeRadius, 0, Math.PI * 2);
+                ctx.arc(eyeOffset, -r*0.05, eyeRadius, 0, Math.PI * 2);
                 ctx.fill();
 
-                // 黒目（少し内側に寄せて可愛く）
                 ctx.fillStyle = '#000';
                 ctx.beginPath();
-                ctx.arc(-r*0.28, -r*0.1, r*0.14, 0, Math.PI * 2);
-                ctx.arc(r*0.28, -r*0.1, r*0.14, 0, Math.PI * 2);
+                ctx.arc(-eyeOffset + r*0.05, -r*0.05, r*0.14, 0, Math.PI * 2);
+                ctx.arc(eyeOffset - r*0.05, -r*0.05, r*0.14, 0, Math.PI * 2);
                 ctx.fill();
 
-                // ハイライト（目の輝き）
                 ctx.fillStyle = '#fff';
                 ctx.beginPath();
-                ctx.arc(-r*0.32, -r*0.15, r*0.06, 0, Math.PI * 2);
-                ctx.arc(r*0.24, -r*0.15, r*0.06, 0, Math.PI * 2);
+                ctx.arc(-eyeOffset + r*0.02, -r*0.1, r*0.06, 0, Math.PI * 2);
+                ctx.arc(eyeOffset - r*0.08, -r*0.1, r*0.06, 0, Math.PI * 2);
                 ctx.fill();
 
-                // 3. ツヤ（光沢のハイライト）
                 ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
                 ctx.beginPath();
-                ctx.arc(0, -r*0.5, r*0.2, 0, Math.PI * 2);
+                ctx.arc(0, -r*0.4, r*0.2, 0, Math.PI * 2);
                 ctx.fill();
 
                 ctx.restore();
@@ -486,7 +471,6 @@ function playerHardDrop() {
     player.score += count;
     merge(arena, player);
     
-    // コミカルな画面揺れ（少し大きめに）
     canvas.style.transform = 'translateY(5px)';
     setTimeout(()=> canvas.style.transform = 'translateY(0)', 60);
 
@@ -579,7 +563,6 @@ function update(time = 0) {
     requestAnimationFrame(update);
 }
 
-// --- 入力処理 ---
 document.addEventListener('keydown', event => {
     if (gameOver) return;
     if (event.keyCode === 37) playerMove(-1);
