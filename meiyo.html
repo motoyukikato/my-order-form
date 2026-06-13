@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Puyo Pop Maze - Custom Edition</title>
+    <title>Puyo Pac-Man</title>
     <style>
         body {
             background: #2b1055;
@@ -21,59 +21,17 @@
             overflow: hidden;
             touch-action: none;
         }
-        h1 {
-            font-size: 22px;
-            margin: 5px 0;
-            color: #ffeb3b;
-            text-shadow: 2px 2px 0px #ff4081;
-        }
-
-        /* --- 【新設】設定コントロールパネル --- */
-        #config-panel {
+        #info-bar {
             display: flex;
-            gap: 10px;
-            margin-bottom: 10px;
-            background: rgba(255, 255, 255, 0.1);
-            padding: 8px 12px;
-            border-radius: 15px;
-            border: 2px solid rgba(255, 255, 255, 0.2);
-            z-index: 5;
-        }
-        .config-group {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 3px;
-        }
-        .config-label {
-            font-size: 11px;
+            justify-content: space-between;
+            width: 100%;
+            max-width: 340px;
+            margin-bottom: 5px;
+            font-size: 18px;
+            font-weight: bold;
             color: #ffeb3b;
-            font-weight: bold;
+            text-shadow: 1px 1px 2px #000;
         }
-        .config-btn {
-            background: #00e676;
-            border: 2px solid #fff;
-            color: #fff;
-            font-size: 13px;
-            font-weight: bold;
-            padding: 5px 12px;
-            border-radius: 10px;
-            box-shadow: 0 3px 0 #00c853;
-            cursor: pointer;
-            user-select: none;
-            -webkit-user-select: none;
-            touch-action: none;
-        }
-        .config-btn:active {
-            transform: translateY(2px);
-            box-shadow: none;
-        }
-        /* レベルボタンは青色に */
-        #btn-config-level {
-            background: #00b0ff;
-            box-shadow: 0 3px 0 #0091ea;
-        }
-
         #game-container {
             position: relative;
             box-shadow: 0 0 20px rgba(0,0,0,0.5);
@@ -85,7 +43,6 @@
         canvas {
             display: block;
         }
-        
         .overlay {
             position: absolute;
             top: 0; left: 0; width: 100%; height: 100%;
@@ -156,24 +113,16 @@
 </head>
 <body>
 
-    <h1>カスタマイズ・めいろゲーム</h1>
-
-    <div id="config-panel">
-        <div class="config-group">
-            <span class="config-label">てきの数</span>
-            <div class="config-btn" id="btn-config-count">2ひき</div>
-        </div>
-        <div class="config-group">
-            <span class="config-label">てきの強さ</span>
-            <div class="config-btn" id="btn-config-level">ふつう</div>
-        </div>
+    <div id="info-bar">
+        <div>SCORE: <span id="score-val">0</span></div>
+        <div id="mode-status" style="color: #00e676;">エサをあつめろ！</div>
     </div>
 
     <div id="game-container">
         <canvas id="mazeCanvas"></canvas>
         
         <div id="clear-overlay" class="overlay" onclick="nextStage()">
-            <div class="overlay-title">くりあ！</div>
+            <div class="overlay-title">ぱーふぇくと！</div>
             <div class="overlay-btn">つぎのステージへ</div>
         </div>
 
@@ -201,60 +150,66 @@ canvas.width = MAZE_SIZE * TILE_SIZE;
 canvas.height = MAZE_SIZE * TILE_SIZE;
 
 const colors = {
-    wall: '#cc33ff',   
+    wall: '#cc33ff',       // 壁：紫ぷよ
     path: 'rgba(20, 10, 40, 0.6)', 
-    player: '#33ccff', 
-    goal: '#ffff33',    
-    enemy: '#ff3366'    
+    player: '#33ccff',     // プレイヤー：水色ぷよ
+    enemyNormal: '#ff3366', // 通常のおばけ：赤ぷよ
+    enemyScared: '#2979ff', // 無敵時間中のおばけ：青ざめたぷよ
+    dot: '#ffeb3b',        // 普通のエサ：黄色
+    powerDot: '#00e676'    // パワーエサ：緑色
 };
 
-let maze = [];
+let maze = [];       // 1:壁, 0:通路
+let dotGrid = [];    // 1:通常エサ, 2:パワーエサ, 0:なし
 let player = { x: 1, y: 1 };
-let goal = { x: MAZE_SIZE - 2, y: MAZE_SIZE - 2 };
 let enemies = [];
+let score = 0;
 let isGameOver = false;
+
 let enemyTimer = null;
+let powerModeTimer = null;
+let isPowerMode = false;
 
-// 【新設】設定用の現在のステート
-let currentEnemyCount = 2; // 最初は2匹
-let currentSpeedLevel = 'normal'; // 最初は「ふつう」
-const speedSettings = {
-    'easy': 650,    // かんたん（ゆっくりおっとり）
-    'normal': 400,  // ふつう
-    'hard': 220     // むずかしい（けっこう速い！）
-};
-
-// --- 迷路の自動生成 ---
+// --- 迷路とエサの自動配置 ---
 function generateMaze() {
     maze = [];
+    dotGrid = [];
     for (let y = 0; y < MAZE_SIZE; y++) {
         maze.push(new Array(MAZE_SIZE).fill(1));
+        dotGrid.push(new Array(MAZE_SIZE).fill(0));
     }
     maze[1][1] = 0;
     dig(1, 1);
-    maze[goal.y][goal.x] = 0;
 
-    // ボタンで設定された数（0〜2）だけ敵を生成
-    enemies = [];
-    const positions = [
-        { x: MAZE_SIZE - 2, y: 1, lastDx: 0, lastDy: 0 }, // 右上
-        { x: 1, y: MAZE_SIZE - 2, lastDx: 0, lastDy: 0 }  // 左下
-    ];
-
-    for (let i = 0; i < currentEnemyCount; i++) {
-        enemies.push(positions[i]);
-        maze[positions[i].y][positions[i].x] = 0; // 通路を保証
+    // 通路の全域にエサ(1)を敷き詰める
+    for (let y = 0; y < MAZE_SIZE; y++) {
+        for (let x = 0; x < MAZE_SIZE; x++) {
+            if (maze[y][x] === 0) {
+                dotGrid[y][x] = 1; 
+            }
+        }
     }
+    // スタート地点のエサは消しておく
+    dotGrid[1][1] = 0;
+
+    // 迷路の四隅付近に通路があればパワーエサ(2)を配置
+    const powerPos = [{x:1, y:MAZE_SIZE-2}, {x:MAZE_SIZE-2, y:1}, {x:MAZE_SIZE-2, y:MAZE_SIZE-2}];
+    powerPos.forEach(p => {
+        if(maze[p.y][p.x] === 0) dotGrid[p.y][p.x] = 2;
+    });
+
+    // おばけを2匹セット
+    enemies = [
+        { x: MAZE_SIZE - 2, y: 1, lastDx: 0, lastDy: 0, isDead: false },
+        { x: 1, y: MAZE_SIZE - 2, lastDx: 0, lastDy: 0, isDead: false }
+    ];
+    enemies.forEach(e => maze[e.y][e.x] = 0);
 }
 
 function dig(x, y) {
-    const dirs = [
-        {dx: 0, dy: -2}, {dx: 0, dy: 2}, {dx: -2, dy: 0}, {dx: 2, dy: 0}
-    ].sort(() => Math.random() - 0.5);
-
+    const dirs = [{dx:0, dy:-2}, {dx:0, dy:2}, {dx:-2, dy:0}, {dx:2, dy:0}].sort(() => Math.random() - 0.5);
     for (let dir of dirs) {
-        const nx = x + dir.dx;
-        const ny = y + dir.dy;
+        const nx = x + dir.dx; const ny = y + dir.dy;
         if (nx > 0 && nx < MAZE_SIZE - 1 && ny > 0 && ny < MAZE_SIZE - 1) {
             if (maze[ny][nx] === 1) {
                 maze[y + dir.dy / 2][x + dir.dx / 2] = 0;
@@ -265,45 +220,21 @@ function dig(x, y) {
     }
 }
 
-// --- 描画 ---
+// --- キャラクターやエサの描画 ---
 function drawPuyo(x, y, colorStr, hasEyes) {
     const px = x * TILE_SIZE + TILE_SIZE / 2;
     const py = y * TILE_SIZE + TILE_SIZE / 2;
     const r = TILE_SIZE * 0.46;
 
-    ctx.save();
-    ctx.translate(px, py);
-
-    ctx.beginPath();
-    ctx.fillStyle = colorStr;
-    ctx.arc(0, 0, r, 0, Math.PI * 2);
-    ctx.fill();
+    ctx.save(); ctx.translate(px, py);
+    ctx.beginPath(); ctx.fillStyle = colorStr; ctx.arc(0, 0, r, 0, Math.PI * 2); ctx.fill();
 
     if (hasEyes) {
-        const eyeOffset = r * 0.35;
-        const eyeRadius = r * 0.28;
-        ctx.fillStyle = '#fff';
-        ctx.beginPath();
-        ctx.arc(-eyeOffset, -r*0.05, eyeRadius, 0, Math.PI * 2);
-        ctx.arc(eyeOffset, -r*0.05, eyeRadius, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.fillStyle = '#000';
-        ctx.beginPath();
-        ctx.arc(-eyeOffset + r*0.05, -r*0.05, r*0.14, 0, Math.PI * 2);
-        ctx.arc(eyeOffset - r*0.05, -r*0.05, r*0.14, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.fillStyle = '#fff';
-        ctx.beginPath();
-        ctx.arc(-eyeOffset + r*0.02, -r*0.1, r*0.06, 0, Math.PI * 2);
-        ctx.arc(eyeOffset - r*0.08, -r*0.1, r*0.06, 0, Math.PI * 2);
-        ctx.fill();
+        const eyeOffset = r * 0.35; const eyeRadius = r * 0.28;
+        ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(-eyeOffset, -r*0.05, eyeRadius, 0, Math.PI * 2); ctx.arc(eyeOffset, -r*0.05, eyeRadius, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = '#000'; ctx.beginPath(); ctx.arc(-eyeOffset + r*0.05, -r*0.05, r*0.14, 0, Math.PI * 2); ctx.arc(eyeOffset - r*0.05, -r*0.05, r*0.14, 0, Math.PI * 2); ctx.fill();
     }
-
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
-    ctx.beginPath();
-    ctx.arc(0, -r*0.4, r*0.2, 0, Math.PI * 2);
-    ctx.fill();
-
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.4)'; ctx.beginPath(); ctx.arc(0, -r*0.4, r*0.2, 0, Math.PI * 2); ctx.fill();
     ctx.restore();
 }
 
@@ -317,32 +248,48 @@ function draw() {
             } else {
                 ctx.fillStyle = colors.path;
                 ctx.fillRect(x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
+
+                // エサの描画
+                if (dotGrid[y][x] === 1) { // 通常エサ
+                    ctx.fillStyle = colors.dot;
+                    ctx.beginPath(); ctx.arc(x * TILE_SIZE + TILE_SIZE/2, y * TILE_SIZE + TILE_SIZE/2, 4, 0, Math.PI * 2); ctx.fill();
+                } else if (dotGrid[y][x] === 2) { // パワーエサ
+                    ctx.fillStyle = colors.powerDot;
+                    ctx.beginPath(); ctx.arc(x * TILE_SIZE + TILE_SIZE/2, y * TILE_SIZE + TILE_SIZE/2, 8, 0, Math.PI * 2); ctx.fill();
+                }
             }
         }
     }
 
-    drawPuyo(goal.x, goal.y, colors.goal, true);
-    enemies.forEach(e => drawPuyo(e.x, e.y, colors.enemy, true));
+    // おばけの描画
+    enemies.forEach(e => {
+        if (e.isDead) return; // やられているおばけは非表示
+        let enemyColor = isPowerMode ? colors.enemyScared : colors.enemyNormal;
+        drawPuyo(e.x, e.y, enemyColor, true);
+    });
+
+    // プレイヤー
     drawPuyo(player.x, player.y, colors.player, true);
 }
 
-// --- 敵の自動移動 ---
+// --- おばけのウロウロAI ---
 function updateEnemies() {
     if (isGameOver) return;
 
     enemies.forEach(e => {
+        if (e.isDead) return;
+
         const possibleMoves = [];
-        const dirs = [{dx: 0, dy: -1}, {dx: 0, dy: 1}, {dx: -1, dy: 0}, {dx: 1, dy: 0}];
+        const dirs = [{dx:0, dy:-1}, {dx:0, dy:1}, {dx:-1, dy:0}, {dx:1, dy:0}];
 
         dirs.forEach(d => {
-            const nx = e.x + d.dx;
-            const ny = e.y + d.dy;
+            const nx = e.x + d.dx; const ny = e.y + d.dy;
             if (maze[ny] && maze[ny][nx] === 0) possibleMoves.push(d);
         });
 
         if (possibleMoves.length > 0) {
             let move = possibleMoves.find(m => m.dx === e.lastDx && m.dy === e.lastDy);
-            if (!move || Math.random() < 0.3) {
+            if (!move || Math.random() < 0.25) {
                 move = possibleMoves[Math.floor(Math.random() * possibleMoves.length)];
             }
             e.x += move.dx; e.y += move.dy;
@@ -354,48 +301,110 @@ function updateEnemies() {
     checkCollision();
 }
 
-// --- プレイヤー移動 ---
+// --- プレイヤーの移動とパクパク判定 ---
 function movePlayer(dx, dy) {
     if (isGameOver) return;
 
-    const nextX = player.x + dx;
-    const nextY = player.y + dy;
+    const nextX = player.x + dx; const nextY = player.y + dy;
 
     if (maze[nextY] && maze[nextY][nextX] === 0) {
-        player.x = nextX;
-        player.y = nextY;
+        player.x = nextX; player.y = nextY;
+
+        // エサを食べたか判定
+        if (dotGrid[player.y][player.x] === 1) {
+            dotGrid[player.y][player.x] = 0;
+            score += 10;
+            updateScoreDisplay();
+        } 
+        // パワーエサを食べたか判定
+        else if (dotGrid[player.y][player.x] === 2) {
+            dotGrid[player.y][player.x] = 0;
+            score += 50;
+            updateScoreDisplay();
+            activatePowerMode(); // 無敵モード発動！
+        }
+
         draw();
         checkCollision();
-        checkGoal();
+        checkStageClear();
     }
 }
 
+// --- パワーモード（形勢逆転！）の処理 ---
+function activatePowerMode() {
+    isPowerMode = true;
+    document.getElementById('mode-status').innerText = "おばけをやっつけろ！";
+    document.getElementById('mode-status').style.color = '#ffeb3b';
+
+    clearTimeout(powerModeTimer);
+    // 7秒間無敵モードが続きます
+    powerModeTimer = setTimeout(() => {
+        isPowerMode = false;
+        document.getElementById('mode-status').innerText = "エサをあつめろ！";
+        document.getElementById('mode-status').style.color = '#00e676';
+        draw();
+    }, 7000);
+}
+
+// --- 衝突判定（通常時はミス、パワー時はおばけ撃破） ---
 function checkCollision() {
-    const hit = enemies.some(e => e.x === player.x && e.y === player.y);
-    if (hit) {
-        isGameOver = true;
-        clearInterval(enemyTimer);
-        document.getElementById('gameover-overlay').style.display = 'flex';
-    }
+    enemies.forEach(e => {
+        if (e.isDead) return;
+
+        if (e.x === player.x && e.y === player.y) {
+            if (isPowerMode) {
+                // おばけを撃破！
+                e.isDead = true;
+                score += 200;
+                updateScoreDisplay();
+                
+                // 4秒後に元の位置に復活させる
+                setTimeout(() => {
+                    e.isDead = false;
+                    e.x = (e.lastDx === 0) ? MAZE_SIZE - 2 : 1; // 初期位置付近に復活
+                    draw();
+                }, 4000);
+            } else {
+                // 通常時はぶつかったらゲームオーバー
+                isGameOver = true;
+                clearInterval(enemyTimer);
+                clearTimeout(powerModeTimer);
+                document.getElementById('gameover-overlay').style.display = 'flex';
+            }
+        }
+    });
 }
 
-function checkGoal() {
-    if (player.x === goal.x && player.y === goal.y) {
+function checkStageClear() {
+    // 画面に1つもエサ(1または2)が残っていなければクリア！
+    let hasDots = false;
+    for (let y = 0; y < MAZE_SIZE; y++) {
+        if (dotGrid[y].includes(1) || dotGrid[y].includes(2)) {
+            hasDots = true;
+            break;
+        }
+    }
+
+    if (!hasDots) {
         isGameOver = true;
         clearInterval(enemyTimer);
+        clearTimeout(powerModeTimer);
         document.getElementById('clear-overlay').style.display = 'flex';
     }
 }
 
+function updateScoreDisplay() {
+    document.getElementById('score-val').innerText = score;
+}
+
+// --- ゲームループ管理 ---
 function startGameLoop() {
     isGameOver = false;
+    isPowerMode = false;
+    document.getElementById('mode-status').innerText = "エサをあつめろ！";
+    document.getElementById('mode-status').style.color = '#00e676';
     clearInterval(enemyTimer);
-    
-    // 敵が1匹以上いるときだけタイマーを作動させる
-    if (currentEnemyCount > 0) {
-        const speed = speedSettings[currentSpeedLevel];
-        enemyTimer = setInterval(updateEnemies, speed);
-    }
+    enemyTimer = setInterval(updateEnemies, 380); // 敵のスピード
 }
 
 function nextStage() {
@@ -408,55 +417,15 @@ function nextStage() {
 
 function restartStage() {
     document.getElementById('gameover-overlay').style.display = 'none';
+    score = 0;
+    updateScoreDisplay();
     player = { x: 1, y: 1 };
-    startGameLoop();
+    generateMaze();
     draw();
+    startGameLoop();
 }
 
-// --- 【新設】設定ボタンの切り替え処理 ---
-function setupConfigButtons() {
-    const countBtn = document.getElementById('btn-config-count');
-    const levelBtn = document.getElementById('btn-config-level');
-
-    // 敵の数： 2匹 -> 0匹 -> 1匹 -> 2匹... の順に切り替え
-    const changeCount = () => {
-        if (currentEnemyCount === 2) currentEnemyCount = 0;
-        else if (currentEnemyCount === 0) currentEnemyCount = 1;
-        else currentEnemyCount = 2;
-
-        countBtn.innerText = currentEnemyCount === 0 ? "0ひき" : `${currentEnemyCount}ひき`;
-        
-        // 設定が変わったらその場で迷路と敵をリセット
-        restartStage();
-    };
-
-    // 敵の強さ： ふつう -> むずかしい -> かんたん...
-    const changeLevel = () => {
-        if (currentSpeedLevel === 'normal') {
-            currentSpeedLevel = 'hard';
-            levelBtn.innerText = "むずかしい";
-        } else if (currentSpeedLevel === 'hard') {
-            currentSpeedLevel = 'easy';
-            levelBtn.innerText = "かんたん";
-        } else {
-            currentSpeedLevel = 'normal';
-            levelBtn.innerText = "ふつう";
-        }
-        // スピードが変わったらタイマーを再スタート
-        startGameLoop();
-    };
-
-    // パソコン・スマホ両方で快適に動くようにイベント登録
-    if ('ontouchstart' in window) {
-        countBtn.addEventListener('touchstart', e => { e.preventDefault(); changeCount(); });
-        levelBtn.addEventListener('touchstart', e => { e.preventDefault(); changeLevel(); });
-    } else {
-        countBtn.addEventListener('click', changeCount);
-        levelBtn.addEventListener('click', changeLevel);
-    }
-}
-
-// --- 操作・初期化 ---
+// --- コントローラー ---
 document.addEventListener('keydown', event => {
     if (event.key === 'ArrowUp' || event.key === 'w') movePlayer(0, -1);
     else if (event.key === 'ArrowDown' || event.key === 's') movePlayer(0, 1);
@@ -486,8 +455,7 @@ if (isTouchDevice) {
     setupBtn('btn-down', () => movePlayer(0, 1));
 }
 
-// 起動
-setupConfigButtons();
+// 初期起動
 generateMaze();
 draw();
 startGameLoop();
