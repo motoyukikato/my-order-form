@@ -2,11 +2,13 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <link rel="apple-touch-icon" href="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' style='background:%23190a35'><circle cx='50' cy='50' r='45' fill='%2333ccff'/><circle cx='35' cy='45' r='12' fill='%23fff'/><circle cx='65' cy='45' r='12' fill='%23fff'/><circle cx='38' cy='45' r='6' fill='%23000'/><circle cx='62' cy='45' r='6' fill='%23000'/><circle cx='50' cy='30' r='8' fill='rgba(255,255,255,0.4)'/></svg>">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0 ...
-    <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>Puyo Pac-Man - Fixed Pad Edition</title>
+
+    <link rel="apple-touch-icon" sizes="180x180" href="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' style='background:%23190a35'><circle cx='50' cy='50' r='45' fill='%2333ccff'/><circle cx='35' cy='45' r='12' fill='%23fff'/><circle cx='65' cy='45' r='12' fill='%23fff'/><circle cx='38' cy='45' r='6' fill='%23000'/><circle cx='62' cy='45' r='6' fill='%23000'/><circle cx='50' cy='30' r='8' fill='rgba(255,255,255,0.4)'/></svg>#v3">
+    
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' style='background:%23190a35'><circle cx='50' cy='50' r='45' fill='%2333ccff'/><circle cx='35' cy='45' r='12' fill='%23fff'/><circle cx='65' cy='45' r='12' fill='%23fff'/><circle cx='38' cy='45' r='6' fill='%23000'/><circle cx='62' cy='45' r='6' fill='%23000'/><circle cx='50' cy='30' r='8' fill='rgba(255,255,255,0.4)'/></svg>#v3">
+
     <style>
         * { box-sizing: border-box; }
         body {
@@ -52,16 +54,16 @@
         #btn-restart { background: #ff1744; }
         #btn-pause { background: #ff9100; }
 
-        /* 【ここがポイント】中央にギュッと集めるレイアウトに変更 */
+        /* 中央にギュッと集めるレイアウト */
         #main-layout {
             display: flex;
             flex: 1;
             width: 100%;
-            max-width: 700px; /* 広がりすぎを防ぐ */
+            max-width: 700px;
             align-items: center;
-            justify-content: center; /* 中央寄せ */
+            justify-content: center;
             padding: 10px;
-            gap: 20px; /* 迷路とボタンの間のすきま */
+            gap: 20px;
         }
 
         /* ゲーム画面 */
@@ -77,17 +79,17 @@
         canvas {
             display: block;
             max-height: calc(100vh - 80px);
-            max-width: calc(100vw - 280px); /* ボタン2個分のスペースを確実に確保 */
+            max-width: calc(100vw - 280px);
             object-fit: contain;
         }
 
-        /* 仮想コントローラーの土台（サイズを少し大きくして押しやすく） */
+        /* 仮想コントローラーの土台 */
         .pad-cluster {
             display: none;
             width: 110px;
             height: 110px;
             position: relative;
-            flex-shrink: 0; /* 画面が狭くなってもボタンが潰れないように固定 */
+            flex-shrink: 0;
         }
         .ctrl-btn {
             position: absolute;
@@ -110,7 +112,7 @@
             box-shadow: none;
         }
 
-        /* 左手側：左右ボタン（配置を微調整） */
+        /* 左手側：左右ボタン */
         #btn-left  { top: 28px; left: 0; }
         #btn-right { top: 28px; right: 0; }
         
@@ -183,7 +185,6 @@
 const canvas = document.getElementById('mazeCanvas');
 const ctx = canvas.getContext('2d');
 
-// 横27マス × 縦15マスの快適な横長比率を維持
 const MAZE_W = 27; 
 const MAZE_H = 15; 
 const TILE_SIZE = 16; 
