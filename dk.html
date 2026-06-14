@@ -3,13 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Jewel Crash - Chain Reaction</title>
+    <title>Retro Digital Pet</title>
     <style>
         * { box-sizing: border-box; }
         body {
-            background: #0f0c1b;
-            color: #fff;
-            font-family: 'Helvetica Neue', Arial, sans-serif;
+            background: #f0f4f8;
+            color: #333;
+            font-family: 'Courier New', 'Courier', monospace;
             margin: 0; padding: 0;
             overflow: hidden;
             width: 100vw; height: 100vh;
@@ -17,340 +17,317 @@
             align-items: center; justify-content: center;
             touch-action: none; -webkit-user-select: none; user-select: none;
         }
-        #ui-panel {
-            width: 100%; max-width: 400px; height: 60px;
-            display: flex; justify-content: space-between; align-items: center;
-            padding: 0 20px; font-weight: bold; font-size: 20px;
-            background: linear-gradient(to bottom, #1a1633, #0f0c1b);
-            border-bottom: 2px solid #3d3473;
+        /* たまごっち風の本体外殻 */
+        #pet-shell {
+            width: 320px; height: 420px;
+            background: radial-gradient(circle, #ff7675, #d63031);
+            border: 12px solid #b2bec3;
+            border-radius: 140px 140px 160px 160px;
+            box-shadow: 0 15px 30px rgba(0,0,0,0.3), inset 0 -10px 20px rgba(0,0,0,0.4);
+            display: flex; flex-direction: column;
+            align-items: center; justify-content: flex-start;
+            padding-top: 40px; position: relative;
         }
-        #combo-alert { color: #ffeb3b; font-size: 16px; min-height: 20px; text-shadow: 0 0 10px #ff9100; }
-        #game-container { position: relative; width: 100%; max-width: 400px; flex: 1; display: flex; align-items: center; justify-content: center; padding: 10px; }
-        canvas { display: block; background: #141126; border: 3px solid #4a3f8a; border-radius: 10px; box-shadow: 0 0 20px rgba(74,63,138,0.5); max-height: 100%; max-width: 100%; object-fit: contain; }
+        /* 液晶画面の枠 */
+        #screen-frame {
+            width: 220px; height: 180px;
+            background: #dfe6e9;
+            border: 8px solid #636e72;
+            border-radius: 20px;
+            display: flex; flex-direction: column;
+            padding: 8px; position: relative;
+        }
+        /* ドット絵風の液晶画面 */
+        #lcd-screen {
+            flex: 1; background: #b2bec3; /* グレー液晶風 */
+            border: 3px solid #74b9ff; border-radius: 4px;
+            position: relative; overflow: hidden;
+            box-shadow: inset 3px 3px 5px rgba(0,0,0,0.2);
+        }
+        /* ステータスバー */
+        #status-bar {
+            display: flex; justify-content: space-between;
+            font-size: 11px; font-weight: bold; color: #2d3436;
+            padding: 2px; border-bottom: 1px dashed #636e72;
+        }
+        /* メインキャンバス */
+        canvas { display: block; width: 100%; height: calc(100% - 20px); }
+
+        /* 物理ボタン（3つの丸ボタン） */
+        #button-container {
+            width: 100%; display: flex; justify-content: center; gap: 30px; margin-top: 40px;
+        }
+        .hw-btn {
+            width: 50px; height: 50px; background: #fdcb6e;
+            border: 4px solid #e17055; border-radius: 50%;
+            box-shadow: 0 6px #d63031, inset 0 2px 4px rgba(255,255,255,0.4);
+            cursor: pointer; display: flex; flex-direction: column; align-items: center; justify-content: center;
+            font-size: 11px; font-weight: bold; color: #fff; text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
+        }
+        .hw-btn:active {
+            transform: translateY(4px); box-shadow: 0 2px #d63031;
+        }
         
-        .overlay {
-            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            display: none; flex-direction: column; align-items: center; justify-content: center;
-            background: rgba(15,12,27,0.9); z-index: 10;
+        /* イベント通知オーバーレイ */
+        #notify-text {
+            position: absolute; bottom: 35px; color: #d63031;
+            font-size: 14px; font-weight: bold; background: rgba(255,255,255,0.8);
+            padding: 4px 12px; border-radius: 10px; border: 2px solid #d63031;
+            display: none; animation: blink 1s infinite;
         }
-        .overlay-title { font-size: 36px; color: #ff1744; font-weight: bold; margin-bottom: 5px; text-shadow: 0 0 15px rgba(255,23,68,0.6); }
-        .overlay-score { font-size: 20px; color: #fff; margin-bottom: 25px; }
-        .overlay-btn { background: #4a3f8a; border: 2px solid #fff; padding: 12px 30px; border-radius: 25px; font-weight: bold; font-size: 18px; cursor: pointer; transition: 0.2s; }
-        .overlay-btn:active { background: #6b5cb5; transform: scale(0.95); }
+        @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
     </style>
 </head>
 <body>
 
-    <div id="ui-panel">
-        <div>SCORE: <span id="score-val">0</span></div>
-        <div id="combo-alert"></div>
-    </div>
-
-    <div id="game-container">
-        <canvas id="gameCanvas"></canvas>
-        <div id="gameover-overlay" class="overlay" onclick="resetGame()">
-            <div class="overlay-title">GAME OVER</div>
-            <div class="overlay-score">FINAL SCORE: <span id="final-score-val">0</span></div>
-            <div class="overlay-btn">NEXT TRY</div>
+    <div id="pet-shell">
+        <div id="screen-frame">
+            <div id="lcd-screen">
+                <div id="status-bar">
+                    <div>🍖<span id="hunger-ui">3</span></div>
+                    <div>❤️<span id="happy-ui">3</span></div>
+                    <div>LV:<span id="level-ui">0</span></div>
+                </div>
+                <canvas id="petCanvas"></canvas>
+            </div>
         </div>
+
+        <div id="button-container">
+            <div class="hw-btn" onclick="feedPet()"><span>🍖</span>ごはん</div>
+            <div class="hw-btn" onclick="playPet()"><span>🧸</span>遊ぶ</div>
+            <div class="hw-btn" onclick="cleanPet()"><span>🧹</span>掃除</div>
+        </div>
+        
+        <div id="notify-text">通知あり</div>
     </div>
 
 <script>
-const canvas = document.getElementById('gameCanvas');
+const canvas = document.getElementById('petCanvas');
 const ctx = canvas.getContext('2d');
+canvas.width = 200;
+canvas.height = 135;
 
-// スマホ・PC双方で綺麗に映る解像度アスペクト比 (縦長)
-canvas.width = 360;
-canvas.height = 540;
+// ペットのステータス
+let pet = {
+    x: 80, y: 65,
+    w: 40, h: 40,
+    hunger: 3,  // 満腹度 (最大5)
+    happy: 3,   // ごきげん (最大5)
+    level: 0,   // 成長レベル (0:たまご, 1:幼生, 2:反抗期, 3:成体)
+    age: 0,     // 年齢/経過時間
+    hasPoop: false,
+    action: "idle", // idle, eat, play, sleep
+    actionTimer: 0
+};
 
-const GRAVITY = 0.4;
-const BOUNCE = 0.2; // ほんの少し跳ねる物理挙動
-let score = 0;
-let currentCombo = 0;
-let isGameOver = false;
-let jewels = [];
-let particles = [];
+// ドット絵カラー定義 (液晶の黒、うっすらハイライト)
+const C_BLACK = "#2d3436";
+const C_BG = "#b2bec3";
 
-// 次に落ちてくるジュエルの色（予告用）
-const jewelColors = [
-    { name: "RED",    hex: "#ff1744", glow: "#ff8a80" },
-    { name: "BLUE",   hex: "#2979ff", glow: "#82b1ff" },
-    { name: "GREEN",  hex: "#00e676", glow: "#b9f6ca" },
-    { name: "YELLOW", hex: "#ffeb3b", glow: "#ffff8d" },
-    { name: "PURPLE", hex: "#d500f9", glow: "#f48fb1" }
-];
-let nextColorIndex = Math.floor(Math.random() * jewelColors.length);
+// --- ドット絵データ（10x10マス） ---
+const sprites = {
+    // 0: たまご
+    0: [
+        [".",".",".","X","X","X","X",".",".","."],
+        [".",".","X","X",".",".","X","X",".","."],
+        [".","X","X",".",".",".",".","X","X","."],
+        [".","X",".",".",".",".",".",".","X","."],
+        ["X","X",".",".",".",".",".",".","X","X"],
+        ["X","X",".",".",".",".",".",".","X","X"],
+        ["X",".",".",".",".",".",".",".",".","X"],
+        [".","X",".",".",".",".",".",".","X","."],
+        [".","X","X",".",".",".",".","X","X","."],
+        [".",".",".","X","X","X","X",".",".","."]
+    ],
+    // 1: 赤ちゃんベイビー
+    1: [
+        [".",".",".","X","X","X","X",".",".","."],
+        [".",".","X",".",".",".",".","X",".","."],
+        [".","X",".","X",".",".","X",".","X","."],
+        [".","X",".",".",".",".",".",".","X","."],
+        ["X",".",".",".",".",".",".",".",".","X"],
+        ["X",".","X",".",".",".",".","X",".","X"],
+        ["X",".",".","X","X","X","X",".",".","X"],
+        [".","X",".",".",".",".",".",".","X","."],
+        [".",".","X","X",".",".","X","X",".","."],
+        [".",".",".",".","X","X",".",".",".","."]
+    ],
+    // 2: こどもキッズ
+    2: [
+        [".",".","X","X",".",".","X","X",".","."],
+        [".","X",".",".","X","X",".",".","X","."],
+        ["X",".",".",".",".",".",".",".",".","X"],
+        ["X",".","X",".",".",".",".","X",".","X"],
+        ["X",".",".",".",".",".",".",".",".","X"],
+        ["X","X","X",".","X","X",".","X","X","X"],
+        [".",".","X",".",".",".",".","X",".","."],
+        [".",".","X",".",".",".",".","X",".","."],
+        [".","X",".",".",".",".",".",".","X","."],
+        [".","X","X","X",".",".","X","X","X","."]
+    ],
+    // 3: おとな（完成体）
+    3: [
+        [".",".","X","X","X","X","X","X",".","."],
+        [".","X",".",".",".",".",".",".","X","."],
+        ["X",".","X",".",".",".",".","X",".","X"],
+        ["X",".",".",".",".",".",".",".",".","X"],
+        ["X",".","X",".",".",".",".","X",".","X"],
+        ["X",".",".","X","X","X","X",".",".","X"],
+        [".","X",".",".",".",".",".",".","X","."],
+        [".",".","X","X","X","X","X","X",".","."],
+        [".",".","X",".",".",".",".","X",".","."],
+        [".","X","X",".",".",".",".","X","X","."]
+    ],
+    // うんちのドット絵
+    "poop": [
+        [".",".",".",".","X","X",".",".",".","."],
+        [".",".",".","X",".",".","X",".",".","."],
+        [".",".","X",".",".",".",".","X",".","."],
+        [".","X","X","X","X","X","X","X","X","."],
+        ["X",".",".",".",".",".",".",".",".","X"],
+        ["X",".","X",".",".",".",".","X",".","X"],
+        ["X","X","X","X","X","X","X","X","X","X"],
+        [".",".",".",".",".",".",".",".",".","."],
+        [".",".",".",".",".",".",".",".",".","."],
+        [".",".",".",".",".",".",".",".",".","."]
+    ]
+};
 
-// 物理エンジン風のジュエルオブジェクト
-class Jewel {
-    constructor(x, y, colorIdx) {
-        this.x = x;
-        this.y = y;
-        this.r = 16; // ジュエルのサイズ
-        this.colorIdx = colorIdx;
-        this.vx = (Math.random() - 0.5) * 2; // わずかな横ブレ
-        this.vy = 0;
-        this.isStatic = false; // 動かなくなったらtrue
-        this.toRemove = false;
-    }
-
-    update() {
-        if (this.isStatic) return;
-
-        this.vy += GRAVITY;
-        this.x += this.vx;
-        this.y += this.vy;
-
-        // 壁との衝突
-        if (this.x - this.r < 0) { this.x = this.r; this.vx *= -BOUNCE; }
-        if (this.x + this.r > canvas.width) { this.x = canvas.width - this.r; this.vx *= -BOUNCE; }
-
-        // 床との衝突
-        if (this.y + this.r > canvas.height) {
-            this.y = canvas.height - this.r;
-            this.vy *= -BOUNCE;
-            this.vx *= 0.8;
-            if (Math.abs(this.vy) < 0.5 && Math.abs(this.vx) < 0.5) this.isStatic = true;
-        }
-
-        // 他のジュエルとの簡易衝突・積み重なり判定
-        for (let other of jewels) {
-            if (other === this) continue;
-            let dx = other.x - this.x;
-            let dy = other.y - this.y;
-            let dist = Math.hypot(dx, dy);
-            let minDist = this.r + other.r;
-
-            if (dist < minDist) {
-                // 重なりを解消する方向に押し戻す
-                let overlap = minDist - dist;
-                let nx = dx / dist;
-                let ny = dy / dist;
-
-                this.x -= nx * overlap * 0.5;
-                this.y -= ny * overlap * 0.5;
-
-                // 速度の反射
-                this.vy *= -BOUNCE;
-                this.vx *= -BOUNCE;
-
-                if (other.isStatic && Math.abs(this.vy) < 1) {
-                    this.isStatic = true;
-                }
+// ドット絵を描画する関数
+function drawSprite(sprite, x, y, size) {
+    const pSize = size / 10;
+    for (let r = 0; r < 10; r++) {
+        for (let c = 0; c < 10; c++) {
+            if (sprite[r][c] === "X") {
+                ctx.fillStyle = C_BLACK;
+                ctx.fillRect(x + c * pSize, y + r * pSize, pSize, pSize);
             }
         }
     }
+}
 
-    draw() {
-        ctx.save();
-        ctx.shadowBlur = 10;
-        ctx.shadowColor = jewelColors[this.colorIdx].hex;
+// ごはんボタン
+function feedPet() {
+    if (pet.level === 0) return; // たまごの時は食べられない
+    pet.action = "eat";
+    pet.actionTimer = 30; // 30フレーム間もぐもぐする
+    if (pet.hunger < 5) pet.hunger++;
+    updateUI();
+}
 
-        // グラデーションで宝石の立体感を表現
-        let grad = ctx.createRadialGradient(this.x - 4, this.y - 4, 2, this.x, this.y, this.r);
-        grad.addColorStop(0, jewelColors[this.colorIdx].glow);
-        grad.addColorStop(1, jewelColors[this.colorIdx].hex);
+// 遊ぶボタン
+function playPet() {
+    if (pet.level === 0) return;
+    pet.action = "play";
+    pet.actionTimer = 30; // ぴょんぴょん跳ねる
+    if (pet.happy < 5) pet.happy++;
+    updateUI();
+}
 
-        ctx.fillStyle = grad;
-        ctx.beginPath();
-        // 綺麗な円ではなく、あえて少し角のあるカット宝石風に描画
-        for (let i = 0; i < 6; i++) {
-            let angle = (i * Math.PI) / 3;
-            let jx = this.x + Math.cos(angle) * this.r;
-            let jy = this.y + Math.sin(angle) * this.r;
-            if (i === 0) ctx.moveTo(jx, jy);
-            else ctx.lineTo(jx, jy);
-        }
-        ctx.closePath();
-        ctx.fill();
-        ctx.restore();
+// 掃除ボタン
+function cleanPet() {
+    if (pet.hasPoop) {
+        pet.hasPoop = false;
+        pet.action = "idle";
+        updateUI();
     }
 }
 
-// 派手な爆発エフェクト
-class Particle {
-    constructor(x, y, colorHex) {
-        this.x = x; this.y = y;
-        this.radius = Math.random() * 4 + 2;
-        this.vx = (Math.random() - 0.5) * 8;
-        this.vy = (Math.random() - 0.5) * 8;
-        this.alpha = 1;
-        this.color = colorHex;
-    }
-    update() {
-        this.x += this.vx; this.y += this.vy;
-        this.alpha -= 0.03;
-    }
-    draw() {
-        ctx.save();
-        ctx.globalAlpha = this.alpha;
-        ctx.fillStyle = this.color;
-        ctx.beginPath();
-        ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.restore();
-    }
-}
+// UI（画面上のパラメーター）を更新
+function updateUI() {
+    document.getElementById('hunger-ui').innerText = pet.hunger;
+    document.getElementById('happy-ui').innerText = pet.happy;
+    document.getElementById('level-ui').innerText = pet.level;
 
-// クリック、またはタップで落とす
-function dropJewel(clientX) {
-    if (isGameOver) return;
-
-    // キャンバス上の相対座標を取得
-    const rect = canvas.getBoundingClientRect();
-    const scaleX = canvas.width / rect.width;
-    let targetX = (clientX - rect.left) * scaleX;
-
-    // 画面外に出ていかないようガード
-    if (targetX < 16) targetX = 16;
-    if (targetX > canvas.width - 16) targetX = canvas.width - 16;
-
-    // ジュエルを一番上から投下
-    jewels.push(new Jewel(targetX, 30, nextColorIndex));
-
-    // 次の色を決定
-    nextColorIndex = Math.floor(Math.random() * jewelColors.length);
-}
-
-// 連鎖・消去のコアロジック（再帰アルゴリズム）
-function checkMatches() {
-    let matchedAny = false;
-
-    // 静止したジュエルだけで判定
-    for (let i = 0; i < jewels.length; i++) {
-        if (jewels[i].toRemove) continue;
-
-        let connected = [];
-        findConnected(jewels[i], jewels[i].colorIdx, connected);
-
-        // 3つ以上繋がっていたら爆破フラグを立てる
-        if (connected.length >= 3) {
-            matchedAny = true;
-            currentCombo++;
-            
-            connected.forEach(j => {
-                j.toRemove = true;
-                // 爆発の破片を生成
-                for (let k = 0; k < 8; k++) {
-                    particles.push(new Particle(j.x, j.y, jewelColors[j.colorIdx].hex));
-                }
-            });
-
-            // スコア計算（連鎖するほど超インフレするボーナス）
-            score += connected.length * 10 * currentCombo;
-            document.getElementById('score-val').innerText = score;
-
-            // コンボ演出テキスト
-            let alertBox = document.getElementById('combo-alert');
-            alertBox.innerText = `${currentCombo} CHAIN💥`;
-            setTimeout(() => { if(alertBox.innerText.includes(currentCombo)) alertBox.innerText = ''; }, 1500);
-        }
-    }
-
-    // フラグが立ったジュエルを削除
-    if (matchedAny) {
-        jewels = jewels.filter(j => !j.toRemove);
-        // 消えたら上のジュエルが落ちるので、もう一度物理を動かす
-        jewels.forEach(j => j.isStatic = false);
+    // 呼び出し通知の制御（お腹が空いた時、またはうんちがある時）
+    const notify = document.getElementById('notify-text');
+    if (pet.hunger <= 1 || pet.happy <= 1 || pet.hasPoop) {
+        notify.style.display = "block";
+        notify.innerText = pet.hasPoop ? "🧹ウンチ！" : "⚠️おねだり！";
     } else {
-        // 連鎖が止まったらコンボ数をリセット（自分で落とした時用）
-        let allStatic = jewels.every(j => j.isStatic);
-        if (allStatic) currentCombo = 0;
+        notify.style.display = "none";
     }
 }
 
-// 近くにある同じ色のジュエルを芋づる式に探す（深さ優先探索）
-function findConnected(current, colorIdx, connected) {
-    if (connected.includes(current)) return;
-    connected.push(current);
+// 1秒ごとの時間経過処理 (ゲームのバイオリズム)
+setInterval(() => {
+    pet.age++;
 
-    for (let other of jewels) {
-        if (other === current || other.colorIdx !== colorIdx || other.toRemove) continue;
-        let dist = Math.hypot(other.x - current.x, other.y - current.y);
-        // ジュエル同士が接触しているか（判定を少し甘くしてつながりやすく）
-        if (dist <= (current.r + other.r) + 5) {
-            findConnected(other, colorIdx, connected);
+    // 🥚 たまごから徐々に進化していくロジック
+    if (pet.level === 0 && pet.age > 10) { pet.level = 1; }
+    else if (pet.level === 1 && pet.age > 30) { pet.level = 2; }
+    else if (pet.level === 2 && pet.age > 60) { pet.level = 3; }
+
+    // おとな以外は定期的にお腹が減る、ごきげんが下がる
+    if (pet.level > 0) {
+        if (pet.age % 12 === 0) { if (pet.hunger > 0) pet.hunger--; }
+        if (pet.age % 15 === 0) { if (pet.happy > 0) pet.happy--; }
+        
+        // 25秒に1回、確率でうんちをする
+        if (pet.age % 25 === 0 && Math.random() > 0.4) {
+            pet.hasPoop = true;
         }
     }
-}
 
-function checkGameOver() {
-    // 画面の上（y=80以下）に変な塊が静止し続けたらゲームオーバー
-    let pileUpCount = 0;
-    for (let j of jewels) {
-        if (j.isStatic && j.y < 90) {
-            pileUpCount++;
-            if (pileUpCount > 2) {
-                isGameOver = true;
-                document.getElementById('final-score-val').innerText = score;
-                document.getElementById('gameover-overlay').style.display = 'flex';
-                break;
-            }
-        }
-    }
-}
+    updateUI();
+}, 1000);
 
-function resetGame() {
-    score = 0;
-    currentCombo = 0;
-    jewels = [];
-    particles = [];
-    isGameOver = false;
-    document.getElementById('score-val').innerText = score;
-    document.getElementById('combo-alert').innerText = '';
-    document.getElementById('gameover-overlay').style.display = 'none';
-}
+// メインループ（アニメーション描画）
+let bounceOffsetY = 0;
+let frameCount = 0;
 
-function update() {
-    // 物理アップデート
-    jewels.forEach(j => j.update());
-    particles.forEach((p, idx) => {
-        p.update();
-        if (p.alpha <= 0) particles.splice(idx, 1);
-    });
-
-    // マッチングとゲームオーバー判定
-    checkMatches();
-    checkGameOver();
-
-    draw();
-    requestAnimationFrame(update);
-}
-
-function draw() {
+function loop() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
+    frameCount++;
 
-    // デッドライン（警告線）の描画
-    ctx.strokeStyle = 'rgba(255, 23, 68, 0.3)';
-    ctx.lineWidth = 2;
-    ctx.setLineDash([5, 5]);
-    ctx.beginPath(); ctx.moveTo(0, 90); ctx.lineTo(canvas.width, 90); ctx.stroke();
+    // アニメーション用の揺らぎ
+    if (pet.action === "idle") {
+        // 通常時は左右にのんびり歩く、またはたまごが小刻みに揺れる
+        if (pet.level === 0) {
+            pet.x = 80 + Math.sin(frameCount * 0.1) * 3;
+            bounceOffsetY = 0;
+        } else {
+            pet.x = 80 + Math.sin(frameCount * 0.03) * 20;
+            bounceOffsetY = Math.abs(Math.sin(frameCount * 0.1)) * -4; // ひょこひょこ歩く
+        }
+    } else if (pet.action === "eat") {
+        // ごはん中は細かく震える
+        bounceOffsetY = (frameCount % 4 === 0) ? -2 : 0;
+        pet.actionTimer--;
+        // ごはんのドット
+        ctx.fillStyle = C_BLACK;
+        if (pet.actionTimer > 10) ctx.fillRect(pet.x - 15, pet.y + 15, 6, 6);
+    } else if (pet.action === "play") {
+        // 遊んでいる時は大ジャンプ
+        bounceOffsetY = Math.sin(frameCount * 0.3) * -12;
+        pet.actionTimer--;
+    }
+
+    if (pet.actionTimer <= 0 && pet.action !== "idle") {
+        pet.action = "idle";
+    }
+
+    // 🐾 ペット本体の描画
+    drawSprite(sprites[pet.level], pet.x, pet.y + bounceOffsetY, pet.w);
+
+    // 💩 うんちの描画
+    if (pet.hasPoop) {
+        drawSprite(sprites["poop"], 150, 80, 25);
+    }
+
+    // 床の点線
+    ctx.strokeStyle = "#74b9ff";
+    ctx.lineWidth = 1;
+    ctx.setLineDash([2, 4]);
+    ctx.beginPath(); ctx.moveTo(0, 110); ctx.lineTo(canvas.width, 110); ctx.stroke();
     ctx.setLineDash([]);
 
-    // オブジェクト描画
-    jewels.forEach(j => j.draw());
-    particles.forEach(p => p.draw());
-
-    // 次に落ちる色のガイドライン（画面最上部にうっすら表示）
-    ctx.fillStyle = jewelColors[nextColorIndex].hex;
-    ctx.globalAlpha = 0.2;
-    ctx.fillRect(0, 0, canvas.width, 10);
-    ctx.globalAlpha = 1.0;
+    requestAnimationFrame(loop);
 }
 
-// 📱 タッチ＆マウスイベント登録
-window.addEventListener('mousedown', e => {
-    if (e.target.id === 'gameCanvas') dropJewel(e.clientX);
-});
-window.addEventListener('touchstart', e => {
-    if (e.target.id === 'gameCanvas' && e.touches.length > 0) {
-        dropJewel(e.touches[0].clientX);
-    }
-}, { passive: true });
-
 // 始動
-resetGame();
-update();
+updateUI();
+loop();
 </script>
 </body>
 </html>
