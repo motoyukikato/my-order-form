@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Retro Kong Mini</title>
+    <style>
+        * { box-sizing: border-box; }
+        body {
+            background: #000;
+            color: #fff;
+            font-family: 'Courier New', sans-serif;
+            margin: 0; padding: 0;
+            overflow: hidden;
+            width: 100vw; height: 100vh;
+            display: flex; flex-direction: column;
+            align-items: center; justify-content: center;
+            touch-action: none; -webkit-user-select: none; user-select: none;
+        }
+        #top-bar {
+            width: 100%; height: 40px;
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 0 20px; background: #111; font-weight: bold; font-size: 18px;
+        }
+        #main-layout {
+            display: flex; flex: 1; width: 100%; max-width: 850px;
+            align-items: center; justify-content: center; padding: 10px; gap: 20px;
+        }
+        #game-container { position: relative; border: 4px solid #555; background-color: #000; }
+        canvas { display: block; max-height: calc(100vh - 120px); max-width: calc(100vw - 300px); object-fit: contain; }
+        
+        /* 📱 スマホ用大サイズコントローラー */
+        .pad-cluster { display: block; width: 130px; height: 100px; position: relative; flex-shrink: 0; }
+        .ctrl-btn {
+            position: absolute; background: #333; border: 2px solid #fff; color: #fff;
+            width: 58px; height: 58px; display: flex; align-items: center; justify-content: center;
+            font-size: 26px; font-weight: bold; border-radius: 12px;
+            box-shadow: 0 4px #111;
+        }
+        .ctrl-btn:active { background: #555; transform: translateY(2px); box-shadow: 0 2px #111; }
+        
+        #btn-left  { top: 20px; left: 0; }
+        #btn-right { top: 20px; right: 0; }
+        
+        /* ジャンプ兼ハシゴ上ボタン */
+        #btn-jump  { top: 10px; right: 10px; width: 74px; height: 74px; border-radius: 50%; background: #ff1744; font-size: 16px; box-shadow: 0 4px #880e4f; }
+        #btn-jump:active { background: #ff5252; transform: translateY(2px); box-shadow: 0 2px #880e4f; }
+        
+        .overlay {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            display: none; flex-direction: column; align-items: center; justify-content: center;
+            background: rgba(0,0,0,0.8); z-index: 10;
+        }
+        .overlay-title { font-size: 28px; color: #ff1744; margin-bottom: 15px; font-weight: bold; }
+        .overlay-btn { background: #222; border: 2px solid #fff; padding: 10px 20px; border-radius: 5px; cursor: pointer; }
+    </style>
+</head>
+<body>
+
+    <div id="top-bar">
+        <div>SCORE: <span id="score-val">0</span></div>
+        <div style="color: #ff9100; font-size: 14px;">最上階のレディを助けろ！</div>
+    </div>
+
+    <div id="main-layout">
+        <div class="pad-cluster" id="left-pad">
+            <div class="ctrl-btn" id="btn-left">←</div>
+            <div class="ctrl-btn" id="btn-right">→</div>
+        </div>
+
+        <div id="game-container">
+            <canvas id="gameCanvas"></canvas>
+            <div id="gameover-overlay" class="overlay" onclick="resetGame()">
+                <div id="game-result-title" class="overlay-title">GAME OVER</div>
+                <div class="overlay-btn">RESET GAME</div>
+            </div>
+        </div>
+
+        <div class="pad-cluster" id="right-pad">
+            <div class="ctrl-btn" id="btn-jump">JUMP</div>
+        </div>
+    </div>
+
+<script>
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+canvas.width = 400;
+canvas.height = 360; // 縦に少し広げてタワー感をアップ
+
+const GRAVITY = 0.35;
+let score = 0;
+let isGameOver = false;
+const keys = { left: false, right: false, jump: false };
+
+// プレイヤー（ジャンプレベルとハシゴ昇降）
+const player = {
+    x: 40, y: 320,
+    w: 20, h: 20,
+    vx: 0, vy: 0,
+    isGrounded: false,
+    isOnLadder: false,
+    dir: 1
+};
+
+// 樽（敵オブジェクト）
+let barrels = [];
+function spawnBarrel() {
+    if (isGameOver) return;
+    // 最上階のドンキーコングの位置から転がす
+    barrels.push({ x: 100, y: 75, r: 7, vx: 1.7, vy: 0 });
+}
+let barrelInterval = setInterval(spawnBarrel, 3500);
+
+// 鉄骨（足場）のデータ
+const platforms = [
+    { x: 0,   y: 340, w: 400, h: 10 }, // 1階（地面）
+    { x: 0,   y: 275, w: 340, h: 10 }, // 2階
+    { x: 60,  y: 210, w: 340, h: 10 }, // 3階
+    { x: 0,   y: 145, w: 340, h: 10 }, // 4階
+    { x: 80,  y: 85,  w: 240, h: 10 }  // 5階（最上階コング・レディ）
+];
+
+// ハシゴのデータ
+const ladders = [
+    { x: 300, y: 275, w: 16, h: 65 },  // 1階 -> 2階
+    { x: 90,  y: 210, w: 16, h: 65 },  // 2階 -> 3階
+    { x: 280, y: 145, w: 16, h: 65 },  // 3階 -> 4階
+    { x: 120, y: 85,  w: 16, h: 60 }   // 4階 -> 5階
+];
+
+// --- 🎨 ドット絵グラフィックデータ (10x10) ---
+const colors = {
+    "R": "#ff1744", "B": "#2979ff", "Skin": "#ffb74d", "W": "#ffffff",
+    "G": "#2e7d32", "Br": "#795548", "Y": "#ffeb3b", "#": "#000000", "P": "#e040fb"
+};
+
+const marioSprite = [
+    [".",".","R","R","R","R","R",".",".","."],
+    [".","R","R","R","R","R","R","R",".","."],
+    [".",".","Skin","Skin","#","Skin",".",".","."],
+    [".","Skin","#","Skin","Skin","Skin","Skin",".","."],
+    [".",".","Skin","Skin","Skin","Skin",".",".","."],
+    [".",".","R","B","R","R","B",".",".","."],
+    [".","B","B","B","B","B","B","B",".","."],
+    [".","B","B","B","B","B","B","B",".","."],
+    [".","R","R","B","B","B","R","R",".","."],
+    [".","R","R",".",".",".","R","R",".","."]
+];
+
+const kongSprite = [
+    [".","Br","Br",".",".",".",".","Br","Br","."],
+    ["Br","Br","Br","Br","Br","Br","Br","Br","Br","Br"],
+    ["Br","#","Skin","Br","Br","Br","Br","Skin","#","Br"],
+    ["Br","Skin","Skin","Skin","Skin","Skin","Skin","Skin","Skin","Br"],
+    [".","Br","Skin","Skin","Skin","Skin","Skin","Skin","Br","."],
+    [".",".","Br","Br","Br","Br","Br","Br",".","."],
+    [".","Br","Br","Br","Br","Br","Br","Br","Br","."],
+    ["Br","Br","Br","Br","Br","Br","Br","Br","Br","Br"],
+    ["Br","Br",".",".",".",".",".",".","Br","Br"],
+    ["Br","Br",".",".",".",".",".",".","Br","Br"]
+];
+
+function renderSprite(sprite, x, y, w, h, flipX) {
+    const pSize = w / 10;
+    for (let r = 0; r < 10; r++) {
+        for (let c = 0; c < 10; c++) {
+            const cell = sprite[r][c];
+            if (cell !== ".") {
+                ctx.fillStyle = colors[cell] || cell;
+                const drawC = flipX ? (9 - c) : c;
+                ctx.fillRect(x + drawC * pSize, y + r * pSize, pSize + 0.3, pSize + 0.3);
+            }
+        }
+    }
+}
+
+function resetGame() {
+    score = 0;
+    document.getElementById('score-val').innerText = score;
+    player.x = 40; player.y = 320; player.vx = 0; player.vy = 0; player.dir = 1;
+    player.isOnLadder = false;
+    barrels = [];
+    isGameOver = false;
+    document.getElementById('gameover-overlay').style.display = 'none';
+}
+
+function update() {
+    if (isGameOver) return;
+
+    // --- 1. ハシゴの判定 ---
+    let touchLadder = null;
+    ladders.forEach(l => {
+        if (player.x + player.w > l.x && player.x < l.x + l.w &&
+            player.y + player.h >= l.y && player.y <= l.y + l.h) {
+            touchLadder = l;
+        }
+    });
+
+    if (!touchLadder) {
+        player.isOnLadder = false;
+    }
+
+    // --- 2. プレイヤーの移動処理 ---
+    if (player.isOnLadder) {
+        player.vx = 0;
+        player.vy = -2.0; // 自動でハシゴを登る
+        player.y += player.vy;
+        
+        // ハシゴの上端に到達したら登りきる
+        if (touchLadder && player.y + player.h <= touchLadder.y + 4) {
+            player.y = touchLadder.y - player.h;
+            player.isOnLadder = false;
+            player.vy = 0;
+        }
+    } else {
+        // 通常の左右移動
+        if (keys.left) { player.vx = -2.0; player.dir = -1; }
+        else if (keys.right) { player.vx = 2.0; player.dir = 1; }
+        else { player.vx *= 0.7; }
+
+        player.vy += GRAVITY;
+        player.x += player.vx;
+        player.y += player.vy;
+    }
+
+    // 画面端ガード
+    if (player.x < 0) player.x = 0;
+    if (player.x > canvas.width - player.w) player.x = canvas.width - player.w;
+
+    // --- 3. 鉄骨（足場）着地判定 ---
+    if (!player.isOnLadder) {
+        player.isGrounded = false;
+        platforms.forEach(p => {
+            if (player.x + player.w > p.x && player.x < p.x + p.w) {
+                if (player.vy >= 0 && player.y + player.h >= p.y && player.y + player.h <= p.y + player.vy + 4) {
+                    player.y = p.y - player.h;
+                    player.vy = 0;
+                    player.isGrounded = true;
+                }
+            }
+        });
+    }
+
+    // --- 4. 樽（障害物）の物理移動処理 ---
+    barrels.forEach((b, index) => {
+        b.vy += GRAVITY;
+        b.x += b.vx;
+        b.y += b.vy;
+
+        // 樽と足場の判定
+        let onFloor = false;
+        platforms.forEach(p => {
+            if (b.x + b.r > p.x && b.x - b.r < p.x + p.w) {
+                if (b.vy >= 0 && b.y + b.r >= p.y && b.y + b.r <= p.y + b.vy + 4) {
+                    b.y = p.y - b.r;
+                    b.vy = 0;
+                    onFloor = true;
+                }
+            }
+        });
+
+        // 壁やフロアの端に到達したら下層へ反転して落ちる
+        if (b.x - b.r < 0) { b.vx = 1.7; }
+        if (b.x + b.r > canvas.width) { b.vx = -1.7; }
+
+        // 画面最下部まで行ったら消滅
+        if (b.y > canvas.height) {
+            barrels.splice(index, 1);
+            score += 10; // 樽をやり過ごしたら加算
+            document.getElementById('score-val').innerText = score;
+        }
+
+        // 💥 マリオとの衝突判定
+        let distX = Math.abs(b.x - (player.x + player.w / 2));
+        let distY = Math.abs(b.y - (player.y + player.h / 2));
+        if (distX < (player.w / 2 + b.r - 2) && distY < (player.h / 2 + b.r - 2)) {
+            endGame(false);
+        }
+    });
+
+    // 🎉 クリア判定（最上階のレディの元にたどり着く）
+    if (player.y < 90 && player.x > 240) {
+        endGame(true);
+    }
+
+    draw();
+    requestAnimationFrame(update);
+}
+
+function endGame(isWin) {
+    isGameOver = true;
+    const title = document.getElementById('game-result-title');
+    if (isWin) {
+        title.innerText = "VICTORY!! 👑";
+        title.style.color = "#ffeb3b";
+    } else {
+        title.innerText = "GAME OVER 🦍";
+        title.style.color = "#ff1744";
+    }
+    document.getElementById('gameover-overlay').style.display = 'flex';
+}
+
+function draw() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    // 1. 鉄骨（足場）の描画（ドンキーコング特有のピンク～赤の鉄骨）
+    platforms.forEach(p => {
+        ctx.fillStyle = '#e040fb'; // ネオンピンク
+        ctx.fillRect(p.x, p.y, p.w, p.h);
+        // 鉄骨っぽいバツ印模様
+        ctx.fillStyle = '#000';
+        for (let i = p.x + 5; i < p.x + p.w; i += 15) {
+            ctx.fillRect(i, p.y + 2, 2, p.h - 4);
+        }
+    });
+
+    // 2. ハシゴの描画
+    ladders.forEach(l => {
+        ctx.strokeStyle = '#00e676'; // 分かりやすく緑色に
+        ctx.lineWidth = 3;
+        // 縦棒2本
+        ctx.beginPath();
+        ctx.moveTo(l.x, l.y); ctx.lineTo(l.x, l.y + l.h);
+        ctx.moveTo(l.x + l.w, l.y); ctx.lineTo(l.x + l.w, l.y + l.h);
+        ctx.stroke();
+        // 横ステップ
+        for (let step = l.y + 5; step < l.y + l.h; step += 8) {
+            ctx.beginPath();
+            ctx.moveTo(l.x, step); ctx.lineTo(l.x + l.w, step);
+            ctx.stroke();
+        }
+    });
+
+    // 3. ドンキーコング（ボス）の描画
+    renderSprite(kongSprite, 100, 35, 45, 45, false);
+
+    // 4. ピーチ姫（レディ）の描画
+    ctx.fillStyle = '#ff4081';
+    ctx.fillRect(260, 55, 16, 30); // 簡易ドットのレディ
+    ctx.fillStyle = '#ffeb3b';
+    ctx.fillRect(260, 50, 16, 6); // 金髪
+
+    // 5. 樽（障害物）の描画
+    barrels.forEach(b => {
+        ctx.fillStyle = '#d7a15c'; // 樽の木の色
+        ctx.beginPath();
+        ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = '#5d4037';
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+    });
+
+    // 6. プレイヤー（マリオ）の描画
+    renderSprite(marioSprite, player.x, player.y, player.w, player.h, player.dir === -1);
+}
+
+// キーボード（PC用）
+document.addEventListener('keydown', e => {
+    if (e.key === 'ArrowLeft' || e.key === 'a') keys.left = true;
+    if (e.key === 'ArrowRight' || e.key === 'd') keys.right = true;
+    if ((e.key === 'ArrowUp' || e.key === 'w' || e.key === ' ')) {
+        // ハシゴに触れていたら登る、床の上ならジャンプ
+        let onLadder = ladders.some(l => player.x + player.w > l.x && player.x < l.x + l.w && player.y + player.h >= l.y && player.y <= l.y + l.h);
+        if (onLadder) {
+            player.isOnLadder = true;
+        } else if (player.isGrounded) {
+            player.vy = -6.5; // ジャンプ
+        }
+    }
+});
+document.addEventListener('keyup', e => {
+    if (e.key === 'ArrowLeft' || e.key === 'a') keys.left = false;
+    if (e.key === 'ArrowRight' || e.key === 'd') keys.right = false;
+});
+
+// スマホ・マウスタッチボタン共通設定
+const setupBtn = (id, startAction, endAction) => {
+    const btn = document.getElementById(id);
+    btn.addEventListener('touchstart', e => { e.preventDefault(); startAction(); }, {passive: false});
+    btn.addEventListener('touchend', e => { e.preventDefault(); endAction(); }, {passive: false});
+    btn.addEventListener('mousedown', e => { startAction(); });
+    btn.addEventListener('mouseup', e => { endAction(); });
+    btn.addEventListener('mouseleave', e => { endAction(); });
+};
+
+setupBtn('btn-left', () => { keys.left = true; }, () => { keys.left = false; });
+setupBtn('btn-right', () => { keys.right = true; }, () => { keys.right = false; });
+
+// スマホ用のJUMPボタン：ハシゴの目の前なら「登る」、それ以外なら「ジャンプ」に自動割り当て
+setupBtn('btn-jump', () => {
+    let onLadder = ladders.some(l => player.x + player.w > l.x && player.x < l.x + l.w && player.y + player.h >= l.y && player.y <= l.y + l.h);
+    if (onLadder) {
+        player.isOnLadder = true;
+    } else if (player.isGrounded) {
+        player.vy = -6.5;
+    }
+}, () => {});
+
+resetGame();
+update();
+</script>
+</body>
+</html>
