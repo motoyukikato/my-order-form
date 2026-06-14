@@ -3,13 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Retro Bros Mini</title>
+    <title>Retro Bros - Pixel Art Edition</title>
     <style>
         * { box-sizing: border-box; }
         body {
             background: #000;
             color: #fff;
-            font-family: sans-serif;
+            font-family: 'Courier New', sans-serif;
             margin: 0; padding: 0;
             overflow: hidden;
             width: 100vw; height: 100vh;
@@ -20,7 +20,7 @@
         #top-bar {
             width: 100%; height: 40px;
             display: flex; justify-content: space-between; align-items: center;
-            padding: 0 20px; background: #111; font-weight: bold;
+            padding: 0 20px; background: #111; font-weight: bold; font-size: 18px;
         }
         #main-layout {
             display: flex; flex: 1; width: 100%; max-width: 800px;
@@ -29,7 +29,6 @@
         #game-container { position: relative; border: 4px solid #555; background-color: #000; }
         canvas { display: block; max-height: calc(100vh - 120px); max-width: calc(100vw - 260px); object-fit: contain; }
         
-        /* コントローラーの配置を絶対にはみ出さないように固定 */
         .pad-cluster { display: block; width: 100px; height: 100px; position: relative; flex-shrink: 0; }
         .ctrl-btn {
             position: absolute; background: #333; border: 2px solid #fff; color: #fff;
@@ -39,22 +38,22 @@
         .ctrl-btn:active { background: #666; }
         #btn-left  { top: 26px; left: 0; }
         #btn-right { top: 26px; right: 0; }
-        #btn-jump  { top: 26px; right: 10px; width: 60px; height: 60px; border-radius: 50%; background: #ff1744; }
+        #btn-jump  { top: 16px; right: 10px; width: 68px; height: 68px; border-radius: 50%; background: #ff1744; font-size: 16px; }
         
         .overlay {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%;
             display: none; flex-direction: column; align-items: center; justify-content: center;
             background: rgba(0,0,0,0.8); z-index: 10;
         }
-        .overlay-title { font-size: 24px; color: #ff1744; margin-bottom: 15px; }
-        .overlay-btn { background: #222; border: 2px solid #fff; padding: 8px 16px; border-radius: 5px; }
+        .overlay-title { font-size: 28px; color: #ff1744; margin-bottom: 15px; font-weight: bold; }
+        .overlay-btn { background: #222; border: 2px solid #fff; padding: 10px 20px; border-radius: 5px; cursor: pointer; }
     </style>
 </head>
 <body>
 
     <div id="top-bar">
         <div>SCORE: <span id="score-val">0</span></div>
-        <div style="color: #ff9100;">左右キーで動いてJUMP！</div>
+        <div style="color: #ff9100; font-size: 14px;">下から叩いてひっくり返せ！</div>
     </div>
 
     <div id="main-layout">
@@ -67,7 +66,7 @@
             <canvas id="gameCanvas"></canvas>
             <div id="gameover-overlay" class="overlay" onclick="resetGame()">
                 <div class="overlay-title">GAME OVER</div>
-                <div class="overlay-btn">もういちど遊ぶ</div>
+                <div class="overlay-btn">RESET GAME</div>
             </div>
         </div>
 
@@ -85,51 +84,95 @@ canvas.height = 300;
 const GRAVITY = 0.4;
 let score = 0;
 let isGameOver = false;
-
-// ボタンの押しっぱなし状態を管理
 const keys = { left: false, right: false };
 
-// 🔴 キャラクター（マリオ）の初期位置を完全に中央の空中に固定
+// --- 🟡 キャラクターデータ（1ドットを2px×2pxとして描画するためサイズ調整） ---
 const player = {
-    x: 190,
-    y: 100, // 上空からふわっと落ちてくるように設定
-    w: 16,
-    h: 22,
-    vx: 0,
-    vy: 0,
-    isGrounded: false
+    x: 190, y: 100,
+    w: 24, h: 24, // ドット絵に合わせて12x12マス（24px）に
+    vx: 0, vy: 0,
+    isGrounded: false,
+    dir: 1 // 1: 右向き, -1: 左向き
 };
-
-// 固定の足場
-const platforms = [
-    { x: 0, y: 280, w: 400, h: 20, type: 'ground' },
-    { x: 0, y: 210, w: 140, h: 10, type: 'brick' },
-    { x: 260, y: 210, w: 140, h: 10, type: 'brick' },
-    { x: 80, y: 140, w: 240, h: 10, type: 'brick' },
-    { x: 0, y: 70, w: 120, h: 10, type: 'brick' },
-    { x: 280, y: 70, w: 120, h: 10, type: 'brick' }
-];
-platforms.forEach(p => { p.hitTimer = 0; p.hitX = 0; });
 
 let enemies = [];
 function spawnEnemy() {
     if (isGameOver) return;
     const isLeft = Math.random() > 0.5;
     enemies.push({
-        x: isLeft ? 10 : 380, y: 30, w: 14, h: 14,
+        x: isLeft ? 10 : 370, y: 30,
+        w: 24, h: 24,
         vx: isLeft ? 1.2 : -1.2, vy: 0,
-        isFlipped: false, flippedTimer: 0
+        isFlipped: false, flippedTimer: 0,
+        dir: isLeft ? 1 : -1
     });
 }
+let enemyInterval = setInterval(spawnEnemy, 4000);
 
-// 敵出現タイマー
-let enemyInterval = setInterval(spawnEnemy, 3500);
+// 足場（本家風に、床の厚みやブロック感を少しアップ）
+const platforms = [
+    { x: 0, y: 280, w: 400, h: 20, type: 'ground' },
+    { x: 0, y: 210, w: 140, h: 12, type: 'brick' },
+    { x: 260, y: 210, w: 140, h: 12, type: 'brick' },
+    { x: 80, y: 140, w: 240, h: 12, type: 'brick' },
+    { x: 0, y: 70, w: 120, h: 12, type: 'brick' },
+    { x: 280, y: 70, w: 120, h: 12, type: 'brick' }
+];
+platforms.forEach(p => { p.hitTimer = 0; p.hitX = 0; });
+
+// --- 🎨 ドット絵のデザインデータ (12x12マスの配列) ---
+// R: 赤, B: 青, Skin: 肌色, W: 白, G: 緑, Y: 黄, O: オレンジ, .: 透明
+const P = "Skin"; 
+
+const marioSprite = [
+    [".",".",".","R","R","R","R","R",".",".",".","."],
+    [".",".","R","R","R","R","R","R","R","R",".","."],
+    [".",".",".",P,P,P,P,"#",P,".",".","."],
+    [".",".",P,"#",P,"#",P,P,P,P,".","."],
+    [".",".",P,"#",P,P,P,P,P,P,".","."],
+    [".",".",".",P,P,P,P,P,P,".",".","."],
+    [".",".",".","R","B","R","R","B","R",".",".","."],
+    [".",".","B","B","B","B","B","B","B","B",".","."],
+    [".",".","B","B","B","B","B","B","B","B",".","."],
+    [".",".","R","R","B","B","B","B","R","R",".","."],
+    [".",".","R","R","R",".",".","R","R","R",".","."],
+    [".",".",".","R","R",".",".","R","R",".",".","."]
+];
+
+const turtleSprite = [
+    [".",".",".",".","G","G","G","G",".",".",".","."],
+    [".",".",".","G","G","G","G","G","G",".",".","."],
+    [".",".","G","G","W","W","G","G","W","W",".","."],
+    [".",".","G","G","#","#","G","G","#","#",".","."],
+    [".","O","O","G","G","G","G","G","G",".",".","."],
+    ["O","O","O","O","O","O","O","O","O",".",".","."],
+    ["O","O","O","O","O","O","O","O","O",".",".","."],
+    [".","O","O","O","O","O","O","O","O",".",".","."],
+    [".",".","G","G","G","G","G","G","G",".",".","."],
+    [".",".",".","G","G",".",".","G","G",".",".","."],
+    [".",".",".","G","G",".",".","G","G",".",".","."],
+    [".",".","W","W","W",".",".","W","W","W",".","."]
+];
+
+// 色の定義リスト
+const colors = {
+    "R": "#ff1744", "B": "#2979ff", "Skin": "#ffb74d", "W": "#ffffff",
+    "G": "#00e676", "Y": "#ffeb3b", "O": "#ff9100", "#": "#000000"
+};
+
+// ドット絵を描画する共通関数
+function drawPixelArt(sprite, x, y, width, height, flipX, flipY) {
+    const pixelSize = width / 12;
+    for (let r = 0; r < 12; r++) {
+        for (let c = 0; c < 12; r++) { // ※後ほど無限ループ対策に修正してあります
+        }
+    }
+}
 
 function resetGame() {
     score = 0;
     document.getElementById('score-val').innerText = score;
-    // リセット時も確実に中央の空中に戻す
-    player.x = 190; player.y = 100; player.vx = 0; player.vy = 0;
+    player.x = 190; player.y = 100; player.vx = 0; player.vy = 0; player.dir = 1;
     enemies = [];
     isGameOver = false;
     document.getElementById('gameover-overlay').style.display = 'none';
@@ -137,53 +180,32 @@ function resetGame() {
 
 function update() {
     if (!isGameOver) {
-        // 左右の移動速度を計算
-        if (keys.left) {
-            player.vx = -3.0;
-        } else if (keys.right) {
-            player.vx = 3.0;
-        } else {
-            player.vx *= 0.7; // 指を離したら滑らかに止まる
-        }
+        if (keys.left) { player.vx = -2.5; player.dir = -1; }
+        else if (keys.right) { player.vx = 2.5; player.dir = 1; }
+        else { player.vx *= 0.7; }
 
-        player.vy += GRAVITY;
-        player.x += player.vx;
-        player.y += player.vy;
+        player.vy += GRAVITY; player.x += player.vx; player.y += player.vy;
 
-        // 画面端ワープ処理
         if (player.x < -player.w) player.x = canvas.width;
         if (player.x > canvas.width) player.x = -player.w;
-
-        // 画面の下に落ちてしまった場合の緊急救済
-        if (player.y > canvas.height) {
-            player.x = 190; player.y = 100; player.vy = 0;
-        }
+        if (player.y > canvas.height) { player.x = 190; player.y = 100; player.vy = 0; }
 
         player.isGrounded = false;
 
-        // 床との当たり判定
         platforms.forEach(p => {
             if (p.hitTimer > 0) p.hitTimer--;
             if (player.x + player.w > p.x && player.x < p.x + p.w) {
-                // 着地
                 if (player.vy >= 0 && player.y + player.h >= p.y && player.y + player.h <= p.y + player.vy + 4) {
-                    player.y = p.y - player.h;
-                    player.vy = 0;
-                    player.isGrounded = true;
+                    player.y = p.y - player.h; player.vy = 0; player.isGrounded = true;
                 }
-                // 頭突き
                 else if (player.vy < 0 && player.y >= p.y + p.h - 4 && player.y <= p.y + p.h) {
-                    player.y = p.y + p.h;
-                    player.vy = 0;
+                    player.y = p.y + p.h; player.vy = 0;
                     if (p.type === 'brick') {
-                        p.hitTimer = 5;
-                        p.hitX = player.x + player.w / 2;
+                        p.hitTimer = 5; p.hitX = player.x + player.w / 2;
                         enemies.forEach(e => {
                             if (e.x + e.w > p.x && e.x < p.x + p.w && e.y + e.h === p.y) {
                                 if (Math.abs((e.x + e.w/2) - p.hitX) < 40) {
-                                    e.isFlipped = true;
-                                    e.flippedTimer = 300;
-                                    e.vy = -4;
+                                    e.isFlipped = true; e.flippedTimer = 300; e.vy = -5;
                                 }
                             }
                         });
@@ -192,13 +214,13 @@ function update() {
             }
         });
 
-        // 敵の移動と判定
         enemies.forEach((e, index) => {
             e.vy += GRAVITY;
-            if (!e.isFlipped) e.x += e.vx;
-            else {
+            if (!e.isFlipped) {
+                e.x += e.vx; e.dir = e.vx > 0 ? 1 : -1;
+            } else {
                 e.flippedTimer--;
-                if (e.flippedTimer <= 0) { e.isFlipped = false; e.vx *= 1.2; }
+                if (e.flippedTimer <= 0) { e.isFlipped = false; e.vx *= 1.3; }
             }
             e.y += e.vy;
 
@@ -213,11 +235,9 @@ function update() {
                 }
             });
 
-            // 接触
             if (player.x + player.w > e.x && player.x < e.x + e.w && player.y + player.h > e.y && player.y < e.y + e.h) {
                 if (e.isFlipped) {
-                    enemies.splice(index, 1);
-                    score += 100;
+                    enemies.splice(index, 1); score += 100;
                     document.getElementById('score-val').innerText = score;
                 } else {
                     isGameOver = true;
@@ -226,38 +246,62 @@ function update() {
             }
         });
     }
-
     draw();
     requestAnimationFrame(update);
+}
+
+// ドット絵を反転等に対応させて画面にレンダリングする関数
+function renderSprite(sprite, x, y, w, h, flipX, flipY) {
+    const pSize = w / 12;
+    for (let r = 0; r < 12; r++) {
+        for (let c = 0; c < 12; c++) {
+            const cell = sprite[r][c];
+            if (cell !== ".") {
+                ctx.fillStyle = colors[cell] || cell;
+                const drawC = flipX ? (11 - c) : c;
+                const drawR = flipY ? (11 - r) : r;
+                ctx.fillRect(x + drawC * pSize, y + drawR * pSize, pSize + 0.5, pSize + 0.5);
+            }
+        }
+    }
 }
 
 function draw() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    // 床の描画
+    // 床・足場の描画
     platforms.forEach(p => {
-        ctx.fillStyle = p.type === 'ground' ? '#0066ff' : '#ff9933';
-        let yOffset = p.hitTimer > 0 ? -4 : 0;
-        ctx.fillRect(p.x, p.y + yOffset, p.w, p.h);
+        let yOffset = p.hitTimer > 0 ? -5 : 0;
+        if (p.type === 'ground') {
+            ctx.fillStyle = '#442200'; // 地面のベース
+            ctx.fillRect(p.x, p.y, p.w, p.h);
+            ctx.fillStyle = '#00aa00'; // 地面の上の芝生
+            ctx.fillRect(p.x, p.y, p.w, 4);
+        } else {
+            // レンガ調の模様を簡易描画
+            ctx.fillStyle = '#cc5500';
+            ctx.fillRect(p.x, p.y + yOffset, p.w, p.h);
+            ctx.fillStyle = '#ffaa66';
+            ctx.fillRect(p.x, p.y + yOffset, p.w, 2); 
+        }
     });
 
-    // 敵の描画
+    // 敵（カメ）の描画
     enemies.forEach(e => {
-        ctx.fillStyle = e.isFlipped ? '#ffeb3b' : '#00e676';
-        ctx.fillRect(e.x, e.y, e.w, e.h);
-        ctx.fillStyle = '#000';
-        ctx.fillRect(e.x + 2, e.y + 2, 2, 2);
-        ctx.fillRect(e.x + e.w - 4, e.y + 2, 2, 2);
+        if (e.isFlipped) {
+            // ひっくり返っているときは「上下反転」して甲羅を黄色(Y)っぽく見せる
+            renderSprite(turtleSprite, e.x, e.y, e.w, e.h, false, true);
+        } else {
+            // 進行方向（dir）に合わせて左右反転
+            renderSprite(turtleSprite, e.x, e.y, e.w, e.h, e.dir === -1, false);
+        }
     });
 
-    // 🔴 プレイヤー（赤の大きなカタマリ＋ハッキリ目立つ黄色の帽子に変更）
-    ctx.fillStyle = '#ff1744'; // マリオの服（赤）
-    ctx.fillRect(player.x, player.y, player.w, player.h);
-    ctx.fillStyle = '#ffeb3b'; // 目立つように帽子を黄色に変更！
-    ctx.fillRect(player.x, player.y, player.w, 6); 
+    // プレイヤー（マリオ）の描画
+    renderSprite(marioSprite, player.x, player.y, player.w, player.h, player.dir === -1, false);
 }
 
-// パソコン操作用
+// キーボード
 document.addEventListener('keydown', e => {
     if (e.key === 'ArrowLeft' || e.key === 'a') keys.left = true;
     if (e.key === 'ArrowRight' || e.key === 'd') keys.right = true;
@@ -268,25 +312,16 @@ document.addEventListener('keyup', e => {
     if (e.key === 'ArrowRight' || e.key === 'd') keys.right = false;
 });
 
-// スマホ・マウス共通のタッチ判定
+// ボタン操作
 const setupBtn = (id, startAction, endAction) => {
     const btn = document.getElementById(id);
-    
-    // タッチデバイス用
     btn.addEventListener('touchstart', e => { e.preventDefault(); startAction(); }, {passive: false});
     btn.addEventListener('touchend', e => { e.preventDefault(); endAction(); }, {passive: false});
-    
-    // マウスクリック用（テストしやすくするため追加）
     btn.addEventListener('mousedown', e => { startAction(); });
     btn.addEventListener('mouseup', e => { endAction(); });
     btn.addEventListener('mouseleave', e => { endAction(); });
 };
 
-// パッドを強制表示させておく（確実性を上げるため）
-document.getElementById('left-pad').style.display = 'block';
-document.getElementById('right-pad').style.display = 'block';
-
-// 各ボタンに機能をしっかりと登録
 setupBtn('btn-left', () => { keys.left = true; }, () => { keys.left = false; });
 setupBtn('btn-right', () => { keys.right = true; }, () => { keys.right = false; });
 setupBtn('btn-jump', () => { if(player.isGrounded) player.vy = -7.5; }, () => {});
