@@ -3,13 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Retro Kong - HARD MODE Fixed</title>
+    <title>Jewel Crash - Chain Reaction</title>
     <style>
         * { box-sizing: border-box; }
         body {
-            background: #000;
+            background: #0f0c1b;
             color: #fff;
-            font-family: 'Courier New', sans-serif;
+            font-family: 'Helvetica Neue', Arial, sans-serif;
             margin: 0; padding: 0;
             overflow: hidden;
             width: 100vw; height: 100vh;
@@ -17,158 +17,274 @@
             align-items: center; justify-content: center;
             touch-action: none; -webkit-user-select: none; user-select: none;
         }
-        #top-bar {
-            width: 100%; height: 40px;
+        #ui-panel {
+            width: 100%; max-width: 400px; height: 60px;
             display: flex; justify-content: space-between; align-items: center;
-            padding: 0 20px; background: #111; font-weight: bold; font-size: 18px;
+            padding: 0 20px; font-weight: bold; font-size: 20px;
+            background: linear-gradient(to bottom, #1a1633, #0f0c1b);
+            border-bottom: 2px solid #3d3473;
         }
-        #main-layout {
-            display: flex; flex: 1; width: 100%; max-width: 850px;
-            align-items: center; justify-content: center; padding: 10px; gap: 20px;
-        }
-        #game-container { position: relative; border: 4px solid #ff1744; background-color: #000; }
-        canvas { display: block; max-height: calc(100vh - 120px); max-width: calc(100vw - 300px); object-fit: contain; }
-        
-        .pad-cluster { display: block; width: 130px; height: 100px; position: relative; flex-shrink: 0; }
-        .ctrl-btn {
-            position: absolute; background: #333; border: 2px solid #fff; color: #fff;
-            width: 58px; height: 58px; display: flex; align-items: center; justify-content: center;
-            font-size: 26px; font-weight: bold; border-radius: 12px;
-            box-shadow: 0 4px #111;
-        }
-        .ctrl-btn:active { background: #555; transform: translateY(2px); box-shadow: 0 2px #111; }
-        
-        #btn-left  { top: 20px; left: 0; }
-        #btn-right { top: 20px; right: 0; }
-        
-        #btn-jump  { top: 10px; right: 10px; width: 74px; height: 74px; border-radius: 50%; background: #ff1744; font-size: 16px; box-shadow: 0 4px #880e4f; }
-        #btn-jump:active { background: #ff5252; transform: translateY(2px); box-shadow: 0 2px #880e4f; }
+        #combo-alert { color: #ffeb3b; font-size: 16px; min-height: 20px; text-shadow: 0 0 10px #ff9100; }
+        #game-container { position: relative; width: 100%; max-width: 400px; flex: 1; display: flex; align-items: center; justify-content: center; padding: 10px; }
+        canvas { display: block; background: #141126; border: 3px solid #4a3f8a; border-radius: 10px; box-shadow: 0 0 20px rgba(74,63,138,0.5); max-height: 100%; max-width: 100%; object-fit: contain; }
         
         .overlay {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%;
             display: none; flex-direction: column; align-items: center; justify-content: center;
-            background: rgba(0,0,0,0.8); z-index: 10;
+            background: rgba(15,12,27,0.9); z-index: 10;
         }
-        .overlay-title { font-size: 28px; color: #ff1744; margin-bottom: 15px; font-weight: bold; }
-        .overlay-btn { background: #222; border: 2px solid #fff; padding: 10px 20px; border-radius: 5px; cursor: pointer; }
+        .overlay-title { font-size: 36px; color: #ff1744; font-weight: bold; margin-bottom: 5px; text-shadow: 0 0 15px rgba(255,23,68,0.6); }
+        .overlay-score { font-size: 20px; color: #fff; margin-bottom: 25px; }
+        .overlay-btn { background: #4a3f8a; border: 2px solid #fff; padding: 12px 30px; border-radius: 25px; font-weight: bold; font-size: 18px; cursor: pointer; transition: 0.2s; }
+        .overlay-btn:active { background: #6b5cb5; transform: scale(0.95); }
     </style>
 </head>
 <body>
 
-    <div id="top-bar">
+    <div id="ui-panel">
         <div>SCORE: <span id="score-val">0</span></div>
-        <div style="color: #ff1744; font-size: 14px; font-weight: bold;">⚠️ ハードモード稼働中 ⚠️</div>
+        <div id="combo-alert"></div>
     </div>
 
-    <div id="main-layout">
-        <div class="pad-cluster" id="left-pad">
-            <div class="ctrl-btn" id="btn-left">←</div>
-            <div class="ctrl-btn" id="btn-right">→</div>
-        </div>
-
-        <div id="game-container">
-            <canvas id="gameCanvas"></canvas>
-            <div id="gameover-overlay" class="overlay" onclick="resetGame()">
-                <div id="game-result-title" class="overlay-title">GAME OVER</div>
-                <div class="overlay-btn">もう一度挑戦</div>
-            </div>
-        </div>
-
-        <div class="pad-cluster" id="right-pad">
-            <div class="ctrl-btn" id="btn-jump">JUMP</div>
+    <div id="game-container">
+        <canvas id="gameCanvas"></canvas>
+        <div id="gameover-overlay" class="overlay" onclick="resetGame()">
+            <div class="overlay-title">GAME OVER</div>
+            <div class="overlay-score">FINAL SCORE: <span id="final-score-val">0</span></div>
+            <div class="overlay-btn">NEXT TRY</div>
         </div>
     </div>
 
 <script>
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
-canvas.width = 400;
-canvas.height = 360;
 
-const GRAVITY = 0.35;
+// スマホ・PC双方で綺麗に映る解像度アスペクト比 (縦長)
+canvas.width = 360;
+canvas.height = 540;
+
+const GRAVITY = 0.4;
+const BOUNCE = 0.2; // ほんの少し跳ねる物理挙動
 let score = 0;
+let currentCombo = 0;
 let isGameOver = false;
-const keys = { left: false, right: false, jump: false };
+let jewels = [];
+let particles = [];
 
-const player = {
-    x: 40, y: 320,
-    w: 20, h: 20,
-    vx: 0, vy: 0,
-    isGrounded: false,
-    isOnLadder: false,
-    dir: 1
-};
+// 次に落ちてくるジュエルの色（予告用）
+const jewelColors = [
+    { name: "RED",    hex: "#ff1744", glow: "#ff8a80" },
+    { name: "BLUE",   hex: "#2979ff", glow: "#82b1ff" },
+    { name: "GREEN",  hex: "#00e676", glow: "#b9f6ca" },
+    { name: "YELLOW", hex: "#ffeb3b", glow: "#ffff8d" },
+    { name: "PURPLE", hex: "#d500f9", glow: "#f48fb1" }
+];
+let nextColorIndex = Math.floor(Math.random() * jewelColors.length);
 
-let barrels = [];
-let barrelInterval = null; // タイマー管理用の変数をここに用意
+// 物理エンジン風のジュエルオブジェクト
+class Jewel {
+    constructor(x, y, colorIdx) {
+        this.x = x;
+        this.y = y;
+        this.r = 16; // ジュエルのサイズ
+        this.colorIdx = colorIdx;
+        this.vx = (Math.random() - 0.5) * 2; // わずかな横ブレ
+        this.vy = 0;
+        this.isStatic = false; // 動かなくなったらtrue
+        this.toRemove = false;
+    }
 
-function startSpawnTimer() {
-    // 既存のタイマーがあれば一度消す（二重起動防止）
-    if (barrelInterval) clearInterval(barrelInterval);
-    // 1.7秒に1回、樽を出現させる
-    barrelInterval = setInterval(spawnBarrel, 1700);
+    update() {
+        if (this.isStatic) return;
+
+        this.vy += GRAVITY;
+        this.x += this.vx;
+        this.y += this.vy;
+
+        // 壁との衝突
+        if (this.x - this.r < 0) { this.x = this.r; this.vx *= -BOUNCE; }
+        if (this.x + this.r > canvas.width) { this.x = canvas.width - this.r; this.vx *= -BOUNCE; }
+
+        // 床との衝突
+        if (this.y + this.r > canvas.height) {
+            this.y = canvas.height - this.r;
+            this.vy *= -BOUNCE;
+            this.vx *= 0.8;
+            if (Math.abs(this.vy) < 0.5 && Math.abs(this.vx) < 0.5) this.isStatic = true;
+        }
+
+        // 他のジュエルとの簡易衝突・積み重なり判定
+        for (let other of jewels) {
+            if (other === this) continue;
+            let dx = other.x - this.x;
+            let dy = other.y - this.y;
+            let dist = Math.hypot(dx, dy);
+            let minDist = this.r + other.r;
+
+            if (dist < minDist) {
+                // 重なりを解消する方向に押し戻す
+                let overlap = minDist - dist;
+                let nx = dx / dist;
+                let ny = dy / dist;
+
+                this.x -= nx * overlap * 0.5;
+                this.y -= ny * overlap * 0.5;
+
+                // 速度の反射
+                this.vy *= -BOUNCE;
+                this.vx *= -BOUNCE;
+
+                if (other.isStatic && Math.abs(this.vy) < 1) {
+                    this.isStatic = true;
+                }
+            }
+        }
+    }
+
+    draw() {
+        ctx.save();
+        ctx.shadowBlur = 10;
+        ctx.shadowColor = jewelColors[this.colorIdx].hex;
+
+        // グラデーションで宝石の立体感を表現
+        let grad = ctx.createRadialGradient(this.x - 4, this.y - 4, 2, this.x, this.y, this.r);
+        grad.addColorStop(0, jewelColors[this.colorIdx].glow);
+        grad.addColorStop(1, jewelColors[this.colorIdx].hex);
+
+        ctx.fillStyle = grad;
+        ctx.beginPath();
+        // 綺麗な円ではなく、あえて少し角のあるカット宝石風に描画
+        for (let i = 0; i < 6; i++) {
+            let angle = (i * Math.PI) / 3;
+            let jx = this.x + Math.cos(angle) * this.r;
+            let jy = this.y + Math.sin(angle) * this.r;
+            if (i === 0) ctx.moveTo(jx, jy);
+            else ctx.lineTo(jx, jy);
+        }
+        ctx.closePath();
+        ctx.fill();
+        ctx.restore();
+    }
 }
 
-function spawnBarrel() {
+// 派手な爆発エフェクト
+class Particle {
+    constructor(x, y, colorHex) {
+        this.x = x; this.y = y;
+        this.radius = Math.random() * 4 + 2;
+        this.vx = (Math.random() - 0.5) * 8;
+        this.vy = (Math.random() - 0.5) * 8;
+        this.alpha = 1;
+        this.color = colorHex;
+    }
+    update() {
+        this.x += this.vx; this.y += this.vy;
+        this.alpha -= 0.03;
+    }
+    draw() {
+        ctx.save();
+        ctx.globalAlpha = this.alpha;
+        ctx.fillStyle = this.color;
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+    }
+}
+
+// クリック、またはタップで落とす
+function dropJewel(clientX) {
     if (isGameOver) return;
-    barrels.push({ x: 100, y: 75, r: 7, vx: 2.6, vy: 0 });
+
+    // キャンバス上の相対座標を取得
+    const rect = canvas.getBoundingClientRect();
+    const scaleX = canvas.width / rect.width;
+    let targetX = (clientX - rect.left) * scaleX;
+
+    // 画面外に出ていかないようガード
+    if (targetX < 16) targetX = 16;
+    if (targetX > canvas.width - 16) targetX = canvas.width - 16;
+
+    // ジュエルを一番上から投下
+    jewels.push(new Jewel(targetX, 30, nextColorIndex));
+
+    // 次の色を決定
+    nextColorIndex = Math.floor(Math.random() * jewelColors.length);
 }
 
-const platforms = [
-    { x: 0,   y: 340, w: 400, h: 10 }, 
-    { x: 0,   y: 275, w: 340, h: 10 }, 
-    { x: 60,  y: 210, w: 340, h: 10 }, 
-    { x: 0,   y: 145, w: 340, h: 10 }, 
-    { x: 80,  y: 85,  w: 240, h: 10 }  
-];
+// 連鎖・消去のコアロジック（再帰アルゴリズム）
+function checkMatches() {
+    let matchedAny = false;
 
-const ladders = [
-    { x: 300, y: 275, w: 16, h: 65 },  
-    { x: 90,  y: 210, w: 16, h: 65 },  
-    { x: 280, y: 145, w: 16, h: 65 },  
-    { x: 120, y: 85,  w: 16, h: 60 }   
-];
+    // 静止したジュエルだけで判定
+    for (let i = 0; i < jewels.length; i++) {
+        if (jewels[i].toRemove) continue;
 
-const colors = {
-    "R": "#ff1744", "B": "#2979ff", "Skin": "#ffb74d", "W": "#ffffff",
-    "G": "#2e7d32", "Br": "#795548", "Y": "#ffeb3b", "#": "#000000", "P": "#e040fb"
-};
+        let connected = [];
+        findConnected(jewels[i], jewels[i].colorIdx, connected);
 
-const marioSprite = [
-    [".",".","R","R","R","R","R",".",".","."],
-    [".","R","R","R","R","R","R","R",".","."],
-    [".",".","Skin","Skin","#","Skin",".",".","."],
-    [".","Skin","#","Skin","Skin","Skin","Skin",".","."],
-    [".",".","Skin","Skin","Skin","Skin",".",".","."],
-    [".",".","R","B","R","R","B",".",".","."],
-    [".","B","B","B","B","B","B","B",".","."],
-    [".","B","B","B","B","B","B","B",".","."],
-    [".","R","R","B","B","B","R","R",".","."],
-    [".","R","R",".",".",".","R","R",".","."]
-];
+        // 3つ以上繋がっていたら爆破フラグを立てる
+        if (connected.length >= 3) {
+            matchedAny = true;
+            currentCombo++;
+            
+            connected.forEach(j => {
+                j.toRemove = true;
+                // 爆発の破片を生成
+                for (let k = 0; k < 8; k++) {
+                    particles.push(new Particle(j.x, j.y, jewelColors[j.colorIdx].hex));
+                }
+            });
 
-const kongSprite = [
-    [".","Br","Br",".",".",".",".","Br","Br","."],
-    ["Br","Br","Br","Br","Br","Br","Br","Br","Br","Br"],
-    ["Br","#","Skin","Br","Br","Br","Br","Skin","#","Br"],
-    ["Br","Skin","Skin","Skin","Skin","Skin","Skin","Skin","Skin","Br"],
-    [".","Br","Skin","Skin","Skin","Skin","Skin","Skin","Br","."],
-    [".",".","Br","Br","Br","Br","Br","Br",".","."],
-    [".","Br","Br","Br","Br","Br","Br","Br","Br","."],
-    ["Br","Br","Br","Br","Br","Br","Br","Br","Br","Br"],
-    ["Br","Br",".",".",".",".",".",".","Br","Br"],
-    ["Br","Br",".",".",".",".",".",".","Br","Br"]
-];
+            // スコア計算（連鎖するほど超インフレするボーナス）
+            score += connected.length * 10 * currentCombo;
+            document.getElementById('score-val').innerText = score;
 
-function renderSprite(sprite, x, y, w, h, flipX) {
-    const pSize = w / 10;
-    for (let r = 0; r < 10; r++) {
-        for (let c = 0; c < 10; c++) {
-            const cell = sprite[r][c];
-            if (cell !== ".") {
-                ctx.fillStyle = colors[cell] || cell;
-                const drawC = flipX ? (9 - c) : c;
-                ctx.fillRect(x + drawC * pSize, y + r * pSize, pSize + 0.3, pSize + 0.3);
+            // コンボ演出テキスト
+            let alertBox = document.getElementById('combo-alert');
+            alertBox.innerText = `${currentCombo} CHAIN💥`;
+            setTimeout(() => { if(alertBox.innerText.includes(currentCombo)) alertBox.innerText = ''; }, 1500);
+        }
+    }
+
+    // フラグが立ったジュエルを削除
+    if (matchedAny) {
+        jewels = jewels.filter(j => !j.toRemove);
+        // 消えたら上のジュエルが落ちるので、もう一度物理を動かす
+        jewels.forEach(j => j.isStatic = false);
+    } else {
+        // 連鎖が止まったらコンボ数をリセット（自分で落とした時用）
+        let allStatic = jewels.every(j => j.isStatic);
+        if (allStatic) currentCombo = 0;
+    }
+}
+
+// 近くにある同じ色のジュエルを芋づる式に探す（深さ優先探索）
+function findConnected(current, colorIdx, connected) {
+    if (connected.includes(current)) return;
+    connected.push(current);
+
+    for (let other of jewels) {
+        if (other === current || other.colorIdx !== colorIdx || other.toRemove) continue;
+        let dist = Math.hypot(other.x - current.x, other.y - current.y);
+        // ジュエル同士が接触しているか（判定を少し甘くしてつながりやすく）
+        if (dist <= (current.r + other.r) + 5) {
+            findConnected(other, colorIdx, connected);
+        }
+    }
+}
+
+function checkGameOver() {
+    // 画面の上（y=80以下）に変な塊が静止し続けたらゲームオーバー
+    let pileUpCount = 0;
+    for (let j of jewels) {
+        if (j.isStatic && j.y < 90) {
+            pileUpCount++;
+            if (pileUpCount > 2) {
+                isGameOver = true;
+                document.getElementById('final-score-val').innerText = score;
+                document.getElementById('gameover-overlay').style.display = 'flex';
+                break;
             }
         }
     }
@@ -176,211 +292,63 @@ function renderSprite(sprite, x, y, w, h, flipX) {
 
 function resetGame() {
     score = 0;
-    document.getElementById('score-val').innerText = score;
-    player.x = 40; player.y = 320; player.vx = 0; player.vy = 0; player.dir = 1;
-    player.isOnLadder = false;
-    barrels = [];
+    currentCombo = 0;
+    jewels = [];
+    particles = [];
     isGameOver = false;
+    document.getElementById('score-val').innerText = score;
+    document.getElementById('combo-alert').innerText = '';
     document.getElementById('gameover-overlay').style.display = 'none';
-    
-    // ⚙️ リセット時に新しくきれいなタイマーを再始動
-    startSpawnTimer();
 }
 
 function update() {
-    if (isGameOver) return;
-
-    let touchLadder = null;
-    ladders.forEach(l => {
-        if (player.x + player.w > l.x && player.x < l.x + l.w &&
-            player.y + player.h >= l.y && player.y <= l.y + l.h) {
-            touchLadder = l;
-        }
+    // 物理アップデート
+    jewels.forEach(j => j.update());
+    particles.forEach((p, idx) => {
+        p.update();
+        if (p.alpha <= 0) particles.splice(idx, 1);
     });
 
-    if (!touchLadder) player.isOnLadder = false;
-
-    if (player.isOnLadder) {
-        player.vx = 0;
-        player.vy = -2.2; 
-        player.y += player.vy;
-        
-        if (touchLadder && player.y + player.h <= touchLadder.y + 4) {
-            player.y = touchLadder.y - player.h;
-            player.isOnLadder = false;
-            player.vy = 0;
-        }
-    } else {
-        if (keys.left) { player.vx = -1.7; player.dir = -1; }
-        else if (keys.right) { player.vx = 1.7; player.dir = 1; }
-        else { player.vx *= 0.6; }
-
-        player.vy += GRAVITY;
-        player.x += player.vx;
-        player.y += player.vy;
-    }
-
-    if (player.x < 0) player.x = 0;
-    if (player.x > canvas.width - player.w) player.x = canvas.width - player.w;
-
-    if (!player.isOnLadder) {
-        player.isGrounded = false;
-        platforms.forEach(p => {
-            if (player.x + player.w > p.x && player.x < p.x + p.w) {
-                if (player.vy >= 0 && player.y + player.h >= p.y && player.y + player.h <= p.y + player.vy + 4) {
-                    player.y = p.y - player.h;
-                    player.vy = 0;
-                    player.isGrounded = true;
-                }
-            }
-        });
-    }
-
-    barrels.forEach((b, index) => {
-        b.vy += GRAVITY;
-        b.x += b.vx;
-        b.y += b.vy;
-
-        platforms.forEach(p => {
-            if (b.x + b.r > p.x && b.x - b.r < p.x + p.w) {
-                if (b.vy >= 0 && b.y + b.r >= p.y && b.y + b.r <= p.y + b.vy + 4) {
-                    b.y = p.y - b.r;
-                    b.vy = 0;
-                }
-            }
-        });
-
-        if (b.x - b.r < 0) { b.vx = 2.6; }
-        if (b.x + b.r > canvas.width) { b.vx = -2.6; }
-
-        if (b.y > canvas.height) {
-            barrels.splice(index, 1);
-            score += 20; 
-            document.getElementById('score-val').innerText = score;
-        }
-
-        let distX = Math.abs(b.x - (player.x + player.w / 2));
-        let distY = Math.abs(b.y - (player.y + player.h / 2));
-        if (distX < (player.w / 2 + b.r - 2) && distY < (player.h / 2 + b.r - 2)) {
-            endGame(false);
-        }
-    });
-
-    if (player.y < 90 && player.x > 240) {
-        endGame(true);
-    }
+    // マッチングとゲームオーバー判定
+    checkMatches();
+    checkGameOver();
 
     draw();
     requestAnimationFrame(update);
 }
 
-function endGame(isWin) {
-    isGameOver = true;
-    
-    // ⚙️ ゲームオーバー時に裏の樽出現タイマーを完全にストップさせる
-    if (barrelInterval) clearInterval(barrelInterval);
-    
-    const title = document.getElementById('game-result-title');
-    if (isWin) {
-        title.innerText = "👑 HARD MODE CLEAR!! 👑";
-        title.style.color = "#ffeb3b";
-    } else {
-        title.innerText = "GAME OVER 🦍";
-        title.style.color = "#ff1744";
-    }
-    document.getElementById('gameover-overlay').style.display = 'flex';
-}
-
 function draw() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    // 足場
-    platforms.forEach(p => {
-        ctx.fillStyle = '#ff1744'; 
-        ctx.fillRect(p.x, p.y, p.w, p.h);
-        ctx.fillStyle = '#000';
-        for (let i = p.x + 5; i < p.x + p.w; i += 15) {
-            ctx.fillRect(i, p.y + 2, 2, p.h - 4);
-        }
-    });
+    // デッドライン（警告線）の描画
+    ctx.strokeStyle = 'rgba(255, 23, 68, 0.3)';
+    ctx.lineWidth = 2;
+    ctx.setLineDash([5, 5]);
+    ctx.beginPath(); ctx.moveTo(0, 90); ctx.lineTo(canvas.width, 90); ctx.stroke();
+    ctx.setLineDash([]);
 
-    // ハシゴ
-    ladders.forEach(l => {
-        ctx.strokeStyle = '#00e676';
-        ctx.lineWidth = 3;
-        ctx.beginPath();
-        ctx.moveTo(l.x, l.y); ctx.lineTo(l.x, l.y + l.h);
-        ctx.moveTo(l.x + l.w, l.y); ctx.lineTo(l.x + l.w, l.y + l.h);
-        ctx.stroke();
-        for (let step = l.y + 5; step < l.y + l.h; step += 8) {
-            ctx.beginPath();
-            ctx.moveTo(l.x, step); ctx.lineTo(l.x + l.w, step);
-            ctx.stroke();
-        }
-    });
+    // オブジェクト描画
+    jewels.forEach(j => j.draw());
+    particles.forEach(p => p.draw());
 
-    renderSprite(kongSprite, 100, 35, 45, 45, false);
-
-    // ピーチ
-    ctx.fillStyle = '#ff4081';
-    ctx.fillRect(260, 55, 16, 30);
-    ctx.fillStyle = '#ffeb3b';
-    ctx.fillRect(260, 50, 16, 6);
-
-    // 樽
-    barrels.forEach(b => {
-        ctx.fillStyle = '#d7a15c';
-        ctx.beginPath();
-        ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.fillStyle = '#ff1744';
-        ctx.beginPath();
-        ctx.arc(b.x, b.y, b.r - 4, 0, Math.PI * 2);
-        ctx.fill();
-    });
-
-    renderSprite(marioSprite, player.x, player.y, player.w, player.h, player.dir === -1);
+    // 次に落ちる色のガイドライン（画面最上部にうっすら表示）
+    ctx.fillStyle = jewelColors[nextColorIndex].hex;
+    ctx.globalAlpha = 0.2;
+    ctx.fillRect(0, 0, canvas.width, 10);
+    ctx.globalAlpha = 1.0;
 }
 
-document.addEventListener('keydown', e => {
-    if (e.key === 'ArrowLeft' || e.key === 'a') keys.left = true;
-    if (e.key === 'ArrowRight' || e.key === 'd') keys.right = true;
-    if ((e.key === 'ArrowUp' || e.key === 'w' || e.key === ' ')) {
-        let onLadder = ladders.some(l => player.x + player.w > l.x && player.x < l.x + l.w && player.y + player.h >= l.y && player.y <= l.y + l.h);
-        if (onLadder) {
-            player.isOnLadder = true;
-        } else if (player.isGrounded) {
-            player.vy = -6.5; 
-        }
-    }
+// 📱 タッチ＆マウスイベント登録
+window.addEventListener('mousedown', e => {
+    if (e.target.id === 'gameCanvas') dropJewel(e.clientX);
 });
-document.addEventListener('keyup', e => {
-    if (e.key === 'ArrowLeft' || e.key === 'a') keys.left = false;
-    if (e.key === 'ArrowRight' || e.key === 'd') keys.right = false;
-});
-
-const setupBtn = (id, startAction, endAction) => {
-    const btn = document.getElementById(id);
-    btn.addEventListener('touchstart', e => { e.preventDefault(); startAction(); }, {passive: false});
-    btn.addEventListener('touchend', e => { e.preventDefault(); endAction(); }, {passive: false});
-    btn.addEventListener('mousedown', e => { startAction(); });
-    btn.addEventListener('mouseup', e => { endAction(); });
-    btn.addEventListener('mouseleave', e => { endAction(); });
-};
-
-setupBtn('btn-left', () => { keys.left = true; }, () => { keys.left = false; });
-setupBtn('btn-right', () => { keys.right = true; }, () => { keys.right = false; });
-
-setupBtn('btn-jump', () => {
-    let onLadder = ladders.some(l => player.x + player.w > l.x && player.x < l.x + l.w && player.y + player.h >= l.y && player.y <= l.y + l.h);
-    if (onLadder) {
-        player.isOnLadder = true;
-    } else if (player.isGrounded) {
-        player.vy = -6.5;
+window.addEventListener('touchstart', e => {
+    if (e.target.id === 'gameCanvas' && e.touches.length > 0) {
+        dropJewel(e.touches[0].clientX);
     }
-}, () => {});
+}, { passive: true });
 
-// 最初のアニメーション開始前にタイマーを回す
+// 始動
 resetGame();
 update();
 </script>
