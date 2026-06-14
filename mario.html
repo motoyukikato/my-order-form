@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Retro Bros - Pixel Art Edition</title>
+    <title>Retro Bros - Big Controls Edition</title>
     <style>
         * { box-sizing: border-box; }
         body {
@@ -23,22 +23,29 @@
             padding: 0 20px; background: #111; font-weight: bold; font-size: 18px;
         }
         #main-layout {
-            display: flex; flex: 1; width: 100%; max-width: 800px;
-            align-items: center; justify-content: center; padding: 10px; gap: 15px;
+            display: flex; flex: 1; width: 100%; max-width: 850px;
+            align-items: center; justify-content: center; padding: 10px; gap: 20px;
         }
         #game-container { position: relative; border: 4px solid #555; background-color: #000; }
-        canvas { display: block; max-height: calc(100vh - 120px); max-width: calc(100vw - 260px); object-fit: contain; }
+        canvas { display: block; max-height: calc(100vh - 120px); max-width: calc(100vw - 300px); object-fit: contain; }
         
-        .pad-cluster { display: block; width: 100px; height: 100px; position: relative; flex-shrink: 0; }
+        /* 📱 スマホ用コントローラー：サイズと配置を強化 */
+        .pad-cluster { display: block; width: 130px; height: 100px; position: relative; flex-shrink: 0; }
         .ctrl-btn {
             position: absolute; background: #333; border: 2px solid #fff; color: #fff;
-            width: 48px; height: 48px; display: flex; align-items: center; justify-content: center;
-            font-size: 20px; font-weight: bold; border-radius: 10px;
+            width: 58px; height: 58px; display: flex; align-items: center; justify-content: center;
+            font-size: 26px; font-weight: bold; border-radius: 12px;
+            box-shadow: 0 4px #111;
         }
-        .ctrl-btn:active { background: #666; }
-        #btn-left  { top: 26px; left: 0; }
-        #btn-right { top: 26px; right: 0; }
-        #btn-jump  { top: 16px; right: 10px; width: 68px; height: 68px; border-radius: 50%; background: #ff1744; font-size: 16px; }
+        .ctrl-btn:active { background: #555; transform: translateY(2px); box-shadow: 0 2px #111; }
+        
+        /* 左右ボタンの配置調整（サイズ58px、隙間を確保） */
+        #btn-left  { top: 20px; left: 0; }
+        #btn-right { top: 20px; right: 0; }
+        
+        /* ジャンプボタンも少しだけ押しやすく外側にシフト */
+        #btn-jump  { top: 10px; right: 10px; width: 74px; height: 74px; border-radius: 50%; background: #ff1744; font-size: 16px; box-shadow: 0 4px #880e4f; }
+        #btn-jump:active { background: #ff5252; transform: translateY(2px); box-shadow: 0 2px #880e4f; }
         
         .overlay {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%;
@@ -86,13 +93,12 @@ let score = 0;
 let isGameOver = false;
 const keys = { left: false, right: false };
 
-// --- 🟡 キャラクターデータ（1ドットを2px×2pxとして描画するためサイズ調整） ---
 const player = {
     x: 190, y: 100,
-    w: 24, h: 24, // ドット絵に合わせて12x12マス（24px）に
+    w: 24, h: 24,
     vx: 0, vy: 0,
     isGrounded: false,
-    dir: 1 // 1: 右向き, -1: 左向き
+    dir: 1
 };
 
 let enemies = [];
@@ -109,7 +115,6 @@ function spawnEnemy() {
 }
 let enemyInterval = setInterval(spawnEnemy, 4000);
 
-// 足場（本家風に、床の厚みやブロック感を少しアップ）
 const platforms = [
     { x: 0, y: 280, w: 400, h: 20, type: 'ground' },
     { x: 0, y: 210, w: 140, h: 12, type: 'brick' },
@@ -120,10 +125,7 @@ const platforms = [
 ];
 platforms.forEach(p => { p.hitTimer = 0; p.hitX = 0; });
 
-// --- 🎨 ドット絵のデザインデータ (12x12マスの配列) ---
-// R: 赤, B: 青, Skin: 肌色, W: 白, G: 緑, Y: 黄, O: オレンジ, .: 透明
 const P = "Skin"; 
-
 const marioSprite = [
     [".",".",".","R","R","R","R","R",".",".",".","."],
     [".",".","R","R","R","R","R","R","R","R",".","."],
@@ -154,20 +156,10 @@ const turtleSprite = [
     [".",".","W","W","W",".",".","W","W","W",".","."]
 ];
 
-// 色の定義リスト
 const colors = {
     "R": "#ff1744", "B": "#2979ff", "Skin": "#ffb74d", "W": "#ffffff",
     "G": "#00e676", "Y": "#ffeb3b", "O": "#ff9100", "#": "#000000"
 };
-
-// ドット絵を描画する共通関数
-function drawPixelArt(sprite, x, y, width, height, flipX, flipY) {
-    const pixelSize = width / 12;
-    for (let r = 0; r < 12; r++) {
-        for (let c = 0; c < 12; r++) { // ※後ほど無限ループ対策に修正してあります
-        }
-    }
-}
 
 function resetGame() {
     score = 0;
@@ -250,7 +242,6 @@ function update() {
     requestAnimationFrame(update);
 }
 
-// ドット絵を反転等に対応させて画面にレンダリングする関数
 function renderSprite(sprite, x, y, w, h, flipX, flipY) {
     const pSize = w / 12;
     for (let r = 0; r < 12; r++) {
@@ -269,16 +260,14 @@ function renderSprite(sprite, x, y, w, h, flipX, flipY) {
 function draw() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    // 床・足場の描画
     platforms.forEach(p => {
         let yOffset = p.hitTimer > 0 ? -5 : 0;
         if (p.type === 'ground') {
-            ctx.fillStyle = '#442200'; // 地面のベース
+            ctx.fillStyle = '#442200';
             ctx.fillRect(p.x, p.y, p.w, p.h);
-            ctx.fillStyle = '#00aa00'; // 地面の上の芝生
+            ctx.fillStyle = '#00aa00';
             ctx.fillRect(p.x, p.y, p.w, 4);
         } else {
-            // レンガ調の模様を簡易描画
             ctx.fillStyle = '#cc5500';
             ctx.fillRect(p.x, p.y + yOffset, p.w, p.h);
             ctx.fillStyle = '#ffaa66';
@@ -286,22 +275,17 @@ function draw() {
         }
     });
 
-    // 敵（カメ）の描画
     enemies.forEach(e => {
         if (e.isFlipped) {
-            // ひっくり返っているときは「上下反転」して甲羅を黄色(Y)っぽく見せる
             renderSprite(turtleSprite, e.x, e.y, e.w, e.h, false, true);
         } else {
-            // 進行方向（dir）に合わせて左右反転
             renderSprite(turtleSprite, e.x, e.y, e.w, e.h, e.dir === -1, false);
         }
     });
 
-    // プレイヤー（マリオ）の描画
     renderSprite(marioSprite, player.x, player.y, player.w, player.h, player.dir === -1, false);
 }
 
-// キーボード
 document.addEventListener('keydown', e => {
     if (e.key === 'ArrowLeft' || e.key === 'a') keys.left = true;
     if (e.key === 'ArrowRight' || e.key === 'd') keys.right = true;
@@ -312,7 +296,6 @@ document.addEventListener('keyup', e => {
     if (e.key === 'ArrowRight' || e.key === 'd') keys.right = false;
 });
 
-// ボタン操作
 const setupBtn = (id, startAction, endAction) => {
     const btn = document.getElementById(id);
     btn.addEventListener('touchstart', e => { e.preventDefault(); startAction(); }, {passive: false});
