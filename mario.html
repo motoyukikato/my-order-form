@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Retro Bros Mini</title>
+    <style>
+        * { box-sizing: border-box; }
+        body {
+            background: #000;
+            color: #fff;
+            font-family: 'monospace', sans-serif;
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            touch-action: none;
+            -webkit-user-select: none;
+            user-select: none;
+        }
+
+        #top-bar {
+            width: 100%;
+            height: 40px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0 20px;
+            background: #111;
+            font-size: 16px;
+            font-weight: bold;
+        }
+
+        #main-layout {
+            display: flex;
+            flex: 1;
+            width: 100%;
+            max-width: 800px;
+            align-items: center;
+            justify-content: center;
+            padding: 10px;
+            gap: 15px;
+        }
+
+        #game-container {
+            position: relative;
+            border: 4px solid #555;
+            background-color: #000;
+        }
+        canvas {
+            display: block;
+            max-height: calc(100vh - 120px);
+            max-width: calc(100vw - 260px);
+            object-fit: contain;
+        }
+
+        /* スマホ用コントローラーレイアウト */
+        .pad-cluster {
+            display: none;
+            width: 100px;
+            height: 100px;
+            position: relative;
+            flex-shrink: 0;
+        }
+        .ctrl-btn {
+            position: absolute;
+            background: #333;
+            border: 2px solid #fff;
+            color: #fff;
+            width: 48px;
+            height: 48px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            font-weight: bold;
+            border-radius: 10px;
+        }
+        .ctrl-btn:active { background: #666; }
+
+        /* 左手：左右移動 */
+        #btn-left  { top: 26px; left: 0; }
+        #btn-right { top: 26px; right: 0; }
+        
+        /* 右手：ジャンプボタン */
+        #btn-jump  { top: 26px; right: 10px; width: 60px; height: 60px; border-radius: 50%; background: #ff1744; }
+
+        /* オーバーレイ */
+        .overlay {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background: rgba(0,0,0,0.8);
+            z-index: 10;
+        }
+        .overlay-title { font-size: 24px; color: #ff1744; margin-bottom: 15px; }
+        .overlay-btn { background: #222; border: 2px solid #fff; padding: 8px 16px; border-radius: 5px; cursor: pointer; }
+    </style>
+</head>
+<body>
+
+    <div id="top-bar">
+        <div>SCORE: <span id="score-val">0</span></div>
+        <div style="color: #ff9100;">下から床を叩け！</div>
+    </div>
+
+    <div id="main-layout">
+        <div class="pad-cluster" id="left-pad">
+            <div class="ctrl-btn" id="btn-left">←</div>
+            <div class="ctrl-btn" id="btn-right">→</div>
+        </div>
+
+        <div id="game-container">
+            <canvas id="gameCanvas"></canvas>
+            <div id="gameover-overlay" class="overlay" onclick="resetGame()">
+                <div class="overlay-title">GAME OVER</div>
+                <div class="overlay-btn">もういちど遊ぶ</div>
+            </div>
+        </div>
+
+        <div class="pad-cluster" id="right-pad">
+            <div class="ctrl-btn" id="btn-jump">JUMP</div>
+        </div>
+    </div>
+
+<script>
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+
+canvas.width = 400;
+canvas.height = 300;
+
+// ゲーム設定
+const GRAVITY = 0.4;
+let score = 0;
+let isGameOver = false;
+
+// キー入力状態
+const keys = { left: false, right: false };
+
+// プレイヤー（マリオ風）
+const player = {
+    x: 200, y: 240,
+    w: 14, h: 20,
+    vx: 0, vy: 0,
+    isGrounded: false,
+    color: '#ff1744' // 赤
+};
+
+// 床（プラットフォーム）の配置
+const platforms = [
+    // 最下層（地面）
+    { x: 0, y: 280, w: 400, h: 20, type: 'ground' },
+    // 1段目（左右）
+    { x: 0, y: 210, w: 140, h: 10, type: 'brick' },
+    { x: 260, y: 210, w: 140, h: 10, type: 'brick' },
+    // 2段目（中央）
+    { x: 80, y: 140, w: 240, h: 10, type: 'brick' },
+    // 3段目（左右）
+    { x: 0, y: 70, w: 120, h: 10, type: 'brick' },
+    { x: 280, y: 70, w: 120, h: 10, type: 'brick' }
+];
+
+// 床が叩かれた際のエフェクト用タイマー
+platforms.forEach(p => { p.hitTimer = 0; p.hitX = 0; });
+
+// 敵（カニ・カメ風）
+let enemies = [];
+function spawnEnemy() {
+    if (isGameOver) return;
+    // 左右の最上段からランダムに登場
+    const isLeft = Math.random() > 0.5;
+    enemies.push({
+        x: isLeft ? 10 : 380,
+        y: 40,
+        w: 14, h: 14,
+        vx: isLeft ? 1.2 : -1.2,
+        vy: 0,
+        isFlipped: false, // ひっくり返り状態か
+        flippedTimer: 0,
+        color: '#00e676' // 緑
+    });
+}
+setInterval(spawnEnemy, 4000); // 4秒ごとに敵が出現
+
+function resetGame() {
+    score = 0;
+    document.getElementById('score-val').innerText = score;
+    player.x = 200; player.y = 240; player.vx = 0; player.vy = 0;
+    enemies = [];
+    isGameOver = false;
+    document.getElementById('gameover-overlay').style.display = 'none';
+}
+
+// メインループ
+function update() {
+    if (isGameOver) return;
+
+    // --- プレイヤーの移動処理 ---
+    if (keys.left) player.vx = -2.5;
+    else if (keys.right) player.vx = 2.5;
+    else player.vx *= 0.8; // 摩擦で減速
+
+    player.vy += GRAVITY;
+    player.x += player.vx;
+    player.y += player.vy;
+
+    // 画面端のループ処理（本家マリオブラザーズでおなじみの、左右が繋がっている仕様）
+    if (player.x < -player.w) player.x = canvas.width;
+    if (player.x > canvas.width) player.x = -player.w;
+
+    player.isGrounded = false;
+
+    // --- プラットフォーム（床）との当たり判定 ---
+    platforms.forEach(p => {
+        // 床の揺れタイマー減少
+        if (p.hitTimer > 0) p.hitTimer--;
+
+        // 横方向の重なり判定
+        if (player.x + player.w > p.x && player.x < p.x + p.w) {
+            // 足が床の上に着地したとき
+            if (player.vy >= 0 && player.y + player.h >= p.y && player.y + player.h <= p.y + p.vy + 4) {
+                player.y = p.y - player.h;
+                player.vy = 0;
+                player.isGrounded = true;
+            }
+            // 頭が床の下にぶつかったとき（パンチ！）
+            else if (player.vy < 0 && player.y >= p.y + p.h - 4 && player.y <= p.y + p.h) {
+                player.y = p.y + p.h;
+                player.vy = 0;
+                
+                if (p.type === 'brick') {
+                    p.hitTimer = 5; // 床を揺らす
+                    p.hitX = player.x + player.w / 2;
+                    
+                    // 床の上の敵をひっくり返す
+                    enemies.forEach(e => {
+                        if (e.x + e.w > p.x && e.x < p.x + p.w && e.y + e.h === p.y) {
+                            // 叩いた場所の近くにいる敵をひっくり返す
+                            if (Math.abs((e.x + e.w/2) - p.hitX) < 40) {
+                                e.isFlipped = true;
+                                e.flippedTimer = 300; // ひっくり返る時間
+                                e.vy = -4; // ちょっと跳ねる
+                            }
+                        }
+                    });
+                }
+            }
+        }
+    });
+
+    // --- 敵の処理 ---
+    enemies.forEach((e, index) => {
+        e.vy += GRAVITY;
+        
+        if (!e.isFlipped) {
+            e.x += e.vx;
+        } else {
+            e.flippedTimer--;
+            if (e.flippedTimer <= 0) {
+                e.isFlipped = false; // 時間経過でもとに戻る
+                e.vx *= 1.2; // 怒ってスピードアップ
+            }
+        }
+        e.y += e.vy;
+
+        // 敵の画面端ループ
+        if (e.x < -e.w) e.x = canvas.width;
+        if (e.x > canvas.width) e.x = -e.w;
+
+        // 敵と床の着地判定
+        enemiesGrounded = false;
+        platforms.forEach(p => {
+            if (e.x + e.w > p.x && e.x < p.x + p.w) {
+                if (e.vy >= 0 && e.y + e.h >= p.y && e.y + e.h <= p.y + e.vy + 4) {
+                    e.y = p.y - e.h;
+                    e.vy = 0;
+                }
+            }
+        });
+
+        // プレイヤーと敵の接触判定
+        if (player.x + player.w > e.x && player.x < e.x + e.w &&
+            player.y + player.h > e.y && player.y < e.y + e.h) {
+            
+            if (e.isFlipped) {
+                // ひっくり返っている敵を蹴る（倒す）
+                enemies.splice(index, 1);
+                score += 100;
+                document.getElementById('score-val').innerText = score;
+            } else {
+                // 通常状態の敵に触れたらゲームオーバー
+                isGameOver = true;
+                document.getElementById('gameover-overlay').style.display = 'flex';
+            }
+        }
+    });
+
+    draw();
+    requestAnimationFrame(update);
+}
+
+// 描画処理
+function draw() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    // 床の描画
+    platforms.forEach(p => {
+        ctx.fillStyle = p.type === 'ground' ? '#0066ff' : '#ff9933';
+        
+        // 下から叩かれた床を少し上にずらして描画するエフェクト
+        let yOffset = 0;
+        if (p.hitTimer > 0) {
+            yOffset = -4;
+        }
+        ctx.fillRect(p.x, p.y + yOffset, p.w, p.h);
+    });
+
+    // 敵の描画
+    enemies.forEach(e => {
+        ctx.fillStyle = e.isFlipped ? '#ffeb3b' : e.color; // ひっくり返ると黄色に
+        ctx.fillRect(e.x, e.y, e.w, e.h);
+        
+        // 目をつける
+        ctx.fillStyle = '#000';
+        if (e.isFlipped) {
+            ctx.fillRect(e.x + 2, e.y + e.h - 6, 2, 2);
+            ctx.fillRect(e.x + e.w - 4, e.y + e.h - 6, 2, 2);
+        } else {
+            ctx.fillRect(e.x + 2, e.y + 2, 2, 2);
+            ctx.fillRect(e.x + e.w - 4, e.y + 2, 2, 2);
+        }
+    });
+
+    // プレイヤーの描画（マリオ）
+    ctx.fillStyle = player.color;
+    ctx.fillRect(player.x, player.y, player.w, player.h);
+    // 帽子風のアクセント
+    ctx.fillStyle = '#fff';
+    ctx.fillRect(player.x, player.y, player.w, 4);
+}
+
+// キーボード操作（PC用）
+document.addEventListener('keydown', e => {
+    if (e.key === 'ArrowLeft' || e.key === 'a') keys.left = true;
+    if (e.key === 'ArrowRight' || e.key === 'd') keys.right = true;
+    if ((e.key === 'ArrowUp' || e.key === 'w' || e.key === ' ') && player.isGrounded) {
+        player.vy = -7.5; // ジャンプ
+    }
+});
+document.addEventListener('keyup', e => {
+    if (e.key === 'ArrowLeft' || e.key === 'a') keys.left = false;
+    if (e.key === 'ArrowRight' || e.key === 'd') keys.right = false;
+});
+
+// スマホ用タッチボタン設定
+const setupBtn = (id, startAction, endAction) => {
+    const btn = document.getElementById(id);
+    btn.addEventListener('touchstart', e => { e.preventDefault(); startAction(); }, {passive: false});
+    btn.addEventListener('touchend', e => { e.preventDefault(); endAction(); }, {passive: false});
+};
+
+const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+if (isTouchDevice) {
+    document.getElementById('left-pad').style.display = 'block';
+    document.getElementById('right-pad').style.display = 'block';
+    document.body.addEventListener('touchmove', e => e.preventDefault(), {passive: false});
+}
+
+setupBtn('btn-left', () => keys.left = true, () => keys.left = false);
+setupBtn('btn-right', () => keys.right = true, () => keys.right = false);
+setupBtn('btn-jump', () => { if(player.isGrounded) player.vy = -7.5; }, () => {});
+
+// ゲームスタート
+resetGame();
+update();
+</script>
+</body>
+</html>
