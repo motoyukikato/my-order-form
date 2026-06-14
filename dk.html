@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Retro Kong - HARD MODE</title>
+    <title>Retro Kong - HARD MODE Fixed</title>
     <style>
         * { box-sizing: border-box; }
         body {
@@ -29,7 +29,6 @@
         #game-container { position: relative; border: 4px solid #ff1744; background-color: #000; }
         canvas { display: block; max-height: calc(100vh - 120px); max-width: calc(100vw - 300px); object-fit: contain; }
         
-        /* コントローラー */
         .pad-cluster { display: block; width: 130px; height: 100px; position: relative; flex-shrink: 0; }
         .ctrl-btn {
             position: absolute; background: #333; border: 2px solid #fff; color: #fff;
@@ -91,7 +90,6 @@ let score = 0;
 let isGameOver = false;
 const keys = { left: false, right: false, jump: false };
 
-// 🔴 プレイヤーの移動速度を少しだけ制限（難易度アップ）
 const player = {
     x: 40, y: 320,
     w: 20, h: 20,
@@ -102,13 +100,19 @@ const player = {
 };
 
 let barrels = [];
+let barrelInterval = null; // タイマー管理用の変数をここに用意
+
+function startSpawnTimer() {
+    // 既存のタイマーがあれば一度消す（二重起動防止）
+    if (barrelInterval) clearInterval(barrelInterval);
+    // 1.7秒に1回、樽を出現させる
+    barrelInterval = setInterval(spawnBarrel, 1700);
+}
+
 function spawnBarrel() {
     if (isGameOver) return;
-    // 🔴 樽の初期速度を 1.7 -> 2.6 にスピードアップ！
     barrels.push({ x: 100, y: 75, r: 7, vx: 2.6, vy: 0 });
 }
-// 🔴 出現間隔を 3500ms -> 1700ms に大幅短縮（怒涛のラッシュ）
-let barrelInterval = setInterval(spawnBarrel, 1700);
 
 const platforms = [
     { x: 0,   y: 340, w: 400, h: 10 }, 
@@ -178,6 +182,9 @@ function resetGame() {
     barrels = [];
     isGameOver = false;
     document.getElementById('gameover-overlay').style.display = 'none';
+    
+    // ⚙️ リセット時に新しくきれいなタイマーを再始動
+    startSpawnTimer();
 }
 
 function update() {
@@ -204,7 +211,6 @@ function update() {
             player.vy = 0;
         }
     } else {
-        // 🔴 プレイヤーの最高速度を2.0 -> 1.7に抑え、より精密な操作を要求
         if (keys.left) { player.vx = -1.7; player.dir = -1; }
         else if (keys.right) { player.vx = 1.7; player.dir = 1; }
         else { player.vx *= 0.6; }
@@ -244,13 +250,12 @@ function update() {
             }
         });
 
-        // 壁バウンド時の速度もハード仕様に維持
         if (b.x - b.r < 0) { b.vx = 2.6; }
         if (b.x + b.r > canvas.width) { b.vx = -2.6; }
 
         if (b.y > canvas.height) {
             barrels.splice(index, 1);
-            score += 20; // 危険度が高いので、かわした時のスコアを2倍に！
+            score += 20; 
             document.getElementById('score-val').innerText = score;
         }
 
@@ -271,6 +276,10 @@ function update() {
 
 function endGame(isWin) {
     isGameOver = true;
+    
+    // ⚙️ ゲームオーバー時に裏の樽出現タイマーを完全にストップさせる
+    if (barrelInterval) clearInterval(barrelInterval);
+    
     const title = document.getElementById('game-result-title');
     if (isWin) {
         title.innerText = "👑 HARD MODE CLEAR!! 👑";
@@ -287,7 +296,7 @@ function draw() {
 
     // 足場
     platforms.forEach(p => {
-        ctx.fillStyle = '#ff1744'; // 危険を表す赤色の鉄骨に変更
+        ctx.fillStyle = '#ff1744'; 
         ctx.fillRect(p.x, p.y, p.w, p.h);
         ctx.fillStyle = '#000';
         for (let i = p.x + 5; i < p.x + p.w; i += 15) {
@@ -318,7 +327,7 @@ function draw() {
     ctx.fillStyle = '#ffeb3b';
     ctx.fillRect(260, 50, 16, 6);
 
-    // 樽（より危険そうに中心を赤く描画）
+    // 樽
     barrels.forEach(b => {
         ctx.fillStyle = '#d7a15c';
         ctx.beginPath();
@@ -333,7 +342,6 @@ function draw() {
     renderSprite(marioSprite, player.x, player.y, player.w, player.h, player.dir === -1);
 }
 
-// キー操作
 document.addEventListener('keydown', e => {
     if (e.key === 'ArrowLeft' || e.key === 'a') keys.left = true;
     if (e.key === 'ArrowRight' || e.key === 'd') keys.right = true;
@@ -372,6 +380,7 @@ setupBtn('btn-jump', () => {
     }
 }, () => {});
 
+// 最初のアニメーション開始前にタイマーを回す
 resetGame();
 update();
 </script>
