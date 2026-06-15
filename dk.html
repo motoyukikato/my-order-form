@@ -7,21 +7,21 @@
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
         
-        /* 📱 画面からはみ出さないための絶対防壁設定 */
+        /* 📱 画面からはみ出さないためのレイアウト */
         html, body {
             background: #06050c; color: #fff;
             font-family: 'SF Pro Display', -apple-system, sans-serif;
             overflow: hidden; 
-            width: 100%; height: 100%; /* 100vhではなく100%でブラウザのバーを回避 */
+            width: 100%; height: 100%;
             display: flex; flex-direction: column;
             touch-action: none; -webkit-user-select: none; user-select: none;
         }
 
-        /* 👑 高級感のある薄型タブバー */
+        /* 👑 薄型タブバー */
         #arcade-tabs {
             width: 100%; height: 50px; background: #0f0d1a;
             display: flex; border-bottom: 2px solid #262142; z-index: 100;
-            flex-shrink: 0; /* タブが潰れるのを防ぐ */
+            flex-shrink: 0;
         }
         .tab-btn {
             flex: 1; height: 100%; background: transparent; border: none;
@@ -31,24 +31,24 @@
         .tab-btn span { font-size: 16px; margin-bottom: 2px; }
         .tab-btn.active { color: #00e5ff; background: #161329; border-bottom: 3px solid #00e5ff; }
 
-        /* 📦 メインゲームコンテナ：残りの縦幅を綺麗に分け合う */
+        /* 📦 メインゲームコンテナ */
         .game-wrapper {
-            display: none; width: 100%; flex: 1; /* 残りの高さを全使用 */
+            display: none; width: 100%; flex: 1;
             position: relative; flex-direction: column; overflow: hidden;
         }
         .game-wrapper.active { display: flex; }
 
-        /* 🛠 画面フィット型キャンバス（自動で縮む） */
+        /* 🛠 フィット型キャンバス */
         .full-canvas {
             width: 100%; flex: 1; background: #000; display: block; min-height: 0;
         }
 
-        /* 🎮 操作ボタンエリア：画面最下部に絶対に固定 */
+        /* 🎮 操作ボタンエリア（絶対に潰れない設定） */
         .fullscreen-ctrl {
             width: 100%; height: 95px; background: #0c0a14;
             display: flex; justify-content: space-between; align-items: center;
             padding: 5px 15px; border-top: 1px solid #1f1a33;
-            flex-shrink: 0; /* ボタンが画面外に潰れるのを絶対阻止 */
+            flex-shrink: 0;
         }
         .ctrl-btn-dir {
             width: 70px; height: 70px; background: #1b172e; border: 2px solid #3d3566;
@@ -64,7 +64,7 @@
         }
         .ctrl-btn-act:active { transform: translateY(2px); box-shadow: 0 2px #b3002d; }
 
-        /* 🔢 フラッシュ計算専用 10キーボードUI（これも潰れないように固定） */
+        /* 🔢 フラッシュ計算専用 10キーボードUI */
         #math-keyboard {
             width: 100%; display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; padding: 6px; background: #0f0d1a;
             flex-shrink: 0;
@@ -89,6 +89,7 @@
             padding: 12px 35px; font-size: 15px; font-weight: bold; background: #00e5ff;
             color: #000; border: none; border-radius: 25px; cursor: pointer; box-shadow: 0 4px #0099aa;
         }
+        .overlay-action-btn:active { transform: translateY(2px); box-shadow: 0 2px #0099aa; }
     </style>
 </head>
 <body>
@@ -127,7 +128,7 @@
             <div class="overlay-score">SCORE: <span id="puz-score-text">0</span></div>
             <button class="overlay-action-btn" onclick="resetPuz()">RESTART</button>
         </div>
-        </div>
+    </div>
 
     <div id="game-math" class="game-wrapper">
         <canvas id="mathCanvas" class="full-canvas"></canvas>
@@ -190,7 +191,16 @@ function switchGame(gameId) {
     activeGame = gameId;
     document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
     document.querySelectorAll('.game-wrapper').forEach(wrap => wrap.classList.remove('active'));
-    event.currentTarget.classList.add('active');
+    
+    // イベント経由、または直接クラス付与
+    if(event && event.currentTarget) {
+        event.currentTarget.classList.add('active');
+    } else {
+        const btns = document.querySelectorAll('.tab-btn');
+        const idx = ['tetris','puzzle','math','invader','breakout'].indexOf(gameId);
+        if(idx !== -1) btns[idx].classList.add('active');
+    }
+    
     document.getElementById(`game-${gameId}`).classList.add('active');
 
     setTimeout(() => {
@@ -388,7 +398,7 @@ function systemEngineLoop() {
         if(tetNext) { tetNext.shape.forEach((row,r)=>{ row.forEach((v,c)=>{ if(v) { tetc.fillStyle=tetColors[tetNext.id]; tetc.fillRect(sideX+c*10, tYOff+75+r*10, 9, 9); } }); }); }
     }
 
-    // 2. パズル
+    // 2. パズル (★バグ修正箇所：8pxの文字混入を除去)
     if (activeGame === 'puzzle') {
         puzGems.forEach(g => g.update());
         let topCount = 0; puzGems.forEach(g=>{ if(g.isStatic && g.y < 80) topCount++; });
@@ -404,7 +414,7 @@ function systemEngineLoop() {
         });
         puzc.fillStyle="#fff"; puzc.font="bold 14px sans-serif"; puzc.textAlign="left"; puzc.fillText("SCORE: "+puzScore, 20, 30);
         puzc.fillStyle="rgba(255,255,255,0.4)"; puzc.fillText("NEXT:", puzCan.width-90, 30);
-        puzc.fillStyle = gemProfiles[puzNextIdx].c; puzc.beginPath(); puzc.arc(puzCan.width-25, 26, 8px, 0, Math.PI*2); puzc.fill();
+        puzc.fillStyle = gemProfiles[puzNextIdx].c; puzc.beginPath(); puzc.arc(puzCan.width-25, 26, 8, 0, Math.PI*2); puzc.fill();
     }
 
     // 3. フラッシュ計算
