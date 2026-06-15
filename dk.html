@@ -3,331 +3,480 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Retro Digital Pet</title>
+    <title>My Retro Game Arcade 6-in-1</title>
     <style>
         * { box-sizing: border-box; }
         body {
-            background: #f0f4f8;
-            color: #333;
-            font-family: 'Courier New', 'Courier', monospace;
+            background: #0b0914;
+            color: #fff;
+            font-family: 'Helvetica Neue', Arial, sans-serif;
             margin: 0; padding: 0;
             overflow: hidden;
             width: 100vw; height: 100vh;
             display: flex; flex-direction: column;
-            align-items: center; justify-content: center;
             touch-action: none; -webkit-user-select: none; user-select: none;
         }
-        /* たまごっち風の本体外殻 */
-        #pet-shell {
-            width: 320px; height: 420px;
-            background: radial-gradient(circle, #ff7675, #d63031);
-            border: 12px solid #b2bec3;
-            border-radius: 140px 140px 160px 160px;
-            box-shadow: 0 15px 30px rgba(0,0,0,0.3), inset 0 -10px 20px rgba(0,0,0,0.4);
-            display: flex; flex-direction: column;
-            align-items: center; justify-content: flex-start;
-            padding-top: 40px; position: relative;
-        }
-        /* 液晶画面の枠 */
-        #screen-frame {
-            width: 220px; height: 180px;
-            background: #dfe6e9;
-            border: 8px solid #636e72;
-            border-radius: 20px;
-            display: flex; flex-direction: column;
-            padding: 8px; position: relative;
-        }
-        /* ドット絵風の液晶画面 */
-        #lcd-screen {
-            flex: 1; background: #b2bec3; /* グレー液晶風 */
-            border: 3px solid #74b9ff; border-radius: 4px;
-            position: relative; overflow: hidden;
-            box-shadow: inset 3px 3px 5px rgba(0,0,0,0.2);
-        }
-        /* ステータスバー */
-        #status-bar {
-            display: flex; justify-content: space-between;
-            font-size: 11px; font-weight: bold; color: #2d3436;
-            padding: 2px; border-bottom: 1px dashed #636e72;
-        }
-        /* メインキャンバス */
-        canvas { display: block; width: 100%; height: calc(100% - 20px); }
 
-        /* 物理ボタン（3つの丸ボタン） */
-        #button-container {
-            width: 100%; display: flex; justify-content: center; gap: 30px; margin-top: 40px;
+        /* 👑 ゲーム選択タブのエリア */
+        #arcade-tabs {
+            width: 100%; height: 50px;
+            background: #151226;
+            display: flex; justify-content: flex-start;
+            border-bottom: 3px solid #3d3473;
+            overflow-x: auto; /* 6つあるのでスマホ等では横スクロール可能に */
+            white-space: nowrap;
+            z-index: 100;
+            -webkit-overflow-scrolling: touch;
         }
-        .hw-btn {
-            width: 50px; height: 50px; background: #fdcb6e;
-            border: 4px solid #e17055; border-radius: 50%;
-            box-shadow: 0 6px #d63031, inset 0 2px 4px rgba(255,255,255,0.4);
-            cursor: pointer; display: flex; flex-direction: column; align-items: center; justify-content: center;
-            font-size: 11px; font-weight: bold; color: #fff; text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
-        }
-        .hw-btn:active {
-            transform: translateY(4px); box-shadow: 0 2px #d63031;
-        }
+        #arcade-tabs::-webkit-scrollbar { display: none; } /* スクロールバーは非表示 */
         
-        /* イベント通知オーバーレイ */
-        #notify-text {
-            position: absolute; bottom: 35px; color: #d63031;
-            font-size: 14px; font-weight: bold; background: rgba(255,255,255,0.8);
-            padding: 4px 12px; border-radius: 10px; border: 2px solid #d63031;
-            display: none; animation: blink 1s infinite;
+        .tab-btn {
+            flex: 1; min-width: 70px; height: 100%;
+            background: #1a1633; border: none; color: #82b1ff;
+            font-size: 11px; font-weight: bold; cursor: pointer;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            border-right: 1px solid #252047; transition: 0.2s;
+            padding: 0 5px;
         }
-        @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
+        .tab-btn span { font-size: 15px; margin-bottom: 2px; }
+        .tab-btn:hover { background: #252047; }
+        .tab-btn.active {
+            background: #3d3473; color: #fff;
+            border-bottom: 3px solid #ff1744;
+        }
+
+        /* 📦 ゲームを表示するコンテナ */
+        .game-wrapper {
+            display: none; width: 100%; flex: 1;
+            position: relative; flex-direction: column;
+            align-items: center; justify-content: center;
+            padding: 10px;
+        }
+        .game-wrapper.active { display: flex; }
+
+        /* --- 共通スタイル（コントローラーやオーバーレイ） --- */
+        .pad-cluster { display: block; width: 80px; height: 80px; position: relative; flex-shrink: 0; }
+        .ctrl-btn { position: absolute; background: #333; border: 2px solid #fff; color: #fff; width: 45px; height: 45px; display: flex; align-items: center; justify-content: center; font-size: 20px; font-weight: bold; border-radius: 8px; }
+        .overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: none; flex-direction: column; align-items: center; justify-content: center; background: rgba(0,0,0,0.85); z-index: 10; }
+        .overlay-title { font-size: 28px; font-weight: bold; margin-bottom: 15px; text-align: center; }
+        .overlay-btn { background: #222; border: 2px solid #fff; padding: 10px 20px; border-radius: 5px; cursor: pointer; font-weight: bold; }
+
+        /* 1. ドンキーコング風 */
+        #dk-top-bar { width: 100%; max-width: 400px; display: flex; justify-content: space-between; font-weight: bold; font-size: 15px; margin-bottom: 5px; }
+        #dk-layout { display: flex; width: 100%; max-width: 600px; align-items: center; justify-content: center; gap: 10px; }
+        #btn-left { left: 0; top: 15px; } #btn-right { right: 0; top: 15px; }
+        #btn-jump { right: 0; top: 15px; width: 55px; height: 55px; border-radius: 50%; background: #ff1744; font-size: 11px; }
+
+        /* 2. 連鎖パズル */
+        #puz-panel { width: 100%; max-width: 320px; height: 35px; display: flex; justify-content: space-between; align-items: center; font-weight: bold; font-size: 15px; }
+
+        /* 3. たまごっち風 */
+        #pet-shell { width: 280px; height: 360px; background: radial-gradient(circle, #ff7675, #d63031); border: 10px solid #b2bec3; border-radius: 120px 120px 140px 140px; display: flex; flex-direction: column; align-items: center; padding-top: 25px; box-shadow: inset 0 -10px 20px rgba(0,0,0,0.4); }
+        #screen-frame { width: 190px; height: 150px; background: #dfe6e9; border: 6px solid #636e72; border-radius: 15px; display: flex; flex-direction: column; padding: 5px; }
+        #lcd-screen { flex: 1; background: #b2bec3; border: 2px solid #74b9ff; border-radius: 4px; overflow: hidden; position: relative; }
+        #status-bar { display: flex; justify-content: space-between; font-size: 10px; font-weight: bold; color: #2d3436; padding: 2px; border-bottom: 1px dashed #636e72; }
+        #button-container { width: 100%; display: flex; justify-content: center; gap: 15px; margin-top: 25px; }
+        .hw-btn { width: 45px; height: 45px; background: #fdcb6e; border: 3px solid #e17055; border-radius: 50%; box-shadow: 0 4px #d63031; cursor: pointer; display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: 9px; font-weight: bold; color: #fff; }
+        .hw-btn:active { transform: translateY(2px); box-shadow: 0 2px #d63031; }
+        #notify-text { position: absolute; bottom: 10px; color: #d63031; font-size: 12px; font-weight: bold; background: rgba(255,255,255,0.8); padding: 2px 8px; border-radius: 5px; display: none; }
+
+        /* 4. フラッシュ計算 */
+        #math-box { width: 100%; max-width: 320px; height: 400px; background: #34495e; border: 4px solid #1abc9c; border-radius: 15px; display: flex; flex-direction: column; padding: 15px; position: relative; }
+        #math-header { display: flex; justify-content: space-between; font-weight: bold; font-size: 14px; color: #1abc9c; margin-bottom: 5px; }
+        #math-display { flex: 1; background: #2c3e50; border-radius: 10px; display: flex; flex-direction: column; align-items: center; justify-content: center; border: 2px solid #7f8c8d; }
+        #math-input-area { margin-top: 15px; display: none; flex-direction: column; gap: 8px; width: 100%; }
+        #answer-input { width: 100%; height: 45px; background: #fff; border: none; border-radius: 8px; font-size: 22px; font-weight: bold; text-align: center; color: #333; outline: none; }
+        .math-btn { width: 100%; height: 40px; background: #1abc9c; border: none; color: #fff; font-size: 16px; font-weight: bold; border-radius: 8px; cursor: pointer; box-shadow: 0 3px #16a085; }
+        .math-lvl-screen { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: #34495e; padding: 20px; display: flex; flex-direction: column; gap: 10px; z-index: 10; border-radius: 11px; }
+        .math-lvl-btn { background: #2980b9; height: 45px; font-size: 14px; color: #fff; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; text-align: left; padding-left: 15px; }
+        .math-lvl-btn span { font-size: 10px; color: #bdc3c7; font-weight: normal; display: block; }
+
+        /* 5. インベーダー */
+        #inv-top-bar { width: 100%; max-width: 320px; display: flex; justify-content: space-between; font-weight: bold; font-size: 14px; margin-bottom: 5px; }
+        #inv-ctrl-panel { width: 100%; max-width: 320px; height: 65px; display: flex; justify-content: space-between; align-items: center; background: #111; padding: 0 10px; border-radius: 8px; margin-top: 5px; }
+        #btn-inv-fire { width: 70px; height: 45px; background: #ff1744; border: 2px solid #fff; font-size: 12px; border-radius: 20px; color: #fff; font-weight: bold; }
+
+        /* 6. ブロック崩し (NEW!) */
+        #brk-top-bar { width: 100%; max-width: 320px; display: flex; justify-content: space-between; font-weight: bold; font-size: 14px; margin-bottom: 5px; }
+        #brk-ctrl-panel { width: 100%; max-width: 320px; height: 65px; display: flex; justify-content: center; background: #111; padding: 0 10px; border-radius: 8px; margin-top: 5px; gap: 40px; }
     </style>
 </head>
 <body>
 
-    <div id="pet-shell">
-        <div id="screen-frame">
-            <div id="lcd-screen">
-                <div id="status-bar">
-                    <div>🍖<span id="hunger-ui">3</span></div>
-                    <div>❤️<span id="happy-ui">3</span></div>
-                    <div>LV:<span id="level-ui">0</span></div>
+    <div id="arcade-tabs">
+        <button class="tab-btn active" onclick="switchGame('dk')"><span>🦍</span>コング</button>
+        <button class="tab-btn" onclick="switchGame('puzzle')"><span>💥</span>パズル</button>
+        <button class="tab-btn" onclick="switchGame('pet')"><span>🐣</span>ペット</button>
+        <button class="tab-btn" onclick="switchGame('math')"><span>⚡</span>フラッシュ</button>
+        <button class="tab-btn" onclick="switchGame('invader')"><span>🛸</span>インベ</button>
+        <button class="tab-btn" onclick="switchGame('breakout')"><span>🧱</span>ブロック</button>
+    </div>
+
+    <div id="game-dk" class="game-wrapper active">
+        <div id="dk-top-bar"><div>SCORE: <span id="dk-score-val">0</span></div><div style="color:#ff1744; font-size:11px;">HARD MODE</div></div>
+        <div id="dk-layout">
+            <div class="pad-cluster"><div class="ctrl-btn" id="btn-left">←</div><div class="ctrl-btn" id="btn-right">→</div></div>
+            <div style="position:relative;">
+                <canvas id="dkCanvas" style="background:#000; border:2px solid #ff1744;"></canvas>
+                <div id="dk-overlay" class="overlay" onclick="resetDk()"><div id="dk-result-title" class="overlay-title" style="color:#ff1744;">GAME OVER</div><div class="overlay-btn">もう一度挑戦</div></div>
+            </div>
+            <div class="pad-cluster"><div class="ctrl-btn" id="btn-jump">JUMP</div></div>
+        </div>
+    </div>
+
+    <div id="game-puzzle" class="game-wrapper">
+        <div id="puz-panel"><div>SCORE: <span id="puz-score-val">0</span></div><div id="puz-combo-alert" style="color:#ffeb3b;"></div></div>
+        <div style="position:relative; width:100%; max-width:320px;">
+            <canvas id="puzCanvas" style="background:#000; border:2px solid #3d3473;"></canvas>
+            <div id="puz-overlay" class="overlay" onclick="resetPuz()"><div class="overlay-title" style="color:#ff1744;">GAME OVER</div><div style="margin-bottom:15px;">SCORE: <span id="puz-final-score">0</span></div><div class="overlay-btn">NEXT TRY</div></div>
+        </div>
+    </div>
+
+    <div id="game-pet" class="game-wrapper">
+        <div id="pet-shell">
+            <div id="screen-frame">
+                <div id="lcd-screen">
+                    <div id="status-bar"><div>🍖<span id="hunger-ui">3</span></div><div>❤️<span id="happy-ui">3</span></div><div>LV:<span id="level-ui">0</span></div></div>
+                    <canvas id="petCanvas"></canvas>
                 </div>
-                <canvas id="petCanvas"></canvas>
+            </div>
+            <div id="button-container">
+                <div class="hw-btn" onclick="feedPet()"><span>🍖</span>ごはん</div>
+                <div class="hw-btn" onclick="playPet()"><span>🧸</span>遊ぶ</div>
+                <div class="hw-btn" onclick="cleanPet()"><span>🧹</span>掃除</div>
+            </div>
+            <div id="notify-text">通知あり</div>
+        </div>
+    </div>
+
+    <div id="game-math" class="game-wrapper">
+        <div id="math-box">
+            <div id="math-header"><div>正解数: <span id="math-score-val">0</span></div><div id="math-combo-tag" style="color:#f1c40f;"></div></div>
+            <div id="math-display">
+                <div id="math-flash-number" style="font-size:60px; font-weight:900; display:none;">0</div>
+                <div id="math-status" style="font-size:18px; text-align:center; font-weight:bold;">レベルを選んでね</div>
+            </div>
+            <div id="math-input-area">
+                <input type="text" id="answer-input" inputmode="numeric" pattern="[0-9]*" placeholder="答えは？">
+                <button class="math-btn" onclick="checkMathAnswer()">こたえあわせ</button>
+            </div>
+            <div id="math-lvl-screen" class="math-lvl-screen">
+                <div style="font-size:18px; font-weight:bold; text-align:center; color:#1abc9c; margin-bottom:5px;">フラッシュ計算</div>
+                <button class="math-lvl-btn" onclick="startMath('easy')">🟢 かんたん <span>1けた/3つの数字</span></button>
+                <button class="math-lvl-btn" onclick="startMath('normal')">🟡 ふつう <span>2けた/3つの数字</span></button>
+                <button class="math-lvl-btn" onclick="startMath('hard')">🔴 むずかしい <span>2けた/4つの数字(+-交ぜ)</span></button>
             </div>
         </div>
+    </div>
 
-        <div id="button-container">
-            <div class="hw-btn" onclick="feedPet()"><span>🍖</span>ごはん</div>
-            <div class="hw-btn" onclick="playPet()"><span>🧸</span>遊ぶ</div>
-            <div class="hw-btn" onclick="cleanPet()"><span>🧹</span>掃除</div>
+    <div id="game-invader" class="game-wrapper">
+        <div id="inv-top-bar"><div>SCORE: <span id="inv-score-val">0</span></div><div>STAGE: <span id="inv-stage-val">1</span></div></div>
+        <div style="position:relative; width:100%; max-width:320px;">
+            <canvas id="invCanvas" style="background:#000; border:2px solid #333;"></canvas>
+            <div id="inv-overlay" class="overlay" onclick="handleInvOverlayClick()"><div id="inv-title" class="overlay-title" style="color:#00e676;">INVADERS</div><div id="inv-sub" style="margin-bottom:15px; color:#aaa;">タップしてスタート</div><div class="overlay-btn" id="inv-btn-text">START</div></div>
         </div>
-        
-        <div id="notify-text">通知あり</div>
+        <div id="inv-ctrl-panel">
+            <div style="display:flex; gap:10px;"><div class="ctrl-btn" style="position:static;" id="btn-inv-left">←</div><div class="ctrl-btn" style="position:static;" id="btn-inv-right">→</div></div>
+            <button id="btn-inv-fire">FIRE</button>
+        </div>
+    </div>
+
+    <div id="game-breakout" class="game-wrapper">
+        <div id="brk-top-bar"><div>SCORE: <span id="brk-score-val">0</span></div><div style="color:#e91e63;">BLOCK CRASH</div></div>
+        <div style="position:relative; width:100%; max-width:320px;">
+            <canvas id="brkCanvas" style="background:#050510; border:2px solid #e91e63;"></canvas>
+            <div id="brk-overlay" class="overlay" onclick="resetBrk()"><div id="brk-title" class="overlay-title" style="color:#ff1744;">GAME OVER</div><div class="overlay-btn">もう一度あそぶ</div></div>
+        </div>
+        <div id="brk-ctrl-panel">
+            <div class="ctrl-btn" style="position:static;" id="btn-brk-left">←</div>
+            <div class="ctrl-btn" style="position:static;" id="btn-brk-right">→</div>
+        </div>
     </div>
 
 <script>
-const canvas = document.getElementById('petCanvas');
-const ctx = canvas.getContext('2d');
-canvas.width = 200;
-canvas.height = 135;
+// ==================== 👑 タブ切り替え管理コア ====================
+let activeGame = 'dk';
+function switchGame(gameId) {
+    activeGame = gameId;
+    
+    document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+    document.querySelectorAll('.game-wrapper').forEach(wrap => wrap.classList.remove('active'));
+    
+    event.currentTarget.classList.add('active');
+    document.getElementById(`game-${gameId}`).classList.add('active');
 
-// ペットのステータス
-let pet = {
-    x: 80, y: 65,
-    w: 40, h: 40,
-    hunger: 3,  // 満腹度 (最大5)
-    happy: 3,   // ごきげん (最大5)
-    level: 0,   // 成長レベル (0:たまご, 1:幼生, 2:反抗期, 3:成体)
-    age: 0,     // 年齢/経過時間
-    hasPoop: false,
-    action: "idle", // idle, eat, play, sleep
-    actionTimer: 0
-};
+    // タブ切り替え時のリセット処理
+    if (gameId === 'dk') resetDk();
+    if (gameId === 'puzzle') resetPuz();
+    if (gameId === 'pet') updatePetUI();
+    if (gameId === 'math') resetMathMode();
+    if (gameId === 'invader') { invGameState = "START"; showInvOverlay("SPACE INVADERS", "タップしてスタート", "START"); }
+    if (gameId === 'breakout') resetBrk();
+}
 
-// ドット絵カラー定義 (液晶の黒、うっすらハイライト)
-const C_BLACK = "#2d3436";
-const C_BG = "#b2bec3";
+// ==================== 1. ドンキーコング風ロジック ====================
+const dkCan = document.getElementById('dkCanvas'); const dkc = dkCan.getContext('2d');
+dkCan.width = 300; dkCan.height = 250;
+let dkScore = 0; let dkOver = false; let dkInterval = null; const dkKeys = { left: false, right: false };
+const dkPlayer = { x: 30, y: 220, w: 14, h: 14, vx: 0, vy: 0, isGrounded: false, isOnLadder: false, dir: 1 };
+let dkBarrels = [];
+const dkPlatforms = [{ x: 0, y: 235, w: 300, h: 8 }, { x: 0, y: 185, w: 250, h: 8 }, { x: 50, y: 135, w: 250, h: 8 }, { x: 0, y: 85, w: 250, h: 8 }];
+const dkLadders = [{ x: 220, y: 185, w: 12, h: 50 }, { x: 70, y: 135, w: 12, h: 50 }, { x: 210, y: 85, w: 12, h: 50 }];
 
-// --- ドット絵データ（10x10マス） ---
-const sprites = {
-    // 0: たまご
-    0: [
-        [".",".",".","X","X","X","X",".",".","."],
-        [".",".","X","X",".",".","X","X",".","."],
-        [".","X","X",".",".",".",".","X","X","."],
-        [".","X",".",".",".",".",".",".","X","."],
-        ["X","X",".",".",".",".",".",".","X","X"],
-        ["X","X",".",".",".",".",".",".","X","X"],
-        ["X",".",".",".",".",".",".",".",".","X"],
-        [".","X",".",".",".",".",".",".","X","."],
-        [".","X","X",".",".",".",".","X","X","."],
-        [".",".",".","X","X","X","X",".",".","."]
-    ],
-    // 1: 赤ちゃんベイビー
-    1: [
-        [".",".",".","X","X","X","X",".",".","."],
-        [".",".","X",".",".",".",".","X",".","."],
-        [".","X",".","X",".",".","X",".","X","."],
-        [".","X",".",".",".",".",".",".","X","."],
-        ["X",".",".",".",".",".",".",".",".","X"],
-        ["X",".","X",".",".",".",".","X",".","X"],
-        ["X",".",".","X","X","X","X",".",".","X"],
-        [".","X",".",".",".",".",".",".","X","."],
-        [".",".","X","X",".",".","X","X",".","."],
-        [".",".",".",".","X","X",".",".",".","."]
-    ],
-    // 2: こどもキッズ
-    2: [
-        [".",".","X","X",".",".","X","X",".","."],
-        [".","X",".",".","X","X",".",".","X","."],
-        ["X",".",".",".",".",".",".",".",".","X"],
-        ["X",".","X",".",".",".",".","X",".","X"],
-        ["X",".",".",".",".",".",".",".",".","X"],
-        ["X","X","X",".","X","X",".","X","X","X"],
-        [".",".","X",".",".",".",".","X",".","."],
-        [".",".","X",".",".",".",".","X",".","."],
-        [".","X",".",".",".",".",".",".","X","."],
-        [".","X","X","X",".",".","X","X","X","."]
-    ],
-    // 3: おとな（完成体）
-    3: [
-        [".",".","X","X","X","X","X","X",".","."],
-        [".","X",".",".",".",".",".",".","X","."],
-        ["X",".","X",".",".",".",".","X",".","X"],
-        ["X",".",".",".",".",".",".",".",".","X"],
-        ["X",".","X",".",".",".",".","X",".","X"],
-        ["X",".",".","X","X","X","X",".",".","X"],
-        [".","X",".",".",".",".",".",".","X","."],
-        [".",".","X","X","X","X","X","X",".","."],
-        [".",".","X",".",".",".",".","X",".","."],
-        [".","X","X",".",".",".",".","X","X","."]
-    ],
-    // うんちのドット絵
-    "poop": [
-        [".",".",".",".","X","X",".",".",".","."],
-        [".",".",".","X",".",".","X",".",".","."],
-        [".",".","X",".",".",".",".","X",".","."],
-        [".","X","X","X","X","X","X","X","X","."],
-        ["X",".",".",".",".",".",".",".",".","X"],
-        ["X",".","X",".",".",".",".","X",".","X"],
-        ["X","X","X","X","X","X","X","X","X","X"],
-        [".",".",".",".",".",".",".",".",".","."],
-        [".",".",".",".",".",".",".",".",".","."],
-        [".",".",".",".",".",".",".",".",".","."]
-    ]
-};
+function startDkTimer() { if (dkInterval) clearInterval(dkInterval); dkInterval = setInterval(() => { if(!dkOver && activeGame==='dk') dkBarrels.push({ x: 80, y: 40, r: 5, vx: 1.8, vy: 0 }); }, 2000); }
+function resetDk() { dkScore = 0; document.getElementById('dk-score-val').innerText = dkScore; dkPlayer.x = 30; dkPlayer.y = 220; dkPlayer.vx = 0; dkPlayer.vy = 0; dkPlayer.isOnLadder = false; dkBarrels = []; dkOver = false; document.getElementById('dk-overlay').style.display = 'none'; startDkTimer(); }
+function updateDk() {
+    if (activeGame !== 'dk' || dkOver) return;
+    let touch = null; dkLadders.forEach(l => { if (dkPlayer.x + dkPlayer.w > l.x && dkPlayer.x < l.x + l.w && dkPlayer.y + dkPlayer.h >= l.y && dkPlayer.y <= l.y + l.h) touch = l; });
+    if (!touch) dkPlayer.isOnLadder = false;
+    if (dkPlayer.isOnLadder) { dkPlayer.vx = 0; dkPlayer.vy = -1.6; dkPlayer.y += dkPlayer.vy; if (touch && dkPlayer.y + dkPlayer.h <= touch.y + 4) { dkPlayer.y = touch.y - dkPlayer.h; dkPlayer.isOnLadder = false; dkPlayer.vy = 0; } } 
+    else { if (dkKeys.left) { dkPlayer.vx = -1.4; dkPlayer.dir = -1; } else if (dkKeys.right) { dkPlayer.vx = 1.4; dkPlayer.dir = 1; } else { dkPlayer.vx *= 0.6; } dkPlayer.vy += 0.3; dkPlayer.x += dkPlayer.vx; dkPlayer.y += dkPlayer.vy; }
+    if (dkPlayer.x < 0) dkPlayer.x = 0; if (dkPlayer.x > dkCan.width - dkPlayer.w) dkPlayer.x = dkCan.width - dkPlayer.w;
+    if (!dkPlayer.isOnLadder) { dkPlayer.isGrounded = false; dkPlatforms.forEach(p => { if (dkPlayer.x + dkPlayer.w > p.x && dkPlayer.x < p.x + p.w) { if (dkPlayer.vy >= 0 && dkPlayer.y + dkPlayer.h >= p.y && dkPlayer.y + dkPlayer.h <= p.y + dkPlayer.vy + 4) { dkPlayer.y = p.y - dkPlayer.h; dkPlayer.vy = 0; dkPlayer.isGrounded = true; } } }); }
+    dkBarrels.forEach((b, idx) => { b.vy += 0.25; b.x += b.vx; b.y += b.vy; dkPlatforms.forEach(p => { if (b.x + b.r > p.x && b.x - b.r < p.x + p.w) { if (b.vy >= 0 && b.y + b.r >= p.y && b.y + b.r <= p.y + b.vy + 4) { b.y = p.y - b.r; b.vy = 0; } } }); if (b.x - b.r < 0) b.vx = 1.8; if (b.x + b.r > dkCan.width) b.vx = -1.8; if (b.y > dkCan.height) { dkBarrels.splice(idx, 1); dkScore += 20; document.getElementById('dk-score-val').innerText = dkScore; } if (Math.abs(b.x - (dkPlayer.x + dkPlayer.w/2)) < (dkPlayer.w/2 + b.r - 1) && Math.abs(b.y - (dkPlayer.y + dkPlayer.h/2)) < (dkPlayer.h/2 + b.r - 1)) endDk(false); });
+    if (dkPlayer.y < 85 && dkPlayer.x > 200) endDk(true);
+}
+function endDk(win) { dkOver = true; if (dkInterval) clearInterval(dkInterval); const t = document.getElementById('dk-result-title'); t.innerText = win ? "👑 CLEAR!! 👑" : "GAME OVER 🦍"; t.style.color = win ? "#ffeb3b" : "#ff1744"; document.getElementById('dk-overlay').style.display = 'flex'; }
+function drawDk() {
+    dkc.clearRect(0,0,dkCan.width,dkCan.height); dkPlatforms.forEach(p => { dkc.fillStyle = '#ff1744'; dkc.fillRect(p.x, p.y, p.w, p.h); });
+    dkLadders.forEach(l => { dkc.strokeStyle = '#00e676'; dkc.lineWidth = 2; dkc.strokeRect(l.x, l.y, l.w, l.h); });
+    dkc.fillStyle = '#795548'; dkc.fillRect(40, 15, 20, 20); dkc.fillStyle = '#ff4081'; dkc.fillRect(220, 65, 12, 20);
+    dkBarrels.forEach(b => { dkc.fillStyle = '#d7a15c'; dkc.beginPath(); dkc.arc(b.x, b.y, b.r, 0, Math.PI*2); dkc.fill(); });
+    dkc.fillStyle = '#00b0ff'; dkc.fillRect(dkPlayer.x, dkPlayer.y, dkPlayer.w, dkPlayer.h);
+}
+const setDkBtn = (id, s, e) => { const b = document.getElementById(id); b.addEventListener('touchstart', ev => { ev.preventDefault(); s(); }, {passive:false}); b.addEventListener('touchend', ev => { ev.preventDefault(); e(); }, {passive:false}); b.addEventListener('mousedown', () => s()); b.addEventListener('mouseup', () => e()); b.addEventListener('mouseleave', () => e()); };
+setDkBtn('btn-left', () => dkKeys.left = true, () => dkKeys.left = false); setDkBtn('btn-right', () => dkKeys.right = true, () => dkKeys.right = false);
+setDkBtn('btn-jump', () => { let ol = dkLadders.some(l => dkPlayer.x + dkPlayer.w > l.x && dkPlayer.x < l.x + l.w && dkPlayer.y + dkPlayer.h >= l.y && dkPlayer.y <= l.y + l.h); if (ol) dkPlayer.isOnLadder = true; else if (dkPlayer.isGrounded) dkPlayer.vy = -5.2; }, () => {});
 
-// ドット絵を描画する関数
-function drawSprite(sprite, x, y, size) {
-    const pSize = size / 10;
-    for (let r = 0; r < 10; r++) {
-        for (let c = 0; c < 10; c++) {
-            if (sprite[r][c] === "X") {
-                ctx.fillStyle = C_BLACK;
-                ctx.fillRect(x + c * pSize, y + r * pSize, pSize, pSize);
-            }
+// ==================== 2. 連鎖パズルロジック ====================
+const puzCan = document.getElementById('puzCanvas'); const puzc = puzCan.getContext('2d');
+puzCan.width = 300; puzCan.height = 250;
+let puzScore = 0; let puzCombo = 0; let puzOver = false; let jewels = []; let puzParticles = [];
+const puzColors = [{h:"#ff1744"},{h:"#2979ff"},{h:"#00e676"},{h:"#ffeb3b"},{h:"#d500f9"}];
+let puzNextIdx = Math.floor(Math.random()*puzColors.length);
+class Jewel {
+    constructor(x, y, idx) { this.x = x; this.y = y; this.r = 11; this.colorIdx = idx; this.vx = (Math.random()-0.5)*1.5; this.vy = 0; this.isStatic = false; this.toRemove = false; }
+    update() {
+        if (this.isStatic) return; this.vy += 0.25; this.x += this.vx; this.y += this.vy;
+        if (this.x - this.r < 0) { this.x = this.r; this.vx *= -0.2; } if (this.x + this.r > puzCan.width) { this.x = puzCan.width - this.r; this.vx *= -0.2; }
+        if (this.y + this.r > puzCan.height) { this.y = puzCan.height - this.r; this.vy *= -0.2; this.vx *= 0.8; if (Math.abs(this.vy) < 0.5) this.isStatic = true; }
+        for (let o of jewels) {
+            if (o === this) continue; let dx = o.x - this.x; let dy = o.y - this.y; let dist = Math.hypot(dx, dy); let minDist = this.r + o.r;
+            if (dist < minDist) { let overlap = minDist - dist; this.x -= (dx/dist)*overlap*0.5; this.y -= (dy/dist)*overlap*0.5; this.vy *= -0.2; this.vx *= -0.2; if (o.isStatic && Math.abs(this.vy) < 1) this.isStatic = true; }
         }
     }
 }
-
-// ごはんボタン
-function feedPet() {
-    if (pet.level === 0) return; // たまごの時は食べられない
-    pet.action = "eat";
-    pet.actionTimer = 30; // 30フレーム間もぐもぐする
-    if (pet.hunger < 5) pet.hunger++;
-    updateUI();
-}
-
-// 遊ぶボタン
-function playPet() {
-    if (pet.level === 0) return;
-    pet.action = "play";
-    pet.actionTimer = 30; // ぴょんぴょん跳ねる
-    if (pet.happy < 5) pet.happy++;
-    updateUI();
-}
-
-// 掃除ボタン
-function cleanPet() {
-    if (pet.hasPoop) {
-        pet.hasPoop = false;
-        pet.action = "idle";
-        updateUI();
+function drawGem(targetCtx, x, y, r, idx) { targetCtx.fillStyle = puzColors[idx].h; targetCtx.beginPath(); for(let i=0;i<6;i++){ let a = i*Math.PI/3; targetCtx.lineTo(x+Math.cos(a)*r, y+Math.sin(a)*r); } targetCtx.closePath(); targetCtx.fill(); }
+function dropPuz(clientX) { if (puzOver || activeGame !== 'puzzle') return; const rect = puzCan.getBoundingClientRect(); let tx = (clientX - rect.left) * (puzCan.width / rect.width); if(tx<15) tx=15; if(tx>puzCan.width-15) tx=puzCan.width-15; jewels.push(new Jewel(tx, 20, puzNextIdx)); puzNextIdx = Math.floor(Math.random()*puzColors.length); }
+function checkPuzMatches() {
+    let any = false;
+    for (let i=0; i<jewels.length; i++) {
+        if (jewels[i].toRemove) continue; let conn = []; findConn(jewels[i], jewels[i].colorIdx, conn);
+        if (conn.length >= 3) {
+            any = true; puzCombo++; conn.forEach(j => { j.toRemove = true; for(let k=0;k<4;k++) puzParticles.push({x:j.x,y:j.y,vx:(Math.random()-0.5)*4,vy:(Math.random()-0.5)*4,a:1,c:puzColors[j.colorIdx].h}); });
+            puzScore += conn.length * 10 * puzCombo; document.getElementById('puz-score-val').innerText = puzScore;
+            let ab = document.getElementById('puz-combo-alert'); ab.innerText = `${puzCombo} CHAIN💥`; setTimeout(() => { ab.innerText=''; }, 1200);
+        }
     }
+    if (any) { jewels = jewels.filter(j => !j.toRemove); jewels.forEach(j => j.isStatic = false); } 
+    else if (jewels.every(j => j.isStatic)) { puzCombo = 0; }
 }
+function findConn(curr, idx, conn) { if (conn.includes(curr)) return; conn.push(curr); for (let o of jewels) { if (o===curr || o.colorIdx!==idx || o.toRemove) continue; if (Math.hypot(o.x-curr.x, o.y-curr.y) <= (curr.r+o.r)+4) findConn(o, idx, conn); } }
+function resetPuz() { puzScore = 0; puzCombo = 0; jewels = []; puzParticles = []; puzOver = false; document.getElementById('puz-score-val').innerText = 0; document.getElementById('puz-overlay').style.display = 'none'; }
+puzCan.addEventListener('mousedown', e => dropPuz(e.clientX)); puzCan.addEventListener('touchstart', e => { if(e.touches.length>0) dropPuz(e.touches[0].clientX); }, {passive:true});
 
-// UI（画面上のパラメーター）を更新
-function updateUI() {
-    document.getElementById('hunger-ui').innerText = pet.hunger;
-    document.getElementById('happy-ui').innerText = pet.happy;
-    document.getElementById('level-ui').innerText = pet.level;
-
-    // 呼び出し通知の制御（お腹が空いた時、またはうんちがある時）
-    const notify = document.getElementById('notify-text');
-    if (pet.hunger <= 1 || pet.happy <= 1 || pet.hasPoop) {
-        notify.style.display = "block";
-        notify.innerText = pet.hasPoop ? "🧹ウンチ！" : "⚠️おねだり！";
-    } else {
-        notify.style.display = "none";
-    }
-}
-
-// 1秒ごとの時間経過処理 (ゲームのバイオリズム)
+// ==================== 3. たまごっち風ロジック ====================
+const petCan = document.getElementById('petCanvas'); const petc = petCan.getContext('2d');
+petCan.width = 190; petCan.height = 120;
+let pet = { x: 75, y: 55, w: 35, h: 35, hunger: 3, happy: 3, level: 0, age: 0, hasPoop: false, action: "idle", actionTimer: 0 };
+const petSprites = {
+    0: [[0,0,1,1,1,1,0,0],[0,1,1,0,0,1,1,0],[1,1,0,0,0,0,1,1],[1,1,0,0,0,0,1,1],[0,1,1,0,0,1,1,0],[0,0,1,1,1,1,0,0]],
+    1: [[0,0,1,1,1,1,0,0],[0,1,0,0,0,0,1,0],[1,0,1,0,0,1,0,1],[1,0,0,1,1,0,0,1],[0,1,0,0,0,0,1,0],[0,0,1,1,1,1,0,0]],
+    2: [[0,1,1,0,0,1,1,0],[1,0,0,1,1,0,0,1],[1,0,1,0,0,1,0,1],[1,1,1,0,0,1,1,1],[0,0,1,0,0,1,0,0],[0,1,1,0,0,1,1,0]],
+    3: [[0,1,1,1,1,1,1,0],[1,0,1,0,0,1,0,1],[1,0,0,0,0,0,0,1],[1,0,1,1,1,1,0,1],[0,1,0,0,0,0,1,0],[0,1,1,0,0,1,1,0]],
+    "poop": [[0,0,1,1,0,0],[0,1,0,0,1,0],[1,1,1,1,1,1],[1,0,1,1,0,1],[1,1,1,1,1,1]]
+};
+function drawPetSprite(sp, x, y, pSize, col) { petc.fillStyle = col; for(let r=0;r<sp.length;r++){ for(let c=0;c<sp[r].length;c++){ if(sp[r][c]===1) petc.fillRect(x+c*pSize, y+r*pSize, pSize, pSize); } } }
+function feedPet() { if(pet.level===0)return; pet.action="eat"; pet.actionTimer=25; if(pet.hunger<5) pet.hunger++; updatePetUI(); }
+function playPet() { if(pet.level===0)return; pet.action="play"; pet.actionTimer=25; if(pet.happy<5) pet.happy++; updatePetUI(); }
+function cleanPet() { if(pet.hasPoop) { pet.hasPoop = false; pet.action="idle"; updatePetUI(); } }
+function updatePetUI() { document.getElementById('hunger-ui').innerText=pet.hunger; document.getElementById('happy-ui').innerText=pet.happy; document.getElementById('level-ui').innerText=pet.level; const n = document.getElementById('notify-text'); if(pet.hunger<=1||pet.happy<=1||pet.hasPoop){ n.style.display="block"; n.innerText=pet.hasPoop?"🧹フン!":"⚠️お世話!"; }else{ n.style.display="none"; } }
 setInterval(() => {
-    pet.age++;
-
-    // 🥚 たまごから徐々に進化していくロジック
-    if (pet.level === 0 && pet.age > 10) { pet.level = 1; }
-    else if (pet.level === 1 && pet.age > 30) { pet.level = 2; }
-    else if (pet.level === 2 && pet.age > 60) { pet.level = 3; }
-
-    // おとな以外は定期的にお腹が減る、ごきげんが下がる
-    if (pet.level > 0) {
-        if (pet.age % 12 === 0) { if (pet.hunger > 0) pet.hunger--; }
-        if (pet.age % 15 === 0) { if (pet.happy > 0) pet.happy--; }
-        
-        // 25秒に1回、確率でうんちをする
-        if (pet.age % 25 === 0 && Math.random() > 0.4) {
-            pet.hasPoop = true;
-        }
-    }
-
-    updateUI();
+    if (activeGame !== 'pet') return; pet.age++;
+    if (pet.level===0 && pet.age>8) pet.level=1; else if(pet.level===1 && pet.age>25) pet.level=2; else if(pet.level===2 && pet.age>50) pet.level=3;
+    if (pet.level>0) { if(pet.age%12===0 && pet.hunger>0) pet.hunger--; if(pet.age%15===0 && pet.happy>0) pet.happy--; if(pet.age%20===0 && Math.random()>0.5) pet.hasPoop=true; }
+    updatePetUI();
 }, 1000);
 
-// メインループ（アニメーション描画）
-let bounceOffsetY = 0;
-let frameCount = 0;
-
-function loop() {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    frameCount++;
-
-    // アニメーション用の揺らぎ
-    if (pet.action === "idle") {
-        // 通常時は左右にのんびり歩く、またはたまごが小刻みに揺れる
-        if (pet.level === 0) {
-            pet.x = 80 + Math.sin(frameCount * 0.1) * 3;
-            bounceOffsetY = 0;
-        } else {
-            pet.x = 80 + Math.sin(frameCount * 0.03) * 20;
-            bounceOffsetY = Math.abs(Math.sin(frameCount * 0.1)) * -4; // ひょこひょこ歩く
+// ==================== 4. フラッシュ計算ロジック ====================
+let mathScore=0; let mathCombo=0; let mathCorrect=0; let mathNumbers=[]; let mathLvl='easy'; let mathIdx=0;
+function startMath(lvl) { mathLvl = lvl; document.getElementById('math-lvl-screen').style.display='none'; genMathQuest(); }
+function resetMathMode() { mathScore=0; mathCombo=0; document.getElementById('math-score-val').innerText=0; document.getElementById('math-combo-tag').innerText=''; document.getElementById('math-lvl-screen').style.display='flex'; document.getElementById('math-input-area').style.display='none'; document.getElementById('math-flash-number').style.display='none'; document.getElementById('math-status').innerText='レベルを選んでね'; }
+function genMathQuest() {
+    mathNumbers=[]; let t=0; const digits = mathLvl==='easy'?1:2; const cnt = mathLvl==='easy'||mathLvl==='normal'?3:4;
+    let min=Math.pow(10,digits-1), max=Math.pow(10,digits)-1;
+    let f = Math.floor(Math.random()*(max-min+1))+min; mathNumbers.push(f); t=f;
+    for(let i=1; i<cnt; i++) {
+        let n = Math.floor(Math.random()*(max-min+1))+min;
+        if (mathLvl==='hard' && Math.random()>0.5 && t-n>0) { mathNumbers.push(-n); t-=n; } else { mathNumbers.push(n); t+=n; }
+    }
+    mathCorrect = t; runMathFlash();
+}
+function runMathFlash() {
+    const numEl = document.getElementById('math-flash-number'); const stEl = document.getElementById('math-status');
+    stEl.style.display='none'; numEl.style.display='block'; mathIdx=0;
+    const speed = mathLvl==='easy'?650:(mathLvl==='normal'?550:450);
+    function next() {
+        if (mathIdx < mathNumbers.length && activeGame==='math') {
+            let v = mathNumbers[mathIdx]; numEl.innerText = v>0?`+${v}`:`${v}`; if(mathIdx===0) numEl.innerText=v;
+            mathIdx++; setTimeout(() => { numEl.innerText=""; setTimeout(next, 80); }, speed);
+        } else if (activeGame==='math') {
+            numEl.style.display='none'; stEl.innerText="答えは？"; stEl.style.display='block';
+            document.getElementById('math-input-area').style.display='flex'; const inp = document.getElementById('answer-input'); inp.value=""; inp.focus();
         }
-    } else if (pet.action === "eat") {
-        // ごはん中は細かく震える
-        bounceOffsetY = (frameCount % 4 === 0) ? -2 : 0;
-        pet.actionTimer--;
-        // ごはんのドット
-        ctx.fillStyle = C_BLACK;
-        if (pet.actionTimer > 10) ctx.fillRect(pet.x - 15, pet.y + 15, 6, 6);
-    } else if (pet.action === "play") {
-        // 遊んでいる時は大ジャンプ
-        bounceOffsetY = Math.sin(frameCount * 0.3) * -12;
-        pet.actionTimer--;
     }
-
-    if (pet.actionTimer <= 0 && pet.action !== "idle") {
-        pet.action = "idle";
-    }
-
-    // 🐾 ペット本体の描画
-    drawSprite(sprites[pet.level], pet.x, pet.y + bounceOffsetY, pet.w);
-
-    // 💩 うんちの描画
-    if (pet.hasPoop) {
-        drawSprite(sprites["poop"], 150, 80, 25);
-    }
-
-    // 床の点線
-    ctx.strokeStyle = "#74b9ff";
-    ctx.lineWidth = 1;
-    ctx.setLineDash([2, 4]);
-    ctx.beginPath(); ctx.moveTo(0, 110); ctx.lineTo(canvas.width, 110); ctx.stroke();
-    ctx.setLineDash([]);
-
-    requestAnimationFrame(loop);
+    stEl.innerText="いくよ！"; stEl.style.display='block'; numEl.style.display='none';
+    setTimeout(() => { if(activeGame==='math') next(); }, 1000);
+}
+function checkMathAnswer() {
+    const inp = document.getElementById('answer-input'); const ans = parseInt(inp.value,10); if(isNaN(ans))return;
+    document.getElementById('math-input-area').style.display='none'; const st = document.getElementById('math-status'); const tag = document.getElementById('math-combo-tag');
+    if (ans === mathCorrect) { mathScore++; mathCombo++; st.innerHTML=`<span style="color:#2ecc71;">⭕️ せいかい！</span><br>こたえ: ${mathCorrect}`; if(mathCombo>=2) tag.innerText=`${mathCombo}連勝🔥`; } 
+    else { mathCombo=0; tag.innerText=''; st.innerHTML=`<span style="color:#e74c3c;">❌ まちがい</span><br>ただしい答え: ${mathCorrect}`; }
+    document.getElementById('math-score-val').innerText = mathScore;
+    setTimeout(() => { if(activeGame==='math') genMathQuest(); }, 2000);
 }
 
+// ==================== 5. インベーダーロジック ====================
+const invCan = document.getElementById('invCanvas'); const invc = invCan.getContext('2d');
+invCan.width = 300; invCan.height = 250;
+let invScore=0; let invStage=1; let invGameState="START"; const invKeys={left:false,right:false};
+const invPlayer={x:140, y:220, w:20, h:12, cooldown:0};
+let invEnemies=[]; let invBullets=[]; let invEnemyBullets=[];
+function initInvEnemies() { invEnemies=[]; let speed=0.4+(invStage*0.1); for(let r=0;r<3;r++){ for(let c=0;c<5;c++){ invEnemies.push({x:40+c*35, y:35+r*20, w:18, h:12, alive:true}); } } }
+function handleInvOverlayClick() { if(invGameState==="START"||invGameState==="GAMEOVER"){ invScore=0; invStage=1; startInvReal(); }else if(invGameState==="CLEAR"){ invStage++; startInvReal(); } }
+function startInvReal() { document.getElementById('inv-score-val').innerText=invScore; document.getElementById('inv-stage-val').innerText=invStage; invPlayer.x=140; invBullets=[]; invEnemyBullets=[]; initInvEnemies(); invGameState="PLAYING"; document.getElementById('inv-overlay').style.display='none'; }
+function fireInv() { if(invGameState==="PLAYING" && invPlayer.cooldown<=0) { invBullets.push({x:invPlayer.x+10, y:invPlayer.y, w:2, h:6}); invPlayer.cooldown=25; } }
+function showInvOverlay(t,s,b) { document.getElementById('inv-title').innerText=t; document.getElementById('inv-sub').innerText=s; document.getElementById('inv-btn-text').innerText=b; document.getElementById('inv-overlay').style.display='flex'; }
+function updateInvader() {
+    if (invGameState !== "PLAYING") return;
+    if (invKeys.left && invPlayer.x > 5) invPlayer.x -= 3; if (invKeys.right && invPlayer.x < invCan.width-25) invPlayer.x += 3;
+    if (invPlayer.cooldown > 0) invPlayer.cooldown--;
+    invBullets.forEach((b,idx) => { b.y -= 4; if(b.y<0) invBullets.splice(idx,1); invEnemies.forEach(e => { if(e.alive && b.x>e.x && b.x<e.x+e.w && b.y>e.y && b.y<e.y+e.h){ e.alive=false; invBullets.splice(idx,1); invScore+=10; document.getElementById('inv-score-val').innerText=invScore; } }); });
+    let active = invEnemies.filter(e=>e.alive); if(active.length===0){ invGameState="CLEAR"; showInvOverlay("STAGE CLEAR!","タップして次へ","NEXT"); return; }
+    let shift = false; let espeed = (0.4+(invStage*0.1)) * (invStage%2===0?-1:1);
+    active.forEach(e => { e.x += espeed; if(e.x>invCan.width-20 || e.x<5) shift=true; if(e.y+e.h>=invPlayer.y) { invGameState="GAMEOVER"; showInvOverlay("GAME OVER🛸","地球は侵略された","RETRY"); } });
+    if(shift) { invEnemies.forEach(e=>{e.y+=8;}); }
+    if(Math.random()<0.015 && active.length>0) { let s=active[Math.floor(Math.random()*active.length)]; invEnemyBullets.push({x:s.x+9, y:s.y+12}); }
+    invEnemyBullets.forEach((eb,idx) => { eb.y += 2.2; if(eb.y>invCan.height) invEnemyBullets.splice(idx,1); if(eb.x>invPlayer.x && eb.x<invPlayer.x+invPlayer.w && eb.y>invPlayer.y && eb.y<invPlayer.y+invPlayer.h){ invGameState="GAMEOVER"; showInvOverlay("GAME OVER🛸","撃沈されました","RETRY"); } });
+}
+const setInvBtn = (id, s, e) => { const b = document.getElementById(id); b.addEventListener('touchstart', eo => { eo.preventDefault(); s(); }, {passive:false}); b.addEventListener('touchend', eo => { eo.preventDefault(); e(); }, {passive:false}); b.addEventListener('mousedown', () => s()); b.addEventListener('mouseup', () => e()); b.addEventListener('mouseleave', () => e()); };
+setInvBtn('btn-inv-left', () => invKeys.left=true, () => invKeys.left=false); setInvBtn('btn-inv-right', () => invKeys.right=true, () => invKeys.right=false); setInvBtn('btn-inv-fire', () => fireInv(), () => {});
+
+// ==================== 6. ブロック崩しロジック (NEW!) ====================
+const brkCan = document.getElementById('brkCanvas'); const brkc = brkCan.getContext('2d');
+brkCan.width = 300; brkCan.height = 250;
+let brkScore = 0; let brkOver = false; const brkKeys = { left: false, right: false };
+const brkPaddle = { x: 120, y: 230, w: 55, h: 8, speed: 4.5 };
+const brkBall = { x: 150, y: 150, r: 4, vx: 2, vy: -2 };
+let brkBlocks = [];
+const brkRows = 4; const brkCols = 7; const brkBlockW = 36; const brkBlockH = 10; const brkOffsetTop = 30; const brkOffsetLeft = 20;
+
+function initBrkBlocks() {
+    brkBlocks = [];
+    const colors = ["#ff1744", "#ff9100", "#ffea00", "#00e676"];
+    for(let r=0; r<brkRows; r++) {
+        for(let c=0; c<brkCols; c++) {
+            brkBlocks.push({ x: c * (brkBlockW + 4) + brkOffsetLeft, y: r * (brkBlockH + 4) + brkOffsetTop, w: brkBlockW, h: brkBlockH, alive: true, color: colors[r] });
+        }
+    }
+}
+function resetBrk() { brkScore = 0; document.getElementById('brk-score-val').innerText = brkScore; brkPaddle.x = 120; brkBall.x = 150; brkBall.y = 150; brkBall.vx = 2; brkBall.vy = -2.2; brkOver = false; initBrkBlocks(); document.getElementById('brk-overlay').style.display = 'none'; }
+function updateBreakout() {
+    if (activeGame !== 'breakout' || brkOver) return;
+    if (brkKeys.left && brkPaddle.x > 5) brkPaddle.x -= brkPaddle.speed; if (brkKeys.right && brkPaddle.x < brkCan.width - brkPaddle.w - 5) brkPaddle.x += brkPaddle.speed;
+    
+    // ボールの壁との衝突
+    brkBall.x += brkBall.vx; brkBall.y += brkBall.vy;
+    if (brkBall.x - brkBall.r < 0 || brkBall.x + brkBall.r > brkCan.width) brkBall.vx *= -1;
+    if (brkBall.y - brkBall.r < 0) brkBall.vy *= -1;
+    
+    // パドルとの衝突
+    if (brkBall.y + brkBall.r >= brkPaddle.y && brkBall.y - brkBall.r <= brkPaddle.y + brkPaddle.h) {
+        if (brkBall.x >= brkPaddle.x && brkBall.x <= brkPaddle.x + brkPaddle.w) {
+            brkBall.vy = -Math.abs(brkBall.vy);
+            // 当たる位置によって反射角を少し変える
+            let hitPos = (brkBall.x - (brkPaddle.x + brkPaddle.w / 2)) / (brkPaddle.w / 2);
+            brkBall.vx = hitPos * 3.5;
+        }
+    }
+    
+    // ブロックとの衝突判定
+    let allCleared = true;
+    brkBlocks.forEach(b => {
+        if (!b.alive) return;
+        allCleared = false;
+        if (brkBall.x + brkBall.r > b.x && brkBall.x - brkBall.r < b.x + b.w && brkBall.y + brkBall.r > b.y && brkBall.y - brkBall.r < b.y + b.h) {
+            b.alive = false; brkBall.vy *= -1; brkScore += 10;
+            document.getElementById('brk-score-val').innerText = brkScore;
+        }
+    });
+
+    if (allCleared) { brkOver = true; const ot = document.getElementById('brk-title'); ot.innerText = "🎉 STAGE CLEAR 🎉"; ot.style.color = "#00e676"; document.getElementById('brk-overlay').style.display = 'flex'; }
+    if (brkBall.y > brkCan.height) { brkOver = true; const ot = document.getElementById('brk-title'); ot.innerText = "GAME OVER 🧱"; ot.style.color = "#ff1744"; document.getElementById('brk-overlay').style.display = 'flex'; }
+}
+function drawBreakout() {
+    brkc.clearRect(0,0,brkCan.width,brkCan.height);
+    brkc.fillStyle = '#e91e63'; brkc.fillRect(brkPaddle.x, brkPaddle.y, brkPaddle.w, brkPaddle.h);
+    brkc.fillStyle = '#fff'; brkc.beginPath(); brkc.arc(brkBall.x, brkBall.y, brkBall.r, 0, Math.PI*2); brkc.fill();
+    brkBlocks.forEach(b => { if(b.alive){ brkc.fillStyle = b.color; brkc.fillRect(b.x, b.y, b.w, b.h); } });
+}
+const setBrkBtn = (id, s, e) => { const b = document.getElementById(id); b.addEventListener('touchstart', ev => { ev.preventDefault(); s(); }, {passive:false}); b.addEventListener('touchend', ev => { ev.preventDefault(); e(); }, {passive:false}); b.addEventListener('mousedown', () => s()); b.addEventListener('mouseup', () => e()); b.addEventListener('mouseleave', () => e()); };
+setBrkBtn('btn-brk-left', () => brkKeys.left = true, () => brkKeys.left = false); setBrkBtn('btn-brk-right', () => brkKeys.right = true, () => brkKeys.right = false);
+
+// ==================== 🔄 超統合メインループ ====================
+let puzBounceY = 0; let petFrame = 0;
+function globalLoop() {
+    if (activeGame === 'dk') { updateDk(); drawDk(); }
+    if (activeGame === 'puzzle') {
+        jewels.forEach(j => j.update()); puzParticles.forEach((p,i)=>{p.x+=p.vx; p.y+=p.vy; p.a-=0.04; if(p.a<=0) puzParticles.splice(i,1);});
+        checkPuzMatches();
+        let pile=0; jewels.forEach(j=>{if(j.isStatic && j.y<60){pile++; if(pile>2){puzOver=true; document.getElementById('puz-final-score').innerText=puzScore; document.getElementById('puz-overlay').style.display='flex';}}});
+        puzc.clearRect(0,0,puzCan.width,puzCan.height); puzc.strokeStyle='rgba(255,23,68,0.2)'; puzc.lineWidth=1; puzc.beginPath(); puzc.moveTo(0,60); puzc.lineTo(puzCan.width,60); puzc.stroke();
+        jewels.forEach(j => drawGem(puzc, j.x, j.y, j.r, j.colorIdx)); puzParticles.forEach(p => { puzc.save(); puzc.globalAlpha=p.a; puzc.fillStyle=p.c; puzc.fillRect(p.x,p.y,3,3); puzc.restore(); });
+        puzc.fillStyle='rgba(255,255,255,0.1)'; drawGem(puzc, puzCan.width-25, 20, 8, puzNextIdx);
+    }
+    if (activeGame === 'pet') {
+        petFrame++; petc.clearRect(0,0,petCan.width,petCan.height);
+        if(pet.action==="idle"){ pet.x = 75+Math.sin(petFrame*0.04)*15; puzBounceY = Math.abs(Math.sin(petFrame*0.1))*-2; if(pet.level===0){pet.x=75; puzBounceY=0;} }
+        else if(pet.action==="eat"){ puzBounceY=(petFrame%4===0)?-1:0; pet.actionTimer--; if(pet.actionTimer>5){petc.fillStyle="#2d3436"; petc.fillRect(pet.x-10, pet.y+10, 4, 4);} }
+        else if(pet.action==="play"){ puzBounceY=Math.sin(petFrame*0.3)*-6; pet.actionTimer--; }
+        if(pet.actionTimer<=0 && pet.action!=="idle") pet.action="idle";
+        drawPetSprite(petSprites[pet.level], pet.x, pet.y+puzBounceY, 4, "#2d3436");
+        if(pet.hasPoop) drawPetSprite(petSprites["poop"], 140, 65, 3, "#2d3436");
+        petc.strokeStyle="#636e72"; petc.lineWidth=1; petc.beginPath(); petc.moveTo(0,85); petc.lineTo(petCan.width,85); petc.stroke();
+    }
+    if (activeGame === 'invader') { updateInvader(); invc.clearRect(0,0,invCan.width,invCan.height); if(invGameState!=="GAMEOVER") invc.fillStyle='#00b0ff'; invc.fillRect(invPlayer.x, invPlayer.y, invPlayer.w, invPlayer.h); invEnemies.forEach(e=>{ if(e.alive){ invc.fillStyle='#00e676'; invc.fillRect(e.x, e.y, e.w, e.h); } }); invc.fillStyle='#00b0ff'; invBullets.forEach(b => invc.fillRect(b.x, b.y, b.w, b.h)); invc.fillStyle='#ff1744'; invEnemyBullets.forEach(eb => invc.fillRect(eb.x, eb.y, eb.w, eb.h)); }
+    if (activeGame === 'breakout') { updateBreakout(); drawBreakout(); }
+
+    requestAnimationFrame(globalLoop);
+}
+
+// ⌨️ グローバルPCキー入力
+document.addEventListener('keydown', e => {
+    if (activeGame === 'dk') { if(e.key==='ArrowLeft'||e.key==='a') dkKeys.left=true; if(e.key==='ArrowRight'||e.key==='d') dkKeys.right=true; if(e.key===' '||e.key==='ArrowUp'){ let ol=dkLadders.some(l=>dkPlayer.x+dkPlayer.w>l.x && dkPlayer.x<l.x+l.w && dkPlayer.y+dkPlayer.h>=l.y && dkPlayer.y<=l.y+l.h); if(ol) dkPlayer.isOnLadder=true; else if(dkPlayer.isGrounded) dkPlayer.vy=-5.0; } }
+    if (activeGame === 'invader') { if(e.key==='ArrowLeft'||e.key==='a') invKeys.left=true; if(e.key==='ArrowRight'||e.key==='d') invKeys.right=true; if(e.key===' '||e.key==='ArrowUp') fireInv(); }
+    if (activeGame === 'breakout') { if(e.key==='ArrowLeft'||e.key==='a') brkKeys.left=true; if(e.key==='ArrowRight'||e.key==='d') brkKeys.right=true; }
+});
+document.addEventListener('keyup', e => {
+    if(e.key==='ArrowLeft'||e.key==='a') { dkKeys.left=false; invKeys.left=false; brkKeys.left=false; }
+    if(e.key==='ArrowRight'||e.key==='d') { dkKeys.right=false; invKeys.right=false; brkKeys.right=false; }
+});
+document.getElementById('answer-input').addEventListener('keypress', e => { if(e.key==='Enter') checkMathAnswer(); });
+
 // 始動
-updateUI();
-loop();
+resetDk();
+globalLoop();
 </script>
 </body>
 </html>
