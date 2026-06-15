@@ -14,18 +14,41 @@
             margin: 0;
             padding: 0;
         }
+        
+        /* 新しい背景設定：ヨーロッパの街並み画像とオーバーレイ */
         body {
             font-family: 'Noto Sans JP', sans-serif;
-            background-color: #f4f7f9;
             color: #333333;
             line-height: 1.6;
             padding: 40px 20px;
+            position: relative; /* オーバーレイ用 */
+            
+            /* 背景画像の設定 */
+            background-image: url('https://images.unsplash.com/photo-1512314889357-e157c22f938d?q=80&w=1920&auto=format&fit=crop'); /* ヨーロッパの街並み Placeholder */
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            background-attachment: fixed; /* 固定背景 */
         }
 
-        /* ページ全体のコンテナ */
+        /* 背景オーバーレイ（画像のコントラストを下げてフォームを読みやすくする） */
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(255, 255, 255, 0.5); /* 白い半透明オーバーレイ (50%) */
+            z-index: 0;
+        }
+
+        /* ページ全体のコンテナ（オーバーレイの上に配置） */
         .page-container {
             max-width: 850px;
             margin: 0 auto;
+            position: relative; /* z-index用 */
+            z-index: 1;
         }
 
         /* ヘッダー・タイトル部分 */
@@ -59,11 +82,11 @@
             color: #7f8c8d;
         }
 
-        /* フォームを囲むお洒落なカード */
+        /* フォームを囲むお洒落なカード（背景を完全に白く） */
         .form-card {
-            background-color: #ffffff;
+            background-color: rgba(255, 255, 255, 0.95); /* 少しだけ透明にしても良い */
             border-radius: 16px;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.05);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1); /* 影を少し強めに */
             overflow: hidden;
             padding: 20px;
             margin-bottom: 40px;
@@ -108,6 +131,8 @@
         @media (max-width: 600px) {
             body {
                 padding: 20px 10px;
+                /* スマホでは固定背景を解除しても良い（パフォーマンス優先） */
+                background-attachment: scroll;
             }
             .form-header h1 {
                 font-size: 20px;
