@@ -6,7 +6,6 @@
     <title>お問い合わせ・ご入力フォーム</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <!-- お洒落な花屋の雰囲気に合わせて明朝体を読み込む -->
     <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght@400;500;700&display=swap" rel="stylesheet">
     <style>
         /* リセットCSS & 基本設定 */
@@ -24,8 +23,12 @@
             padding: 40px 20px;
             position: relative;
             
-            /* 背景画像の設定（落ち着いたボタニカル・ドライフラワーの画像） */
-            background-image: url('https://images.unsplash.com/photo-1505934333218-8feea099cb61?q=80&w=1920&auto=format&fit=crop'); 
+            /* 【重要】画像が読み込めなかった場合の予備カラー（落ち着いた薄いくすみグリーン） */
+            background-color: #d8ded4;
+            
+            /* 背景画像の設定（落ち着いたボタニカル画像） */
+            /* ※ご自身で用意した画像を使いたい場合は url('画像のファイル名.jpg') に変更してください */
+            background-image: url('https://images.unsplash.com/photo-1526047932273-341f2a7631f9?q=80&w=1920&auto=format&fit=crop'); 
             background-size: cover;
             background-position: center;
             background-repeat: no-repeat;
@@ -40,7 +43,7 @@
             left: 0;
             width: 100%;
             height: 100%;
-            background-color: rgba(245, 245, 238, 0.75); /* やや強めのアイボリーホワイトのオーバーレイ */
+            background-color: rgba(245, 245, 238, 0.65); /* フィルターを少し薄く調整 */
             z-index: 0;
         }
 
@@ -116,61 +119,3 @@
             padding: 12px 35px;
             background-color: transparent;
             color: #6a6e67;
-            border: 1px solid #8fa086;
-            border-radius: 4px; /* 大人っぽい四角いボタン */
-            text-decoration: none;
-            font-size: 14px;
-            font-weight: 500;
-            letter-spacing: 0.05em;
-            transition: all 0.4s ease;
-        }
-        .btn-back:hover {
-            background-color: #8fa086;
-            color: #ffffff;
-            box-shadow: 0 4px 10px rgba(143, 160, 134, 0.3);
-        }
-
-        /* スマホ向け調整 */
-        @media (max-width: 600px) {
-            body {
-                padding: 20px 10px;
-                background-attachment: scroll;
-            }
-            .form-header h1 {
-                font-size: 20px;
-            }
-            .form-card {
-                padding: 10px;
-                border-radius: 6px;
-            }
-        }
-    </style>
-</head>
-<body>
-
-    <div class="page-container">
-        
-        <header class="form-header">
-            <h1>お問い合わせ・各種お申し込み</h1>
-            <p>以下のフォームに必要事項をご記入の上、送信してください。</p>
-        </header>
-
-        <main class="form-card">
-            <div class="iframe-wrapper">
-                <iframe src="https://docs.google.com/forms/d/e/1FAIpQLSfsQzHGi48GS5yGHAiAiAvcQIC98uoh9hP4v1N5CaP_is_RQw/viewform?embedded=true" 
-                        width="100%" 
-                        height="4134" 
-                        frameborder="0" 
-                        marginheight="0" 
-                        marginwidth="0">読み込んでいます…</iframe>
-            </div>
-        </main>
-
-        <footer class="form-footer">
-            <a href="#" class="btn-back">ホームへ戻る</a>
-        </footer>
-
-    </div>
-
-</body>
-</html>
