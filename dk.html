@@ -6,89 +6,93 @@
     <title>The Fullscreen Arcade 5-in-1</title>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
-        body {
+        
+        /* 📱 画面からはみ出さないための絶対防壁設定 */
+        html, body {
             background: #06050c; color: #fff;
             font-family: 'SF Pro Display', -apple-system, sans-serif;
-            overflow: hidden; width: 100vw; height: 100vh;
+            overflow: hidden; 
+            width: 100%; height: 100%; /* 100vhではなく100%でブラウザのバーを回避 */
             display: flex; flex-direction: column;
             touch-action: none; -webkit-user-select: none; user-select: none;
         }
 
         /* 👑 高級感のある薄型タブバー */
         #arcade-tabs {
-            width: 100%; height: 55px; background: #0f0d1a;
+            width: 100%; height: 50px; background: #0f0d1a;
             display: flex; border-bottom: 2px solid #262142; z-index: 100;
+            flex-shrink: 0; /* タブが潰れるのを防ぐ */
         }
         .tab-btn {
             flex: 1; height: 100%; background: transparent; border: none;
-            color: #72708c; font-size: 11px; font-weight: bold; cursor: pointer;
+            color: #72708c; font-size: 10px; font-weight: bold; cursor: pointer;
             display: flex; flex-direction: column; align-items: center; justify-content: center;
-            transition: 0.2s;
         }
-        .tab-btn span { font-size: 18px; margin-bottom: 2px; }
+        .tab-btn span { font-size: 16px; margin-bottom: 2px; }
         .tab-btn.active { color: #00e5ff; background: #161329; border-bottom: 3px solid #00e5ff; }
 
-        /* 📦 メインゲームコンテナ（画面の残りすべてを仕様） */
+        /* 📦 メインゲームコンテナ：残りの縦幅を綺麗に分け合う */
         .game-wrapper {
-            display: none; width: 100%; height: calc(100vh - 55px);
-            position: relative; flex-direction: column; align-items: center;
+            display: none; width: 100%; flex: 1; /* 残りの高さを全使用 */
+            position: relative; flex-direction: column; overflow: hidden;
         }
         .game-wrapper.active { display: flex; }
 
-        /* 🛠 画面フィット型キャンバス */
+        /* 🛠 画面フィット型キャンバス（自動で縮む） */
         .full-canvas {
-            width: 100%; flex: 1; background: #000; display: block;
+            width: 100%; flex: 1; background: #000; display: block; min-height: 0;
         }
 
-        /* 🎮 各ゲーム専用のフルサイズ・オーバレイコントロール */
+        /* 🎮 操作ボタンエリア：画面最下部に絶対に固定 */
         .fullscreen-ctrl {
-            width: 100%; height: 110px; background: #0c0a14;
+            width: 100%; height: 95px; background: #0c0a14;
             display: flex; justify-content: space-between; align-items: center;
-            padding: 10px 15px; border-top: 1px solid #1f1a33;
+            padding: 5px 15px; border-top: 1px solid #1f1a33;
+            flex-shrink: 0; /* ボタンが画面外に潰れるのを絶対阻止 */
         }
         .ctrl-btn-dir {
-            width: 80px; height: 80px; background: #1b172e; border: 2px solid #3d3566;
-            border-radius: 16px; color: #fff; font-size: 32px; font-weight: bold;
+            width: 70px; height: 70px; background: #1b172e; border: 2px solid #3d3566;
+            border-radius: 14px; color: #fff; font-size: 28px; font-weight: bold;
             display: flex; align-items: center; justify-content: center;
         }
         .ctrl-btn-dir:active { background: #3d3566; }
+        
         .ctrl-btn-act {
-            width: 80px; height: 80px; background: #ff1744; border: 2px solid #fff;
-            border-radius: 50%; color: #fff; font-size: 14px; font-weight: bold;
+            width: 70px; height: 70px; background: #ff1744; border: 2px solid #fff;
+            border-radius: 50%; color: #fff; font-size: 13px; font-weight: bold;
             display: flex; align-items: center; justify-content: center; box-shadow: 0 4px #b3002d;
         }
         .ctrl-btn-act:active { transform: translateY(2px); box-shadow: 0 2px #b3002d; }
 
-        /* 🛑 全画面ゲームオーバー・クリア表示 */
+        /* 🔢 フラッシュ計算専用 10キーボードUI（これも潰れないように固定） */
+        #math-keyboard {
+            width: 100%; display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; padding: 6px; background: #0f0d1a;
+            flex-shrink: 0;
+        }
+        .num-key {
+            height: 45px; background: #221f3b; border: none; border-radius: 6px; color: #fff;
+            font-size: 18px; font-weight: bold; display: flex; align-items: center; justify-content: center;
+        }
+        .num-key:active { background: #3d3566; }
+        .num-key.action-key { background: #00e676; color: #000; }
+        .num-key.clear-key { background: #ff1744; }
+
+        /* 🛑 全画面オーバーレイ */
         .screen-overlay {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%;
             background: rgba(5, 4, 10, 0.9); display: none;
             flex-direction: column; align-items: center; justify-content: center; z-index: 50;
         }
-        .overlay-title { font-size: 36px; font-weight: 900; letter-spacing: 2px; margin-bottom: 10px; }
-        .overlay-score { font-size: 18px; color: #00e5ff; margin-bottom: 30px; }
+        .overlay-title { font-size: 32px; font-weight: 900; letter-spacing: 2px; margin-bottom: 10px; }
+        .overlay-score { font-size: 18px; color: #00e5ff; margin-bottom: 20px; }
         .overlay-action-btn {
-            padding: 15px 40px; font-size: 16px; font-weight: bold; background: #00e5ff;
-            color: #000; border: none; border-radius: 30px; cursor: pointer; box-shadow: 0 5px #0099aa;
+            padding: 12px 35px; font-size: 15px; font-weight: bold; background: #00e5ff;
+            color: #000; border: none; border-radius: 25px; cursor: pointer; box-shadow: 0 4px #0099aa;
         }
-        .overlay-action-btn:active { transform: translateY(2px); box-shadow: 0 2px #0099aa; }
-
-        /* 🔢 フラッシュ計算専用 10キーボードUI */
-        #math-keyboard {
-            width: 100%; display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; padding: 10px; background: #0f0d1a;
-        }
-        .num-key {
-            height: 55px; background: #221f3b; border: none; border-radius: 8px; color: #fff;
-            font-size: 20px; font-weight: bold; display: flex; align-items: center; justify-content: center;
-        }
-        .num-key:active { background: #3d3566; }
-        .num-key.action-key { background: #00e676; color: #000; }
-        .num-key.clear-key { background: #ff1744; }
     </style>
 </head>
 <body>
 
-    <!-- 👑 ゲーム切り替えタブ -->
     <div id="arcade-tabs">
         <button class="tab-btn active" onclick="switchGame('tetris')"><span>🧱</span>TETRIS</button>
         <button class="tab-btn" onclick="switchGame('puzzle')"><span>💥</span>MERGE</button>
@@ -97,7 +101,6 @@
         <button class="tab-btn" onclick="switchGame('breakout')"><span>🏏</span>BRK-OUT</button>
     </div>
 
-    <!-- ==================== 1. 本格テトリス (全画面仕様) ==================== -->
     <div id="game-tetris" class="game-wrapper active">
         <canvas id="tetCanvas" class="full-canvas"></canvas>
         <div id="tet-overlay" class="screen-overlay">
@@ -117,7 +120,6 @@
         </div>
     </div>
 
-    <!-- ==================== 2. 本格マージパズル (全画面物理仕様) ==================== -->
     <div id="game-puzzle" class="game-wrapper">
         <canvas id="puzCanvas" class="full-canvas"></canvas>
         <div id="puz-overlay" class="screen-overlay">
@@ -125,9 +127,8 @@
             <div class="overlay-score">SCORE: <span id="puz-score-text">0</span></div>
             <button class="overlay-action-btn" onclick="resetPuz()">RESTART</button>
         </div>
-    </div>
+        </div>
 
-    <!-- ==================== 3. 本格フラッシュ計算 (10キーボード内蔵型) ==================== -->
     <div id="game-math" class="game-wrapper">
         <canvas id="mathCanvas" class="full-canvas"></canvas>
         <div id="math-keyboard">
@@ -146,13 +147,12 @@
         </div>
         <div id="math-overlay" class="screen-overlay" style="display: flex;">
             <div class="overlay-title" style="color:#00e676; font-size:24px;">SELECT LEVEL</div>
-            <button class="overlay-action-btn" style="margin: 8px; background:#00e676;" onclick="startMath(1)">EASY (1桁)</button>
-            <button class="overlay-action-btn" style="margin: 8px; background:#f1c40f;" onclick="startMath(2)">NORMAL (2桁)</button>
-            <button class="overlay-action-btn" style="margin: 8px; background:#e74c3c; color:#fff;" onclick="startMath(3)">HARD (3桁変則)</button>
+            <button class="overlay-action-btn" style="margin: 6px; background:#00e676;" onclick="startMath(1)">EASY (1桁)</button>
+            <button class="overlay-action-btn" style="margin: 6px; background:#f1c40f;" onclick="startMath(2)">NORMAL (2桁)</button>
+            <button class="overlay-action-btn" style="margin: 6px; background:#e74c3c; color:#fff;" onclick="startMath(3)">HARD (3桁変則)</button>
         </div>
     </div>
 
-    <!-- ==================== 4. 本格インベーダー (40機大軍仕様) ==================== -->
     <div id="game-invader" class="game-wrapper">
         <canvas id="invCanvas" class="full-canvas"></canvas>
         <div id="inv-overlay" class="screen-overlay" style="display:flex;">
@@ -165,11 +165,10 @@
                 <div class="ctrl-btn-dir" id="btn-inv-left">←</div>
                 <div class="ctrl-btn-dir" id="btn-inv-right">→</div>
             </div>
-            <div class="ctrl-btn-act" id="btn-inv-fire" style="background:#ff3d00; width:90px; height:90px;">FIRE</div>
+            <div class="ctrl-btn-act" id="btn-inv-fire" style="background:#ff3d00; width:75px; height:75px;">FIRE</div>
         </div>
     </div>
 
-    <!-- ==================== 5. 本格ブロック崩し (アイテムドロップ・マルチボール) ==================== -->
     <div id="game-breakout" class="game-wrapper">
         <canvas id="brkCanvas" class="full-canvas"></canvas>
         <div id="brk-overlay" class="screen-overlay">
@@ -178,16 +177,14 @@
             <button class="overlay-action-btn" onclick="resetBrk()">RETRY</button>
         </div>
         <div class="fullscreen-ctrl">
-            <div class="ctrl-btn-dir" id="btn-brk-left" style="width:120px;">←</div>
-            <div class="ctrl-btn-dir" id="btn-brk-right" style="width:120px;">→</div>
+            <div class="ctrl-btn-dir" id="btn-brk-left" style="width:110px;">←</div>
+            <div class="ctrl-btn-dir" id="btn-brk-right" style="width:110px;">→</div>
         </div>
     </div>
 
 <script>
 // ==================== 👑 グローバル制御部 ====================
 let activeGame = 'tetris';
-const viewW = window.innerWidth;
-const viewH = window.innerHeight - 55; // タブ除く高さを基準化
 
 function switchGame(gameId) {
     activeGame = gameId;
@@ -196,14 +193,15 @@ function switchGame(gameId) {
     event.currentTarget.classList.add('active');
     document.getElementById(`game-${gameId}`).classList.add('active');
 
-    if (gameId === 'tetris') resetTet();
-    if (gameId === 'puzzle') resetPuz();
-    if (gameId === 'math') resetMathMode();
-    if (gameId === 'invader') initInvGame();
-    if (gameId === 'breakout') resetBrk();
+    setTimeout(() => {
+        if (gameId === 'tetris') resetTet();
+        if (gameId === 'puzzle') resetPuz();
+        if (gameId === 'math') resetMathMode();
+        if (gameId === 'invader') initInvGame();
+        if (gameId === 'breakout') resetBrk();
+    }, 50);
 }
 
-// 共通型高感度ボタンバインド
 const bindUniversalBtn = (id, startFn, endFn) => {
     const el = document.getElementById(id); if(!el) return;
     el.addEventListener('touchstart', ev => { ev.preventDefault(); startFn(); }, {passive:false});
@@ -213,18 +211,17 @@ const bindUniversalBtn = (id, startFn, endFn) => {
     el.addEventListener('mouseleave', () => endFn());
 };
 
-// ==================== 1. 本格テトリス (ゴースト＆NEXT内蔵) ====================
+// ==================== 1. 本格テトリス ====================
 const tetCan = document.getElementById('tetCanvas'); const tetc = tetCan.getContext('2d');
-let tCell; let tXOff, tYOff;
-let tetScore=0, tetOver=false, tetMatrix=[], tetDropTimer=0;
+let tCell, tXOff, tYOff, tetScore=0, tetOver=false, tetMatrix=[], tetDropTimer=0;
 let tetCurrent=null, tetNext=null, tetHoldPiece=null, tetCanHold=true;
 const tetColors = [null, '#ff1744', '#00e676', '#2979ff', '#ffea00', '#d500f9', '#00e5ff', '#ff9100'];
 const tetShapes = [[], [[1,1,1,1]], [[1,1,1],[0,1,0]], [[1,1,1],[1,0,0]], [[1,1,1],[0,0,1]], [[1,1],[1,1]], [[1,1,0],[0,1,1]], [[0,1,1],[1,1,0]]];
 
 function initTetSizes() {
     tetCan.width = tetCan.clientWidth; tetCan.height = tetCan.clientHeight;
-    tCell = Math.floor(Math.min(tetCan.width * 0.65 / 10, tetCan.height * 0.9 / 20));
-    tXOff = 20; tYOff = 30;
+    tCell = Math.floor(Math.min(tetCan.width * 0.60 / 10, tetCan.height * 0.9 / 20));
+    tXOff = 15; tYOff = 20;
 }
 function createTetMatrix() { let m=[]; for(let r=0;r<20;r++) m.push(new Array(10).fill(0)); return m; }
 function getRndPiece() { let id = Math.floor(Math.random()*7)+1; return {id:id, shape:tetShapes[id], x:3, y:0}; }
@@ -253,20 +250,18 @@ function holdTet() {
 function resetTet() { initTetSizes(); tetMatrix=createTetMatrix(); tetScore=0; tetOver=false; tetHoldPiece=null; tetCanHold=true; document.getElementById('tet-overlay').style.display='none'; newTetPiece(); }
 bindUniversalBtn('btn-tet-left', () => moveTet(-1), () => {}); bindUniversalBtn('btn-tet-right', () => moveTet(1), () => {}); bindUniversalBtn('btn-tet-rot', () => rotateTet(), () => {}); bindUniversalBtn('btn-tet-hold', () => holdTet(), () => {});
 
-// ==================== 2. 本格マージパズル (物理マージ) ====================
+// ==================== 2. 連鎖マージパズル ====================
 const puzCan = document.getElementById('puzCanvas'); const puzc = puzCan.getContext('2d');
 let puzScore=0, puzOver=false, puzGems=[], puzNextIdx=0;
-const gemProfiles = [
-    {r:16, c:'#00e5ff', score:10}, {r:24, c:'#00e676', score:20}, {r:34, c:'#ffea00', score:40},
-    {r:46, c:'#ff9100', score:80}, {r:60, c:'#d500f9', score:150}
-];
+const gemProfiles = [{r:14, c:'#00e5ff', score:10}, {r:22, c:'#00e676', score:20}, {r:30, c:'#ffea00', score:40}, {r:42, c:'#ff9100', score:80}, {r:55, c:'#d500f9', score:150}];
+
 class PhysicsGem {
     constructor(x, y, idx) { this.x=x; this.y=y; this.idx=idx; this.r=gemProfiles[idx].r; this.vx=0; this.vy=0; this.isStatic=false; this.toRemove=false; }
     update() {
         if(this.isStatic) return; this.vy += 0.4; this.x += this.vx; this.y += this.vy;
         if(this.x - this.r < 15) { this.x = 15 + this.r; this.vx *= -0.2; }
         if(this.x + this.r > puzCan.width - 15) { this.x = puzCan.width - 15 - this.r; this.vx *= -0.2; }
-        if(this.y + this.r > puzCan.height - 30) { this.y = puzCan.height - 30 - this.r; this.vy *= -0.1; this.vx *= 0.7; if(Math.abs(this.vy)<0.4) this.isStatic=true; }
+        if(this.y + this.r > puzCan.height - 20) { this.y = puzCan.height - 20 - this.r; this.vy *= -0.1; this.vx *= 0.7; if(Math.abs(this.vy)<0.4) this.isStatic=true; }
         
         for(let o of puzGems) {
             if(o===this || o.toRemove) continue;
@@ -274,10 +269,8 @@ class PhysicsGem {
             if(dist < minDist) {
                 if(o.idx === this.idx && !this.toRemove && !o.toRemove) {
                     this.toRemove = true; o.toRemove = true;
-                    let mx = (this.x + o.x)/2, my = (this.y + o.y)/2;
-                    puzScore += gemProfiles[this.idx].score;
-                    setTimeout(() => { if(this.idx < 4) puzGems.push(new PhysicsGem(mx, my, this.idx+1)); }, 1);
-                    return;
+                    let mx = (this.x + o.x)/2, my = (this.y + o.y)/2; puzScore += gemProfiles[this.idx].score;
+                    setTimeout(() => { if(this.idx < 4) puzGems.push(new PhysicsGem(mx, my, this.idx+1)); }, 1); return;
                 }
                 let overlap = minDist - dist;
                 this.x -= (dx/dist)*overlap*0.5; this.y -= (dy/dist)*overlap*0.5;
@@ -290,9 +283,8 @@ function dropPuzGem(clientX) {
     if(puzOver || activeGame!=='puzzle') return;
     const rect = puzCan.getBoundingClientRect();
     let tx = (clientX - rect.left) * (puzCan.width / rect.width);
-    if(tx < 40) tx = 40; if(tx > puzCan.width - 40) tx = puzCan.width - 40;
-    puzGems.push(new PhysicsGem(tx, 60, puzNextIdx));
-    puzNextIdx = Math.floor(Math.random()*3);
+    if(tx < 35) tx = 35; if(tx > puzCan.width - 35) tx = puzCan.width - 35;
+    puzGems.push(new PhysicsGem(tx, 50, puzNextIdx)); puzNextIdx = Math.floor(Math.random()*3);
 }
 function resetPuz() {
     puzCan.width = puzCan.clientWidth; puzCan.height = puzCan.clientHeight;
@@ -302,18 +294,17 @@ function resetPuz() {
 puzCan.addEventListener('touchstart', e => { if(e.touches.length>0) dropPuzGem(e.touches[0].clientX); }, {passive:true});
 puzCan.addEventListener('mousedown', e => dropPuzGem(e.clientX));
 
-// ==================== 3. 本格フラッシュ計算 (10キー) ====================
+// ==================== 3. フラッシュ計算 ====================
 const mathCan = document.getElementById('mathCanvas'); const mathc = mathCan.getContext('2d');
-let mScore=0, mState="MENU", mTargetAns=0, mCurrentInput="", mNumbers=[], mFlashIdx=0, mTimer=0, mLevel=1;
+let mScore=0, mState="MENU", mTargetAns=0, mCurrentInput="", mNumbers=[], mFlashIdx=0, mTimer=0, mLevel=1, MathCorrectAnim=false;
 
 function resetMathMode() { mScore=0; mState="MENU"; document.getElementById('math-overlay').style.display='flex'; }
 function startMath(lvl) {
     mLevel = lvl; mState = "FLASHING"; document.getElementById('math-overlay').style.display='none';
-    mNumbers = []; mCurrentInput = "";
+    mNumbers = []; mCurrentInput = ""; mathCan.width = mathCan.clientWidth; mathCan.height = mathCan.clientHeight;
     let cnt = lvl === 1 ? 3 : (lvl === 2 ? 3 : 4);
     let min = lvl === 1 ? 1 : (lvl === 2 ? 10 : 100);
     let max = lvl === 1 ? 9 : (lvl === 2 ? 99 : 999);
-    
     let base = Math.floor(Math.random()*(max-min+1))+min; mNumbers.push(base); mTargetAns = base;
     for(let i=1; i<cnt; i++) {
         let n = Math.floor(Math.random()*(max-min+1))+min;
@@ -332,159 +323,120 @@ function pressMathKey(k) {
     } else { if(mCurrentInput.length < 5) mCurrentInput += k; }
 }
 
-// ==================== 4. 本格インベーダー (40機大軍) ====================
+// ==================== 4. インベーダー ====================
 const invCan = document.getElementById('invCanvas'); const invc = invCan.getContext('2d');
 let invScore=0, invStage=1, invState="START", invDir=1, invMoveTimer=0;
-const invKeys = {left:false, right:false};
-const playerShip = {x:0, y:0, w:30, h:15, cooldown:0};
+const invKeys = {left:false, right:false}; const playerShip = {x:0, y:0, w:28, h:14, cooldown:0};
 let invList=[], invLaser=[], enemyLaser=[];
 
 function initInvGame() {
     invCan.width = invCan.clientWidth; invCan.height = invCan.clientHeight;
-    playerShip.x = invCan.width/2 - 15; playerShip.y = invCan.height - 35;
+    playerShip.x = invCan.width/2 - 14; playerShip.y = invCan.height - 25;
     invList = []; invLaser = []; enemyLaser = []; invDir = 1;
-    // 💥 5行 × 8列 ＝ 40機の圧倒的大軍！
-    for(let r=0; r<5; r++) {
-        for(let c=0; c<8; c++) {
-            invList.push({ x: 25 + c*35, y: 50 + r*22, w: 22, h: 14, alive: true });
-        }
-    }
+    for(let r=0; r<5; r++) { for(let c=0; c<8; c++) { invList.push({ x: 20 + c*32, y: 45 + r*20, w: 20, h: 12, alive: true }); } }
 }
 function handleInvAction() {
     if(invState==="START" || invState==="GAMEOVER") { invScore=0; invStage=1; }
     else if(invState==="CLEAR") { invStage++; }
     initInvGame(); invState="PLAY"; document.getElementById('inv-overlay').style.display='none';
 }
-function triggerInvFire() { if(invState==='PLAY' && playerShip.cooldown<=0) { invLaser.push({x:playerShip.x+15, y:playerShip.y, w:3, h:8}); playerShip.cooldown=15; } }
+function triggerInvFire() { if(invState==='PLAY' && playerShip.cooldown<=0) { invLaser.push({x:playerShip.x+14, y:playerShip.y, w:3, h:8}); playerShip.cooldown=14; } }
 bindUniversalBtn('btn-inv-left', () => invKeys.left=true, () => invKeys.left=false);
 bindUniversalBtn('btn-inv-right', () => invKeys.right=true, () => invKeys.right=false);
 bindUniversalBtn('btn-inv-fire', () => triggerInvFire(), () => {});
 
-// ==================== 5. 本格ブロック崩し (アイテム＆マルチボール) ====================
+// ==================== 5. ブロック崩し ====================
 const brkCan = document.getElementById('brkCanvas'); const brkc = brkCan.getContext('2d');
-let brkScore=0, brkOver=false, brkPaddle={x:0, y:0, w:80, h:12};
+let brkScore=0, brkOver=false, brkPaddle={x:0, y:0, w:75, h:12};
 let brkBalls=[], brkBlocks=[], brkItems=[], brkKeys={left:false, right:false};
 
 function initBrkBlocks() {
-    brkBlocks = [];
-    let cols = 8; let rows = 5;
-    let bW = Math.floor((brkCan.width - 40) / cols) - 4;
+    brkBlocks = []; let cols = 8; let rows = 5; let bW = Math.floor((brkCan.width - 30) / cols) - 4;
     let colors = ['#ff1744', '#ff9100', '#ffea00', '#00e676', '#00e5ff'];
-    for(let r=0; r<rows; r++) {
-        for(let c=0; c<cols; c++) {
-            brkBlocks.push({ x: 20 + c*(bW+4), y: 60 + r*16, w: bW, h:12, alive:true, color:colors[r] });
-        }
-    }
+    for(let r=0; r<rows; r++) { for(let c=0; c<cols; c++) { brkBlocks.push({ x: 15 + c*(bW+4), y: 50 + r*15, w: bW, h:11, alive:true, color:colors[r] }); } }
 }
 function resetBrk() {
     brkCan.width = brkCan.clientWidth; brkCan.height = brkCan.clientHeight;
     brkScore=0; brkOver=false; brkItems=[];
-    brkPaddle.w = 85; brkPaddle.h = 12; brkPaddle.x = brkCan.width/2 - brkPaddle.w/2; brkPaddle.y = brkCan.height - 35;
-    brkBalls = [{x: brkCan.width/2, y: brkCan.height - 60, vx: 3.5, vy: -3.5, r: 6}];
+    brkPaddle.w = 75; brkPaddle.h = 11; brkPaddle.x = brkCan.width/2 - brkPaddle.w/2; brkPaddle.y = brkCan.height - 25;
+    brkBalls = [{x: brkCan.width/2, y: brkCan.height - 50, vx: 3, vy: -3, r: 5}];
     initBrkBlocks(); document.getElementById('brk-overlay').style.display='none';
 }
 bindUniversalBtn('btn-brk-left', () => brkKeys.left=true, () => brkKeys.left=false);
 bindUniversalBtn('btn-brk-right', () => brkKeys.right=true, () => brkKeys.right=false);
 
 
-// ==================== 🔄 統合リアルタイム高描画ループ ====================
+// ==================== 🔄 統合エンジンリアルタイムループ ====================
 function systemEngineLoop() {
-    // 1. テトリス制御
+    // 1. テトリス
     if (activeGame === 'tetris' && tetCurrent) {
-        tetCan.width = tetCan.clientWidth; // リサイズ対策保証
+        tetCan.width = tetCan.clientWidth; tetCan.height = tetCan.clientHeight;
         if(!tetOver) { tetDropTimer += 16; if(tetDropTimer>=800) dropTet(); }
         tetc.clearRect(0,0,tetCan.width,tetCan.height);
-        
-        // 枠UI
         tetc.fillStyle="#121021"; tetc.fillRect(tXOff, tYOff, tCell*10, tCell*20);
         tetc.strokeStyle="#322c5c"; tetc.strokeRect(tXOff, tYOff, tCell*10, tCell*20);
-        
-        // 固定ブロック
         for(let r=0;r<20;r++){ for(let c=0;c<10;c++){ if(tetMatrix[r][c]){ tetc.fillStyle=tetColors[tetMatrix[r][c]]; tetc.fillRect(tXOff+c*tCell, tYOff+r*tCell, tCell-1, tCell-1); } } }
-        
-        // ゴースト予測位置
         if(!tetOver) {
             let gy = getGhostY();
-            tetCurrent.shape.forEach((row,r)=>{ row.forEach((v,c)=>{ if(v) { tetc.strokeStyle='rgba(255,255,255,0.25)'; tetc.strokeRect(tXOff+(tetCurrent.x+c)*tCell, tYOff+(gy+r)*tCell, tCell-1, tCell-1); } }); });
-            // 現在地
+            tetCurrent.shape.forEach((row,r)=>{ row.forEach((v,c)=>{ if(v) { tetc.strokeStyle='rgba(255,255,255,0.2)'; tetc.strokeRect(tXOff+(tetCurrent.x+c)*tCell, tYOff+(gy+r)*tCell, tCell-1, tCell-1); } }); });
             tetCurrent.shape.forEach((row,r)=>{ row.forEach((v,c)=>{ if(v) { tetc.fillStyle=tetColors[tetCurrent.id]; tetc.fillRect(tXOff+(tetCurrent.x+c)*tCell, tYOff+(tetCurrent.y+r)*tCell, tCell-1, tCell-1); } }); });
         }
-        // サイド本格情報UI (NEXT / SCORE)
-        let sideX = tXOff + tCell*10 + 15;
-        tetc.fillStyle="#8b89a6"; tetc.font="12px sans-serif"; tetc.fillText("SCORE", sideX, tYOff+10);
-        tetc.fillStyle="#00e5ff"; tetc.font="20px monospace"; tetc.fillText(String(tetScore), sideX, tYOff+32);
-        
-        tetc.fillStyle="#8b89a6"; tetc.font="12px sans-serif"; tetc.fillText("NEXT", sideX, tYOff+70);
-        if(tetNext) {
-            tetNext.shape.forEach((row,r)=>{ row.forEach((v,c)=>{ if(v) { tetc.fillStyle=tetColors[tetNext.id]; tetc.fillRect(sideX+c*12, tYOff+85+r*12, 11, 11); } }); });
-        }
+        let sideX = tXOff + tCell*10 + 12;
+        tetc.fillStyle="#8b89a6"; tetc.font="11px sans-serif"; tetc.fillText("SCORE", sideX, tYOff+10);
+        tetc.fillStyle="#00e5ff"; tetc.font="16px monospace"; tetc.fillText(String(tetScore), sideX, tYOff+28);
+        tetc.fillStyle="#8b89a6"; tetc.font="11px sans-serif"; tetc.fillText("NEXT", sideX, tYOff+60);
+        if(tetNext) { tetNext.shape.forEach((row,r)=>{ row.forEach((v,c)=>{ if(v) { tetc.fillStyle=tetColors[tetNext.id]; tetc.fillRect(sideX+c*10, tYOff+75+r*10, 9, 9); } }); }); }
     }
 
-    // 2. 連鎖マージパズル制御
+    // 2. パズル
     if (activeGame === 'puzzle') {
         puzGems.forEach(g => g.update());
-        let topCount = 0; puzGems.forEach(g=>{ if(g.isStatic && g.y < 90) topCount++; });
+        let topCount = 0; puzGems.forEach(g=>{ if(g.isStatic && g.y < 80) topCount++; });
         if(topCount > 1 && !puzOver) { puzOver=true; document.getElementById('puz-score-text').innerText=puzScore; document.getElementById('puz-overlay').style.display='flex'; }
-        
         puzc.clearRect(0,0,puzCan.width,puzCan.height);
-        // 背景ケース壁
-        puzc.fillStyle="#0a0914"; puzc.fillRect(15, 60, puzCan.width-30, puzCan.height-90);
-        puzc.strokeStyle="#2e2a4f"; puzc.lineWidth=3; puzc.strokeRect(15, 60, puzCan.width-30, puzCan.height-90);
-        // デッドライン警告線
-        puzc.strokeStyle="rgba(255,23,68,0.4)"; puzc.lineWidth=1; puzc.beginPath(); puzc.moveTo(15, 95); puzc.lineTo(puzCan.width-15, 95); puzc.stroke();
-        
-        // 描画
+        puzc.fillStyle="#0a0914"; puzc.fillRect(15, 50, puzCan.width-30, puzCan.height-70);
+        puzc.strokeStyle="#2e2a4f"; puzc.lineWidth=2; puzc.strokeRect(15, 50, puzCan.width-30, puzCan.height-70);
+        puzc.strokeStyle="rgba(255,23,68,0.3)"; puzc.beginPath(); puzc.moveTo(15, 85); puzc.lineTo(puzCan.width-15, 85); puzc.stroke();
         puzGems = puzGems.filter(g => !g.toRemove);
         puzGems.forEach(g => {
-            puzc.fillStyle = g.c = gemProfiles[g.idx].c;
-            puzc.beginPath(); puzc.arc(g.x, g.y, g.r, 0, Math.PI*2); puzc.fill();
-            puzc.fillStyle = "#000"; puzc.font="bold 10px sans-serif"; puzc.textAlign="center"; puzc.fillText("Lv"+(g.idx+1), g.x, g.y+4);
+            puzc.fillStyle = gemProfiles[g.idx].c; puzc.beginPath(); puzc.arc(g.x, g.y, g.r, 0, Math.PI*2); puzc.fill();
+            puzc.fillStyle = "#000"; puzc.font="bold 9px sans-serif"; puzc.textAlign="center"; puzc.fillText("Lv"+(g.idx+1), g.x, g.y+3);
         });
-        // スコア表示
-        puzc.fillStyle="#fff"; puzc.font="bold 16px sans-serif"; puzc.textAlign="left"; puzc.fillText("SCORE: "+puzScore, 20, 35);
-        puzc.fillStyle="rgba(255,255,255,0.4)"; puzc.fillText("NEXT:", puzCan.width-100, 35);
-        puzc.fillStyle = gemProfiles[puzNextIdx].c; puzc.beginPath(); puzc.arc(puzCan.width-30, 30, 10, 0, Math.PI*2); puzc.fill();
+        puzc.fillStyle="#fff"; puzc.font="bold 14px sans-serif"; puzc.textAlign="left"; puzc.fillText("SCORE: "+puzScore, 20, 30);
+        puzc.fillStyle="rgba(255,255,255,0.4)"; puzc.fillText("NEXT:", puzCan.width-90, 30);
+        puzc.fillStyle = gemProfiles[puzNextIdx].c; puzc.beginPath(); puzc.arc(puzCan.width-25, 26, 8px, 0, Math.PI*2); puzc.fill();
     }
 
-    // 3. 本格フラッシュ計算制御
+    // 3. フラッシュ計算
     if (activeGame === 'math') {
         mathc.clearRect(0,0,mathCan.width,mathCan.height);
         if(mState === "FLASHING") {
             mTimer += 16; let speed = mLevel===1?600:(mLevel===2?450:350);
             if(mTimer < speed) {
-                mathc.fillStyle="#fff"; mathc.font="bold 72px monospace"; mathc.textAlign="center";
-                let val = mNumbers[mFlashIdx];
-                mathc.fillText(val>0&&mFlashIdx>0?`+${val}`:`${val}`, mathCan.width/2, mathCan.height/2);
-            } else if(mTimer > speed + 100) {
-                mTimer = 0; mFlashIdx++; if(mFlashIdx >= mNumbers.length) mState = "INPUT";
-            }
+                mathc.fillStyle="#fff"; mathc.font="bold 64px monospace"; mathc.textAlign="center";
+                let val = mNumbers[mFlashIdx]; mathc.fillText(val>0&&mFlashIdx>0?`+${val}`:`${val}`, mathCan.width/2, mathCan.height/2);
+            } else if(mTimer > speed + 100) { mTimer = 0; mFlashIdx++; if(mFlashIdx >= mNumbers.length) mState = "INPUT"; }
         } else if(mState === "INPUT") {
-            mathc.fillStyle="#00e5ff"; mathc.font="20px sans-serif"; mathc.textAlign="center"; mathc.fillText("答えを入力してください", mathCan.width/2, mathCan.height/2 - 50);
-            mathc.fillStyle="#fff"; mathc.font="bold 56px monospace"; mathc.fillText(mCurrentInput + "_", mathCan.width/2, mathCan.height/2 + 20);
+            mathc.fillStyle="#00e5ff"; mathc.font="16px sans-serif"; mathc.textAlign="center"; mathc.fillText("答えを入力してください", mathCan.width/2, mathCan.height/2 - 40);
+            mathc.fillStyle="#fff"; mathc.font="bold 48px monospace"; mathc.fillText(mCurrentInput + "_", mathCan.width/2, mathCan.height/2 + 20);
         } else if(mState === "RESULT") {
-            mTimer += 16;
-            mathc.textAlign="center";
-            if(MathCorrectAnim) { mathc.fillStyle="#00e676"; mathc.font="bold 40px sans-serif"; mathc.fillText("⭕️ 正解！", mathCan.width/2, mathCan.height/2 - 20); }
-            else { mathc.fillStyle="#ff1744"; mathc.font="bold 40px sans-serif"; mathc.fillText("❌ 不正解", mathCan.width/2, mathCan.height/2 - 20); }
-            mathc.fillStyle="#fff"; mathc.font="18px sans-serif"; mathc.fillText(`正解は: ${mTargetAns}`, mathCan.width/2, mathCan.height/2 + 30);
+            mTimer += 16; mathc.textAlign="center";
+            if(MathCorrectAnim) { mathc.fillStyle="#00e676"; mathc.font="bold 36px sans-serif"; mathc.fillText("⭕️ 正解！", mathCan.width/2, mathCan.height/2 - 15); }
+            else { mathc.fillStyle="#ff1744"; mathc.font="bold 36px sans-serif"; mathc.fillText("❌ 不正解", mathCan.width/2, mathCan.height/2 - 15); }
+            mathc.fillStyle="#fff"; mathc.font="16px sans-serif"; mathc.fillText(`正解は: ${mTargetAns}`, mathCan.width/2, mathCan.height/2 + 25);
             if(mTimer > 2000) { startMath(mLevel); }
         }
-        // スコア
-        mathc.fillStyle="#8b89a6"; mathc.font="14px sans-serif"; mathc.textAlign="left"; mathc.fillText(`正解数: ${mScore}`, 20, 30);
+        mathc.fillStyle="#8b89a6"; mathc.font="13px sans-serif"; mathc.textAlign="left"; mathc.fillText(`正解数: ${mScore}`, 20, 25);
     }
 
-    // 4. 本格インベーダー制御
+    // 4. インベーダー
     if (activeGame === 'invader') {
         if(invState === "PLAY") {
             if(invKeys.left && playerShip.x > 10) playerShip.x -= 3.5;
             if(invKeys.right && playerShip.x < invCan.width - playerShip.w - 10) playerShip.x += 3.5;
             if(playerShip.cooldown > 0) playerShip.cooldown--;
-            
-            // 弾道更新
             invLaser.forEach((l,i) => { l.y -= 6; if(l.y<0) invLaser.splice(i,1); });
             enemyLaser.forEach((el,i) => { el.y += 2.5; if(el.y>invCan.height) enemyLaser.splice(i,1); });
-            
-            // 敵移動同期
             invMoveTimer++;
             let currentSpeed = Math.max(10, 45 - (invStage*4) - (40 - invList.filter(e=>e.alive).length));
             if(invMoveTimer >= currentSpeed) {
@@ -492,25 +444,16 @@ function systemEngineLoop() {
                 invList.forEach(e => { if(e.alive) { e.x += 10 * invDir; if(e.x<10 || e.x>invCan.width-e.w-10) shift=true; } });
                 if(shift) { invDir *= -1; invList.forEach(e => { if(e.alive) { e.y += 12; if(e.y>=playerShip.y-10) { invState="GAMEOVER"; showInvEnd(false); } } }); }
             }
-            
-            // 当たり判定
             invLaser.forEach((l,li)=>{
-                invList.forEach(e=>{
-                    if(e.alive && l.x>e.x && l.x<e.x+e.w && l.y>e.y && l.y<e.y+e.h) { e.alive=false; invLaser.splice(li,1); invScore+=20; }
-                });
+                invList.forEach(e=>{ if(e.alive && l.x>e.x && l.x<e.x+e.w && l.y>e.y && l.y<e.y+e.h) { e.alive=false; invLaser.splice(li,1); invScore+=20; } });
             });
-            enemyLaser.forEach((el,ei)=>{
-                if(el.x>playerShip.x && el.x<playerShip.x+playerShip.w && el.y>playerShip.y && el.y<playerShip.y+playerShip.h) { invState="GAMEOVER"; showInvEnd(false); }
-            });
-            
-            // 敵からの射撃
+            enemyLaser.forEach((el,ei)=>{ if(el.x>playerShip.x && el.x<playerShip.x+playerShip.w && el.y>playerShip.y && el.y<playerShip.y+playerShip.h) { invState="GAMEOVER"; showInvEnd(false); } });
             if(Math.random()<0.015 + (invStage*0.005)) {
                 let al = invList.filter(e=>e.alive);
-                if(al.length>0) { let target = al[Math.floor(Math.random()*al.length)]; enemyLaser.push({x:target.x+10, y:target.y+14, w:2, h:6}); }
+                if(al.length>0) { let target = al[Math.floor(Math.random()*al.length)]; enemyLaser.push({x:target.x+10, y:target.y+12, w:2, h:6}); }
                 else { invState="CLEAR"; showInvEnd(true); }
             }
         }
-        // 描画
         invc.clearRect(0,0,invCan.width,invCan.height);
         if(invState==='PLAY') {
             invc.fillStyle="#00e5ff"; invc.fillRect(playerShip.x, playerShip.y, playerShip.w, playerShip.h);
@@ -518,65 +461,51 @@ function systemEngineLoop() {
             invc.fillStyle="#fff"; invLaser.forEach(l=>invc.fillRect(l.x, l.y, l.w, l.h));
             invc.fillStyle="#ff1744"; enemyLaser.forEach(el=>invc.fillRect(el.x, el.y, el.w, el.h));
         }
-        invc.fillStyle="#fff"; invc.font="14px monospace"; invc.fillText(`SCORE: ${invScore}  STAGE: ${invStage}`, 15, 25);
+        invc.fillStyle="#fff"; invc.font="13px monospace"; invc.fillText(`SCORE: ${invScore}  STAGE: ${invStage}`, 15, 20);
     }
 
-    // 5. 本格ブロック崩し制御
+    // 5. ブロック崩し
     if (activeGame === 'breakout') {
         if(!brkOver) {
             if(brkKeys.left && brkPaddle.x > 10) brkPaddle.x -= 5.5;
             if(brkKeys.right && brkPaddle.x < brkCan.width - brkPaddle.w - 10) brkPaddle.x += 5.5;
-            
-            // ボール物理
             brkBalls.forEach((b, bi) => {
                 b.x += b.vx; b.y += b.vy;
-                if(b.x-b.r<0 || b.x+b.r>brkCan.width) b.vx *= -1;
-                if(b.y-b.r<0) b.vy *= -1;
-                
-                // パドル跳ね返し
+                if(b.x-b.r<0 || b.x+b.r>brkCan.width) b.vx *= -1; if(b.y-b.r<0) b.vy *= -1;
                 if(b.y+b.r>=brkPaddle.y && b.y-b.r<=brkPaddle.y+brkPaddle.h) {
                     if(b.x>=brkPaddle.x && b.x<=brkPaddle.x+brkPaddle.w) {
-                        b.vy = -Math.abs(b.vy);
-                        let norm = (b.x - (brkPaddle.x + brkPaddle.w/2)) / (brkPaddle.w/2);
-                        b.vx = norm * 4.5;
+                        b.vy = -Math.abs(b.vy); let norm = (b.x - (brkPaddle.x + brkPaddle.w/2)) / (brkPaddle.w/2); b.vx = norm * 4;
                     }
                 }
-                // ブロック破壊
                 brkBlocks.forEach(bl => {
                     if(!bl.alive) return;
                     if(b.x+b.r>bl.x && b.x-b.r<bl.x+bl.w && b.y+b.r>bl.y && b.y-b.r<bl.y+bl.h) {
                         bl.alive=false; b.vy *= -1; brkScore+=10;
-                        // アイテムドロップ率 (25%)
                         if(Math.random()<0.25) { brkItems.push({x:bl.x+bl.w/2, y:bl.y, type:Math.random()>0.5?'WIDE':'MULTI'}); }
                     }
                 });
                 if(b.y > brkCan.height) brkBalls.splice(bi,1);
             });
-            
-            // アイテム処理
             brkItems.forEach((it, i)=>{
-                it.y += 2.2;
-                if(it.y > brkCan.height) brkItems.splice(i,1);
+                it.y += 2.2; if(it.y > brkCan.height) brkItems.splice(i,1);
                 if(it.x>brkPaddle.x && it.x<brkPaddle.x+brkPaddle.w && it.y>brkPaddle.y && it.y<brkPaddle.y+brkPaddle.h) {
-                    if(it.type==='WIDE') { brkPaddle.w = Math.min(140, brkPaddle.w + 25); setTimeout(()=>{ brkPaddle.w=85; }, 7000); }
+                    if(it.type==='WIDE') { brkPaddle.w = Math.min(130, brkPaddle.w + 25); setTimeout(()=>{ brkPaddle.w=75; }, 7000); }
                     if(it.type==='MULTI' && brkBalls.length>0) {
                         let src = brkBalls[0] || {x:brkCan.width/2,y:brkCan.height/2};
-                        brkBalls.push({x:src.x, y:src.y, vx:-3, vy:-3, r:6},{x:src.x, y:src.y, vx:3, vy:-3.5, r:6});
+                        brkBalls.push({x:src.x, y:src.y, vx:-2.5, vy:-3, r:5},{x:src.x, y:src.y, vx:2.5, vy:-3, r:5});
                     }
                     brkItems.splice(i,1);
                 }
             });
-            
             if(brkBalls.length===0) { brkOver=true; showBrkEnd(false); }
             if(brkBlocks.every(bl=>!bl.alive)) { brkOver=true; showBrkEnd(true); }
         }
-        // 描画
         brkc.clearRect(0,0,brkCan.width,brkCan.height);
         brkc.fillStyle="#ff007f"; brkc.fillRect(brkPaddle.x, brkPaddle.y, brkPaddle.w, brkPaddle.h);
         brkBalls.forEach(b => { brkc.fillStyle="#fff"; brkc.beginPath(); brkc.arc(b.x,b.y,b.r,0,Math.PI*2); brkc.fill(); });
         brkBlocks.forEach(bl => { if(bl.alive) { brkc.fillStyle=bl.color; brkc.fillRect(bl.x,bl.y,bl.w,bl.h); } });
-        brkItems.forEach(it => { brkc.fillStyle=it.type==='WIDE'?'#00e676':'#ffea00'; brkc.font="bold 11px sans-serif"; brkc.fillText(it.type==='WIDE'?'[W]':'[M]', it.x, it.y); });
-        brkc.fillStyle="#fff"; brkc.font="14px sans-serif"; brkc.fillText("SCORE: "+brkScore, 20, 35);
+        brkItems.forEach(it => { brkc.fillStyle=it.type==='WIDE'?'#00e676':'#ffea00'; brkc.font="bold 10px sans-serif"; brkc.fillText(it.type==='WIDE'?'[W]':'[M]', it.x, it.y); });
+        brkc.fillStyle="#fff"; brkc.font="13px sans-serif"; brkc.fillText("SCORE: "+brkScore, 20, 30);
     }
 
     requestAnimationFrame(systemEngineLoop);
@@ -594,7 +523,6 @@ function showBrkEnd(win) {
     document.getElementById('brk-overlay').style.display='flex';
 }
 
-// 起動処理
 window.addEventListener('resize', () => { if(activeGame==='tetris')initTetSizes(); });
 document.addEventListener('keydown', e => {
     if(activeGame==='invader') { if(e.key==='ArrowLeft'||e.key==='a') invKeys.left=true; if(e.key==='ArrowRight'||e.key==='d') invKeys.right=true; if(e.key===' ') triggerInvFire(); }
