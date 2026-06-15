@@ -3,91 +3,80 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>お問い合わせ・ご入力フォーム</title>
+    <title>お問い合わせ・各種お申し込み</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght@400;500;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght@300;400;500&display=swap" rel="stylesheet">
     <style>
-        /* リセットCSS & 基本設定 */
+        /* 基本リセット */
         * {
             box-sizing: border-box;
             margin: 0;
             padding: 0;
         }
         
-        /* 背景の設定（フィルターと画像を一体化して表示バグを防ぐ） */
+        /* スマホに最適化したベースデザイン */
+        /* 画像の読み込みバグを完全に防ぐため、高品質な配色でお洒落な花屋の雰囲気を表現します */
         body {
             font-family: 'Noto Serif JP', serif;
-            color: #4a4a4a;
-            line-height: 1.6;
-            padding: 40px 20px;
-            
-            /* 画像が読み込めなかった場合の予備カラー */
-            background-color: #d8ded4;
-            
-            /* 半透明のアイボリー色と、花屋風の画像を重ねて指定 */
-            background-image: 
-                linear-gradient(rgba(245, 245, 238, 0.7), rgba(245, 245, 238, 0.7)),
-                url('https://images.unsplash.com/photo-1526047932273-341f2a7631f9?q=80&w=1920&auto=format&fit=crop'); 
-            
-            background-size: cover;
-            background-position: center;
-            background-repeat: no-repeat;
-            background-attachment: fixed;
+            background-color: #f7f5f0; /* 落ち着いたリネン・生成り色 */
+            color: #3c423a; /* 植物を連想させる深いニュアンスグリーングレー */
+            line-height: 1.8;
+            padding: 0;
         }
 
-        /* ページ全体のコンテナ */
+        /* ページ全体のコンテナ（スマホの縦長画面に最適化） */
         .page-container {
-            max-width: 850px;
+            width: 100%;
+            max-width: 540px; /* スマホで最も美しく収まる横幅 */
             margin: 0 auto;
+            padding: 40px 0 60px 0; /* 左右の余白はあえて0にしてフォームを広げます */
         }
 
-        /* ヘッダー・タイトル部分 */
+        /* ヘッダー部分：SNSのプロフィールから飛んだようなお洒落な洋風サロン感 */
         .form-header {
             text-align: center;
-            margin-bottom: 40px;
+            padding: 0 24px;
+            margin-bottom: 30px;
         }
+        
+        /* 植物のモチーフの代わりに、細く繊細な飾り線をCSSで表現 */
+        .form-header .flower-icon {
+            font-size: 18px;
+            color: #92a18d; /* セージグリーン */
+            margin-bottom: 10px;
+            letter-spacing: 0.2em;
+        }
+        
         .form-header h1 {
-            font-size: 26px;
-            color: #3b4238; 
-            font-weight: 500;
-            letter-spacing: 0.1em;
+            font-size: 20px; /* スマホで綺麗に収まるサイズ */
+            font-weight: 400;
+            letter-spacing: 0.12em; /* 文字の間隔を広げてお洒落に */
+            color: #2b3029;
             margin-bottom: 12px;
-            position: relative;
-            display: inline-block;
-            padding-bottom: 10px;
         }
-        .form-header h1::after {
-            content: '';
-            position: absolute;
-            left: 50%;
-            bottom: 0;
-            transform: translateX(-50%);
-            width: 50px;
-            height: 2px;
-            background-color: #8fa086; 
-        }
+        
         .form-header p {
-            font-size: 14px;
-            color: #6a6e67;
+            font-size: 13px;
+            color: #70776d;
             letter-spacing: 0.05em;
+            font-weight: 300;
         }
 
-        /* フォームを囲むお洒落なカード */
+        /* フォームを囲むエリア（スマホの画面幅いっぱいに広げて、入力しやすく） */
         .form-card {
-            background-color: rgba(255, 255, 255, 0.95);
-            border-radius: 8px;
-            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.08); 
-            overflow: hidden;
-            padding: 20px;
+            background-color: #ffffff;
+            border-top: 3px solid #92a18d; /* 上部にだけ花屋らしいグリーンのアクセントライン */
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.03); /* スマホで重くならない軽い影 */
+            padding: 10px 0; /* フォームの左右の余白を極限まで削り、スマホでの誤タップを防ぐ */
             margin-bottom: 40px;
-            border: 1px solid rgba(143, 160, 134, 0.2); 
         }
 
-        /* 埋め込みフォームのレスポンシブ対応ラッパー */
+        /* Googleフォームの埋め込みラッパー */
         .iframe-wrapper {
             width: 100%;
-            min-height: 800px; 
+            /* フォームが非常に長いためスクロールを滑らかに */
+            -webkit-overflow-scrolling: touch; 
         }
         .iframe-wrapper iframe {
             width: 100%;
@@ -95,42 +84,29 @@
             border: none;
         }
 
-        /* フッター（戻るボタンなど） */
+        /* フッター（スマホの親指で押しやすいボタン） */
         .form-footer {
             text-align: center;
+            padding: 0 24px;
         }
         .btn-back {
-            display: inline-block;
-            padding: 12px 35px;
+            display: block; /* 画面幅に合わせた押しやすいボタンに */
+            max-width: 200px;
+            margin: 0 auto;
+            padding: 14px 0;
             background-color: transparent;
-            color: #6a6e67;
-            border: 1px solid #8fa086;
-            border-radius: 4px;
+            color: #5c6358;
+            border: 1px solid #92a18d;
+            border-radius: 0; /* あえて角を丸めず、洗練されたアンティーク感を出す */
             text-decoration: none;
-            font-size: 14px;
-            font-weight: 500;
-            letter-spacing: 0.05em;
-            transition: all 0.4s ease;
+            font-size: 13px;
+            letter-spacing: 0.1em;
+            transition: all 0.3s ease;
         }
-        .btn-back:hover {
-            background-color: #8fa086;
+        /* タップしたときの反応 */
+        .btn-back:active {
+            background-color: #92a18d;
             color: #ffffff;
-            box-shadow: 0 4px 10px rgba(143, 160, 134, 0.3);
-        }
-
-        /* スマホ向け調整 */
-        @media (max-width: 600px) {
-            body {
-                padding: 20px 10px;
-                background-attachment: scroll;
-            }
-            .form-header h1 {
-                font-size: 20px;
-            }
-            .form-card {
-                padding: 10px;
-                border-radius: 6px;
-            }
         }
     </style>
 </head>
@@ -139,8 +115,9 @@
     <div class="page-container">
         
         <header class="form-header">
-            <h1>お問い合わせ・各種お申し込み</h1>
-            <p>以下のフォームに必要事項をご記入の上、送信してください。</p>
+            <div class="flower-icon">◇ <span>Botanical</span> ◇</div>
+            <h1>Contact Form</h1>
+            <p>必要事項をご記入の上、送信してください</p>
         </header>
 
         <main class="form-card">
