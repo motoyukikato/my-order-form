@@ -98,7 +98,7 @@
     .amount-wrapper { border: none !important; background: transparent !important; }
   }
 
-  /* ヘッダー：下線との被りを防ぐ高精度レイアウト */
+  /* ヘッダー */
   .header { 
     width: 100%; 
     border-bottom: 2px solid #1b4d3e; 
@@ -171,28 +171,32 @@
 </div>
 
 <div class="guide-panel">
-  <div class="guide-title">💻 【パソコン用】ご注文の手順</div>
+  <div class="guide-title">💻 【パソコン・携帯用】ご注文の手順</div>
   <div class="guide-step">
-    <span class="step-num">手順 1</span> 下の白い発注書に「貴社名」と「商品の数量・上代」をご入力ください。金額は自動計算されます。<br>
-    ※20行で足りない場合は、左下の青いボタンを押すと<strong>さらに20行追加</strong>されます。
+    <span class="step-num">手順 1</span> 白い発注書に「貴社名」と「商品の数量・上代」をご入力ください。金額は自動計算されます。<br>
+    ※行が足りない場合は、左下の青いボタンを押すと<strong>さらに20行追加</strong>されます。
   </div>
   
-  <div style="border-top: 1px dashed #cbd5e1; padding-top: 10px; margin-top: 10px; display: flex; gap: 20px;">
-    <div style="flex: 1; border-right: 1px dashed #cbd5e1; padding-right: 15px;">
+  <div style="border-top: 1px dashed #cbd5e1; padding-top: 10px; margin-top: 10px; display: flex; gap: 20px; flex-wrap: wrap;">
+    <div style="flex: 1; min-width: 250px; border-right: 1px dashed #cbd5e1; padding-right: 15px;">
       <span class="step-num" style="background-color: #ef4444;">手順 2-A</span> <strong>【メールで送る場合】</strong><br>
-      ① 真ん中の赤色のボタンを押し、PDFをパソコンに保存します。<br>
-      ② パソコンの<strong>『ダウンロード』フォルダー</strong>にあるPDFファイルをメールに添付して送信してください。
+      ① 赤色のボタンを押し、PDFを一度端末に保存します。<br>
+      <span class="alert-text">⚠️ ファイルは端末の『ダウンロード』フォルダーに自動保存されます。</span><br>
+      ② オレンジのボタンでメールを起動し、そのPDFを添付して送信してください。<br>
+      <small style="color:#666; display:block; margin-top:5px;">
+        ※携帯の人はメール画面の「添付ボタン(クリップのマーク等)」を押し、最近の項目からPDFを選ぶと探さず添付できます。
+      </small>
     </div>
-    <div style="flex: 1;">
+    <div style="flex: 1; min-width: 250px;">
       <span class="step-num" style="background-color: #10b981;">手順 2-B</span> <strong>【FAXで送る場合（印刷）】</strong><br>
-      ① まずは真ん中の赤色の<strong>「① 発注書PDFを作成する」</strong>ボタンを押して、一度パソコンに保存します。<br>
-      ② パソコンの<strong>『ダウンロード』フォルダー</strong>を開き、保存されたPDFファイルを開いて印刷（Ctrl + P）してください。用紙右上の特大FAX番号へそのまま送信いただけます。
+      ① まずは赤色の<strong>「① 発注書PDFを作成する」</strong>ボタンを押して端末に保存します。<br>
+      ② 端末の<strong>『ダウンロード』フォルダー</strong>からそのPDFファイルを開き、印刷（Ctrl+P）してください。用紙右上の特大FAX番号へそのまま送信いただけます。
     </div>
   </div>
   
   <div class="btn-container">
     <button class="action-btn btn-add" onclick="addTwentyRows()">➕ さらに20行追加する</button>
-    <button class="action-btn btn-pdf" onclick="generatePDFOnly()">① 発注書PDFを作成する（パソコンに保存）</button>
+    <button class="action-btn btn-pdf" onclick="generatePDFOnly()">① 発注書PDFを作成する（保存）</button>
     <button class="action-btn btn-mail" onclick="openMailerOnly()">② メールを開いて送信する（PDFを添付してください）</button>
   </div>
 </div>
@@ -234,7 +238,7 @@
       <td>
         <div class="radio-wrapper">
           <label class="radio-label"><input type="radio" name="delivery" value="店頭お渡し"> 店頭お渡し</label>
-          <label class="radio-label"><input type="radio" name="delivery" value="直送"> 直送（上記住所へ配送）</label>
+          <label class="radio-label"><input type="radio" name="delivery" value="直送"> 直送（左記住所へ配送）</label>
         </div>
       </td>
       <th>発送条件</th>
@@ -314,7 +318,6 @@
     }
   }
 
-  // ★変更点：仮パスワードのヒント案内文章を完全に消去
   function openAdminModal() {
     const pwd = prompt("パスワードを入力してください（スタッフ専用）:");
     if (pwd === "758") {
@@ -437,7 +440,7 @@
 
     target.classList.remove('pdf-mode');
     
-    alert(`「${fileName}」を作成し、パソコンの『ダウンロード』フォルダーへ保存しました！\n\n【FAXの方】ダウンロードフォルダーからこのPDFを開いて印刷してください。\n【メールの方】オレンジのボタンを押して、このPDFを添付してください。`);
+    alert(`「${fileName}」を作成し、お使いの端末（パソコン・携帯）の『ダウンロード』フォルダーへ保存しました！\n\n【FAXの方】ダウンロードフォルダーからこのPDFを開いて印刷してください。\n【メールの方】オレンジのボタンを押して、このPDFを添付してください。`);
   }
 
   function openMailerOnly() {
@@ -445,7 +448,7 @@
     const items = getOrderData();
 
     if (cName === "未入力" || items.length === 0) {
-      alert("「貴社名」と preferences の入力データが不足しています。");
+      alert("「貴社名」と「注文内容」が入力されていません。");
       return;
     }
 
@@ -454,7 +457,7 @@
     
     let bodyText = `株式会社名古屋花き商事本部 御中\n\n`;
     bodyText += `いつもお世話になっております。展示会の発注データを送信いたします。\n`;
-    bodyText += `※パソコンの『ダウンロード』フォルダーにあるPDFファイルをこのメールに添付して送信してください。\n\n`;
+    bodyText += `※端末の『ダウンロード』フォルダーにあるPDFファイルをこのメールに添付して送信してください。\n\n`;
     bodyText += `【発注内容の控え】----------------------\n`;
     bodyText += `・貴社名: ${cName}\n`;
     bodyText += `・お渡し方法: ${dRadio ? dRadio.value : "未選択"}\n`;
@@ -466,7 +469,7 @@
     bodyText += `----------------------------------------\n`;
     bodyText += `備考: ${document.getElementById('cust-notes').value}\n`;
 
-    const toAddress = "ft-order@flonet.co.jp"; 
+    const toAddress = "order@flonet.example.com"; 
     const subject = encodeURIComponent(`【展示会発注】${cName}様分`);
     const body = encodeURIComponent(bodyText);
 
