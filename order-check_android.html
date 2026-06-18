@@ -46,6 +46,17 @@
         <i class="fa-solid fa-circle-notch fa-spin fa-3x"></i><br><br>データを照合中...
     </div>
 
+    <div id="auth-view" style="display:none;" class="card">
+        <h3 style="text-align:center;">本人確認</h3>
+        <p style="font-size:14px; color:#666; text-align:center;">
+            ご登録電話番号の<strong>下4桁</strong>を入力してください。
+        </p>
+        <input type="tel" id="auth-code" maxlength="4" 
+               style="width:100%; padding:15px; font-size:24px; text-align:center; letter-spacing:10px; border:2px solid #4267B2; border-radius:8px; margin-bottom:15px; box-sizing: border-box;" 
+               placeholder="0000">
+        <button class="btn btn-scan" onclick="verifyAndShow()">確認して明細を表示</button>
+    </div>
+
     <div id="result-view" style="display:none;">
         <div class="card" style="border-left: 6px solid #4267B2; padding: 15px;">
             <small style="color:#888;">ご担当者様</small>
@@ -81,6 +92,7 @@
 </div>
 
 <script>
+    // 【重要】GASで新しいデプロイを行ったら、URLを最新のものに差し替えてください
     const GAS_URL = "https://script.google.com/macros/s/AKfycbwMvefQcxdC4hOBTsTXEYTtITZWv6vTe6F26D8qzhhYHXANthxc1kfO3tKKJjaRXLFG/exec"; 
 
     let html5QrCode = null;
@@ -109,7 +121,12 @@
                 { fps: 15, qrbox: 250 },
                 async (text) => {
                     await stopScan();
-                    fetchHistory(text.trim());
+                    
+                    // スキャン成功時、即座に通信せず本人確認画面に移行
+                    currentCustomerId = text.trim();
+                    document.getElementById("scan-view").style.display = "none";
+                    document.getElementById("auth-view").style.display = "block";
+                    document.getElementById("auth-code").focus();
                 }
             );
         } catch (err) {
@@ -127,15 +144,22 @@
         document.getElementById("stop-btn").style.display = "none";
     }
 
-    function fetchHistory(val) {
-        document.getElementById("scan-view").style.display = "none";
+    // 新しく追加：下4桁の確定時、GASに「ID」と「下4桁」をセットで送信する関数
+    function verifyAndShow() {
+        const authCode = document.getElementById("auth-code").value;
+        if (authCode.length !== 4) {
+            return alert("下4桁を正しく入力してください");
+        }
+
+        // 認証画面を隠して、通信中のローディングを表示
+        document.getElementById("auth-view").style.display = "none";
         document.getElementById("loading").style.display = "block";
-        
+
         const action = "getCustomerSpecificHistory";
         
-        // 【重要】JSONP方式で通信
+        // パラメータに &auth= を追加してJSONPでGASへリクエスト
         const script = document.createElement('script');
-        script.src = `${GAS_URL}?action=${action}&val=${encodeURIComponent(val)}&callback=onDataReceived`;
+        script.src = `${GAS_URL}?action=${action}&val=${encodeURIComponent(currentCustomerId)}&auth=${authCode}&callback=onDataReceived`;
         document.body.appendChild(script);
     }
 
@@ -150,7 +174,11 @@
             document.getElementById("email-btn").style.display = "block";
             const firstItem = data[0];
             document.getElementById("cust-name").innerText = (firstItem.customerName || "お客様") + " 様";
-            currentCustomerId = firstItem.customerId || "";
+            
+            // 明細中に別の顧客IDが含まれていても上書きされないよう担保
+            if(firstItem.customerId) {
+                currentCustomerId = firstItem.customerId;
+            }
 
             tableBody.innerHTML = data.map(item => {
                 const p = Number(String(item.price || "0").replace(/[^0-9.-]/g, ''));
@@ -158,7 +186,6 @@
                 const subtotal = p * q; 
                 total += subtotal; 
 
-                // ★変更点：ここに品番と在庫状況の表示を追加しました
                 const stockDisplay = item.stock ? `【在庫：${item.stock}】` : "【在庫：未確認】";
                 const janDisplay = item.jan ? `品番：${item.jan}` : "";
 
@@ -180,7 +207,10 @@
             }).join('');
             document.getElementById("total-amount").innerText = total.toLocaleString();
         } else {
-            tableBody.innerHTML = '<tr><td colspan="2" style="text-align:center; padding:30px; color:#999;">履歴が見つかりませんでした。</td></tr>';
+            // エラー時（認証失敗など）のメッセージ表示
+            const errorMsg = (data && data.error) ? data.error : "履歴が見つかりませんでした。";
+            tableBody.innerHTML = `<tr><td colspan="2" style="text-align:center; padding:30px; color:#999;">${errorMsg}</td></tr>`;
+            document.getElementById("cust-name").innerText = "---";
             document.getElementById("email-btn").style.display = "none";
         }
     }
