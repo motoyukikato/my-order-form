@@ -1,0 +1,380 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>【WEBシステム】通常発注書</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+<style>
+  * { box-sizing: border-box; }
+  body {
+    background-color: #e5e7eb;
+    margin: 0;
+    padding: 20px;
+    font-family: "Helvetica Neue", Arial, "Hiragino Kaku Gothic ProN", "Hiragino Sans", Meiryo, sans-serif;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  /* 操作案内パネル（印刷・PDF時は自動非表示） */
+  .guide-panel {
+    max-width: 210mm;
+    margin: 0 auto 15px auto;
+    background-color: #ffffff;
+    border: 3px solid #1b4d3e;
+    border-radius: 8px;
+    padding: 15px 20px;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+  }
+  .guide-title { font-size: 14pt; font-weight: bold; color: #1b4d3e; margin: 0 0 10px 0; border-bottom: 2px solid #1b4d3e; padding-bottom: 5px; }
+  .guide-step { font-size: 11pt; line-height: 1.6; color: #334155; margin-bottom: 12px; }
+  .step-num { background-color: #1b4d3e; color: white; padding: 2px 8px; border-radius: 4px; font-weight: bold; margin-right: 5px; }
+  
+  .alert-text {
+    color: #d32f2f;
+    font-weight: bold;
+    background-color: #ffebee;
+    padding: 2px 6px;
+    border-radius: 3px;
+    display: inline-block;
+    margin-top: 3px;
+  }
+
+  .btn-container { display: flex; gap: 15px; margin-top: 15px; flex-wrap: wrap; }
+  .action-btn { flex: 1; min-width: 200px; padding: 12px; font-size: 13pt; font-weight: bold; cursor: pointer; border: none; border-radius: 6px; box-shadow: 0 4px 6px rgba(0,0,0,0.15); transition: background-color 0.2s; }
+  .btn-add { background-color: #3b82f6; color: white; }
+  .btn-add:hover { background-color: #2563eb; }
+  .btn-pdf { background-color: #ef4444; color: white; }
+  .btn-pdf:hover { background-color: #dc2626; }
+  .btn-mail { background-color: #f59e0b; color: white; }
+  .btn-mail:hover { background-color: #d97706; }
+
+  /* A4縦サイズコンテナ */
+  .a4-container {
+    width: 210mm;
+    height: auto; 
+    min-height: 292mm;
+    background-color: #ffffff;
+    margin: 0 auto;
+    padding: 10mm 12mm;
+    position: relative;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+  }
+
+  /* PDF化・印刷時の入力枠消去設定 */
+  .pdf-mode input[type="text"], .pdf-mode input[type="number"],
+  @media print {
+    body { background-color: #ffffff; padding: 0; margin: 0; }
+    .guide-panel { display: none !important; }
+    .a4-container { width: 210mm; margin: 0; padding: 6mm 12mm; box-shadow: none; height: auto; }
+    input[type="text"], input[type="number"] {
+      border: none !important;
+      background: transparent !important;
+      padding: 0 !important;
+      box-shadow: none !important;
+    }
+    .total-box { color: #000000 !important; -webkit-text-fill-color: #000000 !important; }
+    .amount-wrapper { border: none !important; background: transparent !important; }
+  }
+
+  /* ヘッダー */
+  .header { 
+    width: 100%; 
+    border-bottom: 2px solid #1b4d3e; 
+    padding-bottom: 5mm; 
+    margin-bottom: 4mm; 
+    height: 22mm; 
+  }
+  .logo-area { float: left; width: 35%; }
+  .logo-text { font-family: 'Georgia', serif; font-size: 30pt; font-weight: bold; color: #1b4d3e; line-height: 1.1; margin: 0; user-select: none; }
+  .exhibit-tag { display: inline-block; background-color: #1b4d3e; color: white; font-size: 8.5pt; padding: 1px 6px; font-weight: bold; border-radius: 2px; margin-top: 1px; }
+  
+  .header-right { float: right; width: 63%; text-align: right; }
+  .fax-label { font-size: 8.5pt; color: #d32f2f; font-weight: bold; margin: 0; }
+  .fax-number { font-size: 25pt; color: #d32f2f; font-weight: bold; margin: 0; line-height: 1.1; letter-spacing: 0.5px; }
+  .company-title { font-size: 10pt; color: #1b4d3e; font-weight: bold; margin: 1px 0 1mm 0; }
+
+  .clear { clear: both; }
+  .title-area { text-align: center; margin-bottom: 4mm; }
+  .title-area h1 { font-size: 15pt; color: #1b4d3e; margin: 0; font-weight: bold; letter-spacing: 2px; }
+
+  /* 顧客情報テーブル */
+  input[type="text"], input[type="number"] { width: 100%; height: 100%; border: 1px solid #cbd5e1; background-color: #f8fafc; padding: 2px 5px; font-size: 9.5pt; font-family: inherit; }
+  input:focus { background-color: #fff; border-color: #1b4d3e; outline: none; }
+  .customer-table { width: 100%; border-collapse: collapse; margin-bottom: 4mm; border: 2px solid #1b4d3e; }
+  .customer-table th, .customer-table td { border: 1px solid #1b4d3e; height: 10.5mm; vertical-align: middle; font-size: 9.5pt; }
+  .customer-table th { background-color: #f0f7f0; color: #1b4d3e; font-weight: bold; text-align: center; }
+  .customer-table td { padding: 0; background-color: #fff; }
+
+  /* 商品明細テーブル */
+  .order-table { width: 100%; border-collapse: collapse; margin-bottom: 4mm; border: 2px solid #1b4d3e; table-layout: fixed; }
+  .order-table th { background-color: #1b4d3e; color: #ffffff; font-size: 9.5pt; font-weight: bold; height: 8mm; text-align: center; border: 1px solid #1b4d3e; }
+  .order-table td { border: 1px solid #aaa; height: 8.2mm; text-align: center; vertical-align: middle; font-size: 9.5pt; padding: 0; background-color: #fff; }
+  .order-table tr:nth-child(even) td { background-color: #f9fafb; }
+  .line-num { color: #666; font-size: 8pt; font-weight: bold; background-color: #f3f4f6 !important; }
+  .order-table input.align-left { text-align: left; }
+  .order-table input.align-right { text-align: right; padding-right: 24px; }
+
+  .amount-wrapper { position: relative; width: 100%; height: 100%; display: flex; align-items: center; }
+  .amount-wrapper::after { content: "円"; position: absolute; right: 5px; font-size: 8.5pt; font-weight: bold; color: #333; }
+  .qty-box { width: 90%; height: 6.5mm; text-align: center !important; margin: 0 auto; display: block; }
+  .total-box { font-weight: bold; color: #d32f2f; }
+
+  /* フッター */
+  .footer-area { width: 100%; font-size: 9pt; border-top: 1px solid #1b4d3e; padding-top: 3mm; }
+  .notes-box { float: left; width: 65%; line-height: 1.4; color: #444; }
+  .company-box { float: right; width: 33%; text-align: right; color: #444; line-height: 1.4; }
+</style>
+</head>
+<body>
+
+<div class="guide-panel">
+  <div class="guide-title">💻 【パソコン・携帯用】ご注文の手順</div>
+  <div class="guide-step">
+    <span class="step-num">手順 1</span> 白い発注書に「貴社名」と「商品の数量・上代」をご入力ください。金額は自動計算されます。<br>
+    ※行が足りない場合は、左下の青いボタンを押すと<strong>さらに20行追加</strong>されます。
+  </div>
+  
+  <div style="border-top: 1px dashed #cbd5e1; padding-top: 10px; margin-top: 10px; display: flex; gap: 20px; flex-wrap: wrap;">
+    <div style="flex: 1; min-width: 250px; border-right: 1px dashed #cbd5e1; padding-right: 15px;">
+      <span class="step-num" style="background-color: #ef4444;">手順 2-A</span> <strong>【メールで送る場合】</strong><br>
+      ① 赤色のボタンを押し、PDFを一度端末に保存します。<br>
+      <span class="alert-text">⚠️ ファイルは端末の『ダウンロード』フォルダーに自動保存されます。</span><br>
+      ② オレンジのボタンでメールを起動し、そのPDFを添付して送信してください。<br>
+      <small style="color:#666; display:block; margin-top:5px;">
+        ※携帯の人はメール画面の「添付ボタン(クリップのマーク等)」を押し、最近の項目からPDFを選ぶと探さず添付できます。
+      </small>
+    </div>
+    <div style="flex: 1; min-width: 250px;">
+      <span class="step-num" style="background-color: #10b981;">手順 2-B</span> <strong>【FAXで送る場合（印刷）】</strong><br>
+      ① まずは赤色の<strong>「① 発注書PDFを作成する」</strong>ボタンを押して端末に保存します。<br>
+      ② 端末の<strong>『ダウンロード』フォルダー</strong>からそのPDFファイルを開き、印刷（Ctrl+P）してください。用紙右上の特大FAX番号へそのまま送信いただけます。
+    </div>
+  </div>
+  
+  <div class="btn-container">
+    <button class="action-btn btn-add" onclick="addTwentyRows()">➕ さらに20行追加する</button>
+    <button class="action-btn btn-pdf" onclick="generatePDFOnly()">① 発注書PDFを作成する（保存）</button>
+    <button class="action-btn btn-mail" onclick="openMailerOnly()">② メールを開いて送信する（PDFを添付してください）</button>
+  </div>
+</div>
+
+<div class="a4-container" id="captureTarget">
+  <div class="header">
+    <div class="logo-area">
+      <p class="logo-text">flonet</p>
+      <span class="exhibit-tag">通常発注書</span>
+    </div>
+    <div class="header-right">
+      <p class="fax-label">▼ 印刷してそのまま流せる送信先FAX番号 ▼</p>
+      <p class="fax-number">FAX: 052-332-8287</p>
+      <p class="company-title">株式会社名古屋花き商事本部 御中</p>
+    </div>
+    <div class="clear"></div>
+  </div>
+
+  <div class="title-area">
+    <h1>【 flonet通常発注書 】</h1>
+  </div>
+
+  <table class="customer-table">
+    <tr>
+      <th style="width: 12%;">貴社名</th>
+      <td style="width: 43%;"><input type="text" id="cust-name"></td>
+      <th style="width: 12%;">ご担当者</th>
+      <td style="width: 33%;"><input type="text" id="cust-staff"></td>
+    </tr>
+    <tr>
+      <th>ご住所</th>
+      <td><input type="text" id="cust-address" placeholder="〒"></td>
+      <th>お電話番号</th>
+      <td><input type="text" id="cust-tel"></td>
+    </tr>
+    <tr>
+      <th>お渡し方法</th>
+      <td><input type="text" id="cust-delivery" placeholder="店頭お渡し、直送など"></td>
+      <th>希望納期</th>
+      <td><input type="text" id="cust-deadline" placeholder="〇月〇日、アソート準備次第など"></td>
+    </tr>
+  </table>
+
+  <table class="order-table" id="orderTable">
+    <thead>
+      <tr>
+        <th style="width: 4%;">No</th>
+        <th style="width: 20%;">メーカー名</th>
+        <th style="width: 14%;">品番</th>
+        <th style="width: 26%;">品名</th>
+        <th style="width: 13%;">上代</th>
+        <th style="width: 10%;">数量</th>
+        <th style="width: 13%;">合計</th>
+      </tr>
+    </thead>
+    <tbody>
+      <script>
+        for (let i = 1; i <= 20; i++) {
+          renderRowHTML(i);
+        }
+
+        function renderRowHTML(i) {
+          document.write(`
+            <tr id="row-${i}">
+              <td class="line-num">${i}</td>
+              <td><input type="text" class="mfg-input align-left"></td>
+              <td><input type="text" class="code-input"></td>
+              <td><input type="text" class="name-input align-left"></td>
+              <td>
+                <div class="amount-wrapper">
+                  <input type="number" id="price-${i}" class="align-right" oninput="calcRowTotal(${i})">
+                </div>
+              </td>
+              <td>
+                <input type="number" id="qty-${i}" class="qty-box" oninput="calcRowTotal(${i})">
+              </td>
+              <td>
+                <div class="amount-wrapper">
+                  <input type="text" id="total-${i}" class="total-box align-right" readonly>
+                </div>
+              </td>
+            </tr>
+          `);
+        }
+      </script>
+    </tbody>
+  </table>
+
+  <div class="footer-area">
+    <div class="notes-box">
+      <p style="margin: 0; font-weight: bold; color: #1b4d3e;">【特記事項・連絡欄】</p>
+      <input type="text" id="cust-notes" style="width: 100%; height: 8mm; margin-top: 2px;" placeholder="特記事項・メッセージがあれば入力してください">
+    </div>
+    <div class="company-box">
+      <strong>株式会社名古屋花き商事本部</strong><br>
+      TEL: 052-332-7087
+    </div>
+    <div class="clear"></div>
+  </div>
+</div>
+
+<script>
+  function calcRowTotal(rowNum) {
+    const price = parseFloat(document.getElementById(`price-${rowNum}`).value) || 0;
+    const qty = parseFloat(document.getElementById(`qty-${rowNum}`).value) || 0;
+    const totalField = document.getElementById(`total-${rowNum}`);
+    const total = price * qty;
+    totalField.value = total > 0 ? total.toLocaleString() : "";
+  }
+
+  function addTwentyRows() {
+    const tbody = document.querySelector('#orderTable tbody');
+    const currentRows = tbody.querySelectorAll('tr').length;
+    
+    for (let i = 1; i <= 20; i++) {
+      const nextRowNum = currentRows + i;
+      const tr = document.createElement('tr');
+      tr.id = `row-${nextRowNum}`;
+      tr.innerHTML = `
+        <td class="line-num">${nextRowNum}</td>
+        <td><input type="text" class="mfg-input align-left"></td>
+        <td><input type="text" class="code-input"></td>
+        <td><input type="text" class="name-input align-left"></td>
+        <td>
+          <div class="amount-wrapper">
+            <input type="number" id="price-${nextRowNum}" class="align-right" oninput="calcRowTotal(${nextRowNum})">
+          </div>
+        </td>
+        <td>
+          <input type="number" id="qty-${nextRowNum}" class="qty-box" oninput="calcRowTotal(${nextRowNum})">
+        </td>
+        <td>
+          <div class="amount-wrapper">
+            <input type="text" id="total-${nextRowNum}" class="total-box align-right" readonly>
+          </div>
+        </td>
+      `;
+      tbody.appendChild(tr);
+    }
+    alert("新しく 20 行追加しました。下へスクロールしてご確認ください！");
+  }
+
+  function getOrderData() {
+    const rows = document.querySelectorAll('#orderTable tbody tr');
+    let items = [];
+    rows.forEach((row, index) => {
+      const rowNum = index + 1;
+      const mfg = row.querySelector('.mfg-input').value;
+      const code = row.querySelector('.code-input').value;
+      const name = row.querySelector('.name-input').value;
+      const price = document.getElementById(`price-${rowNum}`).value;
+      const qty = document.getElementById(`qty-${rowNum}`).value;
+      const total = document.getElementById(`total-${rowNum}`).value;
+      if (mfg || code || name || qty) {
+        items.push({ no: rowNum, mfg, code, name, price, qty, total });
+      }
+    });
+    return items;
+  }
+
+  async function generatePDFOnly() {
+    const cName = document.getElementById('cust-name').value || "未入力";
+    if (cName === "未入力") {
+      alert("「貴社名」を最初に入力してください。");
+      return;
+    }
+
+    const target = document.getElementById('captureTarget');
+    target.classList.add('pdf-mode');
+
+    const canvas = await html2canvas(target, { scale: 2.5, useCORS: true, logging: false });
+    const imgData = canvas.toDataURL('image/jpeg', 1.0);
+    
+    const { jsPDF } = window.jspdf;
+    const contentHeightMm = (canvas.height / canvas.width) * 210; 
+    const pdf = new jsPDF('p', 'mm', [210, contentHeightMm]);
+    pdf.addImage(imgData, 'JPEG', 0, 0, 210, contentHeightMm);
+    
+    const fileName = `通常発注書_${cName}.pdf`;
+    pdf.save(fileName);
+
+    target.classList.remove('pdf-mode');
+    
+    alert(`「${fileName}」を作成し、お使いの端末（パソコン・携帯）の『ダウンロード』フォルダーへ保存しました！\n\n【FAXの方】ダウンロードフォルダーからこのPDFを開いて印刷してください。\n【メールの方】オレンジのボタンを押して、このPDFを添付してください。`);
+  }
+
+  function openMailerOnly() {
+    const cName = document.getElementById('cust-name').value || "未入力";
+    const items = getOrderData();
+
+    if (cName === "未入力" || items.length === 0) {
+      alert("「貴社名」と「注文内容」が入力されていません。");
+      return;
+    }
+
+    const delivery = document.getElementById('cust-delivery').value || "未入力";
+    const deadline = document.getElementById('cust-deadline').value || "未入力";
+    
+    let bodyText = `株式会社名古屋花き商事本部 御中\n\n`;
+    bodyText += `いつもお世話になっております。通常の発注データを送信いたします。\n`;
+    bodyText += `※端末の『ダウンロード』フォルダーにあるPDFファイルをこのメールに添付して送信してください。\n\n`;
+    bodyText += `【発注内容の控え】----------------------\n`;
+    bodyText += `・貴社名: ${cName}\n`;
+    bodyText += `・お渡し方法: ${delivery}\n`;
+    bodyText += `・希望納期: ${deadline}\n\n`;
+    bodyText += `【注文明細】\n`;
+    items.forEach(item => {
+      bodyText += `No.${item.no} | ${item.mfg} | 品番:${item.code} | ${item.name} | ${item.price}円×${item.qty}＝${item.total}円\n`;
+    });
+    bodyText += `----------------------------------------\n`;
+    bodyText += `備考: ${document.getElementById('cust-notes').value}\n`;
+
+    const toAddress = "order@flonet.example.com"; 
+    const subject = encodeURIComponent(`【通常発注】${cName}様分`);
+    const body = encodeURIComponent(bodyText);
+
+    window.location.href = `mailto:${toAddress}?subject=${subject}&body=${body}`;
+  }
+</script>
+
+</body>
+</html>
