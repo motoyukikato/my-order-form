@@ -5,15 +5,16 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>追加発注書 / 受注内容はこちら</title>
     <style>
-        /* A4横サイズ（297mm × 210mm）にぴったり収めるためのベース設定 */
+        /* ベース設定 */
         * {
             box-sizing: border-box;
         }
         body {
             margin: 0;
             padding: 0;
-            background-color: #f0f4f8;
-            font-family: 'Helvetica Neue', Arial, 'Hiragino Kaku Gothic ProN', 'Hiragino Sans', Meiryo, sans-serif;
+            background-color: #ffffff;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans JP", sans-serif;
+            -webkit-font-smoothing: antialiased;
         }
 
         /* A4横全体のコンテナ */
@@ -31,7 +32,7 @@
             page-break-inside: avoid;
         }
 
-        /* 裁断用の十字補助線（印刷時に薄く見えるように設定） */
+        /* 裁断用の十字補助線（上品な極薄グレーの点線） */
         .a4-page::before {
             content: "";
             position: absolute;
@@ -47,132 +48,149 @@
             pointer-events: none;
         }
 
-        /* B6サイズ1マス分のスタイル（内側にマージンを持たせる） */
+        /* B6サイズ1マス分（余白を広めにとり洗練された印象に） */
         .b6-card {
-            padding: 16px 20px;
+            padding: 20px 24px;
             display: flex;
             flex-direction: column;
             overflow: hidden;
             background: #ffffff;
         }
 
-        /* ヘッダー：タイトル */
+        /* ヘッダー：ミニマルで洗練されたデザイン */
         .header {
-            border-bottom: 2px solid #1a5276;
-            padding-bottom: 4px;
-            margin-bottom: 12px;
+            border-bottom: 1px solid #000000;
+            padding-bottom: 6px;
+            margin-bottom: 14px;
             text-align: center;
         }
         .header h1 {
             margin: 0;
-            font-size: 20px;
-            color: #1a5276;
-            font-weight: bold;
-            letter-spacing: 1px;
+            font-size: 16px;
+            color: #000000;
+            font-weight: 600;
+            letter-spacing: 2px;
+        }
+        .header .sub-title {
+            font-size: 8px;
+            color: #64748b;
+            letter-spacing: 3px;
+            text-transform: uppercase;
+            margin-top: 2px;
         }
 
-        /* メインレイアウト（左に大きく追加発注、右に受注内容2点） */
+        /* メインレイアウト */
         .content-grid {
             display: grid;
-            grid-template-columns: 1.15fr 1fr;
-            gap: 12px;
+            grid-template-columns: 1.2fr 1fr;
+            gap: 14px;
             flex-grow: 1;
         }
 
-        /* 各エリアの共通カード枠 */
+        /* 各エリアの共通枠（細線でスマートに） */
         .section-box {
-            background: #f8fafc;
-            border: 1.5px solid #e2e8f0;
-            border-radius: 8px;
-            padding: 8px;
+            background: #ffffff;
+            border: 1px solid #000000;
+            padding: 10px 8px;
             text-align: center;
             display: flex;
             flex-direction: column;
             justify-content: space-between;
             align-items: center;
+            position: relative;
         }
 
         .title-main {
-            font-size: 13px;
-            font-weight: bold;
-            color: #1e293b;
-            line-height: 1.3;
+            font-size: 12px;
+            font-weight: 600;
+            color: #000000;
+            letter-spacing: 0.5px;
         }
 
-        /* QRコードを表示する画像スタイル */
+        /* QRコード（周囲に少し広めの白縁を持たせて綺麗に見せる） */
         .qr-img {
             background: #ffffff;
-            border: 1px solid #cbd5e1;
-            border-radius: 6px;
+            border: 1px solid #e2e8f0;
+            padding: 4px;
             margin: 4px 0;
         }
 
-        /* 操作の案内文 */
+        /* 操作の案内文（シャープな四角のブラックバッジ） */
         .guide-text {
-            font-size: 10px;
-            font-weight: bold;
-            color: #475569;
-            background: #e2e8f0;
-            padding: 2px 10px;
-            border-radius: 10px;
+            font-size: 9px;
+            font-weight: 500;
+            color: #ffffff;
+            background: #000000;
+            padding: 2px 12px;
+            letter-spacing: 1px;
             white-space: nowrap;
         }
 
-        /* 左側：追加発注書（Web上で記入できる発注書）の特記スタイル */
+        /* 左側：追加発注書（ミニマルながらもしっかり引き立つモダンデザイン） */
         .order-side {
-            border-color: #2980b9;
-            background: #f0f8ff;
-            padding: 10px 6px;
+            border: 1px solid #000000;
+            padding: 12px 8px;
         }
         .order-side .title-main {
-            color: #1a5276;
-            font-size: 13px;
-            margin-bottom: 2px;
-        }
-        /* ご指定の文字を大きく・目立つように修正 */
-        .order-side .title-notice {
-            color: #d35400; /* 注意を引くオレンジがかった濃い色 */
             font-size: 14px;
-            font-weight: 900; /* 最も太く */
-            background: #fff2e6; /* 背景に薄いハイライト */
-            padding: 4px 6px;
-            border-radius: 4px;
-            border: 1px solid #ffdec0;
+            margin-bottom: 4px;
+        }
+        /* ドット線とアンダーラインでシンプルに目立たせる */
+        .order-side .title-notice {
+            color: #000000;
+            font-size: 11px;
+            font-weight: 600;
+            border-bottom: 1px solid #000000;
+            padding-bottom: 2px;
             display: inline-block;
             margin-top: 2px;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+            letter-spacing: 0.5px;
+            position: relative;
+        }
+        .order-side .title-notice::after {
+            content: "•••";
+            position: absolute;
+            bottom: -8px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 8px;
+            letter-spacing: 2px;
+            color: #000000;
         }
         .order-side .qr-img {
-            width: 105px;
-            height: 105px;
+            width: 102px;
+            height: 102px;
         }
         .order-side .guide-text {
-            background: #2980b9;
-            color: #ffffff;
-            font-size: 11px;
-            padding: 3px 14px;
+            font-size: 10px;
+            padding: 3px 16px;
+            margin-top: 4px;
         }
 
-        /* 右側：受注内容用の縦並びコンテナ */
+        /* 右側：受注内容（わずかに線のニュアンスを変えてスマートに分離） */
         .details-side {
             display: flex;
             flex-direction: column;
-            gap: 8px;
+            gap: 10px;
         }
         .details-side .section-box {
             flex-grow: 1;
-            padding: 6px;
+            padding: 8px 6px;
+            border: 1px solid #475569;
         }
         .details-side .qr-img {
-            width: 52px;
-            height: 52px;
-            margin: 2px 0;
+            width: 50px;
+            height: 50px;
         }
         .details-side .title-main {
             font-size: 11px;
         }
+        .details-side .guide-text {
+            background: #475569;
+            font-size: 8px;
+        }
 
-        /* 印刷用設定（A4横・余白ゼロで出力するためのブラウザ命令） */
+        /* 印刷用設定 */
         @media print {
             body {
                 background: #ffffff;
@@ -192,9 +210,11 @@
 
 <div class="a4-page">
 
+    <!-- 1枚目 (左上) -->
     <div class="b6-card">
         <div class="header">
             <h1>追加発注書 / 受注内容はこちら</h1>
+            <div class="sub-title">Information & Additional Order</div>
         </div>
         <div class="content-grid">
             <div class="section-box order-side">
@@ -203,30 +223,28 @@
                     <div class="title-notice">Web上でも記入できる発注書</div>
                 </div>
                 <img class="qr-img" src="https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=https%3A%2F%2Fmotoyukikato.github.io%2Fmy-order-form%2Ffairordersheet.html" alt="追加注文用紙QR">
-                <div class="guide-text">スキャンして入力</div>
+                <div class="guide-text">SCAN TO ENTER</div>
             </div>
             <div class="details-side">
                 <div class="section-box">
-                    <div>
-                        <div class="title-main">受注内容 (iOS)</div>
-                    </div>
+                    <div class="title-main">受注内容 (iOS)</div>
                     <img class="qr-img" src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=https%3A%2F%2Fmotoyukikato.github.io%2Fmy-order-form%2Forder-check.html" alt="iOS受注内容QR">
-                    <div class="guide-text">スキャンして確認</div>
+                    <div class="guide-text">VIEW INFO</div>
                 </div>
                 <div class="section-box">
-                    <div>
-                        <div class="title-main">受注内容 (Android)</div>
-                    </div>
+                    <div class="title-main">受注内容 (Android)</div>
                     <img class="qr-img" src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=https%3A%2F%2Fmotoyukikato.github.io%2Fmy-order-form%2Forder-check_android.html" alt="Android受注内容QR">
-                    <div class="guide-text">スキャンして確認</div>
+                    <div class="guide-text">VIEW INFO</div>
                 </div>
             </div>
         </div>
     </div>
 
+    <!-- 2枚目 (右上) -->
     <div class="b6-card">
         <div class="header">
             <h1>追加発注書 / 受注内容はこちら</h1>
+            <div class="sub-title">Information & Additional Order</div>
         </div>
         <div class="content-grid">
             <div class="section-box order-side">
@@ -235,30 +253,28 @@
                     <div class="title-notice">Web上でも記入できる発注書</div>
                 </div>
                 <img class="qr-img" src="https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=https%3A%2F%2Fmotoyukikato.github.io%2Fmy-order-form%2Ffairordersheet.html" alt="追加注文用紙QR">
-                <div class="guide-text">スキャンして入力</div>
+                <div class="guide-text">SCAN TO ENTER</div>
             </div>
             <div class="details-side">
                 <div class="section-box">
-                    <div>
-                        <div class="title-main">受注内容 (iOS)</div>
-                    </div>
+                    <div class="title-main">受注内容 (iOS)</div>
                     <img class="qr-img" src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=https%3A%2F%2Fmotoyukikato.github.io%2Fmy-order-form%2Forder-check.html" alt="iOS受注内容QR">
-                    <div class="guide-text">スキャンして確認</div>
+                    <div class="guide-text">VIEW INFO</div>
                 </div>
                 <div class="section-box">
-                    <div>
-                        <div class="title-main">受注内容 (Android)</div>
-                    </div>
+                    <div class="title-main">受注内容 (Android)</div>
                     <img class="qr-img" src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=https%3A%2F%2Fmotoyukikato.github.io%2Fmy-order-form%2Forder-check_android.html" alt="Android受注内容QR">
-                    <div class="guide-text">スキャンして確認</div>
+                    <div class="guide-text">VIEW INFO</div>
                 </div>
             </div>
         </div>
     </div>
 
+    <!-- 3枚目 (左下) -->
     <div class="b6-card">
         <div class="header">
             <h1>追加発注書 / 受注内容はこちら</h1>
+            <div class="sub-title">Information & Additional Order</div>
         </div>
         <div class="content-grid">
             <div class="section-box order-side">
@@ -267,30 +283,28 @@
                     <div class="title-notice">Web上でも記入できる発注書</div>
                 </div>
                 <img class="qr-img" src="https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=https%3A%2F%2Fmotoyukikato.github.io%2Fmy-order-form%2Ffairordersheet.html" alt="追加注文用紙QR">
-                <div class="guide-text">スキャンして入力</div>
+                <div class="guide-text">SCAN TO ENTER</div>
             </div>
             <div class="details-side">
                 <div class="section-box">
-                    <div>
-                        <div class="title-main">受注内容 (iOS)</div>
-                    </div>
+                    <div class="title-main">受注内容 (iOS)</div>
                     <img class="qr-img" src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=https%3A%2F%2Fmotoyukikato.github.io%2Fmy-order-form%2Forder-check.html" alt="iOS受注内容QR">
-                    <div class="guide-text">スキャンして確認</div>
+                    <div class="guide-text">VIEW INFO</div>
                 </div>
                 <div class="section-box">
-                    <div>
-                        <div class="title-main">受注内容 (Android)</div>
-                    </div>
+                    <div class="title-main">受注内容 (Android)</div>
                     <img class="qr-img" src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=https%3A%2F%2Fmotoyukikato.github.io%2Fmy-order-form%2Forder-check_android.html" alt="Android受注内容QR">
-                    <div class="guide-text">スキャンして確認</div>
+                    <div class="guide-text">VIEW INFO</div>
                 </div>
             </div>
         </div>
     </div>
 
+    <!-- 4枚目 (右下) -->
     <div class="b6-card">
         <div class="header">
             <h1>追加発注書 / 受注内容はこちら</h1>
+            <div class="sub-title">Information & Additional Order</div>
         </div>
         <div class="content-grid">
             <div class="section-box order-side">
@@ -299,22 +313,18 @@
                     <div class="title-notice">Web上でも記入できる発注書</div>
                 </div>
                 <img class="qr-img" src="https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=https%3A%2F%2Fmotoyukikato.github.io%2Fmy-order-form%2Ffairordersheet.html" alt="追加注文用紙QR">
-                <div class="guide-text">スキャンして入力</div>
+                <div class="guide-text">SCAN TO ENTER</div>
             </div>
             <div class="details-side">
                 <div class="section-box">
-                    <div>
-                        <div class="title-main">受注内容 (iOS)</div>
-                    </div>
+                    <div class="title-main">受注内容 (iOS)</div>
                     <img class="qr-img" src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=https%3A%2F%2Fmotoyukikato.github.io%2Fmy-order-form%2Forder-check.html" alt="iOS受注内容QR">
-                    <div class="guide-text">スキャンして確認</div>
+                    <div class="guide-text">VIEW INFO</div>
                 </div>
                 <div class="section-box">
-                    <div>
-                        <div class="title-main">受注内容 (Android)</div>
-                    </div>
+                    <div class="title-main">受注内容 (Android)</div>
                     <img class="qr-img" src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=https%3A%2F%2Fmotoyukikato.github.io%2Fmy-order-form%2Forder-check_android.html" alt="Android受注内容QR">
-                    <div class="guide-text">スキャンして確認</div>
+                    <div class="guide-text">VIEW INFO</div>
                 </div>
             </div>
         </div>
