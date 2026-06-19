@@ -1,316 +1,593 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Retro Bros - Big Controls Edition</title>
-    <style>
-        * { box-sizing: border-box; }
-        body {
-            background: #000;
-            color: #fff;
-            font-family: 'Courier New', sans-serif;
-            margin: 0; padding: 0;
-            overflow: hidden;
-            width: 100vw; height: 100vh;
-            display: flex; flex-direction: column;
-            align-items: center; justify-content: center;
-            touch-action: none; -webkit-user-select: none; user-select: none;
-        }
-        #top-bar {
-            width: 100%; height: 40px;
-            display: flex; justify-content: space-between; align-items: center;
-            padding: 0 20px; background: #111; font-weight: bold; font-size: 18px;
-        }
-        #main-layout {
-            display: flex; flex: 1; width: 100%; max-width: 850px;
-            align-items: center; justify-content: center; padding: 10px; gap: 20px;
-        }
-        #game-container { position: relative; border: 4px solid #555; background-color: #000; }
-        canvas { display: block; max-height: calc(100vh - 120px); max-width: calc(100vw - 300px); object-fit: contain; }
-        
-        /* 📱 スマホ用コントローラー：サイズと配置を強化 */
-        .pad-cluster { display: block; width: 130px; height: 100px; position: relative; flex-shrink: 0; }
-        .ctrl-btn {
-            position: absolute; background: #333; border: 2px solid #fff; color: #fff;
-            width: 58px; height: 58px; display: flex; align-items: center; justify-content: center;
-            font-size: 26px; font-weight: bold; border-radius: 12px;
-            box-shadow: 0 4px #111;
-        }
-        .ctrl-btn:active { background: #555; transform: translateY(2px); box-shadow: 0 2px #111; }
-        
-        /* 左右ボタンの配置調整（サイズ58px、隙間を確保） */
-        #btn-left  { top: 20px; left: 0; }
-        #btn-right { top: 20px; right: 0; }
-        
-        /* ジャンプボタンも少しだけ押しやすく外側にシフト */
-        #btn-jump  { top: 10px; right: 10px; width: 74px; height: 74px; border-radius: 50%; background: #ff1744; font-size: 16px; box-shadow: 0 4px #880e4f; }
-        #btn-jump:active { background: #ff5252; transform: translateY(2px); box-shadow: 0 2px #880e4f; }
-        
-        .overlay {
-            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            display: none; flex-direction: column; align-items: center; justify-content: center;
-            background: rgba(0,0,0,0.8); z-index: 10;
-        }
-        .overlay-title { font-size: 28px; color: #ff1744; margin-bottom: 15px; font-weight: bold; }
-        .overlay-btn { background: #222; border: 2px solid #fff; padding: 10px 20px; border-radius: 5px; cursor: pointer; }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>かっこいいツインビー（スマホ対応版）</title>
+  <style>
+    /* 画面全体のレイアウト調整 */
+    body {
+      margin: 0;
+      padding: 0;
+      background-color: #111;
+      font-family: monospace;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-start;
+      min-height: 100vh;
+      overflow: hidden;
+      user-select: none; /* 画面長押しで選択されないようにする */
+      -webkit-user-select: none;
+    }
+
+    h1 {
+      color: #fff;
+      font-size: 16px;
+      margin: 5px 0;
+    }
+
+    /* ゲーム画面 */
+    #twinbeeCanvas {
+      background-color: #000;
+      border: 2px solid #333;
+      max-width: 100%;
+      max-height: 60vh; /* スマホの画面に収まるよう調整 */
+      box-shadow: 0 0 20px rgba(0, 150, 255, 0.3);
+    }
+
+    /* 【新規】スマホ用バーチャルコントローラーの配置 */
+    #controller {
+      display: flex;
+      justify-content: space-between;
+      width: 100%;
+      max-width: 360px;
+      margin-top: 10px;
+      padding: 0 10px;
+      box-sizing: border-box;
+    }
+
+    /* 十字キーのエリア */
+    .d-pad {
+      display: grid;
+      grid-template-columns: repeat(3, 40px);
+      grid-template-rows: repeat(3, 40px);
+      gap: 3px;
+    }
+
+    .d-btn {
+      background: #333;
+      color: #fff;
+      border: 1px solid #555;
+      border-radius: 5px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: bold;
+      font-size: 18px;
+    }
+    .d-btn:active { background: #555; }
+    #btn-up    { grid-column: 2; grid-row: 1; }
+    #btn-left  { grid-column: 1; grid-row: 2; }
+    #btn-right { grid-column: 3; grid-row: 2; }
+    #btn-down  { grid-column: 2; grid-row: 3; }
+
+    /* A/B（Z/X）ボタンのエリア */
+    .action-pad {
+      display: flex;
+      align-items: center;
+      gap: 15px;
+    }
+
+    .action-btn {
+      width: 55px;
+      height: 55px;
+      background: #cc0000;
+      color: #fff;
+      border: 2px solid #ff5555;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: bold;
+      font-size: 20px;
+      box-shadow: 0 4px #880000;
+    }
+    .action-btn:active {
+      transform: translateY(4px);
+      box-shadow: 0 0px #880000;
+      background: #ff3333;
+    }
+    #btn-x { background: #00aa00; border-color: #55ff55; box-shadow: 0 4px #006600; }
+    #btn-x:active { background: #00ff00; box-shadow: 0 0px #006600; }
+  </style>
 </head>
 <body>
 
-    <div id="top-bar">
-        <div>SCORE: <span id="score-val">0</span></div>
-        <div style="color: #ff9100; font-size: 14px;">下から叩いてひっくり返せ！</div>
+  <h1>TWINBEE - NEXT STAGE</h1>
+  <canvas id="twinbeeCanvas" width="360" height="480"></canvas>
+
+  <div id="controller">
+    <div class="d-pad">
+      <div class="d-btn" id="btn-up">↑</div>
+      <div class="d-btn" id="btn-left">←</div>
+      <div class="d-btn" id="btn-right">→</div>
+      <div class="d-btn" id="btn-down">↓</div>
     </div>
-
-    <div id="main-layout">
-        <div class="pad-cluster" id="left-pad">
-            <div class="ctrl-btn" id="btn-left">←</div>
-            <div class="ctrl-btn" id="btn-right">→</div>
-        </div>
-
-        <div id="game-container">
-            <canvas id="gameCanvas"></canvas>
-            <div id="gameover-overlay" class="overlay" onclick="resetGame()">
-                <div class="overlay-title">GAME OVER</div>
-                <div class="overlay-btn">RESET GAME</div>
-            </div>
-        </div>
-
-        <div class="pad-cluster" id="right-pad">
-            <div class="ctrl-btn" id="btn-jump">JUMP</div>
-        </div>
+    <div class="action-pad">
+      <div class="action-btn" id="btn-x">X</div>
+      <div class="action-btn" id="btn-z">Z</div>
     </div>
+  </div>
 
 <script>
-const canvas = document.getElementById('gameCanvas');
-const ctx = canvas.getContext('2d');
-canvas.width = 400;
-canvas.height = 300;
-
-const GRAVITY = 0.4;
-let score = 0;
-let isGameOver = false;
-const keys = { left: false, right: false };
+// ==========================================
+// 1. ゲームの設定と変数定義
+// ==========================================
+const canvas = document.getElementById("twinbeeCanvas");
+const ctx = canvas.getContext("2d");
 
 const player = {
-    x: 190, y: 100,
-    w: 24, h: 24,
-    vx: 0, vy: 0,
-    isGrounded: false,
-    dir: 1
+  x: 180, y: 400, width: 24, height: 24,
+  baseSpeed: 4, speedLevel: 0, shotType: "normal", hasShield: false,
+  score: 0, animFrame: 0
 };
 
+const boss = {
+  x: 150, y: -100, width: 80, height: 60,
+  hp: 30, maxHp: 30, speedX: 2, isAppeared: false, isDead: false, animFrame: 0
+};
+
+let bullets = [];
+let bombs = [];         
 let enemies = [];
-function spawnEnemy() {
-    if (isGameOver) return;
-    const isLeft = Math.random() > 0.5;
-    enemies.push({
-        x: isLeft ? 10 : 370, y: 30,
-        w: 24, h: 24,
-        vx: isLeft ? 1.2 : -1.2, vy: 0,
-        isFlipped: false, flippedTimer: 0,
-        dir: isLeft ? 1 : -1
-    });
-}
-let enemyInterval = setInterval(spawnEnemy, 4000);
+let clouds = [];
+let bells = [];
+let groundTargets = []; 
+let bossBullets = [];   
 
-const platforms = [
-    { x: 0, y: 280, w: 400, h: 20, type: 'ground' },
-    { x: 0, y: 210, w: 140, h: 12, type: 'brick' },
-    { x: 260, y: 210, w: 140, h: 12, type: 'brick' },
-    { x: 80, y: 140, w: 240, h: 12, type: 'brick' },
-    { x: 0, y: 70, w: 120, h: 12, type: 'brick' },
-    { x: 280, y: 70, w: 120, h: 12, type: 'brick' }
-];
-platforms.forEach(p => { p.hitTimer = 0; p.hitX = 0; });
+let bgY = 0;
+const bgSpeed = 1;
+let gameOver = false;
+let stageClear = false; 
 
-const P = "Skin"; 
-const marioSprite = [
-    [".",".",".","R","R","R","R","R",".",".",".","."],
-    [".",".","R","R","R","R","R","R","R","R",".","."],
-    [".",".",".",P,P,P,P,"#",P,".",".","."],
-    [".",".",P,"#",P,"#",P,P,P,P,".","."],
-    [".",".",P,"#",P,P,P,P,P,P,".","."],
-    [".",".",".",P,P,P,P,P,P,".",".","."],
-    [".",".",".","R","B","R","R","B","R",".",".","."],
-    [".",".","B","B","B","B","B","B","B","B",".","."],
-    [".",".","B","B","B","B","B","B","B","B",".","."],
-    [".",".","R","R","B","B","B","B","R","R",".","."],
-    [".",".","R","R","R",".",".","R","R","R",".","."],
-    [".",".",".","R","R",".",".","R","R",".",".","."]
-];
+const BELL_COLORS = ["#ffcc00", "#3399ff", "#ffffff", "#ff3333"];
 
-const turtleSprite = [
-    [".",".",".",".","G","G","G","G",".",".",".","."],
-    [".",".",".","G","G","G","G","G","G",".",".","."],
-    [".",".","G","G","W","W","G","G","W","W",".","."],
-    [".",".","G","G","#","#","G","G","#","#",".","."],
-    [".","O","O","G","G","G","G","G","G",".",".","."],
-    ["O","O","O","O","O","O","O","O","O",".",".","."],
-    ["O","O","O","O","O","O","O","O","O",".",".","."],
-    [".","O","O","O","O","O","O","O","O",".",".","."],
-    [".",".","G","G","G","G","G","G","G",".",".","."],
-    [".",".",".","G","G",".",".","G","G",".",".","."],
-    [".",".",".","G","G",".",".","G","G",".",".","."],
-    [".",".","W","W","W",".",".","W","W","W",".","."]
-];
+// キー状態（PC・スマホ共通で使用）
+const keys = { ArrowUp: false, ArrowDown: false, ArrowLeft: false, ArrowRight: false };
 
-const colors = {
-    "R": "#ff1744", "B": "#2979ff", "Skin": "#ffb74d", "W": "#ffffff",
-    "G": "#00e676", "Y": "#ffeb3b", "O": "#ff9100", "#": "#000000"
-};
-
-function resetGame() {
-    score = 0;
-    document.getElementById('score-val').innerText = score;
-    player.x = 190; player.y = 100; player.vx = 0; player.vy = 0; player.dir = 1;
-    enemies = [];
-    isGameOver = false;
-    document.getElementById('gameover-overlay').style.display = 'none';
+function getPlayerSpeed() {
+  return player.baseSpeed + (player.speedLevel * 1.5);
 }
 
-function update() {
-    if (!isGameOver) {
-        if (keys.left) { player.vx = -2.5; player.dir = -1; }
-        else if (keys.right) { player.vx = 2.5; player.dir = 1; }
-        else { player.vx *= 0.7; }
-
-        player.vy += GRAVITY; player.x += player.vx; player.y += player.vy;
-
-        if (player.x < -player.w) player.x = canvas.width;
-        if (player.x > canvas.width) player.x = -player.w;
-        if (player.y > canvas.height) { player.x = 190; player.y = 100; player.vy = 0; }
-
-        player.isGrounded = false;
-
-        platforms.forEach(p => {
-            if (p.hitTimer > 0) p.hitTimer--;
-            if (player.x + player.w > p.x && player.x < p.x + p.w) {
-                if (player.vy >= 0 && player.y + player.h >= p.y && player.y + player.h <= p.y + player.vy + 4) {
-                    player.y = p.y - player.h; player.vy = 0; player.isGrounded = true;
-                }
-                else if (player.vy < 0 && player.y >= p.y + p.h - 4 && player.y <= p.y + p.h) {
-                    player.y = p.y + p.h; player.vy = 0;
-                    if (p.type === 'brick') {
-                        p.hitTimer = 5; p.hitX = player.x + player.w / 2;
-                        enemies.forEach(e => {
-                            if (e.x + e.w > p.x && e.x < p.x + p.w && e.y + e.h === p.y) {
-                                if (Math.abs((e.x + e.w/2) - p.hitX) < 40) {
-                                    e.isFlipped = true; e.flippedTimer = 300; e.vy = -5;
-                                }
-                            }
-                        });
-                    }
-                }
-            }
-        });
-
-        enemies.forEach((e, index) => {
-            e.vy += GRAVITY;
-            if (!e.isFlipped) {
-                e.x += e.vx; e.dir = e.vx > 0 ? 1 : -1;
-            } else {
-                e.flippedTimer--;
-                if (e.flippedTimer <= 0) { e.isFlipped = false; e.vx *= 1.3; }
-            }
-            e.y += e.vy;
-
-            if (e.x < -e.w) e.x = canvas.width;
-            if (e.x > canvas.width) e.x = -e.w;
-
-            platforms.forEach(p => {
-                if (e.x + e.w > p.x && e.x < p.x + p.w) {
-                    if (e.vy >= 0 && e.y + e.h >= p.y && e.y + e.h <= p.y + e.vy + 4) {
-                        e.y = p.y - e.h; e.vy = 0;
-                    }
-                }
-            });
-
-            if (player.x + player.w > e.x && player.x < e.x + e.w && player.y + player.h > e.y && player.y < e.y + e.h) {
-                if (e.isFlipped) {
-                    enemies.splice(index, 1); score += 100;
-                    document.getElementById('score-val').innerText = score;
-                } else {
-                    isGameOver = true;
-                    document.getElementById('gameover-overlay').style.display = 'flex';
-                }
-            }
-        });
-    }
-    draw();
-    requestAnimationFrame(update);
-}
-
-function renderSprite(sprite, x, y, w, h, flipX, flipY) {
-    const pSize = w / 12;
-    for (let r = 0; r < 12; r++) {
-        for (let c = 0; c < 12; c++) {
-            const cell = sprite[r][c];
-            if (cell !== ".") {
-                ctx.fillStyle = colors[cell] || cell;
-                const drawC = flipX ? (11 - c) : c;
-                const drawR = flipY ? (11 - r) : r;
-                ctx.fillRect(x + drawC * pSize, y + drawR * pSize, pSize + 0.5, pSize + 0.5);
-            }
-        }
-    }
-}
-
-function draw() {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-    platforms.forEach(p => {
-        let yOffset = p.hitTimer > 0 ? -5 : 0;
-        if (p.type === 'ground') {
-            ctx.fillStyle = '#442200';
-            ctx.fillRect(p.x, p.y, p.w, p.h);
-            ctx.fillStyle = '#00aa00';
-            ctx.fillRect(p.x, p.y, p.w, 4);
-        } else {
-            ctx.fillStyle = '#cc5500';
-            ctx.fillRect(p.x, p.y + yOffset, p.w, p.h);
-            ctx.fillStyle = '#ffaa66';
-            ctx.fillRect(p.x, p.y + yOffset, p.w, 2); 
-        }
-    });
-
-    enemies.forEach(e => {
-        if (e.isFlipped) {
-            renderSprite(turtleSprite, e.x, e.y, e.w, e.h, false, true);
-        } else {
-            renderSprite(turtleSprite, e.x, e.y, e.w, e.h, e.dir === -1, false);
-        }
-    });
-
-    renderSprite(marioSprite, player.x, player.y, player.w, player.h, player.dir === -1, false);
-}
-
-document.addEventListener('keydown', e => {
-    if (e.key === 'ArrowLeft' || e.key === 'a') keys.left = true;
-    if (e.key === 'ArrowRight' || e.key === 'd') keys.right = true;
-    if ((e.key === 'ArrowUp' || e.key === 'w' || e.key === ' ') && player.isGrounded) player.vy = -7.5;
+// ==========================================
+// 2. 入力イベントリスナー（PC・スマホ両対応）
+// ==========================================
+// --- PC用のキーボード対応 ---
+window.addEventListener("keydown", (e) => {
+  if (e.code in keys) keys[e.code] = true;
+  if (!gameOver && !stageClear) {
+    if (e.code === "KeyZ") shootBullets();
+    if (e.code === "KeyX") dropBombs();
+  }
 });
-document.addEventListener('keyup', e => {
-    if (e.key === 'ArrowLeft' || e.key === 'a') keys.left = false;
-    if (e.key === 'ArrowRight' || e.key === 'd') keys.right = false;
+window.addEventListener("keyup", (e) => {
+  if (e.code in keys) keys[e.code] = false;
 });
 
-const setupBtn = (id, startAction, endAction) => {
-    const btn = document.getElementById(id);
-    btn.addEventListener('touchstart', e => { e.preventDefault(); startAction(); }, {passive: false});
-    btn.addEventListener('touchend', e => { e.preventDefault(); endAction(); }, {passive: false});
-    btn.addEventListener('mousedown', e => { startAction(); });
-    btn.addEventListener('mouseup', e => { endAction(); });
-    btn.addEventListener('mouseleave', e => { endAction(); });
-};
+// --- 【新規】スマホ用のタッチ対応（画面ボタン） ---
+function setupTouchButton(elementId, keyName) {
+  const btn = document.getElementById(elementId);
+  
+  // タッチした瞬間
+  btn.addEventListener("touchstart", (e) => {
+    e.preventDefault(); // 画面スクロールやズーム化を防止
+    if (keyName in keys) keys[keyName] = true;
+    
+    // 攻撃ボタンの単発処理
+    if (!gameOver && !stageClear) {
+      if (keyName === "KeyZ") shootBullets();
+      if (keyName === "KeyX") dropBombs();
+    }
+  });
 
-setupBtn('btn-left', () => { keys.left = true; }, () => { keys.left = false; });
-setupBtn('btn-right', () => { keys.right = true; }, () => { keys.right = false; });
-setupBtn('btn-jump', () => { if(player.isGrounded) player.vy = -7.5; }, () => {});
+  // 指が離れた瞬間
+  btn.addEventListener("touchend", (e) => {
+    e.preventDefault();
+    if (keyName in keys) keys[keyName] = false;
+  });
+}
 
-resetGame();
-update();
+// 各ボタンとプログラムのキーを紐付け
+setupTouchButton("btn-up", "ArrowUp");
+setupTouchButton("btn-down", "ArrowDown");
+setupTouchButton("btn-left", "ArrowLeft");
+setupTouchButton("btn-right", "ArrowRight");
+setupTouchButton("btn-z", "KeyZ"); // Zは空中弾
+setupTouchButton("btn-x", "KeyX"); // Xは地上ボム
+
+// 空中ショット発射
+function shootBullets() {
+  if (player.shotType === "normal") {
+    bullets.push({ x: player.x + player.width / 2 - 2, y: player.y, width: 4, height: 10, vx: 0, vy: -8, color: "#55ffff" });
+  } 
+  else if (player.shotType === "3way") {
+    bullets.push({ x: player.x + player.width / 2 - 2, y: player.y, width: 4, height: 10, vx: 0, vy: -8, color: "#ffffff" });
+    bullets.push({ x: player.x + player.width / 2 - 2, y: player.y, width: 4, height: 10, vx: -2.5, vy: -7.5, color: "#ffffff" });
+    bullets.push({ x: player.x + player.width / 2 - 2, y: player.y, width: 4, height: 10, vx: 2.5, vy: -7.5, color: "#ffffff" });
+  }
+}
+
+// 地上ボム投下関数
+function dropBombs() {
+  if (bombs.length < 2) {
+    bombs.push({
+      x: player.x + player.width / 2 - 4, y: player.y - 5, width: 8, height: 8,
+      vy: -2, timer: 25, isExploding: false
+    });
+  }
+}
+
+// ==========================================
+// 3. 移動・物理演算・自動生成
+// ==========================================
+function updatePlayerAndBackground() {
+  const currentSpeed = getPlayerSpeed();
+  
+  if (keys.ArrowUp && player.y > 0) player.y -= currentSpeed;
+  if (keys.ArrowDown && player.y < canvas.height - player.height) player.y += currentSpeed;
+  if (keys.ArrowLeft && player.x > 0) player.x -= currentSpeed;
+  if (keys.ArrowRight && player.x < canvas.width - player.width) player.x += currentSpeed;
+
+  player.animFrame++;
+
+  bullets.forEach((b, index) => {
+    b.x += b.vx; b.y += b.vy;
+    if (b.y < -10 || b.x < -10 || b.x > canvas.width + 10) bullets.splice(index, 1);
+  });
+
+  bombs.forEach((b, index) => {
+    if (!b.isExploding) {
+      b.y += b.vy; b.timer--;
+      if (b.timer <= 0) {
+        b.isExploding = true; b.width = 32; b.height = 32; b.x -= 12; b.timer = 15;
+      }
+    } else {
+      b.timer--;
+      if (b.timer <= 0) bombs.splice(index, 1);
+    }
+  });
+
+  bossBullets.forEach((bb, index) => {
+    bb.x += bb.vx; bb.y += bb.vy;
+    if (bb.y > canvas.height + 10 || bb.x < -10 || bb.x > canvas.width + 10) {
+      bossBullets.splice(index, 1);
+    }
+  });
+
+  bgY += boss.isAppeared ? 0.3 : bgSpeed;
+  if (bgY >= canvas.height) bgY = 0;
+}
+
+function spawnEntities() {
+  if (player.score >= 5000) {
+    boss.isAppeared = true; 
+    return;
+  }
+
+  if (Math.random() < 0.02) {
+    enemies.push({ x: Math.random() * (canvas.width - 20), y: -20, width: 20, height: 20, speed: 2 });
+  }
+  if (Math.random() < 0.005) {
+    clouds.push({ x: Math.random() * (canvas.width - 40), y: -40, width: 40, height: 25, speed: 1 });
+  }
+  if (Math.random() < 0.008) {
+    groundTargets.push({ x: Math.random() * (canvas.width - 20), y: -30, width: 20, height: 20, speed: 1, isDestroyed: false, animFrame: 0 });
+  }
+}
+
+function updateBoss() {
+  if (!boss.isAppeared || boss.isDead) return;
+  boss.animFrame++;
+
+  if (boss.y < 50) {
+    boss.y += 1;
+  } else {
+    boss.x += boss.speedX;
+    if (boss.x < 0 || boss.x > canvas.width - boss.width) {
+      boss.speedX *= -1; 
+    }
+
+    if (Math.random() < 0.03) {
+      let bX = boss.x + boss.width / 2;
+      let bY = boss.y + boss.height / 2;
+      bossBullets.push({ x: bX - 3, y: bY, width: 6, height: 6, vx: 0, vy: 5 });    
+      bossBullets.push({ x: bX - 3, y: bY, width: 6, height: 6, vx: -2, vy: 4.5 }); 
+      bossBullets.push({ x: bX - 3, y: bY, width: 6, height: 6, vx: 2, vy: 4.5 });  
+    }
+  }
+}
+
+function updateEntities() {
+  enemies.forEach((enemy, eIndex) => {
+    enemy.y += enemy.speed;
+    if (enemy.y > canvas.height) enemies.splice(eIndex, 1);
+  });
+
+  clouds.forEach((cloud, cIndex) => {
+    cloud.y += cloud.speed;
+    if (cloud.y > canvas.height) clouds.splice(cIndex, 1);
+  });
+
+  groundTargets.forEach((target, tIndex) => {
+    target.y += target.speed; target.animFrame++;
+    if (target.y > canvas.height) groundTargets.splice(tIndex, 1);
+  });
+
+  bells.forEach((bell, bIndex) => {
+    bell.x += bell.vx; bell.y += bell.vy; bell.vy += 0.2; 
+    if (bell.x < 0 || bell.x > canvas.width - bell.width) bell.vx *= -1;
+    if (bell.y > canvas.height) bells.splice(bIndex, 1);
+  });
+
+  bullets.forEach((b, bIndex) => {
+    enemies.forEach((enemy, eIndex) => {
+      if (b.x < enemy.x + enemy.width && b.x + b.width > enemy.x &&
+          b.y < enemy.y + enemy.height && b.y + b.height > enemy.y) {
+        enemies.splice(eIndex, 1); bullets.splice(bIndex, 1); player.score += 100;
+      }
+    });
+
+    clouds.forEach((cloud, cIndex) => {
+      if (b.x < cloud.x + cloud.width && b.x + b.width > cloud.x &&
+          b.y < cloud.y + cloud.height && b.y + b.height > cloud.y) {
+        bells.push({
+          x: cloud.x + 10, y: cloud.y, width: 20, height: 20,
+          vx: (Math.random() - 0.5) * 2, vy: -5, colorIndex: 0, hitCount: 0
+        });
+        clouds.splice(cIndex, 1); bullets.splice(bIndex, 1);
+      }
+    });
+
+    bells.forEach((bell) => {
+      if (b.x < bell.x + bell.width && b.x + b.width > bell.x &&
+          b.y < bell.y + bell.height && b.y + b.height > bell.y) {
+        bell.vy = -6; bell.hitCount++;
+        if (bell.hitCount % 5 === 0) bell.colorIndex = (bell.colorIndex + 1) % BELL_COLORS.length;
+        bullets.splice(bIndex, 1);
+      }
+    });
+
+    if (boss.isAppeared && !boss.isDead && boss.y > 0) {
+      if (b.x < boss.x + boss.width && b.x + b.width > boss.x &&
+          b.y < boss.y + boss.height && b.y + b.height > boss.y) {
+        boss.hp--; bullets.splice(bIndex, 1); 
+        if (boss.hp <= 0) {
+          boss.isDead = true; stageClear = true; player.score += 10000;
+        }
+      }
+    }
+  });
+
+  bombs.forEach((b) => {
+    if (b.isExploding) {
+      groundTargets.forEach((target, tIndex) => {
+        if (!target.isDestroyed &&
+            b.x < target.x + target.width && b.x + b.width > target.x &&
+            b.y < target.y + target.height && b.y + b.height > target.y) {
+          target.isDestroyed = true; player.score += 1000;
+        }
+      });
+    }
+  });
+}
+
+function checkPlayerCollisions() {
+  enemies.forEach((enemy, eIndex) => {
+    if (player.x < enemy.x + enemy.width && player.x + player.width > enemy.x &&
+        player.y < enemy.y + enemy.height && player.y + player.height > enemy.y) {
+      if (player.hasShield) { player.hasShield = false; enemies.splice(eIndex, 1); } 
+      else { gameOver = true; }
+    }
+  });
+
+  bossBullets.forEach((bb, bbIndex) => {
+    if (player.x < bb.x + bb.width && player.x + player.width > bb.x &&
+        player.y < bb.y + bb.height && player.y + player.height > bb.y) {
+      if (player.hasShield) { player.hasShield = false; bossBullets.splice(bbIndex, 1); } 
+      else { gameOver = true; }
+    }
+  });
+
+  bells.forEach((bell, bIndex) => {
+    if (player.x < bell.x + bell.width && player.x + player.width > bell.x &&
+        player.y < bell.y + bell.height && player.y + player.height > bell.y) {
+      const color = BELL_COLORS[bell.colorIndex];
+      if (color === "#ffcc00") player.score += 500;
+      else if (color === "#3399ff") { if (player.speedLevel < 3) player.speedLevel++; }
+      else if (color === "#ffffff") player.shotType = "3way";
+      else if (color === "#ff3333") player.hasShield = true;
+      bells.splice(bIndex, 1);
+    }
+  });
+}
+
+// ==========================================
+// 4. 画面の描画処理
+// ==========================================
+function drawPlayer(x, y) {
+  ctx.save();
+  ctx.translate(x + player.width / 2, y + player.height / 2);
+
+  ctx.fillStyle = (player.animFrame % 4 < 2) ? "#ffcc00" : "#ff6600";
+  ctx.beginPath(); ctx.moveTo(-6, 10); ctx.lineTo(0, 22); ctx.lineTo(6, 10); ctx.fill();
+  ctx.fillStyle = "#ffffff";
+  ctx.beginPath(); ctx.moveTo(-3, 10); ctx.lineTo(0, 16); ctx.lineTo(3, 10); ctx.fill();
+
+  ctx.fillStyle = "#3366ff";
+  ctx.beginPath(); ctx.arc(0, 0, 12, 0, Math.PI * 2); ctx.fill();
+  
+  ctx.fillStyle = "#aaaaaa";
+  ctx.fillRect(-16, -2, 6, 8); 
+  ctx.fillRect(10, -2, 6, 8);  
+  
+  let canopyGrad = ctx.createLinearGradient(0, -8, 0, 2);
+  canopyGrad.addColorStop(0, "#ffaa00"); canopyGrad.addColorStop(1, "#ff5500");
+  ctx.fillStyle = canopyGrad;
+  ctx.beginPath(); ctx.ellipse(0, -3, 6, 8, 0, 0, Math.PI * 2); ctx.fill();
+  
+  ctx.fillStyle = "rgba(255, 255, 255, 0.5)";
+  ctx.beginPath(); ctx.ellipse(-2, -5, 2, 4, 0.3, 0, Math.PI * 2); ctx.fill();
+
+  ctx.restore();
+}
+
+function drawBoss() {
+  if (!boss.isAppeared || boss.isDead) return;
+
+  ctx.save();
+  ctx.translate(boss.x + boss.width / 2, boss.y + boss.height / 2);
+
+  let bodyGrad = ctx.createLinearGradient(0, -boss.height/2, 0, boss.height/2);
+  bodyGrad.addColorStop(0, "#444444"); bodyGrad.addColorStop(0.5, "#222222"); bodyGrad.addColorStop(1, "#444444");
+  ctx.fillStyle = bodyGrad;
+  ctx.strokeStyle = "#111111"; ctx.lineWidth = 2;
+  
+  ctx.beginPath();
+  ctx.moveTo(-boss.width/2, -boss.height/2 + 10); ctx.lineTo(-boss.width/2 + 15, -boss.height/2);
+  ctx.lineTo(boss.width/2 - 15, -boss.height/2); ctx.lineTo(boss.width/2, -boss.height/2 + 10);
+  ctx.lineTo(boss.width/2, boss.height/2 - 10); ctx.lineTo(boss.width/2 - 15, boss.height/2);
+  ctx.lineTo(-boss.width/2 + 15, boss.height/2); ctx.lineTo(-boss.width/2, boss.height/2 - 10);
+  ctx.closePath(); ctx.fill(); ctx.stroke();
+
+  let coreAlpha = 0.7 + Math.sin(boss.animFrame * 0.1) * 0.3;
+  ctx.fillStyle = "rgba(255, 0, 50, " + coreAlpha + ")";
+  ctx.beginPath(); ctx.arc(-20, 0, 10, 0, Math.PI * 2); ctx.fill(); 
+  ctx.beginPath(); ctx.arc(20, 0, 10, 0, Math.PI * 2); ctx.fill();  
+  
+  ctx.fillStyle = "rgba(255, 255, 255, " + coreAlpha + ")";
+  ctx.beginPath(); ctx.arc(-20, 0, 4, 0, Math.PI * 2); ctx.fill(); 
+  ctx.beginPath(); ctx.arc(20, 0, 4, 0, Math.PI * 2); ctx.fill();
+
+  ctx.fillStyle = (boss.animFrame % 10 < 5) ? "#ffcc00" : "#aa0000"; 
+  ctx.fillRect(-12, -8, 24, 16);
+  ctx.strokeStyle = "#ffffff"; ctx.lineWidth = 1;
+  ctx.strokeRect(-10, -6, 20, 12);
+
+  ctx.restore();
+}
+
+function drawGame() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  ctx.fillStyle = "#050515"; ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.fillStyle = "#111133";
+  for (let i = 0; i < 8; i++) {
+    let yPos = (bgY * 2 + i * 80) % canvas.height; ctx.fillRect(0, yPos, canvas.width, 1);
+  }
+
+  groundTargets.forEach(target => {
+    if (!target.isDestroyed) {
+      ctx.fillStyle = "#220033"; ctx.fillRect(target.x, target.y, target.width, target.height);
+      ctx.strokeStyle = "#660099"; ctx.strokeRect(target.x, target.y, target.width, target.height);
+      let coreColor = (target.animFrame % 20 < 10) ? "#ff0000" : "#440000";
+      ctx.fillStyle = coreColor; ctx.fillRect(target.x + 6, target.y + 6, 8, 8);
+    }
+  });
+
+  ctx.fillStyle = "rgba(255, 255, 255, 0.4)";
+  clouds.forEach(c => {
+    ctx.beginPath(); ctx.arc(c.x + 10, c.y + 12, 12, 0, Math.PI * 2);
+    ctx.arc(c.x + 25, c.y + 12, 15, 0, Math.PI * 2); ctx.arc(c.x + 35, c.y + 12, 10, 0, Math.PI * 2);
+    ctx.fill();
+  });
+
+  drawBoss();
+
+  if (boss.isAppeared && !boss.isDead) {
+    ctx.fillStyle = "#333333"; ctx.fillRect(100, 15, 200, 10);
+    ctx.fillStyle = "#ff0044"; ctx.fillRect(100, 15, (boss.hp / boss.maxHp) * 200, 10);
+    ctx.strokeStyle = "#ffffff"; ctx.strokeRect(100, 15, 200, 10);
+  }
+
+  bombs.forEach(b => {
+    if (!b.isExploding) {
+      ctx.fillStyle = "#222222"; ctx.beginPath(); ctx.arc(b.x + b.width/2, b.y + b.height/2, b.width/2, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = "#ff0000"; ctx.beginPath(); ctx.arc(b.x + b.width/2, b.y + b.height/2, 2, 0, Math.PI * 2); ctx.fill();
+    } else {
+      ctx.fillStyle = "#ff5500"; ctx.beginPath(); ctx.arc(b.x + b.width/2, b.y + b.height/2, b.width/2, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = "#ffffff"; ctx.beginPath(); ctx.arc(b.x + b.width/2, b.y + b.height/2, b.width/4, 0, Math.PI * 2); ctx.fill();
+    }
+  });
+
+  ctx.fillStyle = "#ff00ff";
+  bossBullets.forEach(bb => {
+    ctx.beginPath(); ctx.arc(bb.x + 3, bb.y + 3, 5, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = "#ffffff"; ctx.beginPath(); ctx.arc(bb.x + 3, bb.y + 3, 2, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = "#ff00ff"; 
+  });
+
+  bullets.forEach(b => { ctx.fillStyle = b.color; ctx.fillRect(b.x, b.y, b.width, b.height); });
+
+  bells.forEach(b => {
+    ctx.fillStyle = BELL_COLORS[b.colorIndex]; ctx.beginPath();
+    ctx.arc(b.x + b.width/2, b.y + b.height/2, b.width/2, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = "#000000"; ctx.lineWidth = 1; ctx.stroke();
+    ctx.fillStyle = "rgba(255, 255, 255, 0.6)"; ctx.beginPath(); ctx.ellipse(b.x + 6, b.y + 6, 3, 5, 0.5, 0, Math.PI * 2); ctx.fill();
+  });
+
+  enemies.forEach(en => { 
+    ctx.fillStyle = "#ff5555"; ctx.fillRect(en.x, en.y, en.width, en.height);
+    ctx.fillStyle = "#000000"; ctx.fillRect(en.x + 6, en.y - 2, 8, 4); 
+  });
+
+  if (!gameOver) {
+    drawPlayer(player.x, player.y);
+
+    if (player.hasShield) {
+      ctx.strokeStyle = "rgba(0, 150, 255, 0.6)"; ctx.lineWidth = 4; ctx.beginPath();
+      ctx.arc(player.x + player.width/2, player.y + player.height/2, player.width/2 + 8, 0, Math.PI * 2); ctx.stroke();
+      ctx.strokeStyle = "#ffffff"; ctx.lineWidth = 1; ctx.stroke();
+    }
+  }
+
+  ctx.fillStyle = "#ffffff"; ctx.font = "16px monospace"; ctx.textAlign = "left";
+  ctx.fillText("SCORE: " + player.score, 10, 25);
+  ctx.fillStyle = "#3399ff"; ctx.fillText("SPEED: " + "★".repeat(player.speedLevel) + "☆".repeat(3 - player.speedLevel), 10, 50);
+  ctx.fillStyle = "#ffffff"; ctx.fillText("WEAPON: " + (player.shotType === "3way" ? "3-WAY" : "NORMAL"), 10, 75);
+  ctx.fillStyle = "#ff3333"; ctx.fillText("SHIELD: " + (player.hasShield ? "OK" : "NONE"), 10, 100);
+
+  if (gameOver) {
+    ctx.fillStyle = "rgba(0, 0, 0, 0.7)"; ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = "#ff3333"; ctx.font = "30px monospace"; ctx.textAlign = "center";
+    ctx.fillText("GAME OVER", canvas.width / 2, canvas.height / 2);
+  }
+
+  if (stageClear) {
+    ctx.fillStyle = "rgba(0, 0, 0, 0.6)"; ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = "#ffff00"; ctx.font = "32px monospace"; ctx.textAlign = "center";
+    ctx.fillText("STAGE CLEAR!", canvas.width / 2, canvas.height / 2 - 20);
+    ctx.fillStyle = "#ffffff"; ctx.font = "18px monospace";
+    ctx.fillText("CONGRATULATIONS!", canvas.width / 2, canvas.height / 2 + 20);
+  }
+}
+
+// ==========================================
+// 5. メインループ
+// ==========================================
+function gameLoop() {
+  if (!gameOver && !stageClear) {
+    updatePlayerAndBackground();
+    spawnEntities();
+    updateBoss();
+    updateEntities();
+    checkPlayerCollisions();
+  }
+  drawGame();
+  requestAnimationFrame(gameLoop);
+}
+
+gameLoop();
 </script>
 </body>
 </html>
