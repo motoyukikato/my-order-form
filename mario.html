@@ -3,9 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>かっこいいツインビー（スマホ対応版）</title>
+  <title>かっこいいツインビー（大画面ボタン版）</title>
   <style>
-    /* 画面全体のレイアウト調整 */
     body {
       margin: 0;
       padding: 0;
@@ -17,7 +16,7 @@
       justify-content: flex-start;
       min-height: 100vh;
       overflow: hidden;
-      user-select: none; /* 画面長押しで選択されないようにする */
+      user-select: none;
       -webkit-user-select: none;
     }
 
@@ -27,61 +26,66 @@
       margin: 5px 0;
     }
 
-    /* ゲーム画面 */
     #twinbeeCanvas {
       background-color: #000;
       border: 2px solid #333;
       max-width: 100%;
-      max-height: 60vh; /* スマホの画面に収まるよう調整 */
+      max-height: 50vh; /* コントローラーを大きくするため、少しゲーム画面の最大高さを抑えました */
       box-shadow: 0 0 20px rgba(0, 150, 255, 0.3);
     }
 
-    /* 【新規】スマホ用バーチャルコントローラーの配置 */
+    /* 【大幅調整】コントローラーエリアを拡大 */
     #controller {
       display: flex;
       justify-content: space-between;
+      align-items: center;
       width: 100%;
-      max-width: 360px;
-      margin-top: 10px;
-      padding: 0 10px;
+      max-width: 400px;
+      margin-top: 15px;
+      padding: 0 15px;
       box-sizing: border-box;
     }
 
-    /* 十字キーのエリア */
+    /* 【拡大】十字キーのエリア（1マスのサイズを40px → 65pxにアップ！） */
     .d-pad {
       display: grid;
-      grid-template-columns: repeat(3, 40px);
-      grid-template-rows: repeat(3, 40px);
-      gap: 3px;
+      grid-template-columns: repeat(3, 65px);
+      grid-template-rows: repeat(3, 65px);
+      gap: 5px;
     }
 
     .d-btn {
-      background: #333;
+      background: #2a2a35;
       color: #fff;
-      border: 1px solid #555;
-      border-radius: 5px;
+      border: 2px solid #444455;
+      border-radius: 8px;
       display: flex;
       align-items: center;
       justify-content: center;
       font-weight: bold;
-      font-size: 18px;
+      font-size: 24px; /* 矢印の文字も大きく */
+      box-shadow: 0 4px #1a1a25;
     }
-    .d-btn:active { background: #555; }
-    #btn-up    { grid-column: 2; grid-row: 1; }
-    #btn-left  { grid-column: 1; grid-row: 2; }
-    #btn-right { grid-column: 3; grid-row: 2; }
-    #btn-down  { grid-column: 2; grid-row: 3; }
+    .d-btn:active {
+      transform: translateY(2px);
+      box-shadow: 0 2px #1a1a25;
+      background: #444455;
+    }
+    #btn-up    { grid-column: 2; grid-row: 1; background: #3a3a45; }
+    #btn-left  { grid-column: 1; grid-row: 2; background: #3a3a45; }
+    #btn-right { grid-column: 3; grid-row: 2; background: #3a3a45; }
+    #btn-down  { grid-column: 2; grid-row: 3; background: #3a3a45; }
 
-    /* A/B（Z/X）ボタンのエリア */
+    /* 【拡大】A/B（Z/X）ボタンのエリア */
     .action-pad {
       display: flex;
-      align-items: center;
+      flex-direction: column; /* 誤操作を防ぐため、スマホの持ち方に合わせて縦並びに変更 */
       gap: 15px;
     }
 
     .action-btn {
-      width: 55px;
-      height: 55px;
+      width: 65px;  /* 55px → 65pxに拡大 */
+      height: 65px;
       background: #cc0000;
       color: #fff;
       border: 2px solid #ff5555;
@@ -90,16 +94,16 @@
       align-items: center;
       justify-content: center;
       font-weight: bold;
-      font-size: 20px;
-      box-shadow: 0 4px #880000;
+      font-size: 24px;
+      box-shadow: 0 5px #880000;
     }
     .action-btn:active {
       transform: translateY(4px);
-      box-shadow: 0 0px #880000;
+      box-shadow: 0 1px #880000;
       background: #ff3333;
     }
-    #btn-x { background: #00aa00; border-color: #55ff55; box-shadow: 0 4px #006600; }
-    #btn-x:active { background: #00ff00; box-shadow: 0 0px #006600; }
+    #btn-x { background: #00aa00; border-color: #55ff55; box-shadow: 0 5px #006600; }
+    #btn-x:active { background: #00ff00; box-shadow: 0 1px #006600; }
   </style>
 </head>
 <body>
@@ -115,8 +119,8 @@
       <div class="d-btn" id="btn-down">↓</div>
     </div>
     <div class="action-pad">
-      <div class="action-btn" id="btn-x">X</div>
       <div class="action-btn" id="btn-z">Z</div>
+      <div class="action-btn" id="btn-x">X</div>
     </div>
   </div>
 
@@ -152,8 +156,6 @@ let gameOver = false;
 let stageClear = false; 
 
 const BELL_COLORS = ["#ffcc00", "#3399ff", "#ffffff", "#ff3333"];
-
-// キー状態（PC・スマホ共通で使用）
 const keys = { ArrowUp: false, ArrowDown: false, ArrowLeft: false, ArrowRight: false };
 
 function getPlayerSpeed() {
@@ -161,9 +163,8 @@ function getPlayerSpeed() {
 }
 
 // ==========================================
-// 2. 入力イベントリスナー（PC・スマホ両対応）
+// 2. 入力イベントリスナー
 // ==========================================
-// --- PC用のキーボード対応 ---
 window.addEventListener("keydown", (e) => {
   if (e.code in keys) keys[e.code] = true;
   if (!gameOver && !stageClear) {
@@ -175,36 +176,31 @@ window.addEventListener("keyup", (e) => {
   if (e.code in keys) keys[e.code] = false;
 });
 
-// --- 【新規】スマホ用のタッチ対応（画面ボタン） ---
 function setupTouchButton(elementId, keyName) {
   const btn = document.getElementById(elementId);
   
-  // タッチした瞬間
   btn.addEventListener("touchstart", (e) => {
-    e.preventDefault(); // 画面スクロールやズーム化を防止
+    e.preventDefault(); 
     if (keyName in keys) keys[keyName] = true;
     
-    // 攻撃ボタンの単発処理
     if (!gameOver && !stageClear) {
       if (keyName === "KeyZ") shootBullets();
       if (keyName === "KeyX") dropBombs();
     }
   });
 
-  // 指が離れた瞬間
   btn.addEventListener("touchend", (e) => {
     e.preventDefault();
     if (keyName in keys) keys[keyName] = false;
   });
 }
 
-// 各ボタンとプログラムのキーを紐付け
 setupTouchButton("btn-up", "ArrowUp");
 setupTouchButton("btn-down", "ArrowDown");
 setupTouchButton("btn-left", "ArrowLeft");
 setupTouchButton("btn-right", "ArrowRight");
-setupTouchButton("btn-z", "KeyZ"); // Zは空中弾
-setupTouchButton("btn-x", "KeyX"); // Xは地上ボム
+setupTouchButton("btn-z", "KeyZ"); 
+setupTouchButton("btn-x", "KeyX"); 
 
 // 空中ショット発射
 function shootBullets() {
