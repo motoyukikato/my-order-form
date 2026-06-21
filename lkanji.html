@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>小学校 漢字フラッシュカード</title>
+    <style>
+        body {
+            font-family: 'Helvetica Neue', Arial, 'Hiragino Kaku Gothic ProN', 'Hiragino Sans', Meiryo, sans-serif;
+            background-color: #f0f7f4;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+            user-select: none;
+        }
+
+        h1 {
+            color: #2c5d63;
+            font-size: 22px;
+            margin-bottom: 5px;
+        }
+
+        /* 学年選択メニューのスタイル */
+        .select-container {
+            margin-bottom: 10px;
+        }
+
+        select {
+            padding: 6px 15px;
+            font-size: 16px;
+            border-radius: 5px;
+            border: 2px solid #a0c1b8;
+            background-color: white;
+            color: #2c5d63;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        .counter {
+            font-size: 14px;
+            color: #666;
+            margin-bottom: 15px;
+        }
+
+        /* カードのコンテナ設定 */
+        .card-container {
+            width: 300px;
+            height: 380px;
+            perspective: 1000px;
+            cursor: pointer;
+        }
+
+        /* カード本体 */
+        .card {
+            width: 100%;
+            height: 100%;
+            position: relative;
+            transform-style: preserve-3d;
+            transition: transform 0.4s;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+            border-radius: 15px;
+        }
+
+        /* ひっくり返ったときのクラス */
+        .card.is-flipped {
+            transform: rotateY(180deg);
+        }
+
+        /* 表・裏共通のスタイル */
+        .card-face {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            backface-visibility: hidden;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            border-radius: 15px;
+            border: 4px solid #a0c1b8;
+            box-sizing: border-box;
+        }
+
+        /* 表面（漢字） */
+        .card-front {
+            background-color: #ffffff;
+            color: #333333;
+            font-size: 130px;
+            font-weight: bold;
+        }
+
+        /* 裏面（読み・情報） */
+        .card-back {
+            background-color: #fcf8ec;
+            color: #333333;
+            transform: rotateY(180deg);
+            padding: 20px;
+            text-align: center;
+        }
+
+        .kanji-small {
+            font-size: 40px;
+            color: #a0c1b8;
+            margin-bottom: 15px;
+            font-weight: bold;
+        }
+
+        .reading-section {
+            font-size: 16px;
+            margin: 10px 0;
+            line-height: 1.4;
+        }
+
+        .label {
+            font-size: 11px;
+            color: #777;
+            display: block;
+            font-weight: bold;
+            margin-bottom: 2px;
+        }
+
+        /* ボタンのスタイル */
+        .btn {
+            margin-top: 25px;
+            padding: 12px 50px;
+            font-size: 18px;
+            font-weight: bold;
+            background-color: #2c5d63;
+            color: white;
+            border: none;
+            border-radius: 25px;
+            cursor: pointer;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            transition: background 0.2s, transform 0.1s;
+        }
+
+        .btn:hover {
+            background-color: #1e4449;
+        }
+
+        .btn:active {
+            transform: scale(0.98);
+        }
+    </style>
+</head>
+<body>
+
+    <h1>かんじ フラッシュカード</h1>
+    
+    <div class="select-container">
+        <select id="grade-select" onchange="changeGrade()">
+            <option value="1">小学1年生 (80文字)</option>
+            <option value="5">小学5年生 (193文字)</option>
+        </select>
+    </div>
+
+    <div class="counter" id="card-counter">残り: -- / --</div>
+
+    <div class="card-container" onclick="flipCard()">
+        <div class="card" id="card">
+            <div class="card-face card-front" id="front-text">-</div>
+            <div class="card-face card-back">
+                <div class="kanji-small" id="back-kanji">-</div>
+                <div class="reading-section">
+                    <span class="label">【音読み】</span>
+                    <span id="on-reading">-</span>
+                </div>
+                <div class="reading-section">
+                    <span class="label">【訓読み】</span>
+                    <span id="kun-reading">-</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <button class="btn" onclick="nextCard(event)">つぎへ ＞</button>
+
+    <script>
+        // 小学1年生（80文字）
+        const grade1List = [
+            { kanji: "一", on: "イチ、イツ", kun: "ひと、ひと-つ" }, { kanji: "二", on: "ニ、ジ", kun: "ふた、ふた-つ" }, { kanji: "三", on: "サン", kun: "み、み-つ、みっ-つ" }, { kanji: "四", on: "シ", kun: "よ、よ-つ、よっ-つ、よん" }, { kanji: "五", on: "ゴ", kun: "いつ、いつ-つ" }, { kanji: "六", on: "ロク、ロッ", kun: "む、む-つ、むっ-つ、むい" }, { kanji: "七", on: "シチ", kun: "なな、なな-つ、なの" }, { kanji: "八", on: "ハチ、ハッ", kun: "や、や-つ、やっ-つ、よう" }, { kanji: "九", on: "キュウ、ク", kun: "ここの、ここの-つ" }, { kanji: "十", on: "ジュウ、ジッ", kun: "とお、と" },
+            { kanji: "百", on: "ヒャク", kun: "ー" }, { kanji: "千", on: "セン", kun: "ち" }, { kanji: "上", on: "ジョウ、ショウ", kun: "うえ、あ-げる、のぼ-る" }, { kanji: "下", on: "カ、ゲ", kun: "した、さ-げる、くだ-る" }, { kanji: "左", on: "サ", kun: "ひだり" }, { kanji: "右", on: "ウ、ユウ", kun: "みぎ" }, { kanji: "大", on: "ダイ、タイ", kun: "おお-きい" }, { kanji: "中", on: "チュウ", kun: "なか" }, { kanji: "小", on: "ショウ", kun: "ちい-さい、こ" }, { kanji: "長", on: "チョウ", kun: "なが-い" },
+            { kanji: "本", on: "ホン", kun: "もと" }, { kanji: "文", on: "ブン、モン", kun: "ふみ" }, { kanji: "字", on: "ジ", kun: "あざ" }, { kanji: "名", on: "メイ、ミョウ", kun: "な" }, { kanji: "前", on: "ゼン", kun: "まえ" }, { kanji: "後", on: "ゴ、コウ", kun: "のち、うし-ろ、あと" }, { kanji: "時", on: "ジ", kun: "とき" }, { kanji: "間", on: "カン、ケン", kun: "あいだ、ま" }, { kanji: "日", on: "ニチ、ジツ", kun: "ひ、び、か" }, { kanji: "月", on: "ゲツ、ガツ", kun: "つき" },
+            { kanji: "火", on: "カ", kun: "ひ" }, { kanji: "水", on: "スイ", kun: "みず" }, { kanji: "木", on: "ボク、モク", kun: "き" }, { kanji: "金", on: "キン、コン", kun: "かね" }, { kanji: "土", on: "ド、ト", kun: "つち" }, { kanji: "山", on: "サン", kun: "やま" }, { kanji: "川", on: "セン", kun: "かわ" }, { kanji: "田", on: "デン", kun: "た" }, { kanji: "石", on: "セキ、シャク", kun: "いし" }, { kanji: "天", on: "テン", kun: "あめ" },
+            { kanji: "気", on: "キ、ケ", kun: "いき" }, { kanji: "空", on: "クウ", kun: "そら、あ-く、から" }, { kanji: "雨", on: "ウ", kun: "あめ" }, { kanji: "夕", on: "セキ", kun: "ゆう" }, { kanji: "花", on: "カ", kun: "はな" }, { kanji: "草", on: "ソウ", kun: "くさ" }, { kanji: "林", on: "リン", kun: "はやし" }, { kanji: "森", on: "シン", kun: "もり" }, { kanji: "竹", on: "チク", kun: "たけ" }, { kanji: "虫", on: "チュウ", kun: "むし" },
+            { kanji: "貝", on: "バイ", kun: "かい" }, { kanji: "犬", on: "ケン", kun: "いぬ" }, { kanji: "牛", on: "ギュウ", kun: "うし" }, { kanji: "馬", on: "バ", kun: "うま" }, { kanji: "鳥", on: "チョウ", kun: "とり" }, { kanji: "魚", on: "ギョ", kun: "うお、さかな" }, { kanji: "人", on: "ジン、ニン", kun: "ひと" }, { kanji: "子", on: "シ、ス", kun: "こ" }, { kanji: "女", on: "ジョ、ニョ", kun: "おんな" }, { kanji: "男", on: "ダン、ナン", kun: "おとこ" },
+            { kanji: "目", on: "モク、ボク", kun: "め" }, { kanji: "耳", on: "ジ", kun: "みみ" }, { kanji: "口", on: "コウ、ク", kun: "くち" }, { kanji: "手", on: "シュ", kun: "て" }, { kanji: "足", on: "ソク", kun: "あし、た-りる" }, { kanji: "見", on: "ケン", kun: "み-る、み-える" }, { kanji: "音", on: "オン、イン", kun: "おと、ね" }, { kanji: "力", on: "リキ、リョク", kun: "ちから" }, { kanji: "車", on: "シャ", kun: "くるま" }, { kanji: "校", on: "コウ", kun: "ー" },
+            { kanji: "学", on: "ガク", kun: "まな-ぶ" }, { kanji: "先", on: "セン", kun: "さき" }, { kanji: "生", on: "セイ、ショウ", kun: "い-きる、う-まれる" }, { kanji: "正", on: "セイ、ショウ", kun: "ただ-しい" }, { kanji: "出", on: "シュツ", kun: "で-る、だ-す" }, { kanji: "入", on: "ニュウ", kun: "い-る、はい-る" }, { kanji: "立", on: "リツ", kun: "た-つ" }, { kanji: "休", on: "キュウ", kun: "やす-む" }, { kanji: "早", on: "ソウ", kun: "はや-い" }, { kanji: "王", on: "オウ", kun: "ー" },
+            { kanji: "糸", on: "シ", kun: "いと" }, { kanji: "村", on: "ソン", kun: "むら" }, { kanji: "町", on: "チョウ", kun: "まち" }, { kanji: "赤", on: "セキ", kun: "あか" }, { kanji: "青", on: "セイ", kun: "あお" }, { kanji: "白", on: "ハク", kun: "しろ" }
+        ];
+
+        // 小学5年生（193文字）
+        const grade5List = [
+            { kanji: "圧", on: "アツ", kun: "ー" }, { kanji: "移", on: "イ", kun: "うつ-る、うつ-す" }, { kanji: "因", on: "イン", kun: "よ-る" }, { kanji: "永", on: "エイ", kun: "なが-い" }, { kanji: "営", on: "エイ", kun: "いとな-む" }, { kanji: "衛", on: "エイ", kun: "ー" }, { kanji: "易", on: "エキ、イ", kun: "やさ-しい" }, { kanji: "益", on: "エキ、ヤク", kun: "ー" }, { kanji: "液", on: "エキ", kun: "ー" }, { kanji: "演", on: "エン", kun: "ー" },
+            { kanji: "応", on: "オウ", kun: "こた-える" }, { kanji: "往", on: "オウ", kun: "ー" }, { kanji: "桜", on: "オウ", kun: "さくら" }, { kanji: "恩", on: "オン", kun: "ー" }, { kanji: "可", on: "カ", kun: "ー" }, { kanji: "仮", on: "カ、ケ", kun: "かり" }, { kanji: "価", on: "カ", kun: "あたい" }, { kanji: "河", on: "カ", kun: "かわ" }, { kanji: "過", on: "カ", kun: "す-ぎる、す-ごす" }, { kanji: "賀", on: "ガ", kun: "ー" },
+            { kanji: "快", on: "カイ", kun: "こころよ-い" }, { kanji: "解", on: "カイ、ゲ", kun: "と-く、と-かす、と-ける" }, { kanji: "格", on: "カク、コウ", kun: "ー" }, { kanji: "確", on: "カク", kun: "たしか-める" }, { kanji: "額", on: "ガク", kun: "ひたい" }, { kanji: "刊", on: "カン", kun: "ー" }, { kanji: "幹", on: "カン", kun: "みき" }, { kanji: "慣", on: "カン", kun: "な-れる、な-らす" }, { kanji: "眼", on: "ガン、ゲン", kun: "まなこ、め" }, { kanji: "基", on: "キ", kun: "もと、もとい" },
+            { kanji: "寄", on: "キ", kun: "よ-る、よ-せる" }, { kanji: "規", on: "キ", kun: "ー" }, { kanji: "技", on: "ギ", kun: "わざ" }, { kanji: "義", on: "ギ", kun: "ー" }, { kanji: "逆", on: "ギャク", kun: "さか、さか-らう" }, { kanji: "久", on: "キュウ、ク", kun: "ひさ-しい" }, { kanji: "旧", on: "キュウ", kun: "ふる-い" }, { kanji: "居", on: "キョ", kun: "い-る" }, { kanji: "許", on: "キョ", kun: "ゆる-す" }, { kanji: "境", on: "キョウ、ケイ", kun: "さかい" },
+            { kanji: "均", on: "キン", kun: "ー" }, { kanji: "禁", on: "キン", kun: "ー" }, { kanji: "句", on: "ク", kun: "ー" }, { kanji: "群", on: "グン", kun: "む-れる、むれ" }, { kanji: "軍", on: "グン", kun: "ー" }, { kanji: "郡", on: "グン", kun: "こおり" }, { kanji: "経", on: "ケイ、キョウ", kun: "へ-る、た-つ" }, { kanji: "型", on: "ケイ", kun: "かた" }, { kanji: "景", on: "ケイ", kun: "ー" }, { kanji: "芸", on: "ゲイ", kun: "ー" },
+            { kanji: "欠", on: "ケツ", kun: "か-ける、か-く" }, { kanji: "結", on: "ケツ", kun: "むす-ぶ、ゆ-う" }, { kanji: "血", on: "ケツ", kun: "ち" }, { kanji: "件", on: "ケン", kun: "ー" }, { kanji: "券", on: "ケン", kun: "ー" }, { kanji: "検", on: "ケン", kun: "ー" }, { kanji: "権", on: "ケン、ゴン", kun: "ー" }, { kanji: "険", on: "ケン", kun: "けわ-しい" }, { kanji: "原", on: "ゲン", kun: "はら" }, { kanji: "現", on: "ゲン", kun: "あらわ-れる、あらわ-す" },
+            { kanji: "言", on: "ゲン、ゴン", kun: "い-う、こと" }, { kanji: "限", on: "ゲン", kun: "かぎ-る" }, { kanji: "個", on: "コ", kun: "ー" }, { kanji: "故", on: "コ", kun: "ゆえ" }, { kanji: "護", on: "ゴ", kun: "まも-る" }, { kanji: "効", on: "コウ", kun: "き-く" }, { kanji: "厚", on: "コウ", kun: "あつ-い" }, { kanji: "耕", on: "コウ", kun: "たがや-す" }, { kanji: "航", on: "コウ", kun: "ー" }, { kanji: "鉱", on: "コウ", kun: "ー" },
+            { kanji: "構", on: "コウ", kun: "かま-える、かま-う" }, { kanji: "興", on: "コウ、キョウ", kun: "おこ-る、おこ-す" }, { kanji: "講", on: "コウ", kun: "ー" }, { kanji: "混", on: "コン", kun: "ま-じる、ま-ざる、ま-ぜる" }, { kanji: "査", on: "サ", kun: "ー" }, { kanji: "再", on: "サイ、サ", kun: "ふたた-び" }, { kanji: "災", on: "サイ", kun: "わざわ-い" }, { kanji: "妻", on: "サイ", kun: "つま" }, { kanji: "採", on: "サイ", kun: "と-る" }, { kanji: "際", on: "サイ", kun: "きわ" },
+            { kanji: "在", on: "ザイ", kun: "あ-る" }, { kanji: "財", on: "ザイ、サイ", kun: "ー" }, { kanji: "罪", on: "ザイ", kun: "つみ" }, { kanji: "雑", on: "ザツ、ゾウ", kun: "ー" }, { kanji: "酸", on: "サン", kun: "す-い" }, { kanji: "賛", on: "サン", kun: "ー" }, { kanji: "支", on: "シ", kun: "ささ-える" }, { kanji: "志", on: "シ", kun: "こころざ-す、こころざし" }, { kanji: "枝", on: "シ", kun: "えだ" }, { kanji: "師", on: "シ", kun: "ー" },
+            { kanji: "資", on: "シ", kun: "ー" }, { kanji: "飼", on: "シ", kun: "か-う" }, { kanji: "示", on: "ジ、シ", kun: "しめ-す" }, { kanji: "似", on: "ジ", kun: "に-る" }, { kanji: "識", on: "シキ", kun: "ー" }, { kanji: "質", on: "シツ、シチ", kun: "ー" }, { kanji: "舎", on: "シャ", kun: "ー" }, { kanji: "謝", on: "シャ", kun: "あやま-る" }, { kanji: "授", on: "ジュ", kun: "さず-ける、さず-かる" }, { kanji: "修", on: "シュウ、シュ", kun: "おさ-める、おさ-まる" },
+            { kanji: "述", on: "ジュツ", kun: "の-べる" }, { kanji: "術", on: "ジュツ", kun: "わざ" }, { kanji: "準", on: "ジュン", kun: "ー" }, { kanji: "序", on: "ジョ", kun: "ー" }, { kanji: "招", on: "ショウ", kun: "まね-く" }, { kanji: "承", on: "ショウ", kun: "うけたまわ-る" }, { kanji: "証", on: "ショウ", kun: "ー" }, { kanji: "条", on: "ジョウ", kun: "ー" }, { kanji: "状", on: "ジョウ", kun: "ー" }, { kanji: "常", on: "ジョウ", kun: "つね、とこ" },
+            { kanji: "情", on: "ジョウ、セイ", kun: "なさ-け" }, { kanji: "織", on: "シキ、ショク", kun: "お-る" }, { kanji: "職", on: "ショク", kun: "ー" }, { kanji: "制", on: "セイ", kun: "ー" }, { kanji: "性", on: "セイ、ショウ", kun: "さが" }, { kanji: "政", on: "セイ、ショウ", kun: "まつりごと" }, { kanji: "勢", on: "セイ", kun: "いきお-い" }, { kanji: "精", on: "セイ、ショウ", kun: "ー" }, { kanji: "製", on: "セイ", kun: "ー" }, { kanji: "税", on: "ゼイ", kun: "ー" },
+            { kanji: "責", on: "セキ", kun: "せ-める" }, { kanji: "績", on: "セキ", kun: "ー" }, { kanji: "接", on: "セツ", kun: "つ-ぐ" }, { kanji: "設", on: "セツ", kun: "もう-ける" }, { kanji: "舌", on: "ゼツ", kun: "した" }, { kanji: "絶", on: "ゼツ", kun: "た-つ、た-える" }, { kanji: "銭", on: "セン", kun: "ぜに" }, { kanji: "祖", on: "ソ", kun: "ー" }, { kanji: "素", on: "ソ、ス", kun: "ー" }, { kanji: "総", on: "ソウ", kun: "ー" },
+            { kanji: "造", on: "ゾウ", kun: "つく-る" }, { kanji: "像", on: "ゾウ", kun: "ー" }, { kanji: "増", on: "ゾウ", kun: "ま-す、ふ-える、ふ-やす" }, { kanji: "則", on: "ソク", kun: "のっと-る" }, { kanji: "測", on: "ソク", kun: "はか-る" }, { kanji: "属", on: "ゾク", kun: "ー" }, { kanji: "率", on: "ソツ、リツ", kun: "ひき-いる" }, { kanji: "損", on: "ソン", kun: "そこ-ねる、そこ-なう" }, { kanji: "退", on: "タイ", kun: "しりぞ-く、しりぞ-ける" }, { kanji: "貸", on: "タイ", kun: "か-す" },
+            { kanji: "態", on: "タイ", kun: "ー" }, { kanji: "団", on: "ダン、トン", kun: "ー" }, { kanji: "断", on: "ダン", kun: "たつ、ことわ-る" }, { kanji: "築", on: "チク", kun: "きず-く" }, { kanji: "張", on: "チョウ", kun: "は-る" }, { kanji: "提", on: "テイ、チョウ", kun: "さ-げる" }, { kanji: "程", on: "テイ", kun: "ほど" }, { kanji: "適", on: "テキ", kun: "ー" }, { kanji: "敵", on: "テキ", kun: "かたき" }, { kanji: "統", on: "トウ", kun: "す-べる" },
+            { kanji: "導", on: "ドウ", kun: "みちび-く" }, { kanji: "銅", on: "ドウ", kun: "ー" }, { kanji: "徳", on: "トク", kun: "ー" }, { kanji: "独", on: "ドク", kun: "ひと-り" }, { kanji: "任", on: "ニン", kun: "まか-せる、まか-す" }, { kanji: "燃", on: "ネン", kun: "も-える、も-す、も-やす" }, { kanji: "能", on: "ノウ", kun: "ー" }, { kanji: "破", on: "ハ", kun: "やぶ-る、やぶ-れる" }, { kanji: "犯", on: "ハン", kun: "おか-す" }, { kanji: "判", on: "ハン、バン", kun: "ー" },
+            { kanji: "版", on: "ハン", kun: "ー" }, { kanji: "比", on: "ヒ", kun: "くら-べる" }, { kanji: "肥", on: "ヒ", kun: "こ-える、こえ、こ-やす" }, { kanji: "非", on: "ヒ", kun: "ー" }, { kanji: "備", on: "ビ", kun: "そな-える、そな-わる" }, { kanji: "俵", on: "ヒョウ", kun: "たわら" }, { kanji: "評", on: "ヒョウ", kun: "ー" }, { kanji: "貧", on: "ヒン、ビン", kun: "まず-しい" }, { kanji: "布", on: "フ", kun: "ぬの" }, { kanji: "婦", on: "フ", kun: "ー" },
+            { kanji: "富", on: "フ、フウ", kun: "と-む、とみ" }, { kanji: "武", on: "ブ、ム", kun: "ー" }, { kanji: "復", on: "フク", kun: "ー" }, { kanji: "複", on: "フク", kun: "ー" }, { kanji: "仏", on: "ブツ", kun: "ほとけ" }, { kanji: "編", on: "ヘン", kun: "あ-む" }, { kanji: "弁", on: "ベン", kun: "ー" }, { kanji: "保", on: "ホ、ホウ", kun: "たも-つ" }, { kanji: "墓", on: "ボ", kun: "はか" }, { kanji: "報", on: "ホウ", kun: "むく-いる" },
+            { kanji: "豊", on: "ホウ", kun: "ゆた-か" }, { kanji: "防", on: "ボウ", kun: "ふせ-ぐ" }, { kanji: "貿易", on: "※「貿」単体", kun: "（コウ）" }, { kanji: "暴", on: "ボウ、バク", kun: "あば-れる、あば-く" }, { kanji: "務", on: "ム", kun: "つと-める" }, { kanji: "夢", on: "ム", kun: "ゆめ" }, { kanji: "迷", on: "メイ", kun: "まよ-う" }, { kanji: "綿", on: "メン", kun: "わた" }, { kanji: "輸", on: "ユ", kun: "ー" }, { kanji: "余", on: "ヨ", kun: "あま-る、あま-す" },
+            { kanji: "預", on: "ヨ", kun: "あず-ける、あず-かる" }, { kanji: "容", on: "ヨウ", kun: "ー" }, { kanji: "略", on: "リャク", kun: "ー" }, { kanji: "留", on: "リュウ、ル", kun: "と-まる、と-める" }, { kanji: "領", on: "リョウ", kun: "ー" }, { kanji: "歴", on: "レキ", kun: "ー" }
+        ];
+
+        // 5年生データの最後の調整（"貿易"の表記を修正）
+        grade5List[182] = { kanji: "貿", on: "ボウ", kun: "ー" };
+
+        const card = document.getElementById('card');
+        const frontText = document.getElementById('front-text');
+        const backKanji = document.getElementById('back-kanji');
+        const onReading = document.getElementById('on-reading');
+        const kunReading = document.getElementById('kun-reading');
+        const cardCounter = document.getElementById('card-counter');
+        const gradeSelect = document.getElementById('grade-select');
+
+        let currentList = [];
+        let remainingKanji = [];
+        let currentKanji = {};
+
+        // 学年が変更されたときの処理
+        function changeGrade() {
+            const selectedGrade = gradeSelect.value;
+            if (selectedGrade === "1") {
+                currentList = [...grade1List];
+            } else if (selectedGrade === "5") {
+                currentList = [...grade5List];
+            }
+            
+            // 残りリストをリセット
+            remainingKanji = [...currentList];
+            
+            // カードが裏を向いていたら表に戻す
+            if (card.classList.contains('is-flipped')) {
+                card.classList.remove('is-flipped');
+                setTimeout(setRandomKanji, 200);
+            } else {
+                setRandomKanji();
+            }
+        }
+
+        // カードをひっくり返す
+        function flipCard() {
+            card.classList.toggle('is-flipped');
+        }
+
+        // 次の漢字を表示する
+        function nextCard(event) {
+            event.stopPropagation(); 
+            
+            if (card.classList.contains('is-flipped')) {
+                card.classList.remove('is-flipped');
+                setTimeout(setRandomKanji, 200);
+            } else {
+                setRandomKanji();
+            }
+        }
+
+        // ランダムに漢字を選んでセットする
+        function setRandomKanji() {
+            if (remainingKanji.length === 0) {
+                alert("すべての かんじが 終わりました！もう一度はじめます。");
+                remainingKanji = [...currentList];
+            }
+
+            const randomIndex = Math.floor(Math.random() * remainingKanji.length);
+            currentKanji = remainingKanji[randomIndex];
+            
+            remainingKanji.splice(randomIndex, 1);
+
+            // カウンターの表示更新
+            cardCounter.textContent = `残り: ${remainingKanji.length} / ${currentList.length}`;
+
+            // 画面の文字を書き換え
+            frontText.textContent = currentKanji.kanji;
+            backKanji.textContent = currentKanji.kanji;
+            onReading.textContent = currentKanji.on || "ー";
+            kunReading.textContent = currentKanji.kun || "ー";
+        }
+
+        // 最初は1年生にセットして起動
+        changeGrade();
+    </script>
+</body>
+</html>
