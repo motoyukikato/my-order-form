@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>注文分取り置き表（A4内4分割A6横 - 携帯画面・印刷サイズ完全修正版）</title>
+<title>注文分取り置き表（A4内4分割A6横 - CSV一括読込＆印刷サイズ厳密固定版）</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 <style>
     /* ページ設定: A4用紙サイズ、余白なし */
@@ -20,7 +20,7 @@
         margin: 0;
         padding: 0;
         font-family: "Helvetica Neue", Arial, "Hiragino Kaku Gothic ProN", "Hiragino Sans", Meiryo, sans-serif;
-        background-color: #ffffff;
+        background-color: #e6ecf0;
         color: #333333;
         -webkit-print-color-adjust: exact;
         print-color-adjust: exact;
@@ -33,6 +33,13 @@
         overflow: hidden;
         position: relative;
         background-color: #ffffff;
+        page-break-after: always; /* 印刷・PDF時にここで改ページする */
+    }
+    @media screen {
+        .page-container {
+            margin: 0 auto 30px auto;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.15);
+        }
     }
 
     /* 4分割（2列×2行）の配置（高さは794pxの半分＝397px） */
@@ -59,7 +66,7 @@
     /* 画面表示時のみの案内表示 */
     @media screen {
         .a6-card::before {
-            content: "タップして入力";
+            content: "タップして修正";
             position: absolute;
             top: 8px;
             left: 8px;
@@ -69,6 +76,9 @@
             padding: 2px 6px;
             border-radius: 3px;
             background-color: #fff;
+        }
+        .a6-card:hover {
+            background-color: #f1f9ff;
         }
     }
 
@@ -186,7 +196,6 @@
     /* 画面表示用の固定操作パネル */
     @media screen {
         body {
-            background-color: #e6ecf0;
             padding-top: 20px;
             padding-bottom: 40px;
         }
@@ -207,6 +216,27 @@
         }
         .panel-cell.left {
             flex: 1;
+        }
+        .csv-input-wrapper {
+            margin-top: 8px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .csv-label {
+            background-color: #34495e;
+            border: 1px solid #5d6d7e;
+            padding: 6px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: bold;
+        }
+        .csv-label:hover {
+            background-color: #4e5d6c;
+        }
+        #csv-file {
+            display: none;
         }
         .btn-action {
             color: white;
@@ -233,10 +263,6 @@
             width: 100%;
             max-width: 1122px;
             margin: 0 auto;
-            overflow: auto;
-        }
-        .page-container {
-            box-shadow: 0 4px 15px rgba(0,0,0,0.15);
         }
     }
 
@@ -321,13 +347,16 @@
     @media screen and (max-width: 768px) {
         body {
             padding: 10px;
-            background-color: #e6ecf0;
         }
         .panel-flex {
             display: block !important;
         }
-        .panel-cell.right {
+        .csv-input-wrapper {
             margin-top: 12px;
+            justify-content: center;
+        }
+        .panel-cell.right {
+            margin-top: 15px;
             text-align: center !important;
             display: flex;
             justify-content: space-between;
@@ -340,13 +369,11 @@
             text-align: center;
         }
         
-        /* 画面上では横スクロールで全体が見えるように */
         .preview-wrapper {
             overflow-x: auto;
             -webkit-overflow-scrolling: touch;
         }
 
-        /* 📱 携帯画面のときはポップアップを画面いっぱいに広げる仕様を再適用 */
         .modal-overlay .modal-content {
             width: 96% !important;
             max-width: 100% !important;
@@ -374,7 +401,7 @@
         }
         .form-control {
             padding: 12px 10px !important;
-            font-size: 16px !important; /* iOSの画面自動ズーム防止 */
+            font-size: 16px !important;
             color: #000;
         }
         .modal-footer {
@@ -396,158 +423,77 @@
     <div class="no-print control-panel">
         <div class="panel-flex">
             <div class="panel-cell left">
-                <strong>【注文分取り置き表（携帯・印刷両対応版）】</strong><br>
-                枠をタップして入力後、オレンジ色のボタンを押してPDFを保存してください。<br>
-                保存したPDFをCanonアプリからそのまま印刷してください。
+                <strong>【注文分取り置き表（ExcelのCSV文字化け対策版）】</strong><br>
+                下のボタンからCSVファイルを読み込むと何件でも一括で表を生成します。<br>
+                <div class="csv-input-wrapper">
+                    <label for="csv-file" class="csv-label">📂 CSVファイルを選択</label>
+                    <input type="file" id="csv-file" accept=".csv" onchange="loadCSV(this)">
+                    <span id="csv-status" style="font-size:12px; color:#bdc3c7;">ファイルを読み込んでください</span>
+                </div>
             </div>
             <div class="panel-cell right">
-                <button class="btn-action pdf-btn" onclick="exportToPDF()">📄 PDFを作成・保存</button>
+                <button class="btn-action pdf-btn" onclick="exportToPDF()">📄 PDFを一括保存</button>
                 <button class="btn-action print-btn" onclick="window.print()">🖨️ 直接印刷</button>
             </div>
         </div>
     </div>
 
-    <div class="preview-wrapper">
-        <div id="print-area" class="page-container">
-            
+    <div class="preview-wrapper" id="print-area">
+        <div class="page-container" id="page-1">
             <div class="row">
+                <div class="a6-card" onclick="openModal(0)">
+                    <div class="card-header">
+                        <table class="header-table"><tr><td><span class="shop-name-label">屋号</span><div id="view-shop-0" class="shop-name"></div></td><td class="meta-info"><div class="meta-item">担当者: <span id="view-staff-0" class="meta-value"></span></div><div class="meta-item">買参人番号: <span id="view-buyer-0" class="meta-value"></span></div></td></tr></table>
+                    </div>
+                    <table class="main-table">
+                        <tr><th>伝票NO.</th><td id="view-slip-0"></td></tr>
+                        <tr><th>メーカー名</th><td id="view-maker-0"></td></tr>
+                        <tr><th>希望渡し日</th><td id="view-date-0"></td></tr>
+                    </table>
+                    <div class="footer-signature">名古屋花き商事本部</div>
+                </div>
                 <div class="a6-card" onclick="openModal(1)">
                     <div class="card-header">
-                        <table class="header-table">
-                            <tr>
-                                <td>
-                                    <span class="shop-name-label">屋号</span>
-                                    <div id="view-shop-1" class="shop-name"></div>
-                                </td>
-                                <td class="meta-info">
-                                    <div class="meta-item">担当者: <span id="view-staff-1" class="meta-value"></span></div>
-                                    <div class="meta-item">買参人番号: <span id="view-buyer-1" class="meta-value"></span></div>
-                                </td>
-                            </tr>
-                        </table>
+                        <table class="header-table"><tr><td><span class="shop-name-label">屋号</span><div id="view-shop-1" class="shop-name"></div></td><td class="meta-info"><div class="meta-item">担当者: <span id="view-staff-1" class="meta-value"></span></div><div class="meta-item">買参人番号: <span id="view-buyer-1" class="meta-value"></span></div></td></tr></table>
                     </div>
                     <table class="main-table">
-                        <tr>
-                            <th>伝票NO.</th>
-                            <td id="view-slip-1"></td>
-                        </tr>
-                        <tr>
-                            <th>メーカー名</th>
-                            <td id="view-maker-1"></td>
-                        </tr>
-                        <tr>
-                            <th>希望渡し日</th>
-                            <td id="view-date-1"></td>
-                        </tr>
+                        <tr><th>伝票NO.</th><td id="view-slip-1"></td></tr>
+                        <tr><th>メーカー名</th><td id="view-maker-1"></td></tr>
+                        <tr><th>希望渡し日</th><td id="view-date-1"></td></tr>
                     </table>
                     <div class="footer-signature">名古屋花き商事本部</div>
                 </div>
-
+            </div>
+            <div class="row">
                 <div class="a6-card" onclick="openModal(2)">
                     <div class="card-header">
-                        <table class="header-table">
-                            <tr>
-                                <td>
-                                    <span class="shop-name-label">屋号</span>
-                                    <div id="view-shop-2" class="shop-name"></div>
-                                </td>
-                                <td class="meta-info">
-                                    <div class="meta-item">担当者: <span id="view-staff-2" class="meta-value"></span></div>
-                                    <div class="meta-item">買参人番号: <span id="view-buyer-2" class="meta-value"></span></div>
-                                </td>
-                            </tr>
-                        </table>
+                        <table class="header-table"><tr><td><span class="shop-name-label">屋号</span><div id="view-shop-2" class="shop-name"></div></td><td class="meta-info"><div class="meta-item">担当者: <span id="view-staff-2" class="meta-value"></span></div><div class="meta-item">買参人番号: <span id="view-buyer-2" class="meta-value"></span></div></td></tr></table>
                     </div>
                     <table class="main-table">
-                        <tr>
-                            <th>伝票NO.</th>
-                            <td id="view-slip-2"></td>
-                        </tr>
-                        <tr>
-                            <th>メーカー名</th>
-                            <td id="view-maker-2"></td>
-                        </tr>
-                        <tr>
-                            <th>希望渡し日</th>
-                            <td id="view-date-2"></td>
-                        </tr>
+                        <tr><th>伝票NO.</th><td id="view-slip-2"></td></tr>
+                        <tr><th>メーカー名</th><td id="view-maker-2"></td></tr>
+                        <tr><th>希望渡し日</th><td id="view-date-2"></td></tr>
                     </table>
                     <div class="footer-signature">名古屋花き商事本部</div>
                 </div>
-            </div>
-
-            <div class="row">
                 <div class="a6-card" onclick="openModal(3)">
                     <div class="card-header">
-                        <table class="header-table">
-                            <tr>
-                                <td>
-                                    <span class="shop-name-label">屋号</span>
-                                    <div id="view-shop-3" class="shop-name"></div>
-                                </td>
-                                <td class="meta-info">
-                                    <div class="meta-item">担当者: <span id="view-staff-3" class="meta-value"></span></div>
-                                    <div class="meta-item">買参人番号: <span id="view-buyer-3" class="meta-value"></span></div>
-                                </td>
-                            </tr>
-                        </table>
+                        <table class="header-table"><tr><td><span class="shop-name-label">屋号</span><div id="view-shop-3" class="shop-name"></div></td><td class="meta-info"><div class="meta-item">担当者: <span id="view-staff-3" class="meta-value"></span></div><div class="meta-item">買参人番号: <span id="view-buyer-3" class="meta-value"></span></div></td></tr></table>
                     </div>
                     <table class="main-table">
-                        <tr>
-                            <th>伝票NO.</th>
-                            <td id="view-slip-3"></td>
-                        </tr>
-                        <tr>
-                            <th>メーカー名</th>
-                            <td id="view-maker-3"></td>
-                        </tr>
-                        <tr>
-                            <th>希望渡し日</th>
-                            <td id="view-date-3"></td>
-                        </tr>
-                    </table>
-                    <div class="footer-signature">名古屋花き商事本部</div>
-                </div>
-
-                <div class="a6-card" onclick="openModal(4)">
-                    <div class="card-header">
-                        <table class="header-table">
-                            <tr>
-                                <td>
-                                    <span class="shop-name-label">屋号</span>
-                                    <div id="view-shop-4" class="shop-name"></div>
-                                </td>
-                                <td class="meta-info">
-                                    <div class="meta-item">担当者: <span id="view-staff-4" class="meta-value"></span></div>
-                                    <div class="meta-item">買参人番号: <span id="view-buyer-4" class="meta-value"></span></div>
-                                </td>
-                            </tr>
-                        </table>
-                    </div>
-                    <table class="main-table">
-                        <tr>
-                            <th>伝票NO.</th>
-                            <td id="view-slip-4"></td>
-                        </tr>
-                        <tr>
-                            <th>メーカー名</th>
-                            <td id="view-maker-4"></td>
-                        </tr>
-                        <tr>
-                            <th>希望渡し日</th>
-                            <td id="view-date-4"></td>
-                        </tr>
+                        <tr><th>伝票NO.</th><td id="view-slip-3"></td></tr>
+                        <tr><th>メーカー名</th><td id="view-maker-3"></td></tr>
+                        <tr><th>希望渡し日</th><td id="view-date-3"></td></tr>
                     </table>
                     <div class="footer-signature">名古屋花き商事本部</div>
                 </div>
             </div>
-
         </div>
     </div>
 
     <div id="inputModal" class="no-print modal-overlay">
         <div class="modal-content" onclick="event.stopPropagation()">
-            <div class="modal-header">取り置き表 入力 (<span id="modal-target-num"></span>つ目の枠)</div>
+            <div class="modal-header">取り置き表 入力・修正</div>
             
             <div class="form-group">
                 <label>屋号</label>
@@ -586,70 +532,178 @@
     </div>
 
     <script>
-        let currentTargetId = null;
+        let currentTargetIndex = null;
+        let allItemsData = [
+            { shop: '', staff: '', buyer: '', slip: '', maker: '', date: '' },
+            { shop: '', staff: '', buyer: '', slip: '', maker: '', date: '' },
+            { shop: '', staff: '', buyer: '', slip: '', maker: '', date: '' },
+            { shop: '', staff: '', buyer: '', slip: '', maker: '', date: '' }
+        ];
 
-        const cardData = {
-            1: { shop: '', staff: '', buyer: '', slip: '', maker: '', date: '' },
-            2: { shop: '', staff: '', buyer: '', slip: '', maker: '', date: '' },
-            3: { shop: '', staff: '', buyer: '', slip: '', maker: '', date: '' },
-            4: { shop: '', staff: '', buyer: '', slip: '', maker: '', date: '' }
-        };
-
-        function openModal(id) {
-            currentTargetId = id;
-            document.getElementById('modal-target-num').innerText = id;
+        function openModal(index) {
+            currentTargetIndex = index;
             
-            document.getElementById('input-shop').value = cardData[id].shop;
-            document.getElementById('input-staff').value = cardData[id].staff;
-            document.getElementById('input-buyer').value = cardData[id].buyer;
-            document.getElementById('input-slip').value = cardData[id].slip;
-            document.getElementById('input-maker').value = cardData[id].maker;
-            document.getElementById('input-date').value = cardData[id].date;
+            document.getElementById('input-shop').value = allItemsData[index].shop || '';
+            document.getElementById('input-staff').value = allItemsData[index].staff || '';
+            document.getElementById('input-buyer').value = allItemsData[index].buyer || '';
+            document.getElementById('input-slip').value = allItemsData[index].slip || '';
+            document.getElementById('input-maker').value = cardData = allItemsData[index].maker || '';
+            document.getElementById('input-date').value = allItemsData[index].date || '';
             
             document.getElementById('inputModal').style.display = 'block';
         }
 
         function closeModal() {
             document.getElementById('inputModal').style.display = 'none';
-            currentTargetId = null;
+            currentTargetIndex = null;
         }
 
         function saveData() {
-            if (!currentTargetId) return;
+            if (currentTargetIndex === null) return;
+            const idx = currentTargetIndex;
             
-            const id = currentTargetId;
+            allItemsData[idx].shop = document.getElementById('input-shop').value;
+            allItemsData[idx].staff = document.getElementById('input-staff').value;
+            allItemsData[idx].buyer = document.getElementById('input-buyer').value;
+            allItemsData[idx].slip = document.getElementById('input-slip').value;
+            allItemsData[idx].maker = document.getElementById('input-maker').value;
+            allItemsData[idx].date = document.getElementById('input-date').value;
             
-            cardData[id].shop = document.getElementById('input-shop').value;
-            cardData[id].staff = document.getElementById('input-staff').value;
-            cardData[id].buyer = document.getElementById('input-buyer').value;
-            cardData[id].slip = document.getElementById('input-slip').value;
-            cardData[id].maker = document.getElementById('input-maker').value;
-            cardData[id].date = document.getElementById('input-date').value;
-            
-            document.getElementById('view-shop-' + id).innerText = cardData[id].shop;
-            document.getElementById('view-staff-' + id).innerText = cardData[id].staff;
-            document.getElementById('view-buyer-' + id).innerText = cardData[id].buyer;
-            document.getElementById('view-slip-' + id).innerText = cardData[id].slip;
-            document.getElementById('view-maker-' + id).innerText = cardData[id].maker;
-            document.getElementById('view-date-' + id).innerText = cardData[id].date;
+            document.getElementById('view-shop-' + idx).innerText = allItemsData[idx].shop;
+            document.getElementById('view-staff-' + idx).innerText = allItemsData[idx].staff;
+            document.getElementById('view-buyer-' + idx).innerText = allItemsData[idx].buyer;
+            document.getElementById('view-slip-' + idx).innerText = allItemsData[idx].slip;
+            document.getElementById('view-maker-' + idx).innerText = allItemsData[idx].maker;
+            document.getElementById('view-date-' + idx).innerText = allItemsData[idx].date;
             
             closeModal();
         }
 
         document.getElementById('inputModal').addEventListener('click', closeModal);
 
+        // 📂 CSVファイルの読み込み
+        function loadCSV(input) {
+            const file = input.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const text = e.target.result;
+                parseCSVToCards(text);
+            };
+            
+            // ★ 文字化け対策 ★
+            // Excelが書き出す標準的なCSV文字コードである「Shift_JIS」でまずは強制的に読み込みます。
+            reader.readAsText(file, 'Shift_JIS'); 
+        }
+
+        function parseCSVToCards(text) {
+            const lines = text.split(/\r\n|\n/);
+            if (lines.length <= 1) return;
+
+            allItemsData = [];
+
+            for (let i = 1; i < lines.length; i++) {
+                if (lines[i].trim() === '') continue;
+                
+                // カンマ区切りの解析（簡易版、ダブルクォーテーションの除去対応）
+                const row = lines[i].split(',');
+                
+                allItemsData.push({
+                    shop:  row[0] ? row[0].replace(/^"|"$/g, '').trim() : '',
+                    staff: row[1] ? row[1].replace(/^"|"$/g, '').trim() : '',
+                    buyer: row[2] ? row[2].replace(/^"|"$/g, '').trim() : '',
+                    slip:  row[3] ? row[3].replace(/^"|"$/g, '').trim() : '',
+                    maker: row[4] ? row[4].replace(/^"|"$/g, '').trim() : '',
+                    date:  row[5] ? row[5].replace(/^"|"$/g, '').trim() : ''
+                });
+            }
+
+            while (allItemsData.length < 4 || allItemsData.length % 4 !== 0) {
+                allItemsData.push({ shop: '', staff: '', buyer: '', slip: '', maker: '', date: '' });
+            }
+
+            const printArea = document.getElementById('print-area');
+            printArea.innerHTML = '';
+
+            const totalPages = Math.ceil(allItemsData.length / 4);
+            
+            for (let page = 0; page < totalPages; page++) {
+                const pageContainer = document.createElement('div');
+                pageContainer.className = 'page-container';
+                pageContainer.id = `page-${page + 1}`;
+
+                let pageHtml = '';
+                
+                pageHtml += '<div class="row">';
+                for (let r = 0; r < 2; r++) {
+                    const idx = page * 4 + r;
+                    pageHtml += createCardHtml(idx);
+                }
+                pageHtml += '</div>';
+
+                pageHtml += '<div class="row">';
+                for (let r = 2; r < 4; r++) {
+                    const idx = page * 4 + r;
+                    pageHtml += createCardHtml(idx);
+                }
+                pageHtml += '</div>';
+
+                pageContainer.innerHTML = pageHtml;
+                printArea.appendChild(pageContainer);
+            }
+
+            document.getElementById('csv-status').innerText = `データ ${allItemsData.filter(d => d.shop || d.slip).length}件 / A4用紙 ${totalPages}枚分を生成しました`;
+        }
+
+        function createCardHtml(idx) {
+            const data = allItemsData[idx];
+            return `
+                <div class="a6-card" onclick="openModal(${idx})">
+                    <div class="card-header">
+                        <table class="header-table">
+                            <tr>
+                                <td>
+                                    <span class="shop-name-label">屋号</span>
+                                    <div id="view-shop-${idx}" class="shop-name">${data.shop}</div>
+                                </td>
+                                <td class="meta-info">
+                                    <div class="meta-item">担当者: <span id="view-staff-${idx}" class="meta-value">${data.staff}</span></div>
+                                    <div class="meta-item">買参人番号: <span id="view-buyer-${idx}" class="meta-value">${data.buyer}</span></div>
+                                </td>
+                            </tr>
+                        </table>
+                    </div>
+                    <table class="main-table">
+                        <tr>
+                            <th>伝票NO.</th>
+                            <td id="view-slip-${idx}">${data.slip}</td>
+                        </tr>
+                        <tr>
+                            <th>メーカー名</th>
+                            <td id="view-maker-${idx}">${data.maker}</td>
+                        </tr>
+                        <tr>
+                            <th>希望渡し日</th>
+                            <td id="view-date-${idx}">${data.date}</td>
+                        </tr>
+                    </table>
+                    <div class="footer-signature">名古屋花き商事本部</div>
+                </div>
+            `;
+        }
+
         function exportToPDF() {
             const element = document.getElementById('print-area');
             
             const opt = {
                 margin:       0,
-                filename:     'torioki_table.pdf',
+                filename:     'torioki_all_pages.pdf',
                 image:        { type: 'jpeg', quality: 0.98 },
                 html2canvas:  { 
                     scale: 2, 
                     useCORS: true,
-                    width: 1122,
-                    height: 794 
+                    logging: false
                 },
                 jsPDF:        { unit: 'mm', format: 'a4', orientation: 'landscape' }
             };
