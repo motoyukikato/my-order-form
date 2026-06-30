@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>注文分取り置き表（A4内4分割A6横 - スマホ画面最適化版）</title>
+<!-- html2pdf.js ライブラリの読み込み -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 <style>
     /* ページ設定: A4用紙サイズ、余白なし */
@@ -30,7 +31,6 @@
     .page-container {
         width: 297mm;
         height: 210mm;
-        page-break-after: always;
         overflow: hidden;
         position: relative;
         background-color: #ffffff;
@@ -314,7 +314,6 @@
             padding: 10px;
             background-color: #e6ecf0;
         }
-        /* 上部パネルを縦並びにしてスマホでも見やすく */
         .control-panel {
             width: 100% !important;
             padding: 12px !important;
@@ -337,15 +336,13 @@
             text-align: center;
         }
         
-        /* 全体コンテナをスマホ画面幅に合わせる（スクロールで全体確認可） */
         .page-container {
             width: 297mm;
-            transform: scale(calc(100vw / 310mm)); /* 画面幅に合わせて自動縮小表示 */
+            transform: scale(calc(100vw / 310mm));
             transform-origin: top left;
             margin: 0;
         }
 
-        /* ★携帯画面のときはポップアップを画面いっぱいに広げる仕様★ */
         .modal-content {
             width: 96% !important;
             max-width: 100% !important;
@@ -354,7 +351,7 @@
             left: 2% !important;
             transform: none !important;
             padding: 15px !important;
-            overflow-y: auto; /* 入力項目が多い場合は上下スクロール可能に */
+            overflow-y: auto;
             border-radius: 12px !important;
         }
         .modal-header {
@@ -364,7 +361,6 @@
         .form-group {
             margin-bottom: 10px !important;
         }
-        /* 担当者と買参人番号の横並びをスマホでも崩れないように調整 */
         .form-group-half {
             display: inline-block !important;
             width: 48% !important;
@@ -373,13 +369,14 @@
             margin-right: 4% !important;
         }
         .form-control {
-            padding: 10px !important; /* タップしやすく少し太めに */
-            font-size: 13pt !important; /* スマホで勝手にズームしないよう13pt以上に */
+            padding: 10px !important;
+            font-size: 13pt !important;
+            color: #000;
         }
         .modal-footer {
             margin-top: 15px !important;
             padding-top: 10px !important;
-            text-align: center !important; /* ボタンを押しやすく中央寄せ */
+            text-align: center !important;
         }
         .modal-footer .btn {
             width: 45%;
@@ -392,12 +389,13 @@
 </head>
 <body>
 
+    <!-- 操作パネル -->
     <div class="no-print control-panel">
         <div class="panel-flex">
             <div class="panel-cell">
-                <strong>【注文分取り置き表（スマホ対応版）】</strong><br>
-                枠をタップすると、画面サイズに合わせた入力ポップアップが開きます。<br>
-                「PDFを作成・保存」ボタンを押し、保存したPDFをCanonアプリから印刷してください。
+                <strong>【注文分取り置き表（スマホ対応・縮小対策版）】</strong><br>
+                枠をタップして入力後、オレンジ色のボタンを押してPDFを保存してください。<br>
+                保存したPDFをCanonアプリから「A4・横向き」で印刷してください。
             </div>
             <div class="panel-cell right">
                 <button class="btn-action pdf-btn" onclick="exportToPDF()">📄 PDFを作成・保存</button>
@@ -406,9 +404,12 @@
         </div>
     </div>
 
+    <!-- A4用紙コンテナ -->
     <div id="print-area" class="page-container">
         
+        <!-- 1行目 -->
         <div class="row">
+            <!-- カード1 -->
             <div class="a6-card" onclick="openModal(1)">
                 <div class="card-header">
                     <table class="header-table">
@@ -441,6 +442,7 @@
                 <div class="footer-signature">名古屋花き商事本部</div>
             </div>
 
+            <!-- カード2 -->
             <div class="a6-card" onclick="openModal(2)">
                 <div class="card-header">
                     <table class="header-table">
@@ -474,7 +476,9 @@
             </div>
         </div>
 
+        <!-- 2行目 -->
         <div class="row">
+            <!-- カード3 -->
             <div class="a6-card" onclick="openModal(3)">
                 <div class="card-header">
                     <table class="header-table">
@@ -507,6 +511,7 @@
                 <div class="footer-signature">名古屋花き商事本部</div>
             </div>
 
+            <!-- カード4 -->
             <div class="a6-card" onclick="openModal(4)">
                 <div class="card-header">
                     <table class="header-table">
@@ -542,6 +547,7 @@
 
     </div>
 
+    <!-- ポップアップモータル -->
     <div id="inputModal" class="no-print modal-overlay">
         <div class="modal-content" onclick="event.stopPropagation()">
             <div class="modal-header">取り置き表 入力 (<span id="modal-target-num"></span>つ目の枠)</div>
@@ -635,19 +641,33 @@
 
         document.getElementById('inputModal').addEventListener('click', closeModal);
 
-        // PDFに変換してダウンロードする機能
+        // PDFに変換してダウンロードする機能（レイアウト崩れ対策版）
         function exportToPDF() {
             const element = document.getElementById('print-area');
             
+            // スマホの画面比率（縮小表示）をPDF出力時だけリセットする
+            const originalTransform = element.style.transform;
+            element.style.transform = 'none';
+
             const opt = {
                 margin:       0,
                 filename:     'torioki_table.pdf',
                 image:        { type: 'jpeg', quality: 0.98 },
-                html2canvas:  { scale: 2, useCORS: true },
+                html2canvas:  { 
+                    scale: 2, 
+                    useCORS: true,
+                    width: 1122, // A4横のピクセルベース幅
+                    height: 794  // A4横のピクセルベース高
+                },
                 jsPDF:        { unit: 'mm', format: 'a4', orientation: 'landscape' }
             };
 
-            html2pdf().set(opt).from(element).save();
+            // PDF生成後にスマホ用の画面表示（縮小）に戻す
+            html2pdf().set(opt).from(element).save().then(() => {
+                if (window.innerWidth <= 768) {
+                    element.style.transform = 'scale(calc(100vw / 310mm))';
+                }
+            });
         }
     </script>
 
