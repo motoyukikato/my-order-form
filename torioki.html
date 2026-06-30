@@ -1,0 +1,556 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>注文分取り置き表（A4内4分割A6横 - 改良版）</title>
+<style>
+    /* ページ設定: A4用紙サイズ、余白なし */
+    @page {
+        size: A4 landscape;
+        margin: 0;
+    }
+    
+    *, *::before, *::after {
+        box-sizing: border-box;
+    }
+    
+    body {
+        margin: 0;
+        padding: 0;
+        font-family: "Helvetica Neue", Arial, "Hiragino Kaku Gothic ProN", "Hiragino Sans", Meiryo, sans-serif;
+        background-color: #ffffff;
+        color: #333333;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+    }
+
+    /* A4横の物理サイズ 297mm x 210mm に厳密に固定し、はみ出しを防ぐ */
+    .page-container {
+        width: 297mm;
+        height: 210mm;
+        page-break-after: always;
+        overflow: hidden;
+        position: relative;
+    }
+
+    /* 4分割（2列×2行）の配置 */
+    .row {
+        width: 100%;
+        height: 105mm; /* 210mmのちょうど半分 */
+        display: block;
+        clear: both;
+    }
+
+    /* A6横サイズ（148.5mm x 105mm）に相当するカード */
+    .a6-card {
+        float: left;
+        width: 148.5mm; /* 297mmのちょうど半分 */
+        height: 105mm;
+        padding: 12mm 14mm;
+        border-right: 1px dashed #aaaaaa;
+        border-bottom: 1px dashed #aaaaaa;
+        position: relative;
+        background-color: #fff;
+        cursor: pointer;
+    }
+
+    /* 画面表示時のみ、ホバーエフェクトと案内表示 */
+    @media screen {
+        .a6-card:hover {
+            background-color: #f1f9ff;
+        }
+        .a6-card::before {
+            content: "クリックして入力";
+            position: absolute;
+            top: 5px;
+            left: 5px;
+            font-size: 7pt;
+            color: #3498db;
+            border: 1px solid #3498db;
+            padding: 1px 4px;
+            border-radius: 3px;
+            background-color: #fff;
+        }
+    }
+
+    /* 外枠の不要な点線をカット */
+    .row:nth-child(2) .a6-card {
+        border-bottom: none;
+    }
+    .a6-card:nth-child(2) {
+        border-right: none;
+    }
+
+    /* カード内のレイアウト構築 */
+    .card-header {
+        border-bottom: 2px solid #2c3e50;
+        padding-bottom: 6px;
+        margin-bottom: 10px;
+    }
+
+    .header-table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+    .header-table td {
+        padding: 0;
+        vertical-align: bottom;
+    }
+
+    /* 屋号（文字大き目） */
+    .shop-name-label {
+        font-size: 9pt;
+        color: #7f8c8d;
+        display: block;
+        margin-bottom: 2px;
+    }
+    .shop-name {
+        font-size: 22pt;
+        font-weight: bold;
+        color: #2c3e50;
+        line-height: 1.2;
+        min-height: 30px;
+        word-break: break-all;
+    }
+
+    /* 担当者・買参人番号（文字小さめ） */
+    .meta-info {
+        font-size: 9pt;
+        color: #555555;
+        text-align: right;
+        line-height: 1.6;
+        width: 45%;
+    }
+    .meta-value {
+        font-weight: bold;
+        color: #000;
+    }
+
+    /* メイン情報テーブル */
+    .main-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 5px;
+    }
+
+    .main-table th, .main-table td {
+        border: 1px solid #bdc3c7;
+        padding: 10px 12px;
+        vertical-align: middle;
+    }
+
+    .main-table th {
+        background-color: #f8f9fa;
+        color: #34495e;
+        font-size: 11pt;
+        font-weight: bold;
+        width: 30%;
+        text-align: left;
+    }
+
+    .main-table td {
+        font-size: 15pt;
+        font-weight: bold;
+        color: #000000;
+        min-height: 25px;
+        word-break: break-all;
+    }
+
+    /* 各用紙（カード）の右下に「名古屋花き商事本部」を固定配置 */
+    .footer-signature {
+        position: absolute;
+        bottom: 8px;
+        right: 14px;
+        font-size: 8pt;
+        color: #7f8c8d;
+        font-weight: 500;
+    }
+
+    /* 印刷時の設定 */
+    @media print {
+        .no-print {
+            display: none !important;
+        }
+        .a6-card::before {
+            display: none !important;
+        }
+    }
+
+    /* 画面表示用のPC用固定操作パネル */
+    @media screen {
+        body {
+            background-color: #e6ecf0;
+            padding-top: 20px;
+            padding-bottom: 40px;
+        }
+        .control-panel {
+            width: 297mm;
+            margin: 0 auto 15px auto;
+            background-color: #2c3e50;
+            color: white;
+            padding: 15px 20px;
+            border-radius: 6px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        .panel-flex {
+            display: table;
+            width: 100%;
+        }
+        .panel-cell {
+            display: table-cell;
+            vertical-align: middle;
+        }
+        .panel-cell.right {
+            text-align: right;
+            width: 200px;
+        }
+        .print-btn {
+            background-color: #2ecc71;
+            color: white;
+            border: none;
+            padding: 12px 25px;
+            font-size: 13pt;
+            font-weight: bold;
+            border-radius: 4px;
+            cursor: pointer;
+            box-shadow: 0 3px 0 #27ae60;
+        }
+        .print-btn:hover {
+            background-color: #27ae60;
+            box-shadow: 0 2px 0 #219653;
+        }
+        .page-container {
+            background-color: white;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.15);
+            margin: 0 auto;
+        }
+    }
+
+    /* ポップアップモダールのスタイル */
+    .modal-overlay {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0, 0, 0, 0.6);
+        z-index: 9999;
+    }
+    .modal-content {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        background-color: white;
+        padding: 25px;
+        border-radius: 8px;
+        width: 90%;
+        max-width: 500px;
+        box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+        color: #333;
+    }
+    .modal-header {
+        font-size: 14pt;
+        font-weight: bold;
+        margin-bottom: 15px;
+        border-bottom: 2px solid #34495e;
+        padding-bottom: 8px;
+        color: #2c3e50;
+    }
+    .form-group {
+        margin-bottom: 15px;
+    }
+    .form-group label {
+        display: block;
+        font-size: 10pt;
+        font-weight: bold;
+        margin-bottom: 5px;
+        color: #555;
+    }
+    .form-control {
+        width: 100%;
+        padding: 8px 10px;
+        font-size: 12pt;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+    }
+    .form-control:focus {
+        border-color: #3498db;
+        outline: none;
+    }
+    .modal-footer {
+        text-align: right;
+        margin-top: 20px;
+        border-top: 1px solid #eee;
+        padding-top: 15px;
+    }
+    .btn {
+        padding: 8px 16px;
+        font-size: 11pt;
+        font-weight: bold;
+        border-radius: 4px;
+        cursor: pointer;
+        border: none;
+        margin-left: 10px;
+    }
+    .btn-close {
+        background-color: #95a5a6;
+        color: white;
+    }
+    .btn-save {
+        background-color: #3498db;
+        color: white;
+    }
+    .btn-save:hover { background-color: #2980b9; }
+    .btn-close:hover { background-color: #7f8c8d; }
+</style>
+</head>
+<body>
+
+    <div class="no-print control-panel">
+        <div class="panel-flex">
+            <div class="panel-cell">
+                <strong>【注文分取り置き表（ポップアップ入力式）】</strong><br>
+                枠をクリックすると入力画面が開きます。文字を入れて「反映する」を押し、右側の「印刷する」ボタンを押してください。<br>
+                ※印刷時は用紙を<strong>「A4・横向き」</strong>、余白を<strong>「なし（または最小）」</strong>に設定してください。
+            </div>
+            <div class="panel-cell right">
+                <button class="print-btn" onclick="window.print()">🖨️ 印刷する</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="page-container">
+        
+        <div class="row">
+            <div class="a6-card" onclick="openModal(1)">
+                <div class="card-header">
+                    <table class="header-table">
+                        <tr>
+                            <td>
+                                <span class="shop-name-label">屋号</span>
+                                <div id="view-shop-1" class="shop-name"></div>
+                            </td>
+                            <td class="meta-info">
+                                <div class="meta-item">担当者: <span id="view-staff-1" class="meta-value"></span></div>
+                                <div class="meta-item">買参人番号: <span id="view-buyer-1" class="meta-value"></span></div>
+                            </td>
+                        </tr>
+                    </table>
+                </div>
+                <table class="main-table">
+                    <tr>
+                        <th>伝票NO.</th>
+                        <td id="view-slip-1"></td>
+                    </tr>
+                    <tr>
+                        <th>メーカー名</th>
+                        <td id="view-maker-1"></td>
+                    </tr>
+                    <tr>
+                        <th>希望渡し日</th>
+                        <td id="view-date-1"></td>
+                    </tr>
+                </table>
+                <div class="footer-signature">名古屋花き商事本部</div>
+            </div>
+
+            <div class="a6-card" onclick="openModal(2)">
+                <div class="card-header">
+                    <table class="header-table">
+                        <tr>
+                            <td>
+                                <span class="shop-name-label">屋号</span>
+                                <div id="view-shop-2" class="shop-name"></div>
+                            </td>
+                            <td class="meta-info">
+                                <div class="meta-item">担当者: <span id="view-staff-2" class="meta-value"></span></div>
+                                <div class="meta-item">買参人番号: <span id="view-buyer-2" class="meta-value"></span></div>
+                            </td>
+                        </tr>
+                    </table>
+                </div>
+                <table class="main-table">
+                    <tr>
+                        <th>伝票NO.</th>
+                        <td id="view-slip-2"></td>
+                    </tr>
+                    <tr>
+                        <th>メーカー名</th>
+                        <td id="view-maker-2"></td>
+                    </tr>
+                    <tr>
+                        <th>希望渡し日</th>
+                        <td id="view-date-2"></td>
+                    </tr>
+                </table>
+                <div class="footer-signature">名古屋花き商事本部</div>
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="a6-card" onclick="openModal(3)">
+                <div class="card-header">
+                    <table class="header-table">
+                        <tr>
+                            <td>
+                                <span class="shop-name-label">屋号</span>
+                                <div id="view-shop-3" class="shop-name"></div>
+                            </td>
+                            <td class="meta-info">
+                                <div class="meta-item">担当者: <span id="view-staff-3" class="meta-value"></span></div>
+                                <div class="meta-item">買参人番号: <span id="view-buyer-3" class="meta-value"></span></div>
+                            </td>
+                        </tr>
+                    </table>
+                </div>
+                <table class="main-table">
+                    <tr>
+                        <th>伝票NO.</th>
+                        <td id="view-slip-3"></td>
+                    </tr>
+                    <tr>
+                        <th>メーカー名</th>
+                        <td id="view-maker-3"></td>
+                    </tr>
+                    <tr>
+                        <th>希望渡し日</th>
+                        <td id="view-date-3"></td>
+                    </tr>
+                </table>
+                <div class="footer-signature">名古屋花き商事本部</div>
+            </div>
+
+            <div class="a6-card" onclick="openModal(4)">
+                <div class="card-header">
+                    <table class="header-table">
+                        <tr>
+                            <td>
+                                <span class="shop-name-label">屋号</span>
+                                <div id="view-shop-4" class="shop-name"></div>
+                            </td>
+                            <td class="meta-info">
+                                <div class="meta-item">担当者: <span id="view-staff-4" class="meta-value"></span></div>
+                                <div class="meta-item">買参人番号: <span id="view-buyer-4" class="meta-value"></span></div>
+                            </td>
+                        </tr>
+                    </table>
+                </div>
+                <table class="main-table">
+                    <tr>
+                        <th>伝票NO.</th>
+                        <td id="view-slip-4"></td>
+                    </tr>
+                    <tr>
+                        <th>メーカー名</th>
+                        <td id="view-maker-4"></td>
+                    </tr>
+                    <tr>
+                        <th>希望渡し日</th>
+                        <td id="view-date-4"></td>
+                    </tr>
+                </table>
+                <div class="footer-signature">名古屋花き商事本部</div>
+            </div>
+        </div>
+
+    </div>
+
+    <div id="inputModal" class="no-print modal-overlay">
+        <div class="modal-content" onclick="event.stopPropagation()">
+            <div class="modal-header">取り置き表 入力 (<span id="modal-target-num"></span>つ目の枠)</div>
+            
+            <div class="form-group">
+                <label>屋号</label>
+                <input type="text" id="input-shop" class="form-control" placeholder="例: 〇〇商店">
+            </div>
+            
+            <div class="form-group" style="display:inline-block; width:48%; margin-right:4%;">
+                <label>担当者</label>
+                <input type="text" id="input-staff" class="form-control" placeholder="例: 山田">
+            </div>
+            <div class="form-group" style="display:inline-block; width:48%;">
+                <label>買参人番号</label>
+                <input type="text" id="input-buyer" class="form-control" placeholder="例: 1234">
+            </div>
+
+            <div class="form-group">
+                <label>伝票NO.</label>
+                <input type="text" id="input-slip" class="form-control" placeholder="例: No. 10452">
+            </div>
+
+            <div class="form-group">
+                <label>メーカー名</label>
+                <input type="text" id="input-maker" class="form-control" placeholder="例: 〇〇農園">
+            </div>
+
+            <div class="form-group">
+                <label>希望渡し日</label>
+                <input type="text" id="input-date" class="form-control" placeholder="例: 7月1日">
+            </div>
+
+            <div class="modal-footer">
+                <button class="btn btn-close" onclick="closeModal()">キャンセル</button>
+                <button class="btn btn-save" onclick="saveData()">枠に反映する</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentTargetId = null;
+
+        const cardData = {
+            1: { shop: '', staff: '', buyer: '', slip: '', maker: '', date: '' },
+            2: { shop: '', staff: '', buyer: '', slip: '', maker: '', date: '' },
+            3: { shop: '', staff: '', buyer: '', slip: '', maker: '', date: '' },
+            4: { shop: '', staff: '', buyer: '', slip: '', maker: '', date: '' }
+        };
+
+        function openModal(id) {
+            currentTargetId = id;
+            document.getElementById('modal-target-num').innerText = id;
+            
+            document.getElementById('input-shop').value = cardData[id].shop;
+            document.getElementById('input-staff').value = cardData[id].staff;
+            document.getElementById('input-buyer').value = cardData[id].buyer;
+            document.getElementById('input-slip').value = cardData[id].slip;
+            document.getElementById('input-maker').value = cardData[id].maker;
+            document.getElementById('input-date').value = cardData[id].date;
+            
+            document.getElementById('inputModal').style.display = 'block';
+        }
+
+        function closeModal() {
+            document.getElementById('inputModal').style.display = 'none';
+            currentTargetId = null;
+        }
+
+        function saveData() {
+            if (!currentTargetId) return;
+            
+            const id = currentTargetId;
+            
+            cardData[id].shop = document.getElementById('input-shop').value;
+            cardData[id].staff = document.getElementById('input-staff').value;
+            cardData[id].buyer = document.getElementById('input-buyer').value;
+            cardData[id].slip = document.getElementById('input-slip').value;
+            cardData[id].maker = document.getElementById('input-maker').value;
+            cardData[id].date = document.getElementById('input-date').value;
+            
+            document.getElementById('view-shop-' + id).innerText = cardData[id].shop;
+            document.getElementById('view-staff-' + id).innerText = cardData[id].staff;
+            document.getElementById('view-buyer-' + id).innerText = cardData[id].buyer;
+            document.getElementById('view-slip-' + id).innerText = cardData[id].slip;
+            document.getElementById('view-maker-' + id).innerText = cardData[id].maker;
+            document.getElementById('view-date-' + id).innerText = cardData[id].date;
+            
+            closeModal();
+        }
+
+        document.getElementById('inputModal').addEventListener('click', closeModal);
+    </script>
+
+</body>
+</html>
