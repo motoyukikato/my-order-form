@@ -2,7 +2,9 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<title>注文分取り置き表（A4内4分割A6横 - 改良版）</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>注文分取り置き表（A4内4分割A6横 - スマホ画面最適化版）</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 <style>
     /* ページ設定: A4用紙サイズ、余白なし */
     @page {
@@ -24,13 +26,14 @@
         print-color-adjust: exact;
     }
 
-    /* A4横の物理サイズ 297mm x 210mm に厳密に固定し、はみ出しを防ぐ */
+    /* A4横の物理サイズ 297mm x 210mm に厳密に固定 */
     .page-container {
         width: 297mm;
         height: 210mm;
         page-break-after: always;
         overflow: hidden;
         position: relative;
+        background-color: #ffffff;
     }
 
     /* 4分割（2列×2行）の配置 */
@@ -54,13 +57,10 @@
         cursor: pointer;
     }
 
-    /* 画面表示時のみ、ホバーエフェクトと案内表示 */
+    /* 画面表示時のみ、案内表示 */
     @media screen {
-        .a6-card:hover {
-            background-color: #f1f9ff;
-        }
         .a6-card::before {
-            content: "クリックして入力";
+            content: "タップして入力";
             position: absolute;
             top: 5px;
             left: 5px;
@@ -98,7 +98,7 @@
         vertical-align: bottom;
     }
 
-    /* 屋号（文字大き目） */
+    /* 屋号 */
     .shop-name-label {
         font-size: 9pt;
         color: #7f8c8d;
@@ -114,7 +114,7 @@
         word-break: break-all;
     }
 
-    /* 担当者・買参人番号（文字小さめ） */
+    /* 担当者・買参人番号 */
     .meta-info {
         font-size: 9pt;
         color: #555555;
@@ -157,7 +157,7 @@
         word-break: break-all;
     }
 
-    /* 各用紙（カード）の右下に「名古屋花き商事本部」を固定配置 */
+    /* 各用紙の右下に固定配置 */
     .footer-signature {
         position: absolute;
         bottom: 8px;
@@ -167,7 +167,7 @@
         font-weight: 500;
     }
 
-    /* 印刷時の設定 */
+    /* 印刷時・PDF出力時の不要要素非表示 */
     @media print {
         .no-print {
             display: none !important;
@@ -177,7 +177,7 @@
         }
     }
 
-    /* 画面表示用のPC用固定操作パネル */
+    /* 画面表示用の固定操作パネル */
     @media screen {
         body {
             background-color: #e6ecf0;
@@ -203,22 +203,26 @@
         }
         .panel-cell.right {
             text-align: right;
-            width: 200px;
+            width: 380px;
         }
-        .print-btn {
-            background-color: #2ecc71;
+        .btn-action {
             color: white;
             border: none;
-            padding: 12px 25px;
-            font-size: 13pt;
+            padding: 12px 20px;
+            font-size: 11pt;
             font-weight: bold;
             border-radius: 4px;
             cursor: pointer;
+            margin-left: 10px;
+            display: inline-block;
+        }
+        .print-btn {
+            background-color: #2ecc71;
             box-shadow: 0 3px 0 #27ae60;
         }
-        .print-btn:hover {
-            background-color: #27ae60;
-            box-shadow: 0 2px 0 #219653;
+        .pdf-btn {
+            background-color: #e67e22;
+            box-shadow: 0 3px 0 #d35400;
         }
         .page-container {
             background-color: white;
@@ -227,7 +231,7 @@
         }
     }
 
-    /* ポップアップモダールのスタイル */
+    /* ポップアップモダールの標準スタイル（PC用） */
     .modal-overlay {
         display: none;
         position: fixed;
@@ -303,8 +307,87 @@
         background-color: #3498db;
         color: white;
     }
-    .btn-save:hover { background-color: #2980b9; }
-    .btn-close:hover { background-color: #7f8c8d; }
+
+    /* 📱 携帯（スマートフォン）画面のときの特別スタイル設定 */
+    @media screen and (max-width: 768px) {
+        body {
+            padding: 10px;
+            background-color: #e6ecf0;
+        }
+        /* 上部パネルを縦並びにしてスマホでも見やすく */
+        .control-panel {
+            width: 100% !important;
+            padding: 12px !important;
+            margin-bottom: 10px !important;
+        }
+        .panel-flex, .panel-cell {
+            display: block !important;
+            width: 100% !important;
+            text-align: left !important;
+        }
+        .panel-cell.right {
+            margin-top: 10px;
+            text-align: center !important;
+        }
+        .btn-action {
+            width: 47%;
+            padding: 10px 5px !important;
+            font-size: 10pt !important;
+            margin: 0 1% !important;
+            text-align: center;
+        }
+        
+        /* 全体コンテナをスマホ画面幅に合わせる（スクロールで全体確認可） */
+        .page-container {
+            width: 297mm;
+            transform: scale(calc(100vw / 310mm)); /* 画面幅に合わせて自動縮小表示 */
+            transform-origin: top left;
+            margin: 0;
+        }
+
+        /* ★携帯画面のときはポップアップを画面いっぱいに広げる仕様★ */
+        .modal-content {
+            width: 96% !important;
+            max-width: 100% !important;
+            height: 94% !important;
+            top: 3% !important;
+            left: 2% !important;
+            transform: none !important;
+            padding: 15px !important;
+            overflow-y: auto; /* 入力項目が多い場合は上下スクロール可能に */
+            border-radius: 12px !important;
+        }
+        .modal-header {
+            font-size: 13pt !important;
+            margin-bottom: 12px !important;
+        }
+        .form-group {
+            margin-bottom: 10px !important;
+        }
+        /* 担当者と買参人番号の横並びをスマホでも崩れないように調整 */
+        .form-group-half {
+            display: inline-block !important;
+            width: 48% !important;
+        }
+        .form-group-half:first-of-type {
+            margin-right: 4% !important;
+        }
+        .form-control {
+            padding: 10px !important; /* タップしやすく少し太めに */
+            font-size: 13pt !important; /* スマホで勝手にズームしないよう13pt以上に */
+        }
+        .modal-footer {
+            margin-top: 15px !important;
+            padding-top: 10px !important;
+            text-align: center !important; /* ボタンを押しやすく中央寄せ */
+        }
+        .modal-footer .btn {
+            width: 45%;
+            padding: 12px 10px !important;
+            font-size: 12pt !important;
+            margin: 0 2% !important;
+        }
+    }
 </style>
 </head>
 <body>
@@ -312,17 +395,18 @@
     <div class="no-print control-panel">
         <div class="panel-flex">
             <div class="panel-cell">
-                <strong>【注文分取り置き表（ポップアップ入力式）】</strong><br>
-                枠をクリックすると入力画面が開きます。文字を入れて「反映する」を押し、右側の「印刷する」ボタンを押してください。<br>
-                ※印刷時は用紙を<strong>「A4・横向き」</strong>、余白を<strong>「なし（または最小）」</strong>に設定してください。
+                <strong>【注文分取り置き表（スマホ対応版）】</strong><br>
+                枠をタップすると、画面サイズに合わせた入力ポップアップが開きます。<br>
+                「PDFを作成・保存」ボタンを押し、保存したPDFをCanonアプリから印刷してください。
             </div>
             <div class="panel-cell right">
-                <button class="print-btn" onclick="window.print()">🖨️ 印刷する</button>
+                <button class="btn-action pdf-btn" onclick="exportToPDF()">📄 PDFを作成・保存</button>
+                <button class="btn-action print-btn" onclick="window.print()">🖨️ 直接印刷</button>
             </div>
         </div>
     </div>
 
-    <div class="page-container">
+    <div id="print-area" class="page-container">
         
         <div class="row">
             <div class="a6-card" onclick="openModal(1)">
@@ -467,11 +551,11 @@
                 <input type="text" id="input-shop" class="form-control" placeholder="例: 〇〇商店">
             </div>
             
-            <div class="form-group" style="display:inline-block; width:48%; margin-right:4%;">
+            <div class="form-group form-group-half">
                 <label>担当者</label>
                 <input type="text" id="input-staff" class="form-control" placeholder="例: 山田">
             </div>
-            <div class="form-group" style="display:inline-block; width:48%;">
+            <div class="form-group form-group-half">
                 <label>買参人番号</label>
                 <input type="text" id="input-buyer" class="form-control" placeholder="例: 1234">
             </div>
@@ -492,8 +576,8 @@
             </div>
 
             <div class="modal-footer">
-                <button class="btn btn-close" onclick="closeModal()">キャンセル</button>
-                <button class="btn btn-save" onclick="saveData()">枠に反映する</button>
+                <button class="btn btn-close" onclick="closeModal()">戻る</button>
+                <button class="btn btn-save" onclick="saveData()">反映する</button>
             </div>
         </div>
     </div>
@@ -550,6 +634,21 @@
         }
 
         document.getElementById('inputModal').addEventListener('click', closeModal);
+
+        // PDFに変換してダウンロードする機能
+        function exportToPDF() {
+            const element = document.getElementById('print-area');
+            
+            const opt = {
+                margin:       0,
+                filename:     'torioki_table.pdf',
+                image:        { type: 'jpeg', quality: 0.98 },
+                html2canvas:  { scale: 2, useCORS: true },
+                jsPDF:        { unit: 'mm', format: 'a4', orientation: 'landscape' }
+            };
+
+            html2pdf().set(opt).from(element).save();
+        }
     </script>
 
 </body>
