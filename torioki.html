@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>注文分取り置き表（A4内4分割A6横 - CSV一括読込＆印刷サイズ厳密固定版）</title>
+<title>注文分取り置き表（A4内4分割A6横 - 完全分離・印刷固定版）</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 <style>
     /* ページ設定: A4用紙サイズ、余白なし */
@@ -26,40 +26,46 @@
         print-color-adjust: exact;
     }
 
-    /* 📄 A4横のピクセルサイズ（1122px × 794px）に厳密に完全固定 */
+    /* 📄 【最重要】印刷・PDF専用の絶対A4サイズ（1122px × 794px） */
     .page-container {
-        width: 1122px;
-        height: 794px;
-        overflow: hidden;
-        position: relative;
-        background-color: #ffffff;
-        page-break-after: always; /* 印刷・PDF時にここで改ページする */
+        width: 1122px !important;
+        height: 794px !important;
+        min-width: 1122px !important;
+        min-height: 794px !important;
+        max-width: 1122px !important;
+        max-height: 794px !important;
+        overflow: hidden !important;
+        position: relative !important;
+        background-color: #ffffff !important;
+        page-break-after: always !important; /* 印刷・PDF時にここで改ページ */
     }
+
+    /* 画面表示時のページごとの隙間 */
     @media screen {
         .page-container {
-            margin: 0 auto 30px auto;
+            margin: 0 auto 30px auto !important;
             box-shadow: 0 4px 15px rgba(0,0,0,0.15);
         }
     }
 
-    /* 4分割（2列×2行）の配置（高さは794pxの半分＝397px） */
+    /* 4分割（高さは794pxの半分＝397px） */
     .row {
-        width: 1122px;
-        height: 397px;
-        display: block;
-        clear: both;
+        width: 1122px !important;
+        height: 397px !important;
+        display: block !important;
+        clear: both !important;
     }
 
     /* A6横サイズ（幅561px × 高さ397px） */
     .a6-card {
-        float: left;
-        width: 561px;
-        height: 397px;
-        padding: 35px 45px;
-        border-right: 1px dashed #aaaaaa;
-        border-bottom: 1px dashed #aaaaaa;
-        position: relative;
-        background-color: #fff;
+        float: left !important;
+        width: 561px !important;
+        height: 397px !important;
+        padding: 35px 45px !important;
+        border-right: 1px dashed #aaaaaa !important;
+        border-bottom: 1px dashed #aaaaaa !important;
+        position: relative !important;
+        background-color: #fff !important;
         cursor: pointer;
     }
 
@@ -84,10 +90,10 @@
 
     /* 外枠の不要な点線をカット */
     .row:nth-child(2) .a6-card {
-        border-bottom: none;
+        border-bottom: none !important;
     }
     .a6-card:nth-child(2) {
-        border-right: none;
+        border-right: none !important;
     }
 
     /* カード内のレイアウト構築 */
@@ -374,6 +380,7 @@
             -webkit-overflow-scrolling: touch;
         }
 
+        /* 📱 携帯画面用のポップアップ大画面化 */
         .modal-overlay .modal-content {
             width: 96% !important;
             max-width: 100% !important;
@@ -423,7 +430,7 @@
     <div class="no-print control-panel">
         <div class="panel-flex">
             <div class="panel-cell left">
-                <strong>【注文分取り置き表（ExcelのCSV文字化け対策版）】</strong><br>
+                <strong>【注文分取り置き表（印刷サイズ・携帯ポップアップ完全固定版）】</strong><br>
                 下のボタンからCSVファイルを読み込むと何件でも一括で表を生成します。<br>
                 <div class="csv-input-wrapper">
                     <label for="csv-file" class="csv-label">📂 CSVファイルを選択</label>
@@ -547,7 +554,7 @@
             document.getElementById('input-staff').value = allItemsData[index].staff || '';
             document.getElementById('input-buyer').value = allItemsData[index].buyer || '';
             document.getElementById('input-slip').value = allItemsData[index].slip || '';
-            document.getElementById('input-maker').value = cardData = allItemsData[index].maker || '';
+            document.getElementById('input-maker').value = allItemsData[index].maker || '';
             document.getElementById('input-date').value = allItemsData[index].date || '';
             
             document.getElementById('inputModal').style.display = 'block';
@@ -581,7 +588,6 @@
 
         document.getElementById('inputModal').addEventListener('click', closeModal);
 
-        // 📂 CSVファイルの読み込み
         function loadCSV(input) {
             const file = input.files[0];
             if (!file) return;
@@ -591,9 +597,6 @@
                 const text = e.target.result;
                 parseCSVToCards(text);
             };
-            
-            // ★ 文字化け対策 ★
-            // Excelが書き出す標準的なCSV文字コードである「Shift_JIS」でまずは強制的に読み込みます。
             reader.readAsText(file, 'Shift_JIS'); 
         }
 
@@ -605,8 +608,6 @@
 
             for (let i = 1; i < lines.length; i++) {
                 if (lines[i].trim() === '') continue;
-                
-                // カンマ区切りの解析（簡易版、ダブルクォーテーションの除去対応）
                 const row = lines[i].split(',');
                 
                 allItemsData.push({
@@ -634,18 +635,15 @@
                 pageContainer.id = `page-${page + 1}`;
 
                 let pageHtml = '';
-                
                 pageHtml += '<div class="row">';
                 for (let r = 0; r < 2; r++) {
-                    const idx = page * 4 + r;
-                    pageHtml += createCardHtml(idx);
+                    pageHtml += createCardHtml(page * 4 + r);
                 }
                 pageHtml += '</div>';
 
                 pageHtml += '<div class="row">';
                 for (let r = 2; r < 4; r++) {
-                    const idx = page * 4 + r;
-                    pageHtml += createCardHtml(idx);
+                    pageHtml += createCardHtml(page * 4 + r);
                 }
                 pageHtml += '</div>';
 
@@ -675,18 +673,9 @@
                         </table>
                     </div>
                     <table class="main-table">
-                        <tr>
-                            <th>伝票NO.</th>
-                            <td id="view-slip-${idx}">${data.slip}</td>
-                        </tr>
-                        <tr>
-                            <th>メーカー名</th>
-                            <td id="view-maker-${idx}">${data.maker}</td>
-                        </tr>
-                        <tr>
-                            <th>希望渡し日</th>
-                            <td id="view-date-${idx}">${data.date}</td>
-                        </tr>
+                        <tr><th>伝票NO.</th><td id="view-slip-${idx}">${data.slip}</td></tr>
+                        <tr><th>メーカー名</th><td id="view-maker-${idx}">${data.maker}</td></tr>
+                        <tr><th>希望渡し日</th><td id="view-date-${idx}">${data.date}</td></tr>
                     </table>
                     <div class="footer-signature">名古屋花き商事本部</div>
                 </div>
@@ -696,6 +685,7 @@
         function exportToPDF() {
             const element = document.getElementById('print-area');
             
+            // html2pdfに、各コンテナのサイズ(1122x794px)をA4横サイズとして100%厳密に適合させる指示
             const opt = {
                 margin:       0,
                 filename:     'torioki_all_pages.pdf',
@@ -703,9 +693,12 @@
                 html2canvas:  { 
                     scale: 2, 
                     useCORS: true,
-                    logging: false
+                    logging: false,
+                    width: 1122,
+                    height: element.offsetHeight // 全体の高さを自動取得
                 },
-                jsPDF:        { unit: 'mm', format: 'a4', orientation: 'landscape' }
+                jsPDF:        { unit: 'mm', format: 'a4', orientation: 'landscape' },
+                pagebreak:    { mode: ['css', 'legacy'] } // CSSのpage-break-afterを最優先で適用
             };
 
             html2pdf().set(opt).from(element).save();
