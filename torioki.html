@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>注文分取り置き表（A4内4分割A6横 - 完全分離・印刷固定版）</title>
+<title>注文分取り置き表（A4内4分割A6横 - コピー連番自動化版）</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 <style>
     /* ページ設定: A4用紙サイズ、余白なし */
@@ -26,7 +26,7 @@
         print-color-adjust: exact;
     }
 
-    /* 📄 【最重要】印刷・PDF専用の絶対A4サイズ（1122px × 794px） */
+    /* 📄 【最重要】印刷・PDF専用の絶対 A4サイズ（1122px × 794px） */
     .page-container {
         width: 1122px !important;
         height: 794px !important;
@@ -61,7 +61,7 @@
         float: left !important;
         width: 561px !important;
         height: 397px !important;
-        padding: 35px 45px !important;
+        padding: 30px 45px 35px 45px !important;
         border-right: 1px dashed #aaaaaa !important;
         border-bottom: 1px dashed #aaaaaa !important;
         position: relative !important;
@@ -69,20 +69,7 @@
         cursor: pointer;
     }
 
-    /* 画面表示時のみの案内表示 */
     @media screen {
-        .a6-card::before {
-            content: "タップして修正";
-            position: absolute;
-            top: 8px;
-            left: 8px;
-            font-size: 11px;
-            color: #3498db;
-            border: 1px solid #3498db;
-            padding: 2px 6px;
-            border-radius: 3px;
-            background-color: #fff;
-        }
         .a6-card:hover {
             background-color: #f1f9ff;
         }
@@ -155,7 +142,7 @@
 
     .main-table th, .main-table td {
         border: 1px solid #bdc3c7;
-        padding: 12px 15px;
+        padding: 10px 15px;
         vertical-align: middle;
     }
 
@@ -176,6 +163,22 @@
         word-break: break-all;
     }
 
+    /* 個口数表示エリア */
+    .koguchi-container {
+        margin-top: 15px;
+        text-align: left;
+        font-size: 15px;
+        font-weight: bold;
+        color: #34495e;
+    }
+    .koguchi-display {
+        font-size: 24px;
+        font-weight: bold;
+        color: #000000;
+        margin-left: 20px;
+        letter-spacing: 2px;
+    }
+
     /* 各用紙の右下に固定配置 */
     .footer-signature {
         position: absolute;
@@ -189,9 +192,6 @@
     /* 印刷時の設定 */
     @media print {
         .no-print {
-            display: none !important;
-        }
-        .a6-card::before {
             display: none !important;
         }
         body {
@@ -348,6 +348,15 @@
         background-color: #3498db;
         color: white;
     }
+    /* コピーボタン専用のデザイン */
+    .btn-copy {
+        background-color: #9b59b6;
+        color: white;
+        float: left;
+    }
+    .btn-copy:hover {
+        background-color: #8e44ad;
+    }
 
     /* 📱 携帯（スマートフォン）画面のときの特別スタイル設定 */
     @media screen and (max-width: 768px) {
@@ -417,10 +426,13 @@
             text-align: center !important;
         }
         .modal-footer .btn {
-            width: 45%;
-            padding: 14px 10px !important;
-            font-size: 15px !important;
-            margin: 0 2% !important;
+            width: 31%;
+            padding: 12px 5px !important;
+            font-size: 13px !important;
+            margin: 0 1% !important;
+        }
+        .btn-copy {
+            float: none;
         }
     }
 </style>
@@ -430,8 +442,8 @@
     <div class="no-print control-panel">
         <div class="panel-flex">
             <div class="panel-cell left">
-                <strong>【注文分取り置き表（印刷サイズ・携帯ポップアップ完全固定版）】</strong><br>
-                下のボタンからCSVファイルを読み込むと何件でも一括で表を生成します。<br>
+                <strong>【注文分取り置き表（一括対応版）】</strong><br>
+                枠をタップして手動入力、またはCSVファイルから一括作成が可能です。<br>
                 <div class="csv-input-wrapper">
                     <label for="csv-file" class="csv-label">📂 CSVファイルを選択</label>
                     <input type="file" id="csv-file" accept=".csv" onchange="loadCSV(this)">
@@ -457,6 +469,7 @@
                         <tr><th>メーカー名</th><td id="view-maker-0"></td></tr>
                         <tr><th>希望渡し日</th><td id="view-date-0"></td></tr>
                     </table>
+                    <div class="koguchi-container">個口数:<span id="view-koguchi-0" class="koguchi-display"></span></div>
                     <div class="footer-signature">名古屋花き商事本部</div>
                 </div>
                 <div class="a6-card" onclick="openModal(1)">
@@ -468,6 +481,7 @@
                         <tr><th>メーカー名</th><td id="view-maker-1"></td></tr>
                         <tr><th>希望渡し日</th><td id="view-date-1"></td></tr>
                     </table>
+                    <div class="koguchi-container">個口数:<span id="view-koguchi-1" class="koguchi-display"></span></div>
                     <div class="footer-signature">名古屋花き商事本部</div>
                 </div>
             </div>
@@ -481,6 +495,7 @@
                         <tr><th>メーカー名</th><td id="view-maker-2"></td></tr>
                         <tr><th>希望渡し日</th><td id="view-date-2"></td></tr>
                     </table>
+                    <div class="koguchi-container">個口数:<span id="view-koguchi-2" class="koguchi-display"></span></div>
                     <div class="footer-signature">名古屋花き商事本部</div>
                 </div>
                 <div class="a6-card" onclick="openModal(3)">
@@ -492,6 +507,7 @@
                         <tr><th>メーカー名</th><td id="view-maker-3"></td></tr>
                         <tr><th>希望渡し日</th><td id="view-date-3"></td></tr>
                     </table>
+                    <div class="koguchi-container">個口数:<span id="view-koguchi-3" class="koguchi-display"></span></div>
                     <div class="footer-signature">名古屋花き商事本部</div>
                 </div>
             </div>
@@ -526,12 +542,17 @@
                 <input type="text" id="input-maker" class="form-control" placeholder="例: 〇〇農園">
             </div>
 
-            <div class="form-group">
-                <label>希望渡し日</label>
-                <input type="text" id="input-date" class="form-control" placeholder="例: 7月1日">
+            <div class="form-group form-group-half">
+                <label>希望渡し日 (例: 5/5 → 5月5日)</label>
+                <input type="text" id="input-date" class="form-control" placeholder="例: 5/5">
+            </div>
+            <div class="form-group form-group-half">
+                <label>個口数 (例: 1/3)</label>
+                <input type="text" id="input-koguchi" class="form-control" placeholder="例: 1/3">
             </div>
 
             <div class="modal-footer">
+                <button class="btn btn-copy" onclick="copyAndCreateNew()">📋 コピーして新枠追加</button>
                 <button class="btn btn-close" onclick="closeModal()">戻る</button>
                 <button class="btn btn-save" onclick="saveData()">反映する</button>
             </div>
@@ -541,11 +562,31 @@
     <script>
         let currentTargetIndex = null;
         let allItemsData = [
-            { shop: '', staff: '', buyer: '', slip: '', maker: '', date: '' },
-            { shop: '', staff: '', buyer: '', slip: '', maker: '', date: '' },
-            { shop: '', staff: '', buyer: '', slip: '', maker: '', date: '' },
-            { shop: '', staff: '', buyer: '', slip: '', maker: '', date: '' }
+            { shop: '', staff: '', buyer: '', slip: '', maker: '', date: '', koguchi: '' },
+            { shop: '', staff: '', buyer: '', slip: '', maker: '', date: '', koguchi: '' },
+            { shop: '', staff: '', buyer: '', slip: '', maker: '', date: '', koguchi: '' },
+            { shop: '', staff: '', buyer: '', slip: '', maker: '', date: '', koguchi: '' }
         ];
+
+        function convertDateFormat(val) {
+            if (!val) return '';
+            const match = val.match(/^(\d{1,2})\/(\d{1,2})$/);
+            if (match) {
+                return `${parseInt(match[1], 10)}月${parseInt(match[2], 10)}日`;
+            }
+            return val;
+        }
+
+        // 📦 個口数の分子を自動で+1する関数 (例: "1/3" -> "2/3")
+        function incrementKoguchi(val) {
+            if (!val) return '';
+            const match = val.match(/^(\d+)\/(\d+)$/);
+            if (match) {
+                const nextNum = parseInt(match[1], 10) + 1;
+                return `${nextNum}/${match[2]}`;
+            }
+            return val;
+        }
 
         function openModal(index) {
             currentTargetIndex = index;
@@ -556,6 +597,7 @@
             document.getElementById('input-slip').value = allItemsData[index].slip || '';
             document.getElementById('input-maker').value = allItemsData[index].maker || '';
             document.getElementById('input-date').value = allItemsData[index].date || '';
+            document.getElementById('input-koguchi').value = allItemsData[index].koguchi || '';
             
             document.getElementById('inputModal').style.display = 'block';
         }
@@ -575,14 +617,53 @@
             allItemsData[idx].slip = document.getElementById('input-slip').value;
             allItemsData[idx].maker = document.getElementById('input-maker').value;
             allItemsData[idx].date = document.getElementById('input-date').value;
+            allItemsData[idx].koguchi = document.getElementById('input-koguchi').value;
             
             document.getElementById('view-shop-' + idx).innerText = allItemsData[idx].shop;
             document.getElementById('view-staff-' + idx).innerText = allItemsData[idx].staff;
             document.getElementById('view-buyer-' + idx).innerText = allItemsData[idx].buyer;
             document.getElementById('view-slip-' + idx).innerText = allItemsData[idx].slip;
             document.getElementById('view-maker-' + idx).innerText = allItemsData[idx].maker;
-            document.getElementById('view-date-' + idx).innerText = allItemsData[idx].date;
+            document.getElementById('view-date-' + idx).innerText = convertDateFormat(allItemsData[idx].date);
+            document.getElementById('view-koguchi-' + idx).innerText = allItemsData[idx].koguchi;
             
+            closeModal();
+        }
+
+        // 📋 コピー機能（個口数の自動インクリメント対応）
+        function copyAndCreateNew() {
+            const currentKoguchi = document.getElementById('input-koguchi').value;
+            
+            // コピー元データ
+            const copiedData = {
+                shop: document.getElementById('input-shop').value,
+                staff: document.getElementById('input-staff').value,
+                buyer: document.getElementById('input-buyer').value,
+                slip: document.getElementById('input-slip').value,
+                maker: document.getElementById('input-maker').value,
+                date: document.getElementById('input-date').value,
+                koguchi: incrementKoguchi(currentKoguchi) // ここで自動的に数を1増やす
+            };
+
+            // 空き枠を探す
+            let emptyIndex = -1;
+            for (let i = 0; i < allItemsData.length; i++) {
+                if (!allItemsData[i].shop && !allItemsData[i].slip && !allItemsData[i].maker) {
+                    emptyIndex = i;
+                    break;
+                }
+            }
+
+            if (emptyIndex !== -1) {
+                allItemsData[emptyIndex] = copiedData;
+            } else {
+                allItemsData.push(copiedData);
+                while (allItemsData.length % 4 !== 0) {
+                    allItemsData.push({ shop: '', staff: '', buyer: '', slip: '', maker: '', date: '', koguchi: '' });
+                }
+            }
+
+            renderAllPages();
             closeModal();
         }
 
@@ -616,14 +697,19 @@
                     buyer: row[2] ? row[2].replace(/^"|"$/g, '').trim() : '',
                     slip:  row[3] ? row[3].replace(/^"|"$/g, '').trim() : '',
                     maker: row[4] ? row[4].replace(/^"|"$/g, '').trim() : '',
-                    date:  row[5] ? row[5].replace(/^"|"$/g, '').trim() : ''
+                    date:  row[5] ? row[5].replace(/^"|"$/g, '').trim() : '',
+                    koguchi: row[6] ? row[6].replace(/^"|"$/g, '').trim() : ''
                 });
             }
 
             while (allItemsData.length < 4 || allItemsData.length % 4 !== 0) {
-                allItemsData.push({ shop: '', staff: '', buyer: '', slip: '', maker: '', date: '' });
+                allItemsData.push({ shop: '', staff: '', buyer: '', slip: '', maker: '', date: '', koguchi: '' });
             }
 
+            renderAllPages();
+        }
+
+        function renderAllPages() {
             const printArea = document.getElementById('print-area');
             printArea.innerHTML = '';
 
@@ -651,11 +737,12 @@
                 printArea.appendChild(pageContainer);
             }
 
-            document.getElementById('csv-status').innerText = `データ ${allItemsData.filter(d => d.shop || d.slip).length}件 / A4用紙 ${totalPages}枚分を生成しました`;
+            document.getElementById('csv-status').innerText = `データ ${allItemsData.filter(d => d.shop || d.slip || d.maker).length}件 / A4用紙 ${totalPages}枚分を管理中`;
         }
 
         function createCardHtml(idx) {
             const data = allItemsData[idx];
+            const formattedDate = convertDateFormat(data.date);
             return `
                 <div class="a6-card" onclick="openModal(${idx})">
                     <div class="card-header">
@@ -675,8 +762,9 @@
                     <table class="main-table">
                         <tr><th>伝票NO.</th><td id="view-slip-${idx}">${data.slip}</td></tr>
                         <tr><th>メーカー名</th><td id="view-maker-${idx}">${data.maker}</td></tr>
-                        <tr><th>希望渡し日</th><td id="view-date-${idx}">${data.date}</td></tr>
+                        <tr><th>希望渡し日</th><td id="view-date-${idx}">${formattedDate}</td></tr>
                     </table>
+                    <div class="koguchi-container">個口数:<span id="view-koguchi-${idx}" class="koguchi-display">${data.koguchi || ''}</span></div>
                     <div class="footer-signature">名古屋花き商事本部</div>
                 </div>
             `;
@@ -685,7 +773,6 @@
         function exportToPDF() {
             const element = document.getElementById('print-area');
             
-            // html2pdfに、各コンテナのサイズ(1122x794px)をA4横サイズとして100%厳密に適合させる指示
             const opt = {
                 margin:       0,
                 filename:     'torioki_all_pages.pdf',
@@ -695,10 +782,10 @@
                     useCORS: true,
                     logging: false,
                     width: 1122,
-                    height: element.offsetHeight // 全体の高さを自動取得
+                    height: element.offsetHeight
                 },
                 jsPDF:        { unit: 'mm', format: 'a4', orientation: 'landscape' },
-                pagebreak:    { mode: ['css', 'legacy'] } // CSSのpage-break-afterを最優先で適用
+                pagebreak:    { mode: ['css', 'legacy'] }
             };
 
             html2pdf().set(opt).from(element).save();
