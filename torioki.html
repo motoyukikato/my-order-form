@@ -3,8 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>注文分取り置き表（A4内4分割A6横 - エラー修正完了版）</title>
-<!-- html2pdf.js ライブラリの読み込み -->
+<title>注文分取り置き表（A4内4分割A6横 - システム修正完了版）</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 <style>
     /* ページ設定: A4用紙サイズ、余白なし */
@@ -134,7 +133,7 @@
         text-align: center;
     }
 
-    /* メイン情報テーブル */
+    /* メメイン情報テーブル */
     .main-table {
         width: 100%;
         border-collapse: collapse;
@@ -378,7 +377,6 @@
 </head>
 <body>
 
-    <!-- 操作パネル -->
     <div class="no-print control-panel">
         <div class="panel-flex">
             <div class="panel-cell left">
@@ -398,9 +396,7 @@
         </div>
     </div>
 
-    <!-- 画面用プレビューラッパー -->
     <div class="preview-wrapper" id="print-area">
-        <!-- 初期状態用の空のA4シート -->
         <div class="page-container" id="page-1">
             <div class="row">
                 <div class="a6-card" onclick="openModal(0)">
@@ -457,7 +453,6 @@
         </div>
     </div>
 
-    <!-- ポップアップモータル -->
     <div id="inputModal" class="no-print modal-overlay">
         <div class="modal-content" onclick="event.stopPropagation()">
             <div class="modal-header">取り置き表 入力・修正</div>
@@ -576,7 +571,6 @@
         function copyAndCreateNew() {
             const currentKoguchi = document.getElementById('input-koguchi').value;
             
-            // コピー元データ
             const copiedData = {
                 shop: document.getElementById('input-shop').value,
                 staff: document.getElementById('input-staff').value,
