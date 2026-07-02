@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>注文分取り置き表（A4内4分割A6横 - コピー枠移動修正版）</title>
+<title>注文分取り置き表（A4内4分割A6横 - データクリア機能追加版）</title>
 <!-- html2pdf.js ライブラリの読み込み -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 <style>
@@ -62,7 +62,7 @@
         float: left !important;
         width: 561px !important;
         height: 397px !important;
-        padding: 25px 45px 35px 45px !important;
+        padding: 20px 45px;
         border-right: 1px dashed #aaaaaa !important;
         border-bottom: 1px dashed #aaaaaa !important;
         position: relative !important;
@@ -70,20 +70,7 @@
         cursor: pointer;
     }
 
-    /* 画面表示時のみの案内表示 */
     @media screen {
-        .a6-card::before {
-            content: "タップして修正";
-            position: absolute;
-            top: 8px;
-            left: 8px;
-            font-size: 11px;
-            color: #3498db;
-            border: 1px solid #3498db;
-            padding: 2px 6px;
-            border-radius: 3px;
-            background-color: #fff;
-        }
         .a6-card:hover {
             background-color: #f1f9ff;
         }
@@ -100,8 +87,8 @@
     /* カード内のレイアウト構築 */
     .card-header {
         border-bottom: 3px solid #2c3e50;
-        padding-bottom: 10px;
-        margin-bottom: 15px;
+        padding-bottom: 8px;
+        margin-bottom: 12px;
     }
 
     .header-table {
@@ -156,7 +143,7 @@
 
     .main-table th, .main-table td {
         border: 1px solid #bdc3c7;
-        padding: 10px 15px;
+        padding: 8px 15px;
         vertical-align: middle;
     }
 
@@ -179,7 +166,7 @@
 
     /* 個口数表示エリア */
     .koguchi-container {
-        margin-top: 15px;
+        margin-top: 10px;
         text-align: left;
         font-size: 15px;
         font-weight: bold;
@@ -206,9 +193,6 @@
     /* 印刷時の設定 */
     @media print {
         .no-print {
-            display: none !important;
-        }
-        .a6-card::before {
             display: none !important;
         }
         body {
@@ -261,10 +245,14 @@
         #csv-file {
             display: none;
         }
+        .panel-actions-right {
+            display: flex;
+            align-items: center;
+        }
         .btn-action {
             color: white;
             border: none;
-            padding: 12px 25px;
+            padding: 12px 20px;
             font-size: 14px;
             font-weight: bold;
             border-radius: 4px;
@@ -276,9 +264,26 @@
             background-color: #2ecc71;
             box-shadow: 0 3px 0 #27ae60;
         }
+        .print-btn:hover {
+            background-color: #27ae60;
+            box-shadow: 0 2px 0 #219653;
+        }
         .pdf-btn {
             background-color: #e67e22;
             box-shadow: 0 3px 0 #d35400;
+        }
+        .pdf-btn:hover {
+            background-color: #d35400;
+            box-shadow: 0 2px 0 #b33921;
+        }
+        /* 🧹 追加：クリアボタン専用のデザイン */
+        .clear-btn {
+            background-color: #e74c3c;
+            box-shadow: 0 3px 0 #c0392b;
+        }
+        .clear-btn:hover {
+            background-color: #c0392b;
+            box-shadow: 0 2px 0 #962d22;
         }
         
         /* 画面上での縮小表示用コンテナ */
@@ -387,16 +392,18 @@
             margin-top: 12px;
             justify-content: center;
         }
-        .panel-cell.right {
+        .panel-actions-right {
             margin-top: 15px;
             text-align: center !important;
             display: flex;
             justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 8px 0;
         }
         .btn-action {
-            width: 48%;
-            padding: 12px 5px !important;
-            font-size: 13px !important;
+            width: 32% !important; /* 3つのボタンが横並びになるよう調整 */
+            padding: 12px 2px !important;
+            font-size: 12px !important;
             margin: 0 !important;
             text-align: center;
         }
@@ -460,7 +467,7 @@
     <div class="no-print control-panel">
         <div class="panel-flex">
             <div class="panel-cell left">
-                <strong>【注文分取り置き表（コピー配置修正版）】</strong><br>
+                <strong>【注文分取り置き表（一括対応・クリア機能付き）】</strong><br>
                 枠をタップして手動入力、またはCSVファイルから一括作成が可能です。<br>
                 <div class="csv-input-wrapper">
                     <label for="csv-file" class="csv-label">📂 CSVファイルを選択</label>
@@ -468,7 +475,8 @@
                     <span id="csv-status" style="font-size:12px; color:#bdc3c7;">ファイルを読み込んでください</span>
                 </div>
             </div>
-            <div class="panel-cell right">
+            <div class="panel-actions-right">
+                <button class="btn-action clear-btn" onclick="clearAllData()">🧹 データをクリア</button>
                 <button class="btn-action pdf-btn" onclick="exportToPDF()">📄 PDFを一括保存</button>
                 <button class="btn-action print-btn" onclick="window.print()">🖨️ 直接印刷</button>
             </div>
@@ -477,7 +485,7 @@
 
     <!-- 画面用プレビューラッパー -->
     <div class="preview-wrapper" id="print-area">
-        <!-- 初期状態用の空のA4シート（データがないとき用） -->
+        <!-- 初期状態用の空のA4シート -->
         <div class="page-container" id="page-1">
             <div class="row">
                 <div class="a6-card" onclick="openModal(0)">
@@ -598,6 +606,16 @@
             return val;
         }
 
+        function incrementKoguchi(val) {
+            if (!val) return '';
+            const match = val.match(/^(\d+)\/(\d+)$/);
+            if (match) {
+                const nextNum = parseInt(match[1], 10) + 1;
+                return `${nextNum}/${match[2]}`;
+            }
+            return val;
+        }
+
         function openModal(index) {
             currentTargetIndex = index;
             
@@ -640,8 +658,9 @@
             closeModal();
         }
 
-        // 📋 コピーして「同じ4分割の中の次の空き枠」または「新規ページ」に配置するよう修正
         function copyAndCreateNew() {
+            const currentKoguchi = document.getElementById('input-koguchi').value;
+            
             const copiedData = {
                 shop: document.getElementById('input-shop').value,
                 staff: document.getElementById('input-staff').value,
@@ -649,10 +668,9 @@
                 slip: document.getElementById('input-slip').value,
                 maker: document.getElementById('input-maker').value,
                 date: document.getElementById('input-date').value,
-                koguchi: document.getElementById('input-koguchi').value
+                koguchi: incrementKoguchi(currentKoguchi)
             };
 
-            // 現在の配列内に完全に「真っ白（空っぽ）」な枠があるか探す
             let emptyIndex = -1;
             for (let i = 0; i < allItemsData.length; i++) {
                 if (!allItemsData[i].shop && !allItemsData[i].slip && !allItemsData[i].maker) {
@@ -662,20 +680,35 @@
             }
 
             if (emptyIndex !== -1) {
-                // 同じ4分割の中などに空き枠があれば、そこに上書き（滑り込ませる）
                 allItemsData[emptyIndex] = copiedData;
             } else {
-                // すべての枠が埋まっている場合は、新しく配列の末尾に追加（新しいA4が生成される）
                 allItemsData.push(copiedData);
-                // 4の倍数になるよう調整
                 while (allItemsData.length % 4 !== 0) {
                     allItemsData.push({ shop: '', staff: '', buyer: '', slip: '', maker: '', date: '', koguchi: '' });
                 }
             }
 
-            // 再描写
             renderAllPages();
             closeModal();
+        }
+
+        // 🧹 全データを初期化（クリア）する機能
+        function clearAllData() {
+            if (!confirm("入力されたすべてのデータ、および読み込んだCSVデータを消去して初期状態に戻しますか？")) return;
+
+            // 初期状態の4枠に戻す
+            allItemsData = [
+                { shop: '', staff: '', buyer: '', slip: '', maker: '', date: '', koguchi: '' },
+                { shop: '', staff: '', buyer: '', slip: '', maker: '', date: '', koguchi: '' },
+                { shop: '', staff: '', buyer: '', slip: '', maker: '', date: '', koguchi: '' },
+                { shop: '', staff: '', buyer: '', slip: '', maker: '', date: '', koguchi: '' }
+            ];
+
+            // CSVのファイル選択枠もクリア
+            document.getElementById('csv-file').value = "";
+            document.getElementById('csv-status').innerText = "ファイルを読み込んでください";
+
+            renderAllPages();
         }
 
         document.getElementById('inputModal').addEventListener('click', closeModal);
@@ -748,7 +781,13 @@
                 printArea.appendChild(pageContainer);
             }
 
-            document.getElementById('csv-status').innerText = `データ ${allItemsData.filter(d => d.shop || d.slip || d.maker).length}件 / A4用紙 ${totalPages}枚分を管理中`;
+            // ステータス表示の更新（クリア時はカウントを初期状態に）
+            const activeCount = allItemsData.filter(d => d.shop || d.slip || d.maker).length;
+            if (activeCount === 0) {
+                document.getElementById('csv-status').innerText = "データをクリアしました。手入力するかCSVを読み込んでください";
+            } else {
+                document.getElementById('csv-status').innerText = `データ ${activeCount}件 / A4用紙 ${totalPages}枚分を管理中`;
+            }
         }
 
         function createCardHtml(idx) {
