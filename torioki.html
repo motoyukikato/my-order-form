@@ -3,8 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>注文分取り置き表（A4内4分割A6横 - データクリア機能追加版）</title>
-<!-- html2pdf.js ライブラリの読み込み -->
+<title>注文分取り置き表（A4内4分割A6横 - 携帯画面操作ボタン完全修正版）</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 <style>
     /* ページ設定: A4用紙サイズ、余白なし */
@@ -276,7 +275,6 @@
             background-color: #d35400;
             box-shadow: 0 2px 0 #b33921;
         }
-        /* 🧹 追加：クリアボタン専用のデザイン */
         .clear-btn {
             background-color: #e74c3c;
             box-shadow: 0 3px 0 #c0392b;
@@ -294,117 +292,33 @@
         }
     }
 
-    /* ポップアップモダールの標準スタイル（PC用） */
-    .modal-overlay {
-        display: none;
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        background-color: rgba(0, 0, 0, 0.6);
-        z-index: 9999;
-    }
-    .modal-content {
-        position: absolute;
-        top: 50%;
-        left: 50%;
-        transform: translate(-50%, -50%);
-        background-color: white;
-        padding: 25px;
-        border-radius: 8px;
-        width: 90%;
-        max-width: 500px;
-        box-shadow: 0 5px 15px rgba(0,0,0,0.3);
-        color: #333;
-    }
-    .modal-header {
-        font-size: 18px;
-        font-weight: bold;
-        margin-bottom: 15px;
-        border-bottom: 2px solid #34495e;
-        padding-bottom: 8px;
-        color: #2c3e50;
-    }
-    .form-group {
-        margin-bottom: 15px;
-    }
-    .form-group label {
-        display: block;
-        font-size: 14px;
-        font-weight: bold;
-        margin-bottom: 5px;
-        color: #555;
-    }
-    .form-control {
-        width: 100%;
-        padding: 8px 10px;
-        font-size: 16px;
-        border: 1px solid #ccc;
-        border-radius: 4px;
-    }
-    .form-control:focus {
-        border-color: #3498db;
-        outline: none;
-    }
-    .modal-footer {
-        text-align: right;
-        margin-top: 20px;
-        border-top: 1px solid #eee;
-        padding-top: 15px;
-    }
-    .btn {
-        padding: 10px 20px;
-        font-size: 15px;
-        font-weight: bold;
-        border-radius: 4px;
-        cursor: pointer;
-        border: none;
-        margin-left: 10px;
-    }
-    .btn-close {
-        background-color: #95a5a6;
-        color: white;
-    }
-    .btn-save {
-        background-color: #3498db;
-        color: white;
-    }
-    /* コピーボタン専用のデザイン */
-    .btn-copy {
-        background-color: #9b59b6;
-        color: white;
-        float: left;
-    }
-    .btn-copy:hover {
-        background-color: #8e44ad;
-    }
-
-    /* 📱 携帯（スマートフォン）画面のときの特別スタイル設定 */
+    /* 📱 携帯（スマートフォン）画面のときのボタンレイアウトを強制縦並びに変更 */
     @media screen and (max-width: 768px) {
         body {
-            padding: 10px;
+            padding: 5px;
+        }
+        .control-panel {
+            padding: 12px !important;
+            margin-bottom: 10px !important;
         }
         .panel-flex {
-            display: block !important;
+            display: block !important; /* 横並びをやめて縦に並べる */
         }
         .csv-input-wrapper {
-            margin-top: 12px;
-            justify-content: center;
+            margin-top: 10px;
+            justify-content: start;
         }
         .panel-actions-right {
             margin-top: 15px;
-            text-align: center !important;
-            display: flex;
-            justify-content: space-between;
-            flex-wrap: wrap;
-            gap: 8px 0;
+            display: block !important; /* ボタンエリアも縦並びにする */
+            text-align: center;
         }
         .btn-action {
-            width: 32% !important; /* 3つのボタンが横並びになるよう調整 */
-            padding: 12px 2px !important;
-            font-size: 12px !important;
-            margin: 0 !important;
+            display: block !important; /* ボタンを横いっぱいに広げて縦に並べる */
+            width: 100% !important;
+            padding: 14px 10px !important;
+            font-size: 15px !important;
+            margin: 0 0 10px 0 !important; /* ボタンの下に隙間を開ける */
             text-align: center;
         }
         
@@ -413,7 +327,7 @@
             -webkit-overflow-scrolling: touch;
         }
 
-        /* 📱 携帯画面用のポップアップ大画面化 */
+        /* 携帯画面用のポップアップ大画面化 */
         .modal-overlay .modal-content {
             width: 96% !important;
             max-width: 100% !important;
@@ -463,11 +377,10 @@
 </head>
 <body>
 
-    <!-- 操作パネル -->
     <div class="no-print control-panel">
         <div class="panel-flex">
             <div class="panel-cell left">
-                <strong>【注文分取り置き表（一括対応・クリア機能付き）】</strong><br>
+                <strong>【注文分取り置き表（一括対応版）】</strong><br>
                 枠をタップして手動入力、またはCSVファイルから一括作成が可能です。<br>
                 <div class="csv-input-wrapper">
                     <label for="csv-file" class="csv-label">📂 CSVファイルを選択</label>
@@ -476,16 +389,14 @@
                 </div>
             </div>
             <div class="panel-actions-right">
-                <button class="btn-action clear-btn" onclick="clearAllData()">🧹 データをクリア</button>
-                <button class="btn-action pdf-btn" onclick="exportToPDF()">📄 PDFを一括保存</button>
-                <button class="btn-action print-btn" onclick="window.print()">🖨️ 直接印刷</button>
+                <button class="btn-action clear-btn" onclick="clearAllData()">🧹 データをクリア（全消去）</button>
+                <button class="btn-action pdf-btn" onclick="exportToPDF()">📄 PDFを作成・保存</button>
+                <button class="btn-action print-btn" onclick="window.print()">🖨️ 直接印刷する</button>
             </div>
         </div>
     </div>
 
-    <!-- 画面用プレビューラッパー -->
     <div class="preview-wrapper" id="print-area">
-        <!-- 初期状態用の空のA4シート -->
         <div class="page-container" id="page-1">
             <div class="row">
                 <div class="a6-card" onclick="openModal(0)">
@@ -542,7 +453,6 @@
         </div>
     </div>
 
-    <!-- ポップアップモータル -->
     <div id="inputModal" class="no-print modal-overlay">
         <div class="modal-content" onclick="event.stopPropagation()">
             <div class="modal-header">取り置き表 入力・修正</div>
@@ -632,7 +542,7 @@
 
         function closeModal() {
             document.getElementById('inputModal').style.display = 'none';
-            currentTargetIndex = null;
+            currentTargetId = null;
         }
 
         function saveData() {
@@ -692,11 +602,9 @@
             closeModal();
         }
 
-        // 🧹 全データを初期化（クリア）する機能
         function clearAllData() {
             if (!confirm("入力されたすべてのデータ、および読み込んだCSVデータを消去して初期状態に戻しますか？")) return;
 
-            // 初期状態の4枠に戻す
             allItemsData = [
                 { shop: '', staff: '', buyer: '', slip: '', maker: '', date: '', koguchi: '' },
                 { shop: '', staff: '', buyer: '', slip: '', maker: '', date: '', koguchi: '' },
@@ -704,7 +612,6 @@
                 { shop: '', staff: '', buyer: '', slip: '', maker: '', date: '', koguchi: '' }
             ];
 
-            // CSVのファイル選択枠もクリア
             document.getElementById('csv-file').value = "";
             document.getElementById('csv-status').innerText = "ファイルを読み込んでください";
 
@@ -781,7 +688,6 @@
                 printArea.appendChild(pageContainer);
             }
 
-            // ステータス表示の更新（クリア時はカウントを初期状態に）
             const activeCount = allItemsData.filter(d => d.shop || d.slip || d.maker).length;
             if (activeCount === 0) {
                 document.getElementById('csv-status').innerText = "データをクリアしました。手入力するかCSVを読み込んでください";
