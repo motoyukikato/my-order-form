@@ -3,376 +3,462 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>注文分取り置き表（A4内4分割A6横 - 最終完成版）</title>
+<title>注文分取り置き表（A4内4分割A6横 - 最終不具合修正版）</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 <style>
-    /* ページ設定: A4用紙サイズ、余白なし */
-    @page {
-        size: A4 landscape;
-        margin: 0;
-    }
-    
-    *, *::before, *::after {
-        box-sizing: border-box;
-    }
-    
-    body {
-        margin: 0;
-        padding: 0;
-        font-family: "Helvetica Neue", Arial, "Hiragino Kaku Gothic ProN", "Hiragino Sans", Meiryo, sans-serif;
-        background-color: #e6ecf0;
-        color: #333333;
-        -webkit-print-color-adjust: exact;
-        print-color-adjust: exact;
-    }
+/* ページ設定: A4用紙サイズ、余白なし */
+@page {
+    size: A4 landscape;
+    margin: 0;
+}
 
-    /* 📄 印刷・PDF専用の絶対 A4サイズ（1122px × 794px） */
+*, *::before, *::after {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    padding: 0;
+    font-family: "Helvetica Neue", Arial, "Hiragino Kaku Gothic ProN", "Hiragino Sans", Meiryo, sans-serif;
+    background-color: #e6ecf0;
+    color: #333333;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+}
+
+/* 📄 印刷・PDF専用の絶対 A4サイズ（1122px × 794px） */
+.page-container {
+    width: 1122px !important;
+    height: 794px !important;
+    min-width: 1122px !important;
+    min-height: 794px !important;
+    max-width: 1122px !important;
+    max-height: 794px !important;
+    overflow: hidden !important;
+    position: relative !important;
+    background-color: #ffffff !important;
+    page-break-after: always !important; /* 印刷・PDF時にここで改ページ */
+}
+
+/* 画面表示時のページごとの隙間 */
+@media screen {
     .page-container {
-        width: 1122px !important;
-        height: 794px !important;
-        min-width: 1122px !important;
-        min-height: 794px !important;
-        max-width: 1122px !important;
-        max-height: 794px !important;
-        overflow: hidden !important;
-        position: relative !important;
-        background-color: #ffffff !important;
-        page-break-after: always !important; /* 印刷・PDF時にここで改ページ */
+        margin: 0 auto 30px auto !important;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.15);
     }
+}
 
-    /* 画面表示時のページごとの隙間 */
-    @media screen {
-        .page-container {
-            margin: 0 auto 30px auto !important;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.15);
-        }
-    }
+/* 4分割（高さは794pxの半分＝397px） */
+.row {
+    width: 1122px !important;
+    height: 397px !important;
+    display: block !important;
+    clear: both !important;
+}
 
-    /* 4分割（高さは794pxの半分＝397px） */
-    .row {
-        width: 1122px !important;
-        height: 397px !important;
-        display: block !important;
-        clear: both !important;
-    }
+/* A6横サイズ（幅561px × 高さ397px） */
+.a6-card {
+    float: left !important;
+    width: 561px !important;
+    height: 397px !important;
+    padding: 20px 45px;
+    border-right: 1px dashed #aaaaaa !important;
+    border-bottom: 1px dashed #aaaaaa !important;
+    position: relative !important;
+    background-color: #fff !important;
+    cursor: pointer;
+}
 
-    /* A6横サイズ（幅561px × 高さ397px） */
-    .a6-card {
-        float: left !important;
-        width: 561px !important;
-        height: 397px !important;
-        padding: 20px 45px;
-        border-right: 1px dashed #aaaaaa !important;
-        border-bottom: 1px dashed #aaaaaa !important;
-        position: relative !important;
-        background-color: #fff !important;
-        cursor: pointer;
+@media screen {
+    .a6-card:hover {
+        background-color: #f1f9ff;
     }
+}
 
-    @media screen {
-        .a6-card:hover {
-            background-color: #f1f9ff;
-        }
-    }
+/* 外枠の不要な点線をカット */
+.row:nth-child(2) .a6-card {
+    border-bottom: none !important;
+}
+.a6-card:nth-child(2) {
+    border-right: none !important;
+}
 
-    /* 外枠の不要な点線をカット */
-    .row:nth-child(2) .a6-card {
-        border-bottom: none !important;
-    }
-    .a6-card:nth-child(2) {
-        border-right: none !important;
-    }
+/* カード内のレイアウト構築 */
+.card-header {
+    border-bottom: 3px solid #2c3e50;
+    padding-bottom: 8px;
+    margin-bottom: 12px;
+}
 
-    /* カード内のレイアウト構築 */
-    .card-header {
-        border-bottom: 3px solid #2c3e50;
-        padding-bottom: 8px;
-        margin-bottom: 12px;
-    }
+.header-table {
+    width: 100%;
+    border-collapse: collapse;
+}
 
-    .header-table {
+.header-table td {
+    padding: 0;
+    vertical-align: bottom;
+}
+
+/* 屋号 */
+.shop-name-label {
+    font-size: 13px;
+    color: #7f8c8d;
+    display: block;
+    margin-bottom: 4px;
+}
+.shop-name {
+    font-size: 32px;
+    font-weight: bold;
+    color: #2c3e50;
+    line-height: 1.2;
+    min-height: 40px;
+    word-break: break-all;
+}
+
+/* 担当者・買参人番号 */
+.meta-info {
+    font-size: 13px;
+    color: #555555;
+    text-align: right;
+    line-height: 1.6;
+    width: 45%;
+}
+.meta-value {
+    font-weight: bold;
+    color: #000;
+    border-bottom: 1px solid #7f8c8d;
+    display: inline-block;
+    min-width: 90px;
+    text-align: center;
+}
+
+/* メイン情報テーブル */
+.main-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 5px;
+}
+
+.main-table th, .main-table td {
+    border: 1px solid #bdc3c7;
+    padding: 8px 15px;
+    vertical-align: middle;
+}
+
+.main-table th {
+    background-color: #f8f9fa;
+    color: #34495e;
+    font-size: 15px;
+    font-weight: bold;
+    width: 30%;
+    text-align: left;
+}
+
+.main-table td {
+    font-size: 20px;
+    font-weight: bold;
+    color: #000000;
+    min-height: 35px;
+    word-break: break-all;
+}
+
+/* 個口数表示エリア */
+.koguchi-container {
+    margin-top: 10px;
+    text-align: left;
+    font-size: 15px;
+    font-weight: bold;
+    color: #34495e;
+}
+.koguchi-display {
+    font-size: 24px;
+    font-weight: bold;
+    color: #000000;
+    margin-left: 20px;
+    letter-spacing: 2px;
+}
+
+/* 各用紙の右下に固定配置 */
+.footer-signature {
+    position: absolute;
+    bottom: 12px;
+    right: 25px;
+    font-size: 12px;
+    color: #7f8c8d;
+    font-weight: 500;
+}
+
+/* 印刷時の設定 */
+@media print {
+    .no-print {
+        display: none !important;
+    }
+    body {
+        background-color: #fff;
+    }
+}
+
+/* 画面表示用の固定操作パネル */
+@media screen {
+    body {
+        padding-top: 20px;
+        padding-bottom: 40px;
+    }
+    .control-panel {
         width: 100%;
-        border-collapse: collapse;
+        max-width: 1122px;
+        margin: 0 auto 15px auto;
+        background-color: #2c3e50;
+        color: white;
+        padding: 15px 20px;
+        border-radius: 6px;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.1);
     }
-
-    .header-table td {
-        padding: 0;
-        vertical-align: bottom;
+    .panel-flex {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
     }
-
-    /* 屋号 */
-    .shop-name-label {
-        font-size: 13px;
-        color: #7f8c8d;
-        display: block;
-        margin-bottom: 4px;
+    .panel-cell.left {
+        flex: 1;
     }
-    .shop-name {
-        font-size: 32px;
+    .csv-input-wrapper {
+        margin-top: 8px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+    .csv-label {
+        background-color: #34495e;
+        border: 1px solid #5d6d7e;
+        padding: 6px 12px;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 12px;
         font-weight: bold;
-        color: #2c3e50;
-        line-height: 1.2;
-        min-height: 40px;
-        word-break: break-all;
     }
-
-    /* 担当者・買参人番号 */
-    .meta-info {
-        font-size: 13px;
-        color: #555555;
-        text-align: right;
-        line-height: 1.6;
-        width: 45%;
+    .csv-label:hover {
+        background-color: #4e5d6c;
     }
-    .meta-value {
+    #csv-file {
+        display: none;
+    }
+    .panel-actions-right {
+        display: flex;
+        align-items: center;
+    }
+    .btn-action {
+        color: white;
+        border: none;
+        padding: 12px 20px;
+        font-size: 14px;
         font-weight: bold;
-        color: #000;
-        border-bottom: 1px solid #7f8c8d;
-        display: inline-block;
-        min-width: 90px;
+        border-radius: 4px;
+        cursor: pointer;
+        margin-left: 10px;
+        white-space: nowrap;
+    }
+    .print-btn {
+        background-color: #2ecc71;
+        box-shadow: 0 3px 0 #27ae60;
+    }
+    .print-btn:hover {
+        background-color: #27ae60;
+        box-shadow: 0 2px 0 #219653;
+    }
+    .pdf-btn {
+        background-color: #e67e22;
+        box-shadow: 0 3px 0 #d35400;
+    }
+    .pdf-btn:hover {
+        background-color: #d35400;
+        box-shadow: 0 2px 0 #b33921;
+    }
+    .clear-btn {
+        background-color: #e74c3c;
+        box-shadow: 0 3px 0 #c0392b;
+    }
+    .clear-btn:hover {
+        background-color: #c0392b;
+        box-shadow: 0 2px 0 #962d22;
+    }
+    
+    /* 画面上での縮小表示用コンテナ */
+    .preview-wrapper {
+        width: 100%;
+        max-width: 1122px;
+        margin: 0 auto;
+    }
+}
+
+/* ポップアップモダールの標準スタイル（PC用） */
+.modal-overlay {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.6);
+    z-index: 9999;
+}
+.modal-content {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background-color: white;
+    padding: 25px;
+    border-radius: 8px;
+    width: 90%;
+    max-width: 500px;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+    color: #333;
+}
+.modal-header {
+    font-size: 18px;
+    font-weight: bold;
+    margin-bottom: 15px;
+    border-bottom: 2px solid #34495e;
+    padding-bottom: 8px;
+    color: #2c3e50;
+}
+.form-group {
+    margin-bottom: 15px;
+}
+.form-group label {
+    display: block;
+    font-size: 14px;
+    font-weight: bold;
+    margin-bottom: 5px;
+    color: #555;
+}
+.form-control {
+    width: 100%;
+    padding: 8px 10px;
+    font-size: 16px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+}
+.form-control:focus {
+    border-color: #3498db;
+    outline: none;
+}
+.modal-footer {
+    text-align: right;
+    margin-top: 20px;
+    border-top: 1px solid #eee;
+    padding-top: 15px;
+}
+.btn {
+    padding: 10px 20px;
+    font-size: 15px;
+    font-weight: bold;
+    border-radius: 4px;
+    cursor: pointer;
+    border: none;
+    margin-left: 10px;
+}
+.btn-close {
+    background-color: #95a5a6;
+    color: white;
+}
+.btn-save {
+    background-color: #3498db;
+    color: white;
+}
+/* コピーボタン専用のデザイン */
+.btn-copy {
+    background-color: #9b59b6;
+    color: white;
+    float: left;
+}
+.btn-copy:hover {
+    background-color: #8e44ad;
+}
+
+/* 📱 携帯（スマートフォン）画面のときの特別スタイル設定 */
+@media screen and (max-width: 768px) {
+    body {
+        padding: 10px;
+    }
+    .control-panel {
+        padding: 12px !important;
+        margin-bottom: 10px !important;
+    }
+    .panel-flex {
+        display: block !important;
+    }
+    .csv-input-wrapper {
+        margin-top: 10px;
+        justify-content: start;
+    }
+    .panel-actions-right {
+        margin-top: 15px;
+        display: block !important;
         text-align: center;
     }
-
-    /* メイン情報テーブル */
-    .main-table {
-        width: 100%;
-        border-collapse: collapse;
-        margin-top: 5px;
+    .btn-action {
+        display: block !important;
+        width: 100% !important;
+        padding: 14px 10px !important;
+        font-size: 15px !important;
+        margin: 0 0 10px 0 !important;
+        text-align: center;
+    }
+    
+    .preview-wrapper {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
     }
 
-    .main-table th, .main-table td {
-        border: 1px solid #bdc3c7;
-        padding: 8px 15px;
-        vertical-align: middle;
+    /* 📱 携帯画面用のポップアップ大画面化 */
+    .modal-overlay .modal-content {
+        width: 96% !important;
+        max-width: 100% !important;
+        height: 94% !important;
+        top: 3% !important;
+        left: 2% !important;
+        transform: none !important;
+        padding: 15px !important;
+        overflow-y: auto;
+        border-radius: 12px !important;
     }
-
-    .main-table th {
-        background-color: #f8f9fa;
-        color: #34495e;
-        font-size: 15px;
-        font-weight: bold;
-        width: 30%;
-        text-align: left;
+    .modal-header {
+        font-size: 18px !important;
+        margin-bottom: 12px !important;
     }
-
-    .main-table td {
-        font-size: 20px;
-        font-weight: bold;
-        color: #000000;
-        min-height: 35px;
-        word-break: break-all;
+    .form-group {
+        margin-bottom: 10px !important;
     }
-
-    /* 個口数表示エリア */
-    .koguchi-container {
-        margin-top: 10px;
-        text-align: left;
-        font-size: 15px;
-        font-weight: bold;
-        color: #34495e;
+    .form-group-half {
+        display: inline-block !important;
+        width: 48% !important;
     }
-    .koguchi-display {
-        font-size: 24px;
-        font-weight: bold;
-        color: #000000;
-        margin-left: 20px;
-        letter-spacing: 2px;
+    .form-group-half:first-of-type {
+        margin-right: 4% !important;
     }
-
-    /* 各用紙の右下に固定配置 */
-    .footer-signature {
-        position: absolute;
-        bottom: 12px;
-        right: 25px;
-        font-size: 12px;
-        color: #7f8c8d;
-        font-weight: 500;
+    .form-control {
+        padding: 12px 10px !important;
+        font-size: 16px !important;
+        color: #000;
     }
-
-    /* 印刷時の設定 */
-    @media print {
-        .no-print {
-            display: none !important;
-        }
-        body {
-            background-color: #fff;
-        }
+    .modal-footer {
+        margin-top: 15px !important;
+        padding-top: 10px !important;
+        text-align: center !important;
     }
-
-    /* 画面表示用の固定操作パネル */
-    @media screen {
-        body {
-            padding-top: 20px;
-            padding-bottom: 40px;
-        }
-        .control-panel {
-            width: 100%;
-            max-width: 1122px;
-            margin: 0 auto 15px auto;
-            background-color: #2c3e50;
-            color: white;
-            padding: 15px 20px;
-            border-radius: 6px;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-        }
-        .panel-flex {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-        .panel-cell.left {
-            flex: 1;
-        }
-        .csv-input-wrapper {
-            margin-top: 8px;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-        .csv-label {
-            background-color: #34495e;
-            border: 1px solid #5d6d7e;
-            padding: 6px 12px;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 12px;
-            font-weight: bold;
-        }
-        .csv-label:hover {
-            background-color: #4e5d6c;
-        }
-        #csv-file {
-            display: none;
-        }
-        .panel-actions-right {
-            display: flex;
-            align-items: center;
-        }
-        .btn-action {
-            color: white;
-            border: none;
-            padding: 12px 20px;
-            font-size: 14px;
-            font-weight: bold;
-            border-radius: 4px;
-            cursor: pointer;
-            margin-left: 10px;
-            white-space: nowrap;
-        }
-        .print-btn {
-            background-color: #2ecc71;
-            box-shadow: 0 3px 0 #27ae60;
-        }
-        .print-btn:hover {
-            background-color: #27ae60;
-            box-shadow: 0 2px 0 #219653;
-        }
-        .pdf-btn {
-            background-color: #e67e22;
-            box-shadow: 0 3px 0 #d35400;
-        }
-        .pdf-btn:hover {
-            background-color: #d35400;
-            box-shadow: 0 2px 0 #b33921;
-        }
-        .clear-btn {
-            background-color: #e74c3c;
-            box-shadow: 0 3px 0 #c0392b;
-        }
-        .clear-btn:hover {
-            background-color: #c0392b;
-            box-shadow: 0 2px 0 #962d22;
-        }
-        
-        /* 画面上での縮小表示用コンテナ */
-        .preview-wrapper {
-            width: 100%;
-            max-width: 1122px;
-            margin: 0 auto;
-        }
+    .modal-footer .btn {
+        width: 31%;
+        padding: 12px 5px !important;
+        font-size: 13px !important;
+        margin: 0 1% !important;
     }
-
-    /* 📱 携帯（スマートフォン）画面のときの特別スタイル設定 */
-    @media screen and (max-width: 768px) {
-        body {
-            padding: 10px;
-        }
-        .control-panel {
-            padding: 12px !important;
-            margin-bottom: 10px !important;
-        }
-        .panel-flex {
-            display: block !important;
-        }
-        .csv-input-wrapper {
-            margin-top: 10px;
-            justify-content: start;
-        }
-        .panel-actions-right {
-            margin-top: 15px;
-            display: block !important;
-            text-align: center;
-        }
-        .btn-action {
-            display: block !important;
-            width: 100% !important;
-            padding: 14px 10px !important;
-            font-size: 15px !important;
-            margin: 0 0 10px 0 !important;
-            text-align: center;
-        }
-        
-        .preview-wrapper {
-            overflow-x: auto;
-            -webkit-overflow-scrolling: touch;
-        }
-
-        /* 📱 携帯画面用のポップアップ大画面化 */
-        .modal-overlay .modal-content {
-            width: 96% !important;
-            max-width: 100% !important;
-            height: 94% !important;
-            top: 3% !important;
-            left: 2% !important;
-            transform: none !important;
-            padding: 15px !important;
-            overflow-y: auto;
-            border-radius: 12px !important;
-        }
-        .modal-header {
-            font-size: 18px !important;
-            margin-bottom: 12px !important;
-        }
-        .form-group {
-            margin-bottom: 10px !important;
-        }
-        .form-group-half {
-            display: inline-block !important;
-            width: 48% !important;
-        }
-        .form-group-half:first-of-type {
-            margin-right: 4% !important;
-        }
-        .form-control {
-            padding: 12px 10px !important;
-            font-size: 16px !important;
-            color: #000;
-        }
-        .modal-footer {
-            margin-top: 15px !important;
-            padding-top: 10px !important;
-            text-align: center !important;
-        }
-        .modal-footer .btn {
-            width: 31%;
-            padding: 12px 5px !important;
-            font-size: 13px !important;
-            margin: 0 1% !important;
-        }
-        .btn-copy {
-            float: none;
-        }
+    .btn-copy {
+        float: none;
     }
+}
 </style>
 </head>
 <body>
