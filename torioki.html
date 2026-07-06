@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>注文分取り置き表（A4内4分割A6横 - 最終不具合修正版）</title>
+<title>注文分取り置き表（A4内4分割A6横 - 白紙ページ完全防止版）</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 <style>
 /* ページ設定: A4用紙サイズ、余白なし */
@@ -812,6 +812,7 @@ body {
             `;
         }
 
+        // 🛠️ 変更点：html2pdfに対し、全体の要素ではなく、表が並んでいる「#print-area」だけをピンポイントで切り取るように指示
         function exportToPDF() {
             const element = document.getElementById('print-area');
             
@@ -824,7 +825,7 @@ body {
                     useCORS: true,
                     logging: false,
                     width: 1122,
-                    height: element.offsetHeight
+                    height: element.scrollHeight // 操作パネルを含まない、純粋な表だけの縦幅を厳密に計算
                 },
                 jsPDF:        { unit: 'mm', format: 'a4', orientation: 'landscape' },
                 pagebreak:    { mode: ['css', 'legacy'] }
