@@ -3,20 +3,78 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>商品価格チェッカー（爆速版）</title>
+  <title>商品価格チェッカー（iPhoneピント完全対策版）</title>
   <style>
     body { font-family: sans-serif; margin: 0; overflow: hidden; background: #000; }
-    #preview { width: 100vw; height: 60vh; position: relative; }
-    #preview video { width: 100%; height: 100%; object-fit: cover; }
-    .viewport { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
-                width: 70%; height: 20%; border: 2px solid #0f0; box-shadow: 0 0 0 2000px rgba(0,0,0,0.5); z-index: 10; }
-    .info-panel { height: 40vh; background: white; padding: 20px; text-align: center; border-top-left-radius: 20px; border-top-right-radius: 20px; position: relative; z-index: 20; }
+    
+    /* カメラ映像の親コンテナ（はみ出たビデオを隠す） */
+    #preview { 
+      width: 100vw; 
+      height: 60vh; 
+      position: relative; 
+      overflow: hidden; 
+    }
+    
+    /* 【iPhone対策①】ビデオ要素自体をCSSで1.5倍に拡大して表示（疑似デジタルズーム）
+       これにより、ユーザーが「近づけなくても大きく映る」状態を作ります */
+    #preview video { 
+      width: 100%; 
+      height: 100%; 
+      object-fit: cover; 
+      transform: scale(1.5); /* 1.5倍にズームアップ */
+      transform-origin: center center;
+    }
+    
+    /* 【iPhone対策②】スキャンエリアをさらに極細に（ユーザーを強制的に遠ざける） */
+    .viewport { 
+      position: absolute; 
+      top: 50%; 
+      left: 50%; 
+      transform: translate(-50%, -50%);
+      width: 80%;       /* 横幅は広く */
+      height: 8%;       /* 縦幅を限界まで細く（20% → 8%） */
+      border: 3px solid #0f0; 
+      box-shadow: 0 0 0 2000px rgba(0,0,0,0.65); /* 周囲をかなり暗くして枠を際立たせる */
+      z-index: 10; 
+    }
+    
+    /* ユーザーへの明確な物理的指示 */
+    .guide-text {
+      position: absolute;
+      bottom: -40px;
+      left: 50%;
+      transform: translateX(-50%);
+      color: #0f0;
+      font-size: 0.85rem;
+      font-weight: bold;
+      white-space: nowrap;
+      text-shadow: 2px 2px 3px #000;
+      background: rgba(0,0,0,0.6);
+      padding: 4px 12px;
+      border-radius: 10px;
+    }
+    
+    .info-panel { 
+      height: 40vh; 
+      background: white; 
+      padding: 20px; 
+      text-align: center; 
+      border-top-left-radius: 20px; 
+      border-top-right-radius: 20px; 
+      position: relative; 
+      z-index: 20; 
+      box-sizing: border-box; 
+    }
     #result { font-size: 1.2rem; font-weight: bold; color: #333; margin-top: 10px; }
     .loading-text { color: #f39c12; font-weight: bold; }
   </style>
 </head>
 <body>
-  <div id="preview"><div class="viewport"></div></div>
+  <div id="preview">
+    <div class="viewport">
+      <div class="guide-text">【ピント対策】20cmほど離して並行に合わせてください</div>
+    </div>
+  </div>
   <div class="info-panel">
     <div id="status" class="loading-text">データを読み込み中...</div>
     <div id="result">準備しています</div>
@@ -26,13 +84,11 @@
   <script>
     const resultDiv = document.getElementById('result');
     const statusDiv = document.getElementById('status');
-    // あなたのGASのURL（/execまで）
     const GAS_URL = "https://script.google.com/macros/s/AKfycbzWjmJZDeCqYzqLjVMTEvbVC9jpLLJHCtBr0_I7lP5J0PyDLXyq02Ht3kPmqV1NifV9/exec";
     
-    let productDatabase = []; // スマホ内に保存する商品リスト
+    let productDatabase = []; 
     let isLocked = false;
 
-    // 1. ページ読み込み時にGASから全データを一括取得
     async function loadDatabase() {
       try {
         const response = await fetch(GAS_URL);
@@ -43,7 +99,7 @@
         statusDiv.className = "";
         resultDiv.innerText = "スキャン待機中";
         
-        initScanner(); // データ取得完了後にカメラ起動
+        initScanner(); 
       } catch (err) {
         console.error(err);
         alert("データの取得に失敗しました。電波の良い場所で再試行してください。");
@@ -55,52 +111,86 @@
         inputStream: { 
           type: "LiveStream", 
           target: document.querySelector('#preview'),
-          constraints: { facingMode: "environment" }
+          constraints: { 
+            // iPhoneでの誤認識を防ぐためにHD解像度を指定
+            width: { min: 640, ideal: 1280, max: 1920 },
+            height: { min: 480, ideal: 720, max: 1080 },
+            facingMode: "environment"
+          }
         },
-        decoder: { readers: ["ean_reader"] }
+        // 映像を拡大しているため、検知エリア（locator）もやや狭めて計算不可を減らす
+        locator: {
+          patchSize: "medium",
+          halfSample: true
+        },
+        decoder: { 
+          readers: ["ean_reader"],
+          multiple: false // 1度のスキャンで1つだけ読む
+        }
       }, function(err) {
         if (err) { alert("カメラエラー: " + err.name); return; }
         
-        // iPhone/Safari強制再生対策
         const video = document.querySelector('#preview video');
         if (video) {
           video.setAttribute('playsinline', 'true');
           video.muted = true;
-          video.play();
+          video.play().catch(e => console.log("Play error:", e));
         }
         
         Quagga.start();
       });
     }
 
-    // 2. スキャン検知時の処理（スマホ内検索なので一瞬！）
     Quagga.onDetected(function(data) {
       if (isLocked) return;
+      
       const code = data.codeResult.code;
       if (code.length !== 13 && code.length !== 8) return;
 
-      // productDatabaseの中からJANコードが一致するものを探す
+      // 簡易的なチェックディジット（バーコードの整合性）簡易検証
+      // Quaggaの誤読（ピントがボケている時のデタラメな数字の読み取り）をフィルタリング
+      if (!isValidJAN(code)) return;
+
       const product = productDatabase.find(item => item.jan === code);
 
       isLocked = true;
       if (navigator.vibrate) navigator.vibrate(100);
 
       if (product) {
-        // 見つかった場合
         resultDiv.innerHTML = `<span style="color:blue;">${product.name}</span><br><span style="font-size:2rem;">¥${product.price}</span>`;
         statusDiv.innerText = "読み取り成功";
       } else {
-        // 見つからなかった場合
         resultDiv.innerHTML = `未登録<br><span style="color:red; font-size:1rem;">${code}</span>`;
         statusDiv.innerText = "データがありません";
       }
 
-      // 2秒後にロック解除（連続スキャン防止）
       setTimeout(() => {
         isLocked = false;
         statusDiv.innerText = "スキャンしてください";
       }, 2000);
     });
+
+    // JANコードの簡易チェックディジット検証（誤読防止）
+    function isValidJAN(code) {
+      if (code.length !== 13 && code.length !== 8) return false;
+      const digits = code.split('').map(Number);
+      const checkDigit = digits.pop();
+      
+      let sum = 0;
+      if (code.length === 13) {
+        // 13桁の検証
+        for (let i = 0; i < digits.length; i++) {
+          sum += (i % 2 === 0) ? digits[i] * 1 : digits[i] * 3;
+        }
+      } else {
+        // 8桁の検証
+        for (let i = 0; i < digits.length; i++) {
+          sum += (i % 2 === 0) ? digits[i] * 3 : digits[i] * 1;
+        }
+      }
+      const calculated = (10 - (sum % 10)) % 10;
+      return checkDigit === calculated;
+    }
 
     window.onload = loadDatabase;
   </script>
