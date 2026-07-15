@@ -1,359 +1,198 @@
 <!DOCTYPE html>
-<html lang="ja">
+<html>
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>名古屋花き商事本部受注アプリ</title>
-    <script charset="utf-8" src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
-    <style>
-     body { font-family: sans-serif; padding: 15px; background-color: #f4f4f4; }
-        .container { max-width: 500px; margin: 0 auto; background: white; padding: 20px; border-radius: 12px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
-        h2 { font-size: 20px; text-align: center; color: #2c3e50; margin-bottom: 20px; }
-        
-        /* 注文内容の見出しを送信ボタンと同じ緑に変更 */
-        h3 { color: #28a745; border-left: 5px solid #28a745; padding-left: 10px; }
-
-        .input-group { margin-bottom: 15px; }
-        label { display: block; font-weight: bold; margin-bottom: 5px; font-size: 14px; }
-        select, input, textarea { width: 100%; padding: 10px; box-sizing: border-box; border: 1px solid #ddd; border-radius: 6px; font-size: 16px; }
-        .item-card { background: #fdfdfd; padding: 15px; border: 1px solid #e0e0e0; border-radius: 8px; margin-bottom: 15px; position: relative; }
-        .item-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; border-bottom: 1px solid #eee; padding-bottom: 5px; }
-        
-        /* 「商品」ラベルを黒（kuro）に変更 */
-        .item-label { font-weight: bold; color: #000; }
-
-        .remove-btn { background: #ff4d4d; color: white; border: none; padding: 4px 10px; border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: bold; }
-        
-        /* 「商品を追加する」ボタンをグレーに変更 */
-        .add-btn { background: #888; color: white; border: none; padding: 12px; border-radius: 6px; cursor: pointer; width: 100%; font-weight: bold; margin-bottom: 20px; }
-        
-        #sendBtn { width: 100%; padding: 15px; background: #28a745; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 18px; font-weight: bold; }
-        .loading { display: none; text-align: center; margin-top: 10px; font-weight: bold; }
-        .save-info { font-size: 11px; color: #666; margin-top: 5px; }
-        
-        /* ユーザー名を黒（kuro）に変更 */
-        #userInfo { font-size: 12px; color: #000; text-align: right; margin-bottom: 10px; font-weight: bold; }
-        
-        /* 履歴セクションのスタイル（グレーに変更） */
-        .history-section { display: none; margin-bottom: 20px; border: 1px solid #999; border-radius: 8px; overflow: hidden; }
-        .history-header { background: #777; color: white; padding: 8px; font-size: 14px; font-weight: bold; }
-        .history-list { max-height: 200px; overflow-y: auto; background: #fff; }
-        .history-item { padding: 10px; border-bottom: 1px solid #eee; font-size: 13px; cursor: pointer; }
-        .history-item:hover { background: #f5f5f5; }
-        .history-date { color: #888; font-size: 11px; }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>商品価格チェッカー（iPhoneピント完全対策版）</title>
+  <style>
+    body { font-family: sans-serif; margin: 0; overflow: hidden; background: #000; }
+    
+    /* カメラ映像の親コンテナ（はみ出たビデオを隠す） */
+    #preview { 
+      width: 100vw; 
+      height: 60vh; 
+      position: relative; 
+      overflow: hidden; 
+    }
+    
+    /* 【iPhone対策①】ビデオ要素自体をCSSで1.5倍に拡大して表示（疑似デジタルズーム）
+       これにより、ユーザーが「近づけなくても大きく映る」状態を作ります */
+    #preview video { 
+      width: 100%; 
+      height: 100%; 
+      object-fit: cover; 
+      transform: scale(1.5); /* 1.5倍にズームアップ */
+      transform-origin: center center;
+    }
+    
+    /* 【iPhone対策②】スキャンエリアをさらに極細に（ユーザーを強制的に遠ざける） */
+    .viewport { 
+      position: absolute; 
+      top: 50%; 
+      left: 50%; 
+      transform: translate(-50%, -50%);
+      width: 80%;       /* 横幅は広く */
+      height: 8%;       /* 縦幅を限界まで細く（20% → 8%） */
+      border: 3px solid #0f0; 
+      box-shadow: 0 0 0 2000px rgba(0,0,0,0.65); /* 周囲をかなり暗くして枠を際立たせる */
+      z-index: 10; 
+    }
+    
+    /* ユーザーへの明確な物理的指示 */
+    .guide-text {
+      position: absolute;
+      bottom: -40px;
+      left: 50%;
+      transform: translateX(-50%);
+      color: #0f0;
+      font-size: 0.85rem;
+      font-weight: bold;
+      white-space: nowrap;
+      text-shadow: 2px 2px 3px #000;
+      background: rgba(0,0,0,0.6);
+      padding: 4px 12px;
+      border-radius: 10px;
+    }
+    
+    .info-panel { 
+      height: 40vh; 
+      background: white; 
+      padding: 20px; 
+      text-align: center; 
+      border-top-left-radius: 20px; 
+      border-top-right-radius: 20px; 
+      position: relative; 
+      z-index: 20; 
+      box-sizing: border-box; 
+    }
+    #result { font-size: 1.2rem; font-weight: bold; color: #333; margin-top: 10px; }
+    .loading-text { color: #f39c12; font-weight: bold; }
+  </style>
 </head>
 <body>
-
-<div class="container">
-    <h2>名古屋花き商事本部注文フォーム</h2>
-    <div id="userInfo">LIFF初期化中...</div>
-
-    <div id="historySection" class="history-section">
-        <div class="history-header">過去の注文履歴 (タップで再注文)</div>
-        <div id="historyList" class="history-list">
-            <div style="padding:10px;">履歴を読み込んでいます...</div>
-        </div>
+  <div id="preview">
+    <div class="viewport">
+      <div class="guide-text">【ピント対策】20cmほど離して並行に合わせてください</div>
     </div>
+  </div>
+  <div class="info-panel">
+    <div id="status" class="loading-text">データを読み込み中...</div>
+    <div id="result">準備しています</div>
+  </div>
 
-    <div class="input-group">
-        <label>店名</label>
-        <input type="text" id="storeName" placeholder="必須入力">
-    </div>
-    <div class="input-group">
-        <label>メールアドレス</label>
-        <input type="email" id="email" placeholder="控え送信先">
-        <p class="save-info">※店名とメールは自動で保存されます</p>
-    </div>
-
-    <hr>
-    <h3>注文内容</h3>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/quagga/0.12.1/quagga.min.js"></script>
+  <script>
+    const resultDiv = document.getElementById('result');
+    const statusDiv = document.getElementById('status');
+    const GAS_URL = "https://script.google.com/macros/s/AKfycbzWjmJZDeCqYzqLjVMTEvbVC9jpLLJHCtBr0_I7lP5J0PyDLXyq02Ht3kPmqV1NifV9/exec";
     
-    <div id="itemContainer">
-        <div class="item-card">
-            <div class="item-header">
-                <span class="item-label">商品</span>
-            </div>
-            <div class="input-group">
-                <label>五十音インデックス</label>
-                <select class="category-select" onchange="updateMakerOptions(this)">
-                    <option value="">▼ 行を選択</option>
-                    <option value="あ">あ行</option>
-                    <option value="か">か行</option>
-                    <option value="さ">さ行</option>
-                    <option value="た">た行</option>
-                    <option value="な">な行</option>
-                    <option value="は">は行</option>
-                    <option value="ま">ま行</option>
-                    <option value="や">や行</option>
-                    <option value="ら">ら行</option>
-                    <option value="わ">わ行</option>
-                    <option value="その他">その他</option>
-                </select>
-            </div>
-            <div class="input-group">
-                <label>メーカー</label>
-                <select class="maker-select">
-                    <option value="">行を選んでください</option>
-                </select>
-            </div>
-            <div class="input-group">
-                <label>品番 / 数量</label>
-                <input type="text" class="partNo-input" placeholder="品番">
-                <input type="number" class="quantity-input" value="1" min="1" style="margin-top:5px;">
-            </div>
-        </div>
-    </div>
+    let productDatabase = []; 
+    let isLocked = false;
 
-    <button type="button" class="add-btn" onclick="addNewItem()">＋ 商品を追加する</button>
-
-    <div class="input-group">
-        <label>画像添付1</label>
-        <input type="file" id="imageFile1" accept="image/*">
-    </div>
-    <div class="input-group">
-        <label>画像添付2</label>
-        <input type="file" id="imageFile2" accept="image/*">
-    </div>
-
-    <div class="input-group">
-        <label>備考</label>
-        <textarea id="comments" rows="3"></textarea>
-    </div>
-
-    <button id="sendBtn" onclick="sendOrder()">注文を送信する</button>
-    <div id="loadingMsg" class="loading">送信中（画像圧縮含む）...</div>
-</div>
-
-<script>
-    const gasUrl = "https://script.google.com/macros/s/AKfycbzrZKgDbc9afKdxgr2WbS63zdp60_ZK7xQchz87O9gg0NoxfzeScQHvC0tu1OeER2E8/exec";
-    let currentUserProfile = null;
-
-    const allMakers = [
-        "あいはらぼうえき:アイハラ貿易（ポリラフィア)", "あすかしょうかい:アスカ商会", "あずわん:アズワン（試験管）", 
-        "あもろーさ:アモローサ", "あむーるでふるーる:アムールデフルール", "あんこーぽれーしょん:アンコーポレーション", 
-        "あーてぃふぃしゃる:アーティフィシャル", "あおやまりぼん:青山リボン", "あさひわいやー:朝日ワイヤー", "べるで:ヴェルデ",
-        "おおちのうえん:大地農園", "おおぐちさんぎょう:大口産業", "だいてつ:大鉄", "だいどうくらふと:大同クラフト", "いんたーりんく:インターリンク",
-        "だいせん:大仙", "うぉるなっと:ウォルナット", "えこぜりー:エコゼリー", "えるこみゅーん:エルコミューン", "えすあーるさーびす:SRサービス(デコジャリ）",
-        "えいちつーおー:エイチツーオー", "かめやまきゃンドる:カメヤマキャンドル", "かるなっく:カルナック", "きゅーふら:Q-FLA",
-        "くれい:クレイ", "くりざーる:クリザール", "くれえ:クレエ", "ぐりーんはうす:グリーンハウス", "きゃびのちぇ:キャビノチェ",
-        "ぐりーんぽっと:グリーンポット", "ぐろーばるあろー:グローバルアロー", "こあとれーでぃんぐ:コアトレーディング", 
-        "こべんとがーでん:コベントガーデン", "さかげん:坂源", "さんわとれーでぃんぐ:三和トレーディング", 
-        "しもじま:シモジマ", "しせいはんぱい:志成販売", "すみざーずおあしす:スミザーズオアシス", 
-        "とやまはもの:外山刃物", "たなかとうき:田中陶器", "だるとん:ダルトン", "でるき:デルキ",
-        "とうきょうりぼん:東京リボン", "とうきょうかんかん:東京かんかん", "とすだいす:TOSSDICE", "だんぼーる:段ボール",
-        "とうきょうどう:東京堂", "とーく:トーク", "どりーむふぁーむすずか:ドリームファームスズカ", "とうか:東花", "とうほうぼうえき:東方貿易",
-        "ねいちゃーでざいんず:ネイチャーデザインズ", "ぱれすかがく:パレス化学", "ぱれ:パレ", "ぽっしゅりびんぐ:ポッシュリビング",
-        "ふぁーむ:FARM", "はなりんくす:花Links", "ふろーネット:flonet", "ほわいえ:ホワイエ", "はなのそのくぼた:花のそのくぼた",
-        "ふろーるえばー:フロールエバー", "ふらわーべーす:フラワーベース", "ぷらすがーでん:プラスガーデン", 
-        "ぼぶくらふと:ボブクラフト", "まつむらこうげい:松村工芸", "ほしの:星野",
-        "まぐねっと:マグネット", "まるこうせいとう:丸滉製陶", "まるまひらのとうきてん:丸又平野陶器店", 
-        "まるわぼうえき:丸和貿易", "みゅーるみる:ミュールミル", "むらたやさんぎょう:村田屋産業", 
-        "ものいんたーなしょなる:モノ・インターナショナル", "やまてー:ヤマテー", "やーど:yard", "ゆうぜん:友膳",
-        "よこはまでぃすぷれいみゅーじあむ:横浜ディスプレイミュージアム", "ららいわんと:ラライワント", "りぶきゅりえいと:Lib curate", 
-        "りーどしょうじ:リード商事", "わさら:WASARA", "わんだーぞーん:ワンダーゾーン", "わこうかがく:和光化学"
-    ];
-
-    function getKanaRow(kana) {
-        const first = kana.charAt(0);
-        if (/[あ-お]/.test(first)) return "あ";
-        if (/[か-こが-ご]/.test(first)) return "か";
-        if (/[さ-そざ-ぞ]/.test(first)) return "さ";
-        if (/[た-とだ-ど]/.test(first)) return "た";
-        if (/[な-の]/.test(first)) return "な";
-        if (/[は-ほば-ぼぱ-ぽ]/.test(first)) return "は";
-        if (/[ま-も]/.test(first)) return "ま";
-        if (/[や-よ]/.test(first)) return "や";
-        if (/[ら-ろ]/.test(first)) return "ら";
-        if (/[わ-ん]/.test(first)) return "わ";
-        return "その他";
-    }
-
-    function updateMakerOptions(catSelect) {
-        const row = catSelect.value;
-        const makerSelect = catSelect.closest('.item-card').querySelector('.maker-select');
-        makerSelect.innerHTML = '<option value="">選択してください</option>';
-        if (row === "その他") {
-            makerSelect.innerHTML = '<option value="備考に記入">備考に記入してください</option>';
-            return;
-        }
-        if (!row) {
-            makerSelect.innerHTML = '<option value="">行を選んでください</option>';
-            return;
-        }
-        const filtered = allMakers.filter(item => getKanaRow(item.split(':')[0]) === row);
-        filtered.forEach(item => {
-            const name = item.split(':')[1];
-            const opt = document.createElement('option');
-            opt.value = opt.textContent = name;
-            makerSelect.appendChild(opt);
-        });
-    }
-
-    // 履歴を読み込む関数
-    async function loadHistory(userId) {
-        const historySection = document.getElementById('historySection');
-        const historyList = document.getElementById('historyList');
-        historySection.style.display = 'block';
-
-        try {
-            const response = await fetch(`${gasUrl}?userId=${userId}`);
-            const history = await response.json();
-
-            if (history.length === 0) {
-                historyList.innerHTML = '<div style="padding:10px;">過去の注文履歴はありません。</div>';
-                return;
-            }
-
-            historyList.innerHTML = history.map(h => `
-                <div class="history-item" onclick="applyHistory('${h.maker}', '${h.partNo}', '${h.quantity}')">
-                    <span class="history-date">${h.date}</span><br>
-                    <strong>${h.maker}</strong> / ${h.partNo} (数量: ${h.quantity})
-                </div>
-            `).join('');
-        } catch (e) {
-            historyList.innerHTML = '<div style="padding:10px; color:red;">履歴の取得に失敗しました。</div>';
-        }
-    }
-
-    // 履歴をフォームに反映する関数
-    function applyHistory(maker, partNo, quantity) {
-        if (!confirm(`${maker} の再注文をフォームに追加しますか？`)) return;
-        addNewItemWithData(maker, partNo, quantity);
-    }
-
-    async function initLiff() {
-        try {
-            await liff.init({ liffId: "2008835052-zCjbE0pV" }); 
-            if (liff.isLoggedIn()) {
-                currentUserProfile = await liff.getProfile();
-                document.getElementById('userInfo').textContent = "ユーザー: " + currentUserProfile.displayName;
-                // 履歴の読み込みを実行
-                loadHistory(currentUserProfile.userId);
-            } else {
-                liff.login();
-            }
-        } catch (error) { console.error(error); }
-    }
-
-    window.onload = function() {
-        initLiff();
-        if (localStorage.getItem('storeName')) document.getElementById('storeName').value = localStorage.getItem('storeName');
-        if (localStorage.getItem('email')) document.getElementById('email').value = localStorage.getItem('email');
-    };
-
-    function addNewItem() {
-        const container = document.getElementById('itemContainer');
-        const firstCard = container.querySelector('.item-card');
-        const newCard = firstCard.cloneNode(true);
-        newCard.querySelector('.item-header').innerHTML = '<span class="item-label">追加商品</span><button type="button" class="remove-btn" onclick="this.closest(\'.item-card\').remove()">削除</button>';
-        newCard.querySelectorAll('input').forEach(i => i.value = (i.type === 'number' ? 1 : ''));
-        newCard.querySelector('.maker-select').innerHTML = '<option value="">行を選んでください</option>';
-        newCard.querySelector('.category-select').value = "";
-        container.appendChild(newCard);
-    }
-
-    // データを指定して商品を追加する（履歴用）
-    function addNewItemWithData(maker, partNo, quantity) {
-        const container = document.getElementById('itemContainer');
-        const cards = container.querySelectorAll('.item-card');
+    async function loadDatabase() {
+      try {
+        const response = await fetch(GAS_URL);
+        if (!response.ok) throw new Error("Network error");
+        productDatabase = await response.json();
         
-        // 1件目かつ未入力の場合は1件目を上書き、そうでなければ新規追加
-        let targetCard;
-        if (cards.length === 1 && !cards[0].querySelector('.partNo-input').value) {
-            targetCard = cards[0];
-        } else {
-            addNewItem();
-            const updatedCards = container.querySelectorAll('.item-card');
-            targetCard = updatedCards[updatedCards.length - 1];
-        }
-
-        // 直接値をセット
-        targetCard.querySelector('.category-select').value = "その他";
-        const makerSelect = targetCard.querySelector('.maker-select');
-        makerSelect.innerHTML = `<option value="${maker}">${maker}</option>`;
-        targetCard.querySelector('.partNo-input').value = partNo;
-        targetCard.querySelector('.quantity-input').value = quantity;
+        statusDiv.innerText = "同期完了";
+        statusDiv.className = "";
+        resultDiv.innerText = "スキャン待機中";
+        
+        initScanner(); 
+      } catch (err) {
+        console.error(err);
+        alert("データの取得に失敗しました。電波の良い場所で再試行してください。");
+      }
     }
 
-    const getResizedBase64 = (file) => new Promise((resolve) => {
-        const reader = new FileReader();
-        reader.readAsDataURL(file);
-        reader.onload = (event) => {
-            const img = new Image();
-            img.src = event.target.result;
-            img.onload = () => {
-                const canvas = document.createElement('canvas');
-                const MAX_WIDTH = 1000;
-                let width = img.width;
-                let height = img.height;
-                if (width > MAX_WIDTH) { height *= MAX_WIDTH / width; width = MAX_WIDTH; }
-                canvas.width = width;
-                canvas.height = height;
-                const ctx = canvas.getContext('2d');
-                ctx.drawImage(img, 0, 0, width, height);
-                const base64 = canvas.toDataURL('image/jpeg', 0.7);
-                resolve({ data: base64.split(',')[1], type: 'image/jpeg' });
-            };
-        };
+    function initScanner() {
+      Quagga.init({
+        inputStream: { 
+          type: "LiveStream", 
+          target: document.querySelector('#preview'),
+          constraints: { 
+            // iPhoneでの誤認識を防ぐためにHD解像度を指定
+            width: { min: 640, ideal: 1280, max: 1920 },
+            height: { min: 480, ideal: 720, max: 1080 },
+            facingMode: "environment"
+          }
+        },
+        // 映像を拡大しているため、検知エリア（locator）もやや狭めて計算不可を減らす
+        locator: {
+          patchSize: "medium",
+          halfSample: true
+        },
+        decoder: { 
+          readers: ["ean_reader"],
+          multiple: false // 1度のスキャンで1つだけ読む
+        }
+      }, function(err) {
+        if (err) { alert("カメラエラー: " + err.name); return; }
+        
+        const video = document.querySelector('#preview video');
+        if (video) {
+          video.setAttribute('playsinline', 'true');
+          video.muted = true;
+          video.play().catch(e => console.log("Play error:", e));
+        }
+        
+        Quagga.start();
+      });
+    }
+
+    Quagga.onDetected(function(data) {
+      if (isLocked) return;
+      
+      const code = data.codeResult.code;
+      if (code.length !== 13 && code.length !== 8) return;
+
+      // 簡易的なチェックディジット（バーコードの整合性）簡易検証
+      // Quaggaの誤読（ピントがボケている時のデタラメな数字の読み取り）をフィルタリング
+      if (!isValidJAN(code)) return;
+
+      const product = productDatabase.find(item => item.jan === code);
+
+      isLocked = true;
+      if (navigator.vibrate) navigator.vibrate(100);
+
+      if (product) {
+        resultDiv.innerHTML = `<span style="color:blue;">${product.name}</span><br><span style="font-size:2rem;">¥${product.price}</span>`;
+        statusDiv.innerText = "読み取り成功";
+      } else {
+        resultDiv.innerHTML = `未登録<br><span style="color:red; font-size:1rem;">${code}</span>`;
+        statusDiv.innerText = "データがありません";
+      }
+
+      setTimeout(() => {
+        isLocked = false;
+        statusDiv.innerText = "スキャンしてください";
+      }, 2000);
     });
 
-    async function sendOrder() {
-        const btn = document.getElementById('sendBtn');
-        const storeName = document.getElementById('storeName').value;
-        const email = document.getElementById('email').value;
-        if (!storeName) { alert('店名を入れてください'); return; }
-
-        const items = [];
-        document.querySelectorAll('.item-card').forEach(card => {
-            const m = card.querySelector('.maker-select').value;
-            if (m) items.push({ maker: m, partNo: card.querySelector('.partNo-input').value, quantity: card.querySelector('.quantity-input').value });
-        });
-
-        if (items.length === 0 && !document.getElementById('imageFile1').files.length) { 
-            alert('注文内容を入力するか画像を添付してください'); return; 
+    // JANコードの簡易チェックディジット検証（誤読防止）
+    function isValidJAN(code) {
+      if (code.length !== 13 && code.length !== 8) return false;
+      const digits = code.split('').map(Number);
+      const checkDigit = digits.pop();
+      
+      let sum = 0;
+      if (code.length === 13) {
+        // 13桁の検証
+        for (let i = 0; i < digits.length; i++) {
+          sum += (i % 2 === 0) ? digits[i] * 1 : digits[i] * 3;
         }
-
-        btn.disabled = true;
-        document.getElementById('loadingMsg').style.display = 'block';
-        localStorage.setItem('storeName', storeName);
-        localStorage.setItem('email', email);
-
-        try {
-            let imageData1 = null;
-            let imageData2 = null;
-            const file1 = document.getElementById('imageFile1').files[0];
-            if (file1) imageData1 = await getResizedBase64(file1);
-            const file2 = document.getElementById('imageFile2').files[0];
-            if (file2) imageData2 = await getResizedBase64(file2);
-
-            const response = await fetch(gasUrl, {
-                method: 'POST',
-                body: JSON.stringify({
-                    storeName: storeName,
-                    email: email,
-                    items: items,
-                    comments: document.getElementById('comments').value,
-                    imageFile1: imageData1,
-                    imageFile2: imageData2,
-                    userId: currentUserProfile ? currentUserProfile.userId : "anonymous" // ★userIdを送信
-                })
-            });
-            
-            const res = await response.json();
-            if (res.status === 'success') { 
-                alert(res.message || '注文完了しました！'); 
-                liff.closeWindow(); 
-            } else {
-                alert('サーバーエラー: ' + res.message);
-            }
-        } catch (e) { 
-            alert('送信エラーが発生しました。通信環境を確認してください。'); 
-        } finally {
-            btn.disabled = false;
-            document.getElementById('loadingMsg').style.display = 'none';
+      } else {
+        // 8桁の検証
+        for (let i = 0; i < digits.length; i++) {
+          sum += (i % 2 === 0) ? digits[i] * 3 : digits[i] * 1;
         }
+      }
+      const calculated = (10 - (sum % 10)) % 10;
+      return checkDigit === calculated;
     }
-</script>
+
+    window.onload = loadDatabase;
+  </script>
 </body>
 </html>
