@@ -1,0 +1,571 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>ワクワク マス計算</title>
+    <style>
+        :root {
+            --bg-color: #f7f9fc;
+            --panel-color: #ffffff;
+            --primary-color: #ff7675;
+            --secondary-color: #74b9ff;
+            --accent-color: #ffeaa7;
+            --text-color: #2d3436;
+            --border-color: #dfe6e9;
+        }
+
+        * {
+            box-sizing: border-box;
+            touch-action: manipulation;
+        }
+
+        body {
+            font-family: 'Helvetica Neue', Arial, 'Hiragino Kaku Gothic ProN', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            padding: 10px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding-bottom: 240px; /* テンキー用の余白 */
+        }
+
+        h1 {
+            font-size: 20px;
+            color: #4a4a4a;
+            margin: 5px 0 10px 0;
+            text-shadow: 1px 1px 0px white;
+        }
+
+        /* 設定パネル */
+        .config-panel {
+            background: var(--panel-color);
+            padding: 10px 15px;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+            margin-bottom: 15px;
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            justify-content: center;
+            align-items: center;
+            width: 100%;
+            max-width: 500px;
+        }
+
+        .config-group {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            font-size: 14px;
+        }
+
+        select, button {
+            font-size: 14px;
+            padding: 6px 12px;
+            border-radius: 8px;
+            border: 2px solid var(--border-color);
+            background: white;
+            cursor: pointer;
+        }
+
+        .btn-start {
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            font-weight: bold;
+            box-shadow: 0 3px 0 #d63031;
+        }
+
+        .btn-start:active {
+            transform: translateY(3px);
+            box-shadow: none;
+        }
+
+        /* ダッシュボード */
+        .dashboard {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 15px;
+            font-size: 16px;
+            font-weight: bold;
+        }
+
+        .timer-display {
+            background: #ffeaa7;
+            padding: 5px 12px;
+            border-radius: 20px;
+            color: #d63031;
+        }
+
+        .best-display {
+            background: #dff9fb;
+            padding: 5px 12px;
+            border-radius: 20px;
+            color: #0984e3;
+        }
+
+        /* 計算グリッドのコンテナ */
+        .grid-container {
+            overflow-x: auto;
+            width: 100%;
+            max-width: 500px;
+            background: var(--panel-color);
+            padding: 8px;
+            border-radius: 12px;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.05);
+            -webkit-overflow-scrolling: touch;
+        }
+
+        .calculation-grid {
+            display: grid;
+            gap: 3px;
+            margin: 0 auto;
+            width: max-content;
+        }
+
+        .cell {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 42px;
+            height: 42px;
+            font-size: 15px;
+            font-weight: bold;
+            border-radius: 4px;
+            background-color: #f1f2f6;
+            user-select: none;
+        }
+
+        .cell.operator {
+            background-color: var(--primary-color);
+            color: white;
+            font-size: 18px;
+        }
+
+        .cell.header-row {
+            background-color: #ffeaa7;
+            color: #2d3436;
+        }
+
+        .cell.header-col {
+            background-color: #74b9ff;
+            color: white;
+        }
+
+        .cell.input-cell {
+            background-color: white;
+            border: 2px solid var(--border-color);
+        }
+
+        .cell.input-cell.active-cell {
+            border-color: #74b9ff;
+            background-color: #74b9ff20;
+        }
+
+        .cell.correct {
+            background-color: #2ed57320;
+            border-color: #2ed573;
+        }
+        
+        .cell.correct .val-text {
+            color: #2ed573;
+        }
+
+        /* 固定型デジタルテンキー */
+        .tenkey-container {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            background: #e2e8f0;
+            padding: 12px 10px 24px 10px;
+            box-shadow: 0 -4px 10px rgba(0,0,0,0.1);
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 8px;
+            z-index: 90;
+        }
+
+        .key-btn {
+            background: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 22px;
+            font-weight: bold;
+            color: var(--text-color);
+            padding: 15px 0;
+            box-shadow: 0 3px 0 #cbd5e1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .key-btn:active {
+            background: #f1f5f9;
+            transform: translateY(3px);
+            box-shadow: none;
+        }
+
+        .key-btn.action-btn {
+            background: #94a3b8;
+            color: white;
+            box-shadow: 0 3px 0 #64748b;
+            font-size: 16px;
+        }
+        .key-btn.action-btn:active {
+            background: #64748b;
+        }
+
+        /* 結果モーダル */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.5);
+            align-items: center;
+            justify-content: center;
+            z-index: 100;
+        }
+
+        .modal-content {
+            background: white;
+            padding: 30px;
+            border-radius: 20px;
+            text-align: center;
+            width: 85%;
+            max-width: 360px;
+        }
+
+        .stars {
+            font-size: 40px;
+            margin: 15px 0;
+            color: #f1c40f;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>ワクワク マス計算</h1>
+
+    <div class="config-panel">
+        <div class="config-group">
+            <label>レベル:</label>
+            <select id="size-select" onchange="changeLevel()">
+                <option value="10">10 × 10 (むずかしい)</option>
+                <option value="7">7 × 7 (ふつう)</option>
+                <option value="5">5 × 5 (すこしやさしい)</option>
+                <option value="3">3 × 3 (やさしい)</option>
+                <option value="2">2 × 2 (かんたん)</option>
+            </select>
+        </div>
+        <div class="config-group">
+            <label>けいさん:</label>
+            <select id="type-select" onchange="changeLevel()">
+                <option value="+">たし算 (+)</option>
+                <option value="-">ひき算 (-)</option>
+                <option value="*">かけ算 (×)</option>
+            </select>
+        </div>
+        <button class="btn-start" onclick="startGame()">スタート！</button>
+    </div>
+
+    <div class="dashboard">
+        <div class="timer-display">タイム: <span id="timer">00:00</span></div>
+        <div class="best-display">じこベスト: <span id="best-time">--:--</span></div>
+    </div>
+
+    <div class="grid-container">
+        <div class="calculation-grid" id="grid"></div>
+    </div>
+
+    <!-- テンキーボード -->
+    <div class="tenkey-container">
+        <button class="key-btn" onclick="pressKey('1')">1</button>
+        <button class="key-btn" onclick="pressKey('2')">2</button>
+        <button class="key-btn" onclick="pressKey('3')">3</button>
+        <button class="key-btn action-btn" onclick="pressKey('clear')">けす</button>
+        
+        <button class="key-btn" onclick="pressKey('4')">4</button>
+        <button class="key-btn" onclick="pressKey('5')">5</button>
+        <button class="key-btn" onclick="pressKey('6')">6</button>
+        <button class="key-btn action-btn" onclick="moveActiveCell(-1)">◀ もどる</button>
+        
+        <button class="key-btn" onclick="pressKey('7')">7</button>
+        <button class="key-btn" onclick="pressKey('8')">8</button>
+        <button class="key-btn" onclick="pressKey('9')">9</button>
+        <button class="key-btn action-btn" onclick="moveActiveCell(1)">すすむ ▶</button>
+        
+        <button class="key-btn" style="grid-column: span 3;" onclick="pressKey('0')">0</button>
+        <button class="key-btn action-btn" onclick="pressKey('minus')" id="minus-btn" style="display:none;">-</button>
+    </div>
+
+    <!-- 結果モーダル -->
+    <div class="modal" id="result-modal">
+        <div class="modal-content">
+            <h2>クリア！！</h2>
+            <div class="stars" id="star-rating">⭐⭐⭐</div>
+            <p id="result-text">タイム: 00:00</p>
+            <button onclick="closeModal()" style="background:var(--secondary-color); color:white; border:none; padding:10px 20px; font-weight:bold; border-radius:8px;">もういちど遊ぶ</button>
+        </div>
+    </div>
+
+    <script>
+        let timerInterval;
+        let elapsedSeconds = 0;
+        let currentType = '+';
+        let gridSize = 10; // デフォルトの選択サイズ
+        let rowNumbers = [];
+        let colNumbers = [];
+        let activeRow = 0;
+        let activeCol = 0;
+        let isPlaying = false;
+
+        function getBestTimeKey() {
+            return `best_time_sz${gridSize}_${currentType}`;
+        }
+
+        function updateBestTimeDisplay() {
+            const best = localStorage.getItem(getBestTimeKey());
+            document.getElementById('best-time').innerText = best ? formatTime(parseInt(best)) : '--:--';
+        }
+
+        // レベルに応じた数だけのランダム数字を生成 (0〜9)
+        function generateRandomNumbers(size) {
+            const pool = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9];
+            // シャッフル
+            for (let i = pool.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [pool[i], pool[j]] = [pool[j], pool[i]];
+            }
+            // 必要なサイズ分だけ切り取る
+            return pool.slice(0, size);
+        }
+
+        function changeLevel() {
+            if(isPlaying) {
+                clearInterval(timerInterval);
+                isPlaying = false;
+            }
+            gridSize = parseInt(document.getElementById('size-select').value);
+            currentType = document.getElementById('type-select').value;
+            document.getElementById('timer').innerText = "00:00";
+            updateBestTimeDisplay();
+            initGrid();
+        }
+
+        function initGrid() {
+            const grid = document.getElementById('grid');
+            grid.innerHTML = '';
+            
+            // CSSの列数を動的に変更 (数字列 + ヘッダー列の分で +1)
+            grid.style.gridTemplateColumns = `repeat(${gridSize + 1}, 42px)`;
+            
+            // マイナスボタンの表示制御
+            document.getElementById('minus-btn').style.display = currentType === '-' ? 'block' : 'none';
+
+            // 左上演算子
+            const opCell = document.createElement('div');
+            opCell.className = 'cell operator';
+            opCell.innerText = currentType === '*' ? '×' : currentType;
+            grid.appendChild(opCell);
+
+            // 上の行の数字
+            colNumbers = generateRandomNumbers(gridSize);
+            colNumbers.forEach(num => {
+                const cell = document.createElement('div');
+                cell.className = 'cell header-row';
+                cell.innerText = num;
+                grid.appendChild(cell);
+            });
+
+            // 行の生成
+            rowNumbers = generateRandomNumbers(gridSize);
+            for (let r = 0; r < gridSize; r++) {
+                const rowHeader = document.createElement('div');
+                rowHeader.className = 'cell header-col';
+                rowHeader.innerText = rowNumbers[r];
+                grid.appendChild(rowHeader);
+
+                for (let c = 0; c < gridSize; c++) {
+                    const inputCell = document.createElement('div');
+                    inputCell.className = 'cell input-cell';
+                    inputCell.id = `cell-${r}-${c}`;
+                    
+                    const valText = document.createElement('span');
+                    valText.className = 'val-text';
+                    valText.innerText = '';
+                    
+                    inputCell.appendChild(valText);
+                    
+                    inputCell.onclick = () => {
+                        if(!isPlaying) return;
+                        selectCell(r, c);
+                    };
+                    
+                    grid.appendChild(inputCell);
+                }
+            }
+            selectCell(0, 0);
+        }
+
+        function selectCell(r, c) {
+            document.querySelectorAll('.input-cell').forEach(el => el.classList.remove('active-cell'));
+            activeRow = r;
+            activeCol = c;
+            const target = document.getElementById(`cell-${r}-${c}`);
+            if (target) {
+                target.classList.add('active-cell');
+            }
+        }
+
+        function moveActiveCell(direction) {
+            let totalCells = gridSize * gridSize;
+            let totalIndex = activeRow * gridSize + activeCol + direction;
+            if (totalIndex >= 0 && totalIndex < totalCells) {
+                let nextR = Math.floor(totalIndex / gridSize);
+                let nextC = totalIndex % gridSize;
+                selectCell(nextR, nextC);
+            }
+        }
+
+        function pressKey(key) {
+            if (!isPlaying) return;
+
+            const targetCell = document.getElementById(`cell-${activeRow}-${activeCol}`);
+            const valText = targetCell.querySelector('.val-text');
+            let currentVal = valText.innerText;
+
+            if (key === 'clear') {
+                valText.innerText = '';
+                targetCell.classList.remove('correct');
+            } else if (key === 'minus') {
+                if (!currentVal.startsWith('-')) {
+                    valText.innerText = '-' + currentVal;
+                }
+            } else {
+                if (currentVal.length < 3) {
+                    valText.innerText = currentVal + key;
+                }
+            }
+
+            checkAnswer();
+        }
+
+        function checkAnswer() {
+            const targetCell = document.getElementById(`cell-${activeRow}-${activeCol}`);
+            const valText = targetCell.querySelector('.val-text');
+            const userAns = parseInt(valText.innerText);
+
+            const v1 = rowNumbers[activeRow];
+            const v2 = colNumbers[activeCol];
+            let correctAnswer;
+
+            if (currentType === '+') correctAnswer = v1 + v2;
+            else if (currentType === '-') correctAnswer = v1 - v2;
+            else if (currentType === '*') correctAnswer = v1 * v2;
+
+            if (userAns === correctAnswer) {
+                targetCell.classList.add('correct');
+                
+                if (!checkGameCompletion()) {
+                    setTimeout(() => {
+                        moveNextIncompleteCell();
+                    }, 80);
+                }
+            } else {
+                targetCell.classList.remove('correct');
+            }
+        }
+
+        function moveNextIncompleteCell() {
+            let totalCells = gridSize * gridSize;
+            let currentIndex = activeRow * gridSize + activeCol;
+            for (let i = 1; i <= totalCells; i++) {
+                let nextIndex = (currentIndex + i) % totalCells;
+                let nextR = Math.floor(nextIndex / gridSize);
+                let nextC = nextIndex % gridSize;
+                const nextCell = document.getElementById(`cell-${nextR}-${nextC}`);
+                if (!nextCell.classList.contains('correct')) {
+                    selectCell(nextR, nextC);
+                    break;
+                }
+            }
+        }
+
+        function checkGameCompletion() {
+            const correctCount = document.querySelectorAll('.input-cell.correct').length;
+            let totalCells = gridSize * gridSize;
+            if (correctCount === totalCells) {
+                endGame();
+                return true;
+            }
+            return false;
+        }
+
+        function startGame() {
+            clearInterval(timerInterval);
+            gridSize = parseInt(document.getElementById('size-select').value);
+            currentType = document.getElementById('type-select').value;
+            isPlaying = true;
+            
+            updateBestTimeDisplay();
+            initGrid();
+            
+            elapsedSeconds = 0;
+            document.getElementById('timer').innerText = formatTime(elapsedSeconds);
+
+            timerInterval = setInterval(() => {
+                elapsedSeconds++;
+                document.getElementById('timer').innerText = formatTime(elapsedSeconds);
+            }, 1000);
+        }
+
+        function endGame() {
+            clearInterval(timerInterval);
+            isPlaying = false;
+            const modal = document.getElementById('result-modal');
+            const resultText = document.getElementById('result-text');
+            const starRating = document.getElementById('star-rating');
+
+            resultText.innerText = `ぜんぶ解けたよ！ タイム: ${formatTime(elapsedSeconds)}`;
+
+            // マス目の大きさに合わせて目標タイムラインをゆるく調整
+            let goldCutoff = gridSize * 1.5;  // 2x2なら3秒、5x5なら7秒、10x10なら15秒目安（全問正解基準）
+            let silverCutoff = gridSize * 3.5;
+
+            // 10x10のときは元の基準に近い形に補正
+            if (gridSize === 10) { goldCutoff = 90; silverCutoff = 180; }
+
+            if (elapsedSeconds <= goldCutoff) starRating.innerText = "⭐⭐⭐";
+            else if (elapsedSeconds <= silverCutoff) starRating.innerText = "⭐⭐";
+            else starRating.innerText = "⭐";
+
+            const best = localStorage.getItem(getBestTimeKey());
+            if (!best || elapsedSeconds < parseInt(best)) {
+                localStorage.setItem(getBestTimeKey(), elapsedSeconds);
+                resultText.innerText += " 🎉じこベストこうしん！";
+            }
+            modal.style.display = 'flex';
+        }
+
+        function closeModal() {
+            document.getElementById('result-modal').style.display = 'none';
+            updateBestTimeDisplay();
+            initGrid();
+        }
+
+        function formatTime(sec) {
+            const m = Math.floor(sec / 60).toString().padStart(2, '0');
+            const s = (sec % 60).toString().padStart(2, '0');
+            return `${m}:${s}`;
+        }
+
+        window.onload = () => {
+            changeLevel();
+        };
+    </script>
+</body>
+</html>
