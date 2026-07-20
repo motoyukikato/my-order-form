@@ -1,0 +1,389 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>【展示会WEBシステム】当日受注シート</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+<style>
+  * { box-sizing: border-box; }
+  body {
+    background-color: #e5e7eb;
+    margin: 0;
+    padding: 20px;
+    font-family: "Helvetica Neue", Arial, "Hiragino Kaku Gothic ProN", "Hiragino Sans", Meiryo, sans-serif;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  /* 操作案内パネル */
+  .guide-panel {
+    max-width: 210mm;
+    margin: 0 auto 15px auto;
+    background-color: #ffffff;
+    border: 3px solid #1b4d3e;
+    border-radius: 8px;
+    padding: 15px 20px;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+  }
+  .guide-title { font-size: 14pt; font-weight: bold; color: #1b4d3e; margin: 0 0 10px 0; border-bottom: 2px solid #1b4d3e; padding-bottom: 5px; }
+  .guide-step { font-size: 10.5pt; line-height: 1.5; color: #334155; margin-bottom: 8px; }
+  .step-num { background-color: #1b4d3e; color: white; padding: 2px 8px; border-radius: 4px; font-weight: bold; margin-right: 5px; }
+
+  /* スタッフ用設定ポップアップ */
+  .admin-modal {
+    display: none;
+    position: fixed;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    background-color: #ffffff;
+    border: 4px solid #1b4d3e;
+    border-radius: 12px;
+    padding: 25px;
+    z-index: 9999;
+    box-shadow: 0 20px 25px -5px rgba(0,0,0,0.3);
+    width: 400px;
+  }
+  .admin-modal h3 { margin: 0 0 15px 0; color: #1b4d3e; font-size: 14pt; border-bottom: 2px solid #1b4d3e; padding-bottom: 5px; }
+  .admin-input { width: 100% !important; height: 40px !important; margin-bottom: 15px; font-size: 12pt !important; border: 1px solid #aaa !important; background: #fff !important; }
+  .admin-btn-set { background-color: #1b4d3e; color: white; padding: 10px; width: 100%; font-weight: bold; border: none; border-radius: 4px; cursor: pointer; font-size: 11pt; }
+  .admin-btn-close { background-color: #64748b; color: white; padding: 5px; width: 100%; border: none; border-radius: 4px; cursor: pointer; margin-top: 8px; font-size: 9pt; }
+
+  .btn-container { display: flex; gap: 10px; margin-top: 12px; flex-wrap: wrap; }
+  .action-btn { flex: 1; min-width: 180px; padding: 10px; font-size: 11pt; font-weight: bold; cursor: pointer; border: none; border-radius: 6px; box-shadow: 0 4px 6px rgba(0,0,0,0.15); }
+  .btn-add { background-color: #3b82f6; color: white; }
+  .btn-pdf { background-color: #ef4444; color: white; }
+  .btn-mail { background-color: #f59e0b; color: white; }
+
+  /* A4縦サイズコンテナ */
+  .a4-container {
+    width: 210mm;
+    min-height: 292mm;
+    background-color: #ffffff;
+    margin: 0 auto;
+    padding: 8mm 10mm;
+    position: relative;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+  }
+
+  /* 印刷・PDF化時の表示最適化 */
+  .pdf-mode input[type="text"], .pdf-mode input[type="number"], .pdf-mode select,
+  @media print {
+    body { background-color: #ffffff; padding: 0; margin: 0; }
+    .guide-panel, .admin-modal { display: none !important; }
+    .a4-container { width: 210mm; margin: 0; padding: 5mm 10mm; box-shadow: none; }
+    input[type="text"], input[type="number"], select {
+      border: none !important;
+      background: transparent !important;
+      padding: 0 !important;
+      box-shadow: none !important;
+      appearance: none;
+      -webkit-appearance: none;
+    }
+    .total-box { color: #000000 !important; }
+  }
+
+  /* ヘッダー */
+  .header { width: 100%; border-bottom: 2px solid #1b4d3e; padding-bottom: 3mm; margin-bottom: 3mm; }
+  .logo-area { float: left; width: 35%; }
+  .logo-text { font-family: 'Georgia', serif; font-size: 26pt; font-weight: bold; color: #1b4d3e; margin: 0; cursor: pointer; }
+  .exhibit-tag { display: inline-block; background-color: #1b4d3e; color: white; font-size: 8pt; padding: 2px 6px; font-weight: bold; border-radius: 2px; }
+  
+  .header-right { float: right; width: 63%; text-align: right; }
+  .fax-number { font-size: 20pt; color: #d32f2f; font-weight: bold; margin: 0; }
+  .company-title { font-size: 9.5pt; color: #1b4d3e; font-weight: bold; margin: 0; }
+
+  .clear { clear: both; }
+  .title-area { text-align: center; margin-bottom: 3mm; }
+  .title-area h1 { font-size: 14pt; color: #1b4d3e; margin: 0; font-weight: bold; letter-spacing: 1px; }
+
+  /* テーブル基本設定 */
+  input[type="text"], input[type="number"], select { width: 100%; height: 100%; border: 1px solid #cbd5e1; background-color: #f8fafc; padding: 2px 4px; font-size: 9pt; }
+  .customer-table { width: 100%; border-collapse: collapse; margin-bottom: 3mm; border: 2px solid #1b4d3e; }
+  .customer-table th, .customer-table td { border: 1px solid #1b4d3e; height: 9mm; vertical-align: middle; font-size: 9pt; }
+  .customer-table th { background-color: #f0f7f0; color: #1b4d3e; font-weight: bold; text-align: center; }
+  .radio-wrapper { padding-left: 5px; display: flex; align-items: center; height: 100%; gap: 10px; }
+  .radio-label { font-weight: bold; font-size: 8.5pt; cursor: pointer; display: flex; align-items: center; gap: 3px; }
+
+  /* 明細テーブル */
+  .order-table { width: 100%; border-collapse: collapse; margin-bottom: 3mm; border: 2px solid #1b4d3e; table-layout: fixed; }
+  .order-table th { background-color: #1b4d3e; color: #ffffff; font-size: 8.5pt; font-weight: bold; height: 7.5mm; text-align: center; border: 1px solid #1b4d3e; }
+  .order-table td { border: 1px solid #aaa; height: 7.5mm; text-align: center; vertical-align: middle; font-size: 8.5pt; padding: 0; background-color: #fff; }
+  .order-table tr:nth-child(even) td { background-color: #f9fafb; }
+  .line-num { color: #666; font-size: 8pt; font-weight: bold; background-color: #f3f4f6 !important; }
+
+  .amount-wrapper { position: relative; width: 100%; height: 100%; display: flex; align-items: center; }
+  .amount-wrapper::after { content: "円"; position: absolute; right: 4px; font-size: 8pt; font-weight: bold; color: #333; }
+  .total-box { font-weight: bold; color: #d32f2f; text-align: right; padding-right: 18px !important; }
+
+  /* 合計計算欄 */
+  .summary-table { width: 40%; float: right; border-collapse: collapse; margin-bottom: 3mm; border: 2px solid #1b4d3e; }
+  .summary-table th { background-color: #1b4d3e; color: white; font-size: 9pt; padding: 4px; text-align: center; }
+  .summary-table td { text-align: right; font-size: 11pt; font-weight: bold; padding: 4px 8px; color: #d32f2f; background: #fff; border: 1px solid #1b4d3e; }
+
+  /* フッター */
+  .footer-area { width: 100%; font-size: 8.5pt; border-top: 1px solid #1b4d3e; padding-top: 2mm; margin-top: 2mm; }
+  .notes-box { float: left; width: 62%; line-height: 1.3; color: #444; }
+  .company-box { float: right; width: 35%; text-align: right; color: #444; line-height: 1.3; }
+</style>
+</head>
+<body>
+
+<div class="admin-modal" id="adminModal">
+  <h3>⚙️ スタッフ専用設定</h3>
+  <label style="font-size: 10pt; font-weight: bold; color: #1b4d3e;">追加発注期限：</label>
+  <input type="datetime-local" id="inputDeadline" class="admin-input">
+  <button class="admin-btn-set" onclick="saveDeadline()">画面に期限を反映する</button>
+  <button class="admin-btn-close" onclick="closeAdminModal()">閉じる</button>
+</div>
+
+<div class="guide-panel">
+  <div class="guide-title">🎪 【展示会当日】受注データの入力・作成手順</div>
+  <div class="guide-step">
+    <span class="step-num">1</span> 貴社情報（貴社名・担当者）を入力し、「展示会価格・数量」および右端の<strong>【用途区分】</strong>をご入力ください。
+  </div>
+  <div class="guide-step">
+    <span class="step-num">2</span> 入力完了後、赤色の<strong>「PDF作成（保存）」</strong>を押すと、送信・印刷用のファイルが自動生成されます。<br>
+    ※手書き用として印刷する場合は、何も入力せずにそのまま印刷を行ってください。
+  </div>
+  
+  <div class="btn-container">
+    <button class="action-btn btn-add" onclick="addTenRows()">➕ 10行追加する</button>
+    <button class="action-btn btn-pdf" onclick="generatePDFOnly()">① 当日受注シートPDFを作成（保存）</button>
+    <button class="action-btn btn-mail" onclick="openMailerOnly()">② メールで本部へ送信する</button>
+  </div>
+</div>
+
+<div class="a4-container" id="captureTarget">
+  <div class="header">
+    <div class="logo-area">
+      <p class="logo-text" ondblclick="openAdminModal()" title="ダブルクリックで設定">flonet</p>
+      <span class="exhibit-tag">展示会 当日受注シート</span>
+    </div>
+    <div class="header-right">
+      <p class="company-title">株式会社名古屋花き商事本部 展示会受注受付 御中</p>
+      <p class="fax-number">TEL: 052-332-8287 / FAX: 052-332-8287</p>
+    </div>
+    <div class="clear"></div>
+  </div>
+
+  <div class="title-area">
+    <h1>【 flonet見本市 当日受注エントリーシート 】</h1>
+    <div id="deadlineText" style="font-size: 9.5pt; color: #d32f2f; font-weight: bold; display: none;"></div>
+  </div>
+
+  <table class="customer-table">
+    <tr>
+      <th style="width: 12%;">貴社名</th>
+      <td style="width: 40%;"><input type="text" id="cust-name" placeholder="お名前 / 店舗名"></td>
+      <th style="width: 12%;">ご担当者</th>
+      <td style="width: 36%;"><input type="text" id="cust-staff"></td>
+    </tr>
+    <tr>
+      <th>ご住所</th>
+      <td><input type="text" id="cust-address" placeholder="〒"></td>
+      <th>お電話番号</th>
+      <td><input type="text" id="cust-tel"></td>
+    </tr>
+    <tr>
+      <th>お渡し方法</th>
+      <td>
+        <div class="radio-wrapper">
+          <label class="radio-label"><input type="radio" name="delivery" value="店頭お渡し" checked> 店頭渡し</label>
+          <label class="radio-label"><input type="radio" name="delivery" value="直送"> 直送</label>
+        </div>
+      </td>
+      <th>発送時期・条件</th>
+      <td>
+        <div class="radio-wrapper">
+          <label class="radio-label"><input type="radio" name="condition" value="まとめて" checked> まとめて</label>
+          <label class="radio-label"><input type="radio" name="condition" value="順次発送"> 入荷順発送</label>
+        </div>
+      </td>
+    </tr>
+  </table>
+
+  <table class="order-table" id="orderTable">
+    <thead>
+      <tr>
+        <th style="width: 4%;">No</th>
+        <th style="width: 16%;">メーカー名</th>
+        <th style="width: 12%;">品番</th>
+        <th style="width: 22%;">品名</th>
+        <th style="width: 12%;">展示会価格</th>
+        <th style="width: 7%;">数量</th>
+        <th style="width: 13%;">合計金額</th>
+        <th style="width: 14%;">用途区分</th>
+      </tr>
+    </thead>
+    <tbody id="orderTableBody">
+    </tbody>
+  </table>
+
+  <!-- 総合計金額欄 -->
+  <div style="width: 100%;">
+    <table class="summary-table">
+      <tr>
+        <th>受注合計金額（税抜）</th>
+        <td id="grandTotalDisplay">0 円</td>
+      </tr>
+    </table>
+    <div class="clear"></div>
+  </div>
+
+  <div class="footer-area">
+    <div class="notes-box">
+      <p style="margin: 0; font-weight: bold; color: #1b4d3e;">【特記事項・備考】</p>
+      <input type="text" id="cust-notes" style="width: 100%; height: 7mm; margin-top: 2px;" placeholder="指定納期やワークショップ日程などがあればご記入ください">
+    </div>
+    <div class="company-box">
+      <strong>株式会社名古屋花き商事本部</strong><br>
+      TEL: 052-332-8287
+    </div>
+    <div class="clear"></div>
+  </div>
+</div>
+
+<script>
+  // 初期行数
+  const INITIAL_ROWS = 15;
+
+  window.onload = function() {
+    const tbody = document.getElementById('orderTableBody');
+    for (let i = 1; i <= INITIAL_ROWS; i++) {
+      appendRow(tbody, i);
+    }
+  }
+
+  function appendRow(tbody, rowNum) {
+    const tr = document.createElement('tr');
+    tr.id = `row-${rowNum}`;
+    tr.innerHTML = `
+      <td class="line-num">${rowNum}</td>
+      <td><input type="text" class="mfg-input"></td>
+      <td><input type="text" class="code-input"></td>
+      <td><input type="text" class="name-input"></td>
+      <td>
+        <div class="amount-wrapper">
+          <input type="number" id="price-${rowNum}" style="text-align:right; padding-right:16px;" oninput="calcRowTotal(${rowNum})">
+        </div>
+      </td>
+      <td>
+        <input type="number" id="qty-${rowNum}" style="text-align:center;" oninput="calcRowTotal(${rowNum})">
+      </td>
+      <td>
+        <div class="amount-wrapper">
+          <input type="text" id="total-${rowNum}" class="total-box" readonly>
+        </div>
+      </td>
+      <td>
+        <select class="type-input">
+          <option value=""></option>
+          <option value="1.店頭販売用">1.店頭販売用</option>
+          <option value="2.レッスン・資材用">2.レッスン用</option>
+          <option value="3.雑貨・店飾り">3.雑貨・店飾り</option>
+        </select>
+      </td>
+    `;
+    tbody.appendChild(tr);
+  }
+
+  function calcRowTotal(rowNum) {
+    const price = parseFloat(document.getElementById(`price-${rowNum}`).value) || 0;
+    const qty = parseFloat(document.getElementById(`qty-${rowNum}`).value) || 0;
+    const totalField = document.getElementById(`total-${rowNum}`);
+    const total = price * qty;
+    
+    totalField.value = total > 0 ? total.toLocaleString() : "";
+    updateGrandTotal();
+  }
+
+  function updateGrandTotal() {
+    let grandTotal = 0;
+    const rows = document.querySelectorAll('#orderTableBody tr');
+    rows.forEach((_, idx) => {
+      const rowNum = idx + 1;
+      const price = parseFloat(document.getElementById(`price-${rowNum}`)?.value) || 0;
+      const qty = parseFloat(document.getElementById(`qty-${rowNum}`)?.value) || 0;
+      grandTotal += (price * qty);
+    });
+    document.getElementById('grandTotalDisplay').innerText = grandTotal.toLocaleString() + " 円";
+  }
+
+  function addTenRows() {
+    const tbody = document.getElementById('orderTableBody');
+    const currentRows = tbody.querySelectorAll('tr').length;
+    for (let i = 1; i <= 10; i++) {
+      appendRow(tbody, currentRows + i);
+    }
+  }
+
+  function openAdminModal() {
+    const pwd = prompt("パスワード（スタッフ専用）:");
+    if (pwd === "758") {
+      document.getElementById('adminModal').style.display = 'block';
+    } else if (pwd !== null) {
+      alert("パスワードが異なります。");
+    }
+  }
+
+  function closeAdminModal() {
+    document.getElementById('adminModal').style.display = 'none';
+  }
+
+  function saveDeadline() {
+    const deadlineVal = document.getElementById('inputDeadline').value;
+    const element = document.getElementById('deadlineText');
+    if (deadlineVal) {
+      element.innerText = `※会場受注受領日時: ${deadlineVal.replace('T', ' ')}`;
+      element.style.display = 'block';
+    } else {
+      element.style.display = 'none';
+    }
+    closeAdminModal();
+  }
+
+  async function generatePDFOnly() {
+    const cName = document.getElementById('cust-name').value || "未入力";
+    if (cName === "未入力") {
+      alert("「貴社名」をご入力ください。");
+      return;
+    }
+
+    const target = document.getElementById('captureTarget');
+    target.classList.add('pdf-mode');
+
+    const canvas = await html2canvas(target, { scale: 2.5, useCORS: true, logging: false });
+    const imgData = canvas.toDataURL('image/jpeg', 1.0);
+    
+    const { jsPDF } = window.jspdf;
+    const contentHeightMm = (canvas.height / canvas.width) * 210; 
+    const pdf = new jsPDF('p', 'mm', [210, contentHeightMm]);
+    pdf.addImage(imgData, 'JPEG', 0, 0, 210, contentHeightMm);
+    
+    const fileName = `当日受注シート_${cName}.pdf`;
+    pdf.save(fileName);
+
+    target.classList.remove('pdf-mode');
+    alert(`「${fileName}」をダウンロードフォルダーに保存しました！`);
+  }
+
+  function openMailerOnly() {
+    const cName = document.getElementById('cust-name').value || "未入力";
+    if (cName === "未入力") {
+      alert("「貴社名」をご入力ください。");
+      return;
+    }
+
+    const toAddress = "order@flonet.example.com"; 
+    const subject = encodeURIComponent(`【展示会当日受注】${cName}様分`);
+    const bodyText = `株式会社名古屋花き商事本部 御中\n\n展示会当日の受注シートデータを送信いたします。\nPDFファイルを添付してご確認ください。\n\n貴社名: ${cName}`;
+    const body = encodeURIComponent(bodyText);
+
+    window.location.href = `mailto:${toAddress}?subject=${subject}&body=${body}`;
+  }
+</script>
+
+</body>
+</html>
