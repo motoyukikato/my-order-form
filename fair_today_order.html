@@ -214,17 +214,16 @@
       </div>
     </div>
 
-    <!-- Step 2: 品番 -->
+    <!-- Step 2: 品番（必須） -->
     <div class="step-card" id="stepCard2">
-      <div class="step-label">【2/6】 品番を入力</div>
+      <div class="step-label">【2/6】 品番を入力 <span style="color:#d32f2f; font-size:12pt;">【必須】</span></div>
       <input type="text" id="modalCode" class="big-input" placeholder="例: ABC-123">
       <div class="btn-step-group">
-        <button class="btn-next-step" onclick="nextCard(3)">次へ ➔</button>
-        <button class="btn-skip-step" onclick="nextCard(3)">スキップ ⏭️</button>
+        <button class="btn-next-step" onclick="nextCard(3)" style="width:100%;">次へ（必須） ➔</button>
       </div>
     </div>
 
-    <!-- Step 3: 品名 -->
+    <!-- Step 3: 品名（任意） -->
     <div class="step-card" id="stepCard3">
       <div class="step-label">【3/6】 品名を入力</div>
       <input type="text" id="modalName" class="big-input" placeholder="例: ガラスベース S">
@@ -234,7 +233,7 @@
       </div>
     </div>
 
-    <!-- Step 4: 価格 -->
+    <!-- Step 4: 価格（任意） -->
     <div class="step-card" id="stepCard4">
       <div class="step-label">【4/6】 価格 (円) を入力</div>
       <input type="number" id="modalPrice" class="big-input" placeholder="例: 1000">
@@ -244,17 +243,16 @@
       </div>
     </div>
 
-    <!-- Step 5: 数量 -->
+    <!-- Step 5: 数量（必須） -->
     <div class="step-card" id="stepCard5">
-      <div class="step-label">【5/6】 数量を入力</div>
+      <div class="step-label">【5/6】 数量を入力 <span style="color:#d32f2f; font-size:12pt;">【必須】</span></div>
       <input type="number" id="modalQty" class="big-input" placeholder="例: 5">
       <div class="btn-step-group">
-        <button class="btn-next-step" onclick="nextCard(6)">次へ ➔</button>
-        <button class="btn-skip-step" onclick="nextCard(6)">スキップ ⏭️</button>
+        <button class="btn-next-step" onclick="nextCard(6)" style="width:100%;">次へ（必須） ➔</button>
       </div>
     </div>
 
-    <!-- Step 6: 用途区分 -->
+    <!-- Step 6: 用途区分（任意） -->
     <div class="step-card" id="stepCard6">
       <div class="step-label">【6/6】 用途区分を選択</div>
       <select id="modalType" class="big-input">
@@ -289,7 +287,6 @@
 <div class="guide-panel">
   <div class="guide-title">🎪 【展示会当日】受注データの入力・作成手順</div>
   
-  <!-- 送信先メールアドレスをわかりやすく明記 -->
   <div class="email-notice-bar">
     📩 送信先アドレス： ft-order@flonet.co.jp
   </div>
@@ -574,7 +571,28 @@
     nextCard(1);
   }
 
+  // カード切替制御 & 必須バリデーション
   function nextCard(stepNum) {
+    // Step 2（品番）から抜ける時のチェック
+    if (document.getElementById('stepCard2').classList.contains('active') && stepNum > 2) {
+      const codeVal = document.getElementById('modalCode').value.trim();
+      if (!codeVal) {
+        alert("【必須項目】品番を入力してください。");
+        document.getElementById('modalCode').focus();
+        return;
+      }
+    }
+
+    // Step 5（数量）から抜ける時のチェック
+    if (document.getElementById('stepCard5').classList.contains('active') && stepNum > 5) {
+      const qtyVal = document.getElementById('modalQty').value.trim();
+      if (!qtyVal || parseFloat(qtyVal) <= 0) {
+        alert("【必須項目】数量を正しく入力してください。");
+        document.getElementById('modalQty').focus();
+        return;
+      }
+    }
+
     for (let i = 1; i <= 6; i++) {
       const card = document.getElementById(`stepCard${i}`);
       if (card) card.classList.remove('active');
@@ -610,11 +628,23 @@
     const sheet = document.getElementById(`sheet-${sheetId}`);
     if (!sheet) return;
 
-    const code = document.getElementById('modalCode').value;
-    const name = document.getElementById('modalName').value;
-    const price = document.getElementById('modalPrice').value;
-    const qty = document.getElementById('modalQty').value;
+    const code = document.getElementById('modalCode').value.trim();
+    const name = document.getElementById('modalName').value.trim();
+    const price = document.getElementById('modalPrice').value.trim();
+    const qty = document.getElementById('modalQty').value.trim();
     const type = document.getElementById('modalType').value;
+
+    // 必須チェック（品番・数量）
+    if (!code) {
+      alert("「品番」が未入力です。入力画面へ戻ります。");
+      nextCard(2);
+      return;
+    }
+    if (!qty || parseFloat(qty) <= 0) {
+      alert("「数量」が未入力です。入力画面へ戻ります。");
+      nextCard(5);
+      return;
+    }
 
     const rows = sheet.querySelectorAll('.orderTableBody tr');
     let targetRow = null;
