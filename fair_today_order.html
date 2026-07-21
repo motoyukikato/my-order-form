@@ -67,10 +67,17 @@
   }
 
   .step-sub-note {
-    font-size: 10pt;
+    font-size: 10.5pt;
+    color: #334155;
+    line-height: 1.5;
+    background-color: #f1f5f9;
+    border: 1px solid #cbd5e1;
+    border-radius: 8px;
+    padding: 10px;
+    margin-bottom: 15px;
+  }
+  .step-sub-note strong {
     color: #d32f2f;
-    font-weight: bold;
-    margin-bottom: 12px;
   }
   
   .big-input {
@@ -178,13 +185,16 @@
 <div class="modal-overlay" id="itemModal">
   <div class="modal-content">
 
-    <!-- Step 1: 対象メーカー選択（場所の案内を明確化） -->
+    <!-- Step 1: 入力対象シート（メーカー名）の確認案内 -->
     <div class="step-card active" id="stepCard1">
-      <div class="step-label">【1/6】 対象メーカー（※用紙上のプルダウン選択）</div>
-      <div class="step-sub-note">※変更する場合は、用紙上部にある緑色の「メーカー名選択枠」から変更してください。</div>
+      <div class="step-label">【1/6】 入力対象のメーカー</div>
+      <div class="step-sub-note">
+        ・メーカー名の指定は<strong>用紙上部にある緑色のプルダウン</strong>で行ってください。<br><br>
+        ・別メーカーの商品を追加したい場合は、一旦画面を閉じて緑色の<strong>「📄 顧客情報を引き継いで別メーカー用シートを追加」</strong>ボタンを押してください。
+      </div>
       <select id="modalSheetSelect" class="big-input"></select>
       <div class="btn-step-group">
-        <button class="btn-next-step" onclick="nextCard(2)" style="width:100%;">確認して次へ ➔</button>
+        <button class="btn-next-step" onclick="nextCard(2)" style="width:100%;">このメーカーに入力する ➔</button>
       </div>
     </div>
 
