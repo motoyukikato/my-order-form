@@ -76,9 +76,7 @@
     padding: 10px;
     margin-bottom: 15px;
   }
-  .step-sub-note strong {
-    color: #d32f2f;
-  }
+  .step-sub-note strong { color: #d32f2f; }
   
   .big-input {
     width: 100%;
@@ -276,7 +274,7 @@
   
   <div class="btn-container">
     <button class="action-btn btn-add-sheet" onclick="addNewSheet()">📄 顧客情報を引き継いで別メーカー用シートを追加</button>
-    <button class="action-btn btn-pdf" onclick="generateAllSheetsPDF()">① 全シートまとめてPDF化（保存）</button>
+    <button class="action-btn btn-pdf" onclick="showPDFInNewTab()">① 📄 PDFを別画面で直接開く（確認・印刷）</button>
     <button class="action-btn btn-mail" onclick="openMailerOnly()">② メールを開いて送信する</button>
   </div>
 </div>
@@ -566,13 +564,11 @@
       if (nextCardEl) {
         nextCardEl.classList.add('active');
         
-        // 即座＆アニメーション後に確実にカーソルを自動移動させる処理
         const inputEl = nextCardEl.querySelector('input, select');
         if (inputEl) {
           inputEl.focus();
           if (typeof inputEl.select === 'function') inputEl.select();
 
-          // モバイルのレンダリング待機（150ms後にも再実行）
           setTimeout(() => {
             inputEl.focus();
             if (typeof inputEl.select === 'function') inputEl.select();
@@ -580,7 +576,6 @@
         }
       }
     } else {
-      // 1行分の入力ステップ完了後、登録ボタンを表示
       const btnSubmit = document.getElementById('btnSubmitFinal');
       btnSubmit.style.display = 'block';
       setTimeout(() => btnSubmit.focus(), 100);
@@ -739,7 +734,8 @@
     closeAdminModal();
   }
 
-  async function generateAllSheetsPDF() {
+  /* PDFを保存せず「新しいタブで直接表示」する機能 */
+  async function showPDFInNewTab() {
     const firstSheet = document.getElementById('sheet-1');
     const cName = firstSheet ? firstSheet.querySelector('.cust-name').value || "未入力" : "未入力";
 
@@ -770,9 +766,10 @@
       target.classList.remove('pdf-mode');
     }
 
-    const fileName = `当日受注シート_まとめ_${cName}.pdf`;
-    pdf.save(fileName);
-    alert(`全${sheets.length}枚のシートを「${fileName}」として1つのPDFに保存しました！`);
+    // Blob URLを生成して別タブで直接PDF表示
+    const pdfBlob = pdf.output('blob');
+    const blobUrl = URL.createObjectURL(pdfBlob);
+    window.open(blobUrl, '_blank');
   }
 
   function openMailerOnly() {
