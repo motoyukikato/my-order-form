@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<title>【展示会WEBシステム】限定特別追加発注書</title>
+<title>【展示会WEBシステム】当日受注シート</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 
@@ -17,7 +17,7 @@
     print-color-adjust: exact;
   }
 
-  /* 操作案内パネル（画面上部に固定） */
+  /* 操作案内パネル */
   .guide-panel {
     max-width: 210mm;
     margin: 0 auto 15px auto;
@@ -51,22 +51,23 @@
     border-radius: 12px;
     padding: 20px;
     width: 100%;
-    max-width: 500px;
+    max-width: 480px;
     box-shadow: 0 20px 25px -5px rgba(0,0,0,0.3);
     max-height: 90vh;
     overflow-y: auto;
   }
   .modal-content h3 { margin: 0 0 15px 0; color: #1b4d3e; font-size: 13pt; border-bottom: 2px solid #1b4d3e; padding-bottom: 6px; }
 
-  /* 入力フォームデザイン */
-  .form-group { margin-bottom: 12px; }
+  /* 順次入力フォームデザイン */
+  .form-group { margin-bottom: 14px; transition: all 0.3s ease; }
+  .form-group.disabled { opacity: 0.3; pointer-events: none; }
   .form-group label { display: block; font-size: 9.5pt; font-weight: bold; color: #1b4d3e; margin-bottom: 4px; }
-  .form-control { width: 100%; height: 38px; padding: 6px 10px; font-size: 10.5pt; border: 1px solid #cbd5e1; border-radius: 4px; background-color: #f8fafc; }
+  .form-control { width: 100%; height: 42px; padding: 6px 12px; font-size: 11pt; border: 2px solid #cbd5e1; border-radius: 6px; background-color: #f8fafc; }
   .form-control:focus { border-color: #1b4d3e; background-color: #fff; outline: none; }
 
-  .modal-btn-group { display: flex; gap: 10px; margin-top: 15px; }
-  .btn-submit { flex: 2; background-color: #10b981; color: white; border: none; padding: 12px; border-radius: 6px; font-weight: bold; font-size: 11pt; cursor: pointer; }
-  .btn-cancel { flex: 1; background-color: #64748b; color: white; border: none; padding: 12px; border-radius: 6px; font-weight: bold; font-size: 10pt; cursor: pointer; }
+  .modal-btn-group { display: flex; flex-direction: column; gap: 8px; margin-top: 15px; }
+  .btn-submit { display: none; background-color: #10b981; color: white; border: none; padding: 14px; border-radius: 6px; font-weight: bold; font-size: 12pt; cursor: pointer; box-shadow: 0 4px 6px rgba(16, 185, 129, 0.3); }
+  .btn-cancel { background-color: #64748b; color: white; border: none; padding: 10px; border-radius: 6px; font-weight: bold; font-size: 10pt; cursor: pointer; }
 
   .btn-container { display: flex; gap: 10px; margin-top: 12px; flex-wrap: wrap; }
   .action-btn { flex: 1; min-width: 150px; padding: 10px; font-size: 10pt; font-weight: bold; cursor: pointer; border: none; border-radius: 6px; box-shadow: 0 4px 6px rgba(0,0,0,0.15); }
@@ -148,44 +149,56 @@
 </head>
 <body>
 
-<!-- 商品入力用ポップアップ（モーダル） -->
+<!-- 順次入力用ポップアップ（モーダル） -->
 <div class="modal-overlay" id="itemModal">
   <div class="modal-content">
-    <h3>📦 明細の追加・入力（携帯・スマホ対応）</h3>
-    <div class="form-group">
-      <label>対象シート（メーカー名）</label>
-      <select id="modalSheetSelect" class="form-control" onchange="updateModalMfgField()"></select>
+    <h3>📦 1行分ずつ商品を入力</h3>
+
+    <!-- Step 1: シート選択 -->
+    <div class="form-group" id="groupSheet">
+      <label>1. 対象シート（メーカー）</label>
+      <select id="modalSheetSelect" class="form-control" onchange="checkStepProgress()"></select>
     </div>
-    <div class="form-group">
-      <label>品番</label>
-      <input type="text" id="modalCode" class="form-control" placeholder="例: ABC-123">
+
+    <!-- Step 2: 品番 -->
+    <div class="form-group disabled" id="groupCode">
+      <label>2. 品番</label>
+      <input type="text" id="modalCode" class="form-control" placeholder="例: ABC-123" oninput="checkStepProgress()">
     </div>
-    <div class="form-group">
-      <label>品名</label>
-      <input type="text" id="modalName" class="form-control" placeholder="例: ガラスベース S">
+
+    <!-- Step 3: 品名 -->
+    <div class="form-group disabled" id="groupName">
+      <label>3. 品名</label>
+      <input type="text" id="modalName" class="form-control" placeholder="例: ガラスベース S" oninput="checkStepProgress()">
     </div>
+
+    <!-- Step 4: 価格 & 数量 -->
     <div style="display: flex; gap: 10px;">
-      <div class="form-group" style="flex: 1;">
-        <label>展示会価格 (円)</label>
-        <input type="number" id="modalPrice" class="form-control" placeholder="1000">
+      <div class="form-group disabled" id="groupPrice" style="flex: 1;">
+        <label>4. 価格 (円)</label>
+        <input type="number" id="modalPrice" class="form-control" placeholder="1000" oninput="checkStepProgress()">
       </div>
-      <div class="form-group" style="flex: 1;">
-        <label>数量</label>
-        <input type="number" id="modalQty" class="form-control" placeholder="5">
+      <div class="form-group disabled" id="groupQty" style="flex: 1;">
+        <label>5. 数量</label>
+        <input type="number" id="modalQty" class="form-control" placeholder="5" oninput="checkStepProgress()">
       </div>
     </div>
-    <div class="form-group">
-      <label>用途区分</label>
-      <select id="modalType" class="form-control">
-        <option value=""></option>
+
+    <!-- Step 5: 用途区分 -->
+    <div class="form-group disabled" id="groupType">
+      <label>6. 用途区分</label>
+      <select id="modalType" class="form-control" onchange="checkStepProgress()">
+        <option value="">▼ 選択してください</option>
         <option value="1.店頭販売用">1.店頭販売用</option>
         <option value="2.レッスン・資材用">2.レッスン用</option>
         <option value="3.雑貨・店飾り">3.雑貨・店飾り</option>
       </select>
     </div>
+
+    <!-- 登録ボタンエリア -->
     <div class="modal-btn-group">
-      <button class="btn-submit" onclick="saveModalItem()">保存して登録する</button>
-      <button class="btn-cancel" onclick="closeItemModal()">閉じる</button>
+      <button class="btn-submit" id="btnSubmitItem" onclick="saveModalItem()">➕ この明細を登録する</button>
+      <button class="btn-cancel" onclick="closeItemModal()">キャンセルして閉じる</button>
     </div>
   </div>
 </div>
@@ -196,13 +209,13 @@
     <h3>⚙️ スタッフ専用設定</h3>
     <label style="font-size: 10pt; font-weight: bold; color: #1b4d3e;">追加発注期限：</label>
     <input type="date" id="inputDeadline" class="form-control" style="margin-top:5px; margin-bottom:15px;">
-    <button class="btn-submit" style="width:100%; margin-bottom:8px;" onclick="saveDeadline()">画面に期限を反映する</button>
+    <button class="btn-submit" style="display:block; width:100%; margin-bottom:8px;" onclick="saveDeadline()">画面に期限を反映する</button>
     <button class="btn-cancel" style="width:100%;" onclick="closeAdminModal()">閉じる</button>
   </div>
 </div>
 
 <div class="guide-panel">
-  <div class="guide-title">💻 【パソコン・携帯用】追加発注書のご入力手順</div>
+  <div class="guide-title">🎪 【展示会当日】受注データの入力・作成手順</div>
   <button class="action-btn btn-open-input" onclick="openItemModal()">📱 モーダル画面で商品を入力・追加する</button>
   
   <div class="btn-container">
@@ -260,17 +273,17 @@
       <div class="header">
         <div class="logo-area">
           <p class="logo-text" ondblclick="openAdminModal()" title="ダブルクリックで設定">flonet</p>
-          <span class="exhibit-tag">展示会 追加発注書</span>
+          <span class="exhibit-tag">展示会 当日受注シート</span>
         </div>
         <div class="header-right">
-          <p class="company-title">株式会社名古屋花き商事本部 展示会追加分 御中</p>
+          <p class="company-title">株式会社名古屋花き商事本部 展示会受注受付 御中</p>
           <p class="fax-number">FAX: 052-332-8287</p>
         </div>
         <div class="clear"></div>
       </div>
 
       <div class="title-area">
-        <h1>【 flonet見本市 追加発注書 】</h1>
+        <h1>【 flonet見本市 当日受注エントリーシート 】</h1>
         <div class="deadlineText" style="font-size: 9.5pt; color: #d32f2f; font-weight: bold; display: none;"></div>
       </div>
 
@@ -365,7 +378,7 @@
         <button type="button" style="float:left; padding:4px 10px; font-weight:bold; background-color:#3b82f6; color:white; border:none; border-radius:4px; cursor:pointer;" onclick="addTenRowsToSheet(${sheetId})">➕ 10行追加</button>
         <table class="summary-table">
           <tr>
-            <th>発注合計金額（税抜）</th>
+            <th>受注合計金額（税抜）</th>
             <td class="grandTotalDisplay">0 円</td>
           </tr>
         </table>
@@ -374,7 +387,7 @@
 
       <div class="footer-area">
         <div class="notes-box">
-          <p style="margin: 0; font-weight: bold; color: #1b4d3e;">【特記事項・連絡欄】</p>
+          <p style="margin: 0; font-weight: bold; color: #1b4d3e;">【特記事項・備考】</p>
           <input type="text" class="cust-notes" style="width: 100%; height: 7mm; margin-top: 2px;" placeholder="指定納期やワークショップ日程などがあればご記入ください">
         </div>
         <div class="company-box">
@@ -418,15 +431,15 @@
     tr.innerHTML = `
       <td class="line-num">${rowNum}</td>
       <td><input type="text" class="mfg-input" value="${mfgName}" readonly tabindex="-1" style="background-color: #f1f5f9; text-align: center; pointer-events: none;"></td>
-      <td><input type="text" class="code-input" onclick="openItemModal(${sheetId}, ${rowNum})"></td>
-      <td><input type="text" class="name-input" onclick="openItemModal(${sheetId}, ${rowNum})"></td>
+      <td><input type="text" class="code-input" onclick="openItemModal(${sheetId})"></td>
+      <td><input type="text" class="name-input" onclick="openItemModal(${sheetId})"></td>
       <td>
         <div class="amount-wrapper">
-          <input type="number" class="price-input" style="text-align:right; padding-right:16px;" oninput="calcRowTotal(${sheetId}, ${rowNum})" onclick="openItemModal(${sheetId}, ${rowNum})">
+          <input type="number" class="price-input" style="text-align:right; padding-right:16px;" oninput="calcRowTotal(${sheetId}, ${rowNum})" onclick="openItemModal(${sheetId})">
         </div>
       </td>
       <td>
-        <input type="number" class="qty-input" style="text-align:center;" oninput="calcRowTotal(${sheetId}, ${rowNum})" onclick="openItemModal(${sheetId}, ${rowNum})">
+        <input type="number" class="qty-input" style="text-align:center;" oninput="calcRowTotal(${sheetId}, ${rowNum})" onclick="openItemModal(${sheetId})">
       </td>
       <td>
         <div class="amount-wrapper">
@@ -445,8 +458,8 @@
     tbody.appendChild(tr);
   }
 
-  /* モーダル表示制御 */
-  function openItemModal(targetSheetId = null, targetRowNum = null) {
+  /* モーダル順次入力制御 */
+  function openItemModal(targetSheetId = null) {
     const modalSelect = document.getElementById('modalSheetSelect');
     modalSelect.innerHTML = "";
 
@@ -463,22 +476,68 @@
       modalSelect.appendChild(opt);
     });
 
-    if (targetSheetId) {
-      modalSelect.value = targetSheetId;
-    }
+    if (targetSheetId) modalSelect.value = targetSheetId;
 
-    // フォームクリア
+    resetModalForm();
+    document.getElementById('itemModal').style.display = 'flex';
+  }
+
+  function closeItemModal() {
+    document.getElementById('itemModal').style.display = 'none';
+  }
+
+  function resetModalForm() {
     document.getElementById('modalCode').value = "";
     document.getElementById('modalName').value = "";
     document.getElementById('modalPrice').value = "";
     document.getElementById('modalQty').value = "";
     document.getElementById('modalType').value = "";
 
-    document.getElementById('itemModal').style.display = 'flex';
+    document.getElementById('groupCode').classList.add('disabled');
+    document.getElementById('groupName').classList.add('disabled');
+    document.getElementById('groupPrice').classList.add('disabled');
+    document.getElementById('groupQty').classList.add('disabled');
+    document.getElementById('groupType').classList.add('disabled');
+    document.getElementById('btnSubmitItem').style.display = 'none';
+
+    checkStepProgress();
   }
 
-  function closeItemModal() {
-    document.getElementById('itemModal').style.display = 'none';
+  // 入力状況に応じて次のステップを自動解除＆ボタン表示
+  function checkStepProgress() {
+    const sheetVal = document.getElementById('modalSheetSelect').value;
+    const codeVal = document.getElementById('modalCode').value.trim();
+    const nameVal = document.getElementById('modalName').value.trim();
+    const priceVal = document.getElementById('modalPrice').value.trim();
+    const qtyVal = document.getElementById('modalQty').value.trim();
+
+    // Step 1 -> Step 2
+    if (sheetVal) {
+      document.getElementById('groupCode').classList.remove('disabled');
+    }
+
+    // Step 2 -> Step 3
+    if (codeVal.length > 0) {
+      document.getElementById('groupName').classList.remove('disabled');
+    }
+
+    // Step 3 -> Step 4
+    if (nameVal.length > 0) {
+      document.getElementById('groupPrice').classList.remove('disabled');
+      document.getElementById('groupQty').classList.remove('disabled');
+    }
+
+    // Step 4 -> Step 5
+    if (priceVal.length > 0 && qtyVal.length > 0) {
+      document.getElementById('groupType').classList.remove('disabled');
+    }
+
+    // すべて揃ったらボタンを表示
+    if (sheetVal && codeVal && nameVal && priceVal && qtyVal) {
+      document.getElementById('btnSubmitItem').style.display = 'block';
+    } else {
+      document.getElementById('btnSubmitItem').style.display = 'none';
+    }
   }
 
   function saveModalItem() {
@@ -492,12 +551,6 @@
     const qty = document.getElementById('modalQty').value;
     const type = document.getElementById('modalType').value;
 
-    if (!code && !name) {
-      alert("「品番」または「品名」を入力してください。");
-      return;
-    }
-
-    // 未入力行を探して追加
     const rows = sheet.querySelectorAll('.orderTableBody tr');
     let targetRow = null;
     let targetRowNum = 0;
@@ -512,7 +565,6 @@
       }
     }
 
-    // 空き行がなければ10行追加
     if (!targetRow) {
       addTenRowsToSheet(sheetId);
       const newRows = sheet.querySelectorAll('.orderTableBody tr');
@@ -528,15 +580,8 @@
 
     calcRowTotal(sheetId, targetRowNum);
 
-    alert("明細を追加しました！続けて入力するか、「閉じる」を押してください。");
-
-    // フォームクリア（連打入力対応）
-    document.getElementById('modalCode').value = "";
-    document.getElementById('modalName').value = "";
-    document.getElementById('modalPrice').value = "";
-    document.getElementById('modalQty').value = "";
-    document.getElementById('modalType').value = "";
-    document.getElementById('modalCode').focus();
+    alert("明細を1行追加しました！引き続き次の商品を入力できます。");
+    resetModalForm();
   }
 
   function addTenRowsToSheet(sheetId) {
@@ -637,7 +682,7 @@
         const parts = deadlineVal.split('-');
         if (parts.length === 3) {
           const formattedDate = `${parts[0]}年${parseInt(parts[1], 10)}月${parseInt(parts[2], 10)}日`;
-          element.innerText = `※追加発注受領期限: ${formattedDate} まで`;
+          element.innerText = `※会場受注受領期限: ${formattedDate} まで`;
           element.style.display = 'block';
         }
       } else {
@@ -678,7 +723,7 @@
       target.classList.remove('pdf-mode');
     }
 
-    const fileName = `追加発注書_まとめ_${cName}.pdf`;
+    const fileName = `当日受注シート_まとめ_${cName}.pdf`;
     pdf.save(fileName);
     alert(`全${sheets.length}枚のシートを「${fileName}」として1つのPDFに保存しました！`);
   }
@@ -693,8 +738,8 @@
     }
 
     const toAddress = "ft-order@flonet.co.jp"; 
-    const subject = encodeURIComponent(`【展示会追加発注】${cName}様分`);
-    const bodyText = `株式会社名古屋花き商事本部 御中\n\n展示会の追加発注シートデータを送信いたします。\n作成したPDFファイルを添付してご確認ください。\n\n貴社名: ${cName}`;
+    const subject = encodeURIComponent(`【展示会当日受注】${cName}様分（複数メーカー分）`);
+    const bodyText = `株式会社名古屋花き商事本部 御中\n\n展示会当日の受注シートデータを送信いたします。\n作成したPDFファイルを添付してご確認ください。\n\n貴社名: ${cName}`;
     const body = encodeURIComponent(bodyText);
 
     window.location.href = `mailto:${toAddress}?subject=${subject}&body=${body}`;
