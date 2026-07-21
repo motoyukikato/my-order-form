@@ -30,7 +30,8 @@
     top: 10px;
     z-index: 1000;
   }
-  .guide-title { font-size: 14pt; font-weight: bold; color: #1b4d3e; margin: 0 0 10px 0; border-bottom: 2px solid #1b4d3e; padding-bottom: 5px; }
+  .guide-title { font-size: 14pt; font-weight: bold; color: #1b4d3e; margin: 0 0 8px 0; border-bottom: 2px solid #1b4d3e; padding-bottom: 5px; }
+  .email-notice-bar { background-color: #fef2f2; border: 2px dashed #ef4444; color: #b91c1c; font-weight: bold; padding: 8px 12px; border-radius: 6px; font-size: 11pt; margin-bottom: 10px; text-align: center; }
 
   /* 老眼・スマホ特化モーダルスタイル */
   .modal-overlay {
@@ -179,6 +180,23 @@
 </head>
 <body>
 
+<!-- メール送信用案内モーダル -->
+<div class="modal-overlay" id="mailGuideModal">
+  <div class="modal-content">
+    <h3 style="color: #1b4d3e; margin-top: 0;">📧 受注シートのメール送信方法</h3>
+    <div style="font-size: 11pt; line-height: 1.6; color: #334155; margin-bottom: 15px;">
+      <p style="margin-top:0;">以下の専用アドレスへ、①のボタンで開いたPDFファイルを添付して送信してください。</p>
+      <div style="background-color: #fef2f2; border: 2px solid #ef4444; padding: 10px; border-radius: 8px; text-align: center; margin: 10px 0;">
+        <span style="font-size: 9pt; color: #991b1b; font-weight: bold; display: block;">【送信先メールアドレス】</span>
+        <strong style="font-size: 13pt; color: #d32f2f; word-break: break-all;">ft-order@flonet.co.jp</strong>
+      </div>
+      <p style="font-size: 10pt; color: #64748b; margin-bottom:0;">※下のボタンを押すとメールアプリが立ち上がりますので、PDFを添付の上そのまま送信してください。</p>
+    </div>
+    <button class="btn-next-step" style="width:100%; background-color:#f59e0b;" onclick="triggerMailer()">✉️ メールアプリを開く</button>
+    <button class="btn-close-modal" style="margin-top:10px;" onclick="closeMailGuideModal()">閉じる</button>
+  </div>
+</div>
+
 <!-- 1項目ずつ特大表示するステップポップアップ -->
 <div class="modal-overlay" id="itemModal">
   <div class="modal-content">
@@ -270,12 +288,18 @@
 
 <div class="guide-panel">
   <div class="guide-title">🎪 【展示会当日】受注データの入力・作成手順</div>
+  
+  <!-- 送信先メールアドレスをわかりやすく明記 -->
+  <div class="email-notice-bar">
+    📩 送信先アドレス： ft-order@flonet.co.jp
+  </div>
+
   <button class="action-btn btn-open-input" onclick="openItemModal()">📱 【特大画面】1項目ずつ超かんたんに入力する</button>
   
   <div class="btn-container">
     <button class="action-btn btn-add-sheet" onclick="addNewSheet()">📄 顧客情報を引き継いで別メーカー用シートを追加</button>
     <button class="action-btn btn-pdf" onclick="showPDFInNewTab()">① 📄 PDFを別画面で直接開く（確認・印刷）</button>
-    <button class="action-btn btn-mail" onclick="openMailerOnly()">② メールを開いて送信する</button>
+    <button class="action-btn btn-mail" onclick="openMailGuideModal()">② メールを開いて送信する</button>
   </div>
 </div>
 
@@ -550,7 +574,6 @@
     nextCard(1);
   }
 
-  // カード切替制御 & 自動フォーカス強化
   function nextCard(stepNum) {
     for (let i = 1; i <= 6; i++) {
       const card = document.getElementById(`stepCard${i}`);
@@ -734,7 +757,6 @@
     closeAdminModal();
   }
 
-  /* PDFを保存せず「新しいタブで直接表示」する機能 */
   async function showPDFInNewTab() {
     const firstSheet = document.getElementById('sheet-1');
     const cName = firstSheet ? firstSheet.querySelector('.cust-name').value || "未入力" : "未入力";
@@ -766,13 +788,13 @@
       target.classList.remove('pdf-mode');
     }
 
-    // Blob URLを生成して別タブで直接PDF表示
     const pdfBlob = pdf.output('blob');
     const blobUrl = URL.createObjectURL(pdfBlob);
     window.open(blobUrl, '_blank');
   }
 
-  function openMailerOnly() {
+  /* メール案内モーダル制御 */
+  function openMailGuideModal() {
     const firstSheet = document.getElementById('sheet-1');
     const cName = firstSheet ? firstSheet.querySelector('.cust-name').value || "未入力" : "未入力";
 
@@ -780,12 +802,23 @@
       alert("「貴社名」をご入力ください。");
       return;
     }
+    document.getElementById('mailGuideModal').style.display = 'flex';
+  }
+
+  function closeMailGuideModal() {
+    document.getElementById('mailGuideModal').style.display = 'none';
+  }
+
+  function triggerMailer() {
+    const firstSheet = document.getElementById('sheet-1');
+    const cName = firstSheet ? firstSheet.querySelector('.cust-name').value || "未入力" : "未入力";
 
     const toAddress = "ft-order@flonet.co.jp"; 
-    const subject = encodeURIComponent(`【展示会当日受注】${cName}様分（複数メーカー分）`);
+    const subject = encodeURIComponent(`【展示会当日受注】${cName}様分`);
     const bodyText = `株式会社名古屋花き商事本部 御中\n\n展示会当日の受注シートデータを送信いたします。\n作成したPDFファイルを添付してご確認ください。\n\n貴社名: ${cName}`;
     const body = encodeURIComponent(bodyText);
 
+    closeMailGuideModal();
     window.location.href = `mailto:${toAddress}?subject=${subject}&body=${body}`;
   }
 </script>
