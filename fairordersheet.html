@@ -31,8 +31,6 @@
     z-index: 1000;
   }
   .guide-title { font-size: 14pt; font-weight: bold; color: #1b4d3e; margin: 0 0 10px 0; border-bottom: 2px solid #1b4d3e; padding-bottom: 5px; }
-  .guide-step { font-size: 10.5pt; line-height: 1.5; color: #334155; margin-bottom: 8px; }
-  .step-num { background-color: #1b4d3e; color: white; padding: 2px 8px; border-radius: 4px; font-weight: bold; margin-right: 5px; }
 
   /* モーダルポップアップ共通スタイル */
   .modal-overlay {
@@ -58,15 +56,19 @@
   }
   .modal-content h3 { margin: 0 0 15px 0; color: #1b4d3e; font-size: 13pt; border-bottom: 2px solid #1b4d3e; padding-bottom: 6px; }
 
-  /* 順次入力フォームデザイン */
-  .form-group { margin-bottom: 14px; transition: all 0.3s ease; }
-  .form-group.disabled { opacity: 0.3; pointer-events: none; }
-  .form-group label { display: block; font-size: 9.5pt; font-weight: bold; color: #1b4d3e; margin-bottom: 4px; }
-  .form-control { width: 100%; height: 42px; padding: 6px 12px; font-size: 11pt; border: 2px solid #cbd5e1; border-radius: 6px; background-color: #f8fafc; }
+  /* ステップ形式フォームデザイン */
+  .step-box { margin-bottom: 12px; display: none; }
+  .step-box.active { display: block; }
+  .step-box label { display: block; font-size: 10pt; font-weight: bold; color: #1b4d3e; margin-bottom: 6px; }
+  
+  .input-with-btn { display: flex; gap: 8px; }
+  .form-control { flex: 1; height: 44px; padding: 6px 12px; font-size: 11pt; border: 2px solid #cbd5e1; border-radius: 6px; background-color: #f8fafc; }
   .form-control:focus { border-color: #1b4d3e; background-color: #fff; outline: none; }
 
-  .modal-btn-group { display: flex; flex-direction: column; gap: 8px; margin-top: 15px; }
-  .btn-submit { display: none; background-color: #10b981; color: white; border: none; padding: 14px; border-radius: 6px; font-weight: bold; font-size: 12pt; cursor: pointer; box-shadow: 0 4px 6px rgba(16, 185, 129, 0.3); }
+  .btn-next { background-color: #2563eb; color: white; border: none; padding: 0 16px; height: 44px; border-radius: 6px; font-weight: bold; font-size: 10pt; cursor: pointer; white-space: nowrap; }
+  
+  .modal-btn-group { display: flex; flex-direction: column; gap: 8px; margin-top: 20px; }
+  .btn-submit { background-color: #10b981; color: white; border: none; padding: 14px; border-radius: 6px; font-weight: bold; font-size: 12pt; cursor: pointer; box-shadow: 0 4px 6px rgba(16, 185, 129, 0.3); }
   .btn-cancel { background-color: #64748b; color: white; border: none; padding: 10px; border-radius: 6px; font-weight: bold; font-size: 10pt; cursor: pointer; }
 
   .btn-container { display: flex; gap: 10px; margin-top: 12px; flex-wrap: wrap; }
@@ -149,55 +151,72 @@
 </head>
 <body>
 
-<!-- 順次入力用ポップアップ（モーダル） -->
+<!-- 個別ステップ入力用ポップアップ（モーダル） -->
 <div class="modal-overlay" id="itemModal">
   <div class="modal-content">
-    <h3>📦 1行分ずつ商品を入力</h3>
+    <h3>📦 明細の入力（1項目ずつ進む）</h3>
 
     <!-- Step 1: シート選択 -->
-    <div class="form-group" id="groupSheet">
-      <label>1. 対象シート（メーカー）</label>
-      <select id="modalSheetSelect" class="form-control" onchange="checkStepProgress()"></select>
+    <div class="step-box active" id="step1">
+      <label>【1/6】 対象シート（メーカー）</label>
+      <div class="input-with-btn">
+        <select id="modalSheetSelect" class="form-control"></select>
+        <button class="btn-next" onclick="goToStep(2)">次へ ➔</button>
+      </div>
     </div>
 
     <!-- Step 2: 品番 -->
-    <div class="form-group disabled" id="groupCode">
-      <label>2. 品番</label>
-      <input type="text" id="modalCode" class="form-control" placeholder="例: ABC-123" oninput="checkStepProgress()">
+    <div class="step-box" id="step2">
+      <label>【2/6】 品番</label>
+      <div class="input-with-btn">
+        <input type="text" id="modalCode" class="form-control" placeholder="例: ABC-123">
+        <button class="btn-next" onclick="goToStep(3)">次へ ➔</button>
+      </div>
     </div>
 
     <!-- Step 3: 品名 -->
-    <div class="form-group disabled" id="groupName">
-      <label>3. 品名</label>
-      <input type="text" id="modalName" class="form-control" placeholder="例: ガラスベース S" oninput="checkStepProgress()">
-    </div>
-
-    <!-- Step 4: 価格 & 数量 -->
-    <div style="display: flex; gap: 10px;">
-      <div class="form-group disabled" id="groupPrice" style="flex: 1;">
-        <label>4. 価格 (円)</label>
-        <input type="number" id="modalPrice" class="form-control" placeholder="1000" oninput="checkStepProgress()">
-      </div>
-      <div class="form-group disabled" id="groupQty" style="flex: 1;">
-        <label>5. 数量</label>
-        <input type="number" id="modalQty" class="form-control" placeholder="5" oninput="checkStepProgress()">
+    <div class="step-box" id="step3">
+      <label>【3/6】 品名</label>
+      <div class="input-with-btn">
+        <input type="text" id="modalName" class="form-control" placeholder="例: ガラスベース S">
+        <button class="btn-next" onclick="goToStep(4)">次へ ➔</button>
       </div>
     </div>
 
-    <!-- Step 5: 用途区分 -->
-    <div class="form-group disabled" id="groupType">
-      <label>6. 用途区分</label>
-      <select id="modalType" class="form-control" onchange="checkStepProgress()">
-        <option value="">▼ 選択してください</option>
-        <option value="1.店頭販売用">1.店頭販売用</option>
-        <option value="2.レッスン・資材用">2.レッスン用</option>
-        <option value="3.雑貨・店飾り">3.雑貨・店飾り</option>
-      </select>
+    <!-- Step 4: 価格 -->
+    <div class="step-box" id="step4">
+      <label>【4/6】 価格 (円)</label>
+      <div class="input-with-btn">
+        <input type="number" id="modalPrice" class="form-control" placeholder="1000">
+        <button class="btn-next" onclick="goToStep(5)">次へ ➔</button>
+      </div>
+    </div>
+
+    <!-- Step 5: 数量 -->
+    <div class="step-box" id="step5">
+      <label>【5/6】 数量</label>
+      <div class="input-with-btn">
+        <input type="number" id="modalQty" class="form-control" placeholder="5">
+        <button class="btn-next" onclick="goToStep(6)">次へ ➔</button>
+      </div>
+    </div>
+
+    <!-- Step 6: 用途区分 -->
+    <div class="step-box" id="step6">
+      <label>【6/6】 用途区分</label>
+      <div class="input-with-btn">
+        <select id="modalType" class="form-control">
+          <option value="">▼ 選択してください（空欄可）</option>
+          <option value="1.店頭販売用">1.店頭販売用</option>
+          <option value="2.レッスン・資材用">2.レッスン用</option>
+          <option value="3.雑貨・店飾り">3.雑貨・店飾り</option>
+        </select>
+      </div>
     </div>
 
     <!-- 登録ボタンエリア -->
     <div class="modal-btn-group">
-      <button class="btn-submit" id="btnSubmitItem" onclick="saveModalItem()">➕ この明細を登録する</button>
+      <button class="btn-submit" id="btnSubmitItem" onclick="saveModalItem()">➕ この内容で明細を追加する</button>
       <button class="btn-cancel" onclick="closeItemModal()">キャンセルして閉じる</button>
     </div>
   </div>
@@ -458,7 +477,7 @@
     tbody.appendChild(tr);
   }
 
-  /* モーダル順次入力制御 */
+  /* モーダル表示・ステップ制御 */
   function openItemModal(targetSheetId = null) {
     const modalSelect = document.getElementById('modalSheetSelect');
     modalSelect.innerHTML = "";
@@ -493,51 +512,25 @@
     document.getElementById('modalQty').value = "";
     document.getElementById('modalType').value = "";
 
-    document.getElementById('groupCode').classList.add('disabled');
-    document.getElementById('groupName').classList.add('disabled');
-    document.getElementById('groupPrice').classList.add('disabled');
-    document.getElementById('groupQty').classList.add('disabled');
-    document.getElementById('groupType').classList.add('disabled');
-    document.getElementById('btnSubmitItem').style.display = 'none';
-
-    checkStepProgress();
+    goToStep(1);
   }
 
-  // 入力状況に応じて次のステップを自動解除＆ボタン表示
-  function checkStepProgress() {
-    const sheetVal = document.getElementById('modalSheetSelect').value;
-    const codeVal = document.getElementById('modalCode').value.trim();
-    const nameVal = document.getElementById('modalName').value.trim();
-    const priceVal = document.getElementById('modalPrice').value.trim();
-    const qtyVal = document.getElementById('modalQty').value.trim();
-
-    // Step 1 -> Step 2
-    if (sheetVal) {
-      document.getElementById('groupCode').classList.remove('disabled');
+  function goToStep(stepNum) {
+    for (let i = 1; i <= 6; i++) {
+      const stepBox = document.getElementById(`step${i}`);
+      if (stepBox) stepBox.classList.remove('active');
     }
 
-    // Step 2 -> Step 3
-    if (codeVal.length > 0) {
-      document.getElementById('groupName').classList.remove('disabled');
+    const currentStep = document.getElementById(`step${stepNum}`);
+    if (currentStep) {
+      currentStep.classList.add('active');
+      // フォーカス移動
+      const input = currentStep.querySelector('input, select');
+      if (input) setTimeout(() => input.focus(), 100);
     }
 
-    // Step 3 -> Step 4
-    if (nameVal.length > 0) {
-      document.getElementById('groupPrice').classList.remove('disabled');
-      document.getElementById('groupQty').classList.remove('disabled');
-    }
-
-    // Step 4 -> Step 5
-    if (priceVal.length > 0 && qtyVal.length > 0) {
-      document.getElementById('groupType').classList.remove('disabled');
-    }
-
-    // すべて揃ったらボタンを表示
-    if (sheetVal && codeVal && nameVal && priceVal && qtyVal) {
-      document.getElementById('btnSubmitItem').style.display = 'block';
-    } else {
-      document.getElementById('btnSubmitItem').style.display = 'none';
-    }
+    // 「登録する」ボタンは最初からでも、途中からでも押せるように表示
+    document.getElementById('btnSubmitItem').style.display = 'block';
   }
 
   function saveModalItem() {
@@ -580,7 +573,7 @@
 
     calcRowTotal(sheetId, targetRowNum);
 
-    alert("明細を1行追加しました！引き続き次の商品を入力できます。");
+    alert("明細を1行追加しました！続けて次の商品を入力できます。");
     resetModalForm();
   }
 
