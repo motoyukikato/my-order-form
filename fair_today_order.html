@@ -17,7 +17,7 @@
     print-color-adjust: exact;
   }
 
-  /* 操作案内パネル（画面上部に固定） */
+  /* 操作案内パネル */
   .guide-panel {
     max-width: 210mm;
     margin: 0 auto 15px auto;
@@ -31,91 +31,89 @@
     z-index: 1000;
   }
   .guide-title { font-size: 14pt; font-weight: bold; color: #1b4d3e; margin: 0 0 10px 0; border-bottom: 2px solid #1b4d3e; padding-bottom: 5px; }
-  .guide-step { font-size: 10.5pt; line-height: 1.5; color: #334155; margin-bottom: 8px; }
-  .step-num { background-color: #1b4d3e; color: white; padding: 2px 8px; border-radius: 4px; font-weight: bold; margin-right: 5px; }
 
-  /* スタッフ用設定ポップアップ */
-  .admin-modal {
+  /* 老眼・スマホ特化モーダルスタイル */
+  .modal-overlay {
     display: none;
     position: fixed;
-    top: 50%; left: 50%;
-    transform: translate(-50%, -50%);
+    top: 0; left: 0; width: 100%; height: 100%;
+    background-color: rgba(0,0,0,0.7);
+    z-index: 9999;
+    justify-content: center;
+    align-items: center;
+    padding: 15px;
+  }
+  .modal-content {
     background-color: #ffffff;
     border: 4px solid #1b4d3e;
-    border-radius: 12px;
+    border-radius: 16px;
     padding: 25px;
-    z-index: 9999;
-    box-shadow: 0 20px 25px -5px rgba(0,0,0,0.3);
-    width: 400px;
+    width: 100%;
+    max-width: 450px;
+    box-shadow: 0 20px 25px -5px rgba(0,0,0,0.4);
   }
-  .admin-modal h3 { margin: 0 0 15px 0; color: #1b4d3e; font-size: 14pt; border-bottom: 2px solid #1b4d3e; padding-bottom: 5px; }
-  .admin-input { width: 100% !important; height: 40px !important; margin-bottom: 15px; font-size: 12pt !important; border: 1px solid #aaa !important; background: #fff !important; }
-  .admin-btn-set { background-color: #1b4d3e; color: white; padding: 10px; width: 100%; font-weight: bold; border: none; border-radius: 4px; cursor: pointer; font-size: 11pt; }
-  .admin-btn-close { background-color: #64748b; color: white; padding: 5px; width: 100%; border: none; border-radius: 4px; cursor: pointer; margin-top: 8px; font-size: 9pt; }
+  
+  /* 超デカ文字カード形式 */
+  .step-card { display: none; }
+  .step-card.active { display: block; }
+  
+  .step-label {
+    font-size: 16pt;
+    font-weight: bold;
+    color: #1b4d3e;
+    margin-bottom: 12px;
+    border-left: 6px solid #1b4d3e;
+    padding-left: 10px;
+  }
+  
+  .big-input {
+    width: 100%;
+    height: 55px;
+    font-size: 16pt !important;
+    font-weight: bold;
+    padding: 8px 14px;
+    border: 3px solid #cbd5e1;
+    border-radius: 8px;
+    background-color: #f8fafc;
+    margin-bottom: 20px;
+  }
+  .big-input:focus { border-color: #1b4d3e; background-color: #fff; outline: none; }
+
+  /* デカボタン群 */
+  .btn-step-group { display: flex; gap: 12px; margin-top: 10px; }
+  .btn-next-step { flex: 2; background-color: #2563eb; color: white; border: none; height: 55px; border-radius: 8px; font-weight: bold; font-size: 15pt; cursor: pointer; }
+  .btn-skip-step { flex: 1; background-color: #64748b; color: white; border: none; height: 55px; border-radius: 8px; font-weight: bold; font-size: 13pt; cursor: pointer; }
+
+  .btn-submit-final { display: none; width: 100%; background-color: #10b981; color: white; border: none; height: 60px; border-radius: 8px; font-weight: bold; font-size: 16pt; cursor: pointer; margin-top: 15px; box-shadow: 0 6px 12px rgba(16, 185, 129, 0.4); }
+  .btn-close-modal { width: 100%; background-color: #ef4444; color: white; border: none; padding: 10px; border-radius: 6px; font-weight: bold; font-size: 11pt; cursor: pointer; margin-top: 20px; }
 
   .btn-container { display: flex; gap: 10px; margin-top: 12px; flex-wrap: wrap; }
-  .action-btn { flex: 1; min-width: 160px; padding: 10px; font-size: 10.5pt; font-weight: bold; cursor: pointer; border: none; border-radius: 6px; box-shadow: 0 4px 6px rgba(0,0,0,0.15); }
+  .action-btn { flex: 1; min-width: 150px; padding: 10px; font-size: 10pt; font-weight: bold; cursor: pointer; border: none; border-radius: 6px; box-shadow: 0 4px 6px rgba(0,0,0,0.15); }
+  .btn-open-input { background-color: #2563eb; color: white; width: 100%; font-size: 14pt; margin-bottom: 8px; padding: 15px; border-radius: 8px; }
   .btn-add-sheet { background-color: #10b981; color: white; }
   .btn-pdf { background-color: #ef4444; color: white; }
   .btn-mail { background-color: #f59e0b; color: white; }
 
   /* コンテナ・シート */
-  #sheetsContainer {
-    width: 210mm;
-    margin: 0 auto;
-    display: flex;
-    flex-direction: column;
-    gap: 20px;
-  }
-
-  .a4-container {
-    width: 210mm;
-    min-height: 292mm;
-    background-color: #ffffff;
-    padding: 8mm 10mm;
-    position: relative;
-    box-shadow: 0 5px 15px rgba(0,0,0,0.1);
-  }
+  #sheetsContainer { width: 210mm; margin: 0 auto; display: flex; flex-direction: column; gap: 20px; }
+  .a4-container { width: 210mm; min-height: 292mm; background-color: #ffffff; padding: 8mm 10mm; position: relative; box-shadow: 0 5px 15px rgba(0,0,0,0.1); }
 
   /* 印刷・PDF化時の表示最適化 */
   .pdf-mode input[type="text"], .pdf-mode input[type="number"], .pdf-mode select,
   @media print {
     body { background-color: #ffffff; padding: 0; margin: 0; }
-    .guide-panel, .admin-modal, .sheet-control-bar { display: none !important; }
+    .guide-panel, .modal-overlay, .sheet-control-bar { display: none !important; }
     #sheetsContainer { gap: 0; }
     .a4-container { width: 210mm; margin: 0; padding: 5mm 10mm; box-shadow: none; page-break-after: always; }
     input[type="text"], input[type="number"], select {
-      border: none !important;
-      background: transparent !important;
-      padding: 0 !important;
-      box-shadow: none !important;
-      appearance: none;
-      -webkit-appearance: none;
+      border: none !important; background: transparent !important; padding: 0 !important; box-shadow: none !important; appearance: none; -webkit-appearance: none;
     }
     .total-box { color: #000000 !important; }
   }
 
   /* シートヘッダーバー */
-  .sheet-control-bar {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    background-color: #1b4d3e;
-    color: white;
-    padding: 6px 12px;
-    margin: -8mm -10mm 10px -10mm;
-    font-weight: bold;
-    font-size: 10pt;
-  }
-  .btn-delete-sheet {
-    background-color: #dc2626;
-    color: white;
-    border: none;
-    padding: 4px 10px;
-    border-radius: 4px;
-    cursor: pointer;
-    font-size: 8.5pt;
-  }
+  .sheet-control-bar { display: flex; justify-content: space-between; align-items: center; background-color: #1b4d3e; color: white; padding: 6px 12px; margin: -8mm -10mm 10px -10mm; font-weight: bold; font-size: 10pt; }
+  .btn-delete-sheet { background-color: #dc2626; color: white; border: none; padding: 4px 10px; border-radius: 4px; cursor: pointer; font-size: 8.5pt; }
 
   /* ヘッダー */
   .header { width: 100%; border-bottom: 2px solid #1b4d3e; padding-bottom: 3mm; margin-bottom: 3mm; }
@@ -132,41 +130,10 @@
   .title-area h1 { font-size: 14pt; color: #1b4d3e; margin: 0; font-weight: bold; letter-spacing: 1px; }
 
   /* メーカー名指定エリア */
-  .mfg-header-box {
-    width: 100%;
-    margin-bottom: 3mm;
-    border: 2px solid #1b4d3e;
-    background-color: #f0f7f0;
-    display: flex;
-    align-items: center;
-    padding: 4px 8px;
-    gap: 8px;
-  }
-  .mfg-header-label {
-    font-size: 11pt;
-    font-weight: bold;
-    color: #1b4d3e;
-    width: 140px;
-    white-space: nowrap;
-  }
-  .mfg-header-select {
-    flex: 1;
-    height: 32px !important;
-    font-size: 10.5pt !important;
-    font-weight: bold !important;
-    background-color: #ffffff !important;
-    border: 1px solid #1b4d3e !important;
-    cursor: pointer;
-  }
-  .mfg-header-custom-input {
-    display: none;
-    flex: 1;
-    height: 32px !important;
-    font-size: 10.5pt !important;
-    font-weight: bold !important;
-    background-color: #ffffff !important;
-    border: 1px solid #1b4d3e !important;
-  }
+  .mfg-header-box { width: 100%; margin-bottom: 3mm; border: 2px solid #1b4d3e; background-color: #f0f7f0; display: flex; align-items: center; padding: 4px 8px; gap: 8px; }
+  .mfg-header-label { font-size: 11pt; font-weight: bold; color: #1b4d3e; width: 140px; white-space: nowrap; }
+  .mfg-header-select { flex: 1; height: 32px !important; font-size: 10.5pt !important; font-weight: bold !important; background-color: #ffffff !important; border: 1px solid #1b4d3e !important; cursor: pointer; }
+  .mfg-header-custom-input { display: none; flex: 1; height: 32px !important; font-size: 10.5pt !important; font-weight: bold !important; background-color: #ffffff !important; border: 1px solid #1b4d3e !important; }
 
   /* テーブル基本設定 */
   input[type="text"], input[type="number"], select { width: 100%; height: 100%; border: 1px solid #cbd5e1; background-color: #f8fafc; padding: 2px 4px; font-size: 9pt; }
@@ -179,7 +146,7 @@
   /* 明細テーブル */
   .order-table { width: 100%; border-collapse: collapse; margin-bottom: 3mm; border: 2px solid #1b4d3e; table-layout: fixed; }
   .order-table th { background-color: #1b4d3e; color: #ffffff; font-size: 8.5pt; font-weight: bold; height: 7.5mm; text-align: center; border: 1px solid #1b4d3e; }
-  .order-table td { border: 1px solid #aaa; height: 7.5mm; text-align: center; vertical-align: middle; font-size: 8.5pt; padding: 0; background-color: #fff; }
+  .order-table td { border: 1px solid #aaa; height: 7.5mm; text-align: center; vertical-align: middle; font-size: 8.5pt; padding: 0; background-color: #fff; cursor: pointer; }
   .order-table tr:nth-child(even) td { background-color: #f9fafb; }
   .line-num { color: #666; font-size: 8pt; font-weight: bold; background-color: #f3f4f6 !important; }
 
@@ -200,31 +167,99 @@
 </head>
 <body>
 
-<div class="admin-modal" id="adminModal">
-  <h3>⚙️ スタッフ専用設定</h3>
-  <label style="font-size: 10pt; font-weight: bold; color: #1b4d3e;">追加発注期限：</label>
-  <!-- type="date" に変更して日付のみ選択可能に -->
-  <input type="date" id="inputDeadline" class="admin-input">
-  <button class="admin-btn-set" onclick="saveDeadline()">画面に期限を反映する</button>
-  <button class="admin-btn-close" onclick="closeAdminModal()">閉じる</button>
+<!-- 1項目ずつ特大表示するステップポップアップ -->
+<div class="modal-overlay" id="itemModal">
+  <div class="modal-content">
+
+    <!-- Step 1: 対象メーカー選択 -->
+    <div class="step-card active" id="stepCard1">
+      <div class="step-label">【1/6】 対象メーカー選択</div>
+      <select id="modalSheetSelect" class="big-input"></select>
+      <div class="btn-step-group">
+        <button class="btn-next-step" onclick="nextCard(2)" style="width:100%;">次へ ➔</button>
+      </div>
+    </div>
+
+    <!-- Step 2: 品番 -->
+    <div class="step-card" id="stepCard2">
+      <div class="step-label">【2/6】 品番を入力</div>
+      <input type="text" id="modalCode" class="big-input" placeholder="例: ABC-123">
+      <div class="btn-step-group">
+        <button class="btn-next-step" onclick="nextCard(3)">次へ ➔</button>
+        <button class="btn-skip-step" onclick="nextCard(3)">スキップ ⏭️</button>
+      </div>
+    </div>
+
+    <!-- Step 3: 品名 -->
+    <div class="step-card" id="stepCard3">
+      <div class="step-label">【3/6】 品名を入力</div>
+      <input type="text" id="modalName" class="big-input" placeholder="例: ガラスベース S">
+      <div class="btn-step-group">
+        <button class="btn-next-step" onclick="nextCard(4)">次へ ➔</button>
+        <button class="btn-skip-step" onclick="nextCard(4)">スキップ ⏭️</button>
+      </div>
+    </div>
+
+    <!-- Step 4: 価格 -->
+    <div class="step-card" id="stepCard4">
+      <div class="step-label">【4/6】 価格 (円) を入力</div>
+      <input type="number" id="modalPrice" class="big-input" placeholder="例: 1000">
+      <div class="btn-step-group">
+        <button class="btn-next-step" onclick="nextCard(5)">次へ ➔</button>
+        <button class="btn-skip-step" onclick="nextCard(5)">スキップ ⏭️</button>
+      </div>
+    </div>
+
+    <!-- Step 5: 数量 -->
+    <div class="step-card" id="stepCard5">
+      <div class="step-label">【5/6】 数量を入力</div>
+      <input type="number" id="modalQty" class="big-input" placeholder="例: 5">
+      <div class="btn-step-group">
+        <button class="btn-next-step" onclick="nextCard(6)">次へ ➔</button>
+        <button class="btn-skip-step" onclick="nextCard(6)">スキップ ⏭️</button>
+      </div>
+    </div>
+
+    <!-- Step 6: 用途区分 -->
+    <div class="step-card" id="stepCard6">
+      <div class="step-label">【6/6】 用途区分を選択</div>
+      <select id="modalType" class="big-input">
+        <option value="">▼ 選択なし（スキップ可）</option>
+        <option value="1.店頭販売用">1.店頭販売用</option>
+        <option value="2.レッスン・資材用">2.レッスン用</option>
+        <option value="3.雑貨・店飾り">3.雑貨・店飾り</option>
+      </select>
+      <div class="btn-step-group">
+        <button class="btn-next-step" onclick="nextCard(7)" style="width:100%;">最終確認へ ➔</button>
+      </div>
+    </div>
+
+    <!-- 全項目終了時のみ現れる『登録ボタン』 -->
+    <button class="btn-submit-final" id="btnSubmitFinal" onclick="saveModalItem()">➕ この1行分を追加・登録する</button>
+
+    <button class="btn-close-modal" onclick="closeItemModal()">✕ 入力を中断して閉じる</button>
+  </div>
+</div>
+
+<!-- スタッフ専用管理者設定モーダル -->
+<div class="modal-overlay" id="adminModalOverlay">
+  <div class="modal-content" style="max-width:380px;">
+    <h3>⚙️ スタッフ専用設定</h3>
+    <label style="font-size: 10pt; font-weight: bold; color: #1b4d3e;">追加発注期限：</label>
+    <input type="date" id="inputDeadline" class="big-input" style="height:45px; font-size:12pt !important;">
+    <button class="btn-next-step" style="width:100%; height:45px; font-size:12pt; background:#10b981;" onclick="saveDeadline()">画面に期限を反映する</button>
+    <button class="btn-close-modal" style="margin-top:10px;" onclick="closeAdminModal()">閉じる</button>
+  </div>
 </div>
 
 <div class="guide-panel">
   <div class="guide-title">🎪 【展示会当日】受注データの入力・作成手順</div>
-  <div class="guide-step">
-    <span class="step-num">1</span> 最初にプルダウンから<strong>【対象メーカー名】</strong>をご選択ください（明細へ自動反映されます）。
-  </div>
-  <div class="guide-step">
-    <span class="step-num">2</span> 別のメーカーのご注文を追加する場合は<strong>「📄 顧客情報を引き継いで別メーカー用シートを追加」</strong>を押してください（下に新しいシートが追加されます）。
-  </div>
-  <div class="guide-step">
-    <span class="step-num">3</span> 入力完了後、赤色の<strong>「① 全シートまとめてPDFを作成（保存）」</strong>を押すと全メーカー分のシートが1つのPDFで作成されます。
-  </div>
+  <button class="action-btn btn-open-input" onclick="openItemModal()">📱 【特大画面】1項目ずつ超かんたんに入力する</button>
   
   <div class="btn-container">
     <button class="action-btn btn-add-sheet" onclick="addNewSheet()">📄 顧客情報を引き継いで別メーカー用シートを追加</button>
     <button class="action-btn btn-pdf" onclick="generateAllSheetsPDF()">① 全シートまとめてPDF化（保存）</button>
-    <button class="action-btn btn-mail" onclick="openMailerOnly()">② メールで本部へ送信する</button>
+    <button class="action-btn btn-mail" onclick="openMailerOnly()">② メールを開いて送信する</button>
   </div>
 </div>
 
@@ -367,7 +402,7 @@
             <th style="width: 16%;">メーカー名</th>
             <th style="width: 12%;">品番</th>
             <th style="width: 22%;">品名</th>
-            <th style="width: 12%;">上代</th>
+            <th style="width: 12%;">展示会価格</th>
             <th style="width: 7%;">数量</th>
             <th style="width: 13%;">合計金額</th>
             <th style="width: 14%;">用途区分</th>
@@ -395,7 +430,7 @@
         </div>
         <div class="company-box">
           <strong>株式会社名古屋花き商事本部</strong><br>
-          TEL: 052-332-7087
+          TEL: 052-332-8287
         </div>
         <div class="clear"></div>
       </div>
@@ -434,15 +469,15 @@
     tr.innerHTML = `
       <td class="line-num">${rowNum}</td>
       <td><input type="text" class="mfg-input" value="${mfgName}" readonly tabindex="-1" style="background-color: #f1f5f9; text-align: center; pointer-events: none;"></td>
-      <td><input type="text" class="code-input"></td>
-      <td><input type="text" class="name-input"></td>
+      <td><input type="text" class="code-input" onclick="openItemModal(${sheetId})"></td>
+      <td><input type="text" class="name-input" onclick="openItemModal(${sheetId})"></td>
       <td>
         <div class="amount-wrapper">
-          <input type="number" class="price-input" style="text-align:right; padding-right:16px;" oninput="calcRowTotal(${sheetId}, ${rowNum})">
+          <input type="number" class="price-input" style="text-align:right; padding-right:16px;" oninput="calcRowTotal(${sheetId}, ${rowNum})" onclick="openItemModal(${sheetId})">
         </div>
       </td>
       <td>
-        <input type="number" class="qty-input" style="text-align:center;" oninput="calcRowTotal(${sheetId}, ${rowNum})">
+        <input type="number" class="qty-input" style="text-align:center;" oninput="calcRowTotal(${sheetId}, ${rowNum})" onclick="openItemModal(${sheetId})">
       </td>
       <td>
         <div class="amount-wrapper">
@@ -459,6 +494,123 @@
       </td>
     `;
     tbody.appendChild(tr);
+  }
+
+  /* モーダル表示・1項目ずつカード切替制御 */
+  function openItemModal(targetSheetId = null) {
+    const modalSelect = document.getElementById('modalSheetSelect');
+    modalSelect.innerHTML = "";
+
+    const sheets = document.querySelectorAll('.a4-container');
+    sheets.forEach(sheet => {
+      const sId = sheet.id.replace('sheet-', '');
+      const selectEl = sheet.querySelector('.main-mfg-select');
+      let mName = selectEl.value === "__OTHER__" ? sheet.querySelector('.main-mfg-custom').value : selectEl.value;
+      if (!mName) mName = `未設定のメーカー (シート${sId})`;
+
+      const opt = document.createElement('option');
+      opt.value = sId;
+      opt.innerText = `シート${sId}: ${mName}`;
+      modalSelect.appendChild(opt);
+    });
+
+    if (targetSheetId) modalSelect.value = targetSheetId;
+
+    resetModalForm();
+    document.getElementById('itemModal').style.display = 'flex';
+  }
+
+  function closeItemModal() {
+    document.getElementById('itemModal').style.display = 'none';
+  }
+
+  function resetModalForm() {
+    document.getElementById('modalCode').value = "";
+    document.getElementById('modalName').value = "";
+    document.getElementById('modalPrice').value = "";
+    document.getElementById('modalQty').value = "";
+    document.getElementById('modalType').value = "";
+
+    nextCard(1);
+  }
+
+  // カード切替制御 & 自動フォーカス強化
+  function nextCard(stepNum) {
+    for (let i = 1; i <= 6; i++) {
+      const card = document.getElementById(`stepCard${i}`);
+      if (card) card.classList.remove('active');
+    }
+
+    document.getElementById('btnSubmitFinal').style.display = 'none';
+
+    if (stepNum <= 6) {
+      const nextCardEl = document.getElementById(`stepCard${stepNum}`);
+      if (nextCardEl) {
+        nextCardEl.classList.add('active');
+        
+        // 即座＆アニメーション後に確実にカーソルを自動移動させる処理
+        const inputEl = nextCardEl.querySelector('input, select');
+        if (inputEl) {
+          inputEl.focus();
+          if (typeof inputEl.select === 'function') inputEl.select();
+
+          // モバイルのレンダリング待機（150ms後にも再実行）
+          setTimeout(() => {
+            inputEl.focus();
+            if (typeof inputEl.select === 'function') inputEl.select();
+          }, 150);
+        }
+      }
+    } else {
+      // 1行分の入力ステップ完了後、登録ボタンを表示
+      const btnSubmit = document.getElementById('btnSubmitFinal');
+      btnSubmit.style.display = 'block';
+      setTimeout(() => btnSubmit.focus(), 100);
+    }
+  }
+
+  function saveModalItem() {
+    const sheetId = document.getElementById('modalSheetSelect').value;
+    const sheet = document.getElementById(`sheet-${sheetId}`);
+    if (!sheet) return;
+
+    const code = document.getElementById('modalCode').value;
+    const name = document.getElementById('modalName').value;
+    const price = document.getElementById('modalPrice').value;
+    const qty = document.getElementById('modalQty').value;
+    const type = document.getElementById('modalType').value;
+
+    const rows = sheet.querySelectorAll('.orderTableBody tr');
+    let targetRow = null;
+    let targetRowNum = 0;
+
+    for (let i = 0; i < rows.length; i++) {
+      const c = rows[i].querySelector('.code-input').value;
+      const n = rows[i].querySelector('.name-input').value;
+      if (!c && !n) {
+        targetRow = rows[i];
+        targetRowNum = i + 1;
+        break;
+      }
+    }
+
+    if (!targetRow) {
+      addTenRowsToSheet(sheetId);
+      const newRows = sheet.querySelectorAll('.orderTableBody tr');
+      targetRowNum = rows.length + 1;
+      targetRow = newRows[rows.length];
+    }
+
+    targetRow.querySelector('.code-input').value = code;
+    targetRow.querySelector('.name-input').value = name;
+    targetRow.querySelector('.price-input').value = price;
+    targetRow.querySelector('.qty-input').value = qty;
+    targetRow.querySelector('.type-input').value = type;
+
+    calcRowTotal(sheetId, targetRowNum);
+
+    alert("明細を1行分追加しました！続けて次の商品を入力できます。");
+    resetModalForm();
   }
 
   function addTenRowsToSheet(sheetId) {
@@ -490,7 +642,6 @@
     });
   }
 
-  // いずれかのシートで顧客情報を変更したら全シートへ自動同期
   function syncCustomerInfoToAllSheets() {
     const firstSheet = document.getElementById('sheet-1');
     if (!firstSheet) return;
@@ -543,19 +694,18 @@
   function openAdminModal() {
     const pwd = prompt("パスワード（スタッフ専用）:");
     if (pwd === "758") {
-      document.getElementById('adminModal').style.display = 'block';
+      document.getElementById('adminModalOverlay').style.display = 'flex';
     } else if (pwd !== null) {
       alert("パスワードが異なります。");
     }
   }
 
   function closeAdminModal() {
-    document.getElementById('adminModal').style.display = 'none';
+    document.getElementById('adminModalOverlay').style.display = 'none';
   }
 
-  // 時間を省いて年月日（YYYY年MM月DD日）のみで表示するように修正
   function saveDeadline() {
-    const deadlineVal = document.getElementById('inputDeadline').value; // 例: "2026-10-15"
+    const deadlineVal = document.getElementById('inputDeadline').value;
     document.querySelectorAll('.deadlineText').forEach(element => {
       if (deadlineVal) {
         const parts = deadlineVal.split('-');
