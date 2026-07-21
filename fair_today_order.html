@@ -17,7 +17,7 @@
     print-color-adjust: exact;
   }
 
-  /* 操作案内パネル */
+  /* 操作案内パネル（画面上部に固定） */
   .guide-panel {
     max-width: 210mm;
     margin: 0 auto 15px auto;
@@ -26,6 +26,9 @@
     border-radius: 8px;
     padding: 15px 20px;
     box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+    position: sticky;
+    top: 10px;
+    z-index: 1000;
   }
   .guide-title { font-size: 14pt; font-weight: bold; color: #1b4d3e; margin: 0 0 10px 0; border-bottom: 2px solid #1b4d3e; padding-bottom: 5px; }
   .guide-step { font-size: 10.5pt; line-height: 1.5; color: #334155; margin-bottom: 8px; }
@@ -51,17 +54,24 @@
   .admin-btn-close { background-color: #64748b; color: white; padding: 5px; width: 100%; border: none; border-radius: 4px; cursor: pointer; margin-top: 8px; font-size: 9pt; }
 
   .btn-container { display: flex; gap: 10px; margin-top: 12px; flex-wrap: wrap; }
-  .action-btn { flex: 1; min-width: 180px; padding: 10px; font-size: 11pt; font-weight: bold; cursor: pointer; border: none; border-radius: 6px; box-shadow: 0 4px 6px rgba(0,0,0,0.15); }
-  .btn-add { background-color: #3b82f6; color: white; }
+  .action-btn { flex: 1; min-width: 160px; padding: 10px; font-size: 10.5pt; font-weight: bold; cursor: pointer; border: none; border-radius: 6px; box-shadow: 0 4px 6px rgba(0,0,0,0.15); }
+  .btn-add-sheet { background-color: #10b981; color: white; }
   .btn-pdf { background-color: #ef4444; color: white; }
   .btn-mail { background-color: #f59e0b; color: white; }
 
-  /* A4縦サイズコンテナ */
+  /* コンテナ・シート */
+  #sheetsContainer {
+    width: 210mm;
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+  }
+
   .a4-container {
     width: 210mm;
     min-height: 292mm;
     background-color: #ffffff;
-    margin: 0 auto;
     padding: 8mm 10mm;
     position: relative;
     box-shadow: 0 5px 15px rgba(0,0,0,0.1);
@@ -71,8 +81,9 @@
   .pdf-mode input[type="text"], .pdf-mode input[type="number"], .pdf-mode select,
   @media print {
     body { background-color: #ffffff; padding: 0; margin: 0; }
-    .guide-panel, .admin-modal { display: none !important; }
-    .a4-container { width: 210mm; margin: 0; padding: 5mm 10mm; box-shadow: none; }
+    .guide-panel, .admin-modal, .sheet-control-bar { display: none !important; }
+    #sheetsContainer { gap: 0; }
+    .a4-container { width: 210mm; margin: 0; padding: 5mm 10mm; box-shadow: none; page-break-after: always; }
     input[type="text"], input[type="number"], select {
       border: none !important;
       background: transparent !important;
@@ -82,6 +93,28 @@
       -webkit-appearance: none;
     }
     .total-box { color: #000000 !important; }
+  }
+
+  /* シートヘッダーバー */
+  .sheet-control-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background-color: #1b4d3e;
+    color: white;
+    padding: 6px 12px;
+    margin: -8mm -10mm 10px -10mm;
+    font-weight: bold;
+    font-size: 10pt;
+  }
+  .btn-delete-sheet {
+    background-color: #dc2626;
+    color: white;
+    border: none;
+    padding: 4px 10px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 8.5pt;
   }
 
   /* ヘッダー */
@@ -97,6 +130,43 @@
   .clear { clear: both; }
   .title-area { text-align: center; margin-bottom: 3mm; }
   .title-area h1 { font-size: 14pt; color: #1b4d3e; margin: 0; font-weight: bold; letter-spacing: 1px; }
+
+  /* メーカー名指定エリア */
+  .mfg-header-box {
+    width: 100%;
+    margin-bottom: 3mm;
+    border: 2px solid #1b4d3e;
+    background-color: #f0f7f0;
+    display: flex;
+    align-items: center;
+    padding: 4px 8px;
+    gap: 8px;
+  }
+  .mfg-header-label {
+    font-size: 11pt;
+    font-weight: bold;
+    color: #1b4d3e;
+    width: 140px;
+    white-space: nowrap;
+  }
+  .mfg-header-select {
+    flex: 1;
+    height: 32px !important;
+    font-size: 10.5pt !important;
+    font-weight: bold !important;
+    background-color: #ffffff !important;
+    border: 1px solid #1b4d3e !important;
+    cursor: pointer;
+  }
+  .mfg-header-custom-input {
+    display: none;
+    flex: 1;
+    height: 32px !important;
+    font-size: 10.5pt !important;
+    font-weight: bold !important;
+    background-color: #ffffff !important;
+    border: 1px solid #1b4d3e !important;
+  }
 
   /* テーブル基本設定 */
   input[type="text"], input[type="number"], select { width: 100%; height: 100%; border: 1px solid #cbd5e1; background-color: #f8fafc; padding: 2px 4px; font-size: 9pt; }
@@ -133,7 +203,8 @@
 <div class="admin-modal" id="adminModal">
   <h3>⚙️ スタッフ専用設定</h3>
   <label style="font-size: 10pt; font-weight: bold; color: #1b4d3e;">追加発注期限：</label>
-  <input type="datetime-local" id="inputDeadline" class="admin-input">
+  <!-- type="date" に変更して日付のみ選択可能に -->
+  <input type="date" id="inputDeadline" class="admin-input">
   <button class="admin-btn-set" onclick="saveDeadline()">画面に期限を反映する</button>
   <button class="admin-btn-close" onclick="closeAdminModal()">閉じる</button>
 </div>
@@ -141,140 +212,241 @@
 <div class="guide-panel">
   <div class="guide-title">🎪 【展示会当日】受注データの入力・作成手順</div>
   <div class="guide-step">
-    <span class="step-num">1</span> 貴社情報（貴社名・担当者）を入力し、「展示会価格・数量」および右端の<strong>【用途区分】</strong>をご入力ください。
+    <span class="step-num">1</span> 最初にプルダウンから<strong>【対象メーカー名】</strong>をご選択ください（明細へ自動反映されます）。
   </div>
   <div class="guide-step">
-    <span class="step-num">2</span> 入力完了後、赤色の<strong>「PDF作成（保存）」</strong>を押すと、送信・印刷用のファイルが自動生成されます。<br>
-    ※手書き用として印刷する場合は、何も入力せずにそのまま印刷を行ってください。
+    <span class="step-num">2</span> 別のメーカーのご注文を追加する場合は<strong>「📄 顧客情報を引き継いで別メーカー用シートを追加」</strong>を押してください（下に新しいシートが追加されます）。
+  </div>
+  <div class="guide-step">
+    <span class="step-num">3</span> 入力完了後、赤色の<strong>「① 全シートまとめてPDFを作成（保存）」</strong>を押すと全メーカー分のシートが1つのPDFで作成されます。
   </div>
   
   <div class="btn-container">
-    <button class="action-btn btn-add" onclick="addTenRows()">➕ 10行追加する</button>
-    <button class="action-btn btn-pdf" onclick="generatePDFOnly()">① 当日受注シートPDFを作成（保存）</button>
+    <button class="action-btn btn-add-sheet" onclick="addNewSheet()">📄 顧客情報を引き継いで別メーカー用シートを追加</button>
+    <button class="action-btn btn-pdf" onclick="generateAllSheetsPDF()">① 全シートまとめてPDF化（保存）</button>
     <button class="action-btn btn-mail" onclick="openMailerOnly()">② メールで本部へ送信する</button>
   </div>
 </div>
 
-<div class="a4-container" id="captureTarget">
-  <div class="header">
-    <div class="logo-area">
-      <p class="logo-text" ondblclick="openAdminModal()" title="ダブルクリックで設定">flonet</p>
-      <span class="exhibit-tag">展示会 当日受注シート</span>
-    </div>
-    <div class="header-right">
-      <p class="company-title">株式会社名古屋花き商事本部 展示会受注受付 御中</p>
-      <p class="fax-number">TEL: 052-332-8287 / FAX: 052-332-8287</p>
-    </div>
-    <div class="clear"></div>
-  </div>
-
-  <div class="title-area">
-    <h1>【 flonet見本市 当日受注エントリーシート 】</h1>
-    <div id="deadlineText" style="font-size: 9.5pt; color: #d32f2f; font-weight: bold; display: none;"></div>
-  </div>
-
-  <table class="customer-table">
-    <tr>
-      <th style="width: 12%;">貴社名</th>
-      <td style="width: 40%;"><input type="text" id="cust-name" placeholder="お名前 / 店舗名"></td>
-      <th style="width: 12%;">ご担当者</th>
-      <td style="width: 36%;"><input type="text" id="cust-staff"></td>
-    </tr>
-    <tr>
-      <th>ご住所</th>
-      <td><input type="text" id="cust-address" placeholder="〒"></td>
-      <th>お電話番号</th>
-      <td><input type="text" id="cust-tel"></td>
-    </tr>
-    <tr>
-      <th>お渡し方法</th>
-      <td>
-        <div class="radio-wrapper">
-          <label class="radio-label"><input type="radio" name="delivery" value="店頭お渡し" checked> 店頭渡し</label>
-          <label class="radio-label"><input type="radio" name="delivery" value="直送"> 直送</label>
-        </div>
-      </td>
-      <th>発送時期・条件</th>
-      <td>
-        <div class="radio-wrapper">
-          <label class="radio-label"><input type="radio" name="condition" value="まとめて" checked> まとめて</label>
-          <label class="radio-label"><input type="radio" name="condition" value="順次発送"> 入荷順発送</label>
-        </div>
-      </td>
-    </tr>
-  </table>
-
-  <table class="order-table" id="orderTable">
-    <thead>
-      <tr>
-        <th style="width: 4%;">No</th>
-        <th style="width: 16%;">メーカー名</th>
-        <th style="width: 12%;">品番</th>
-        <th style="width: 22%;">品名</th>
-        <th style="width: 12%;">展示会価格</th>
-        <th style="width: 7%;">数量</th>
-        <th style="width: 13%;">合計金額</th>
-        <th style="width: 14%;">用途区分</th>
-      </tr>
-    </thead>
-    <tbody id="orderTableBody">
-    </tbody>
-  </table>
-
-  <!-- 総合計金額欄 -->
-  <div style="width: 100%;">
-    <table class="summary-table">
-      <tr>
-        <th>受注合計金額（税抜）</th>
-        <td id="grandTotalDisplay">0 円</td>
-      </tr>
-    </table>
-    <div class="clear"></div>
-  </div>
-
-  <div class="footer-area">
-    <div class="notes-box">
-      <p style="margin: 0; font-weight: bold; color: #1b4d3e;">【特記事項・備考】</p>
-      <input type="text" id="cust-notes" style="width: 100%; height: 7mm; margin-top: 2px;" placeholder="指定納期やワークショップ日程などがあればご記入ください">
-    </div>
-    <div class="company-box">
-      <strong>株式会社名古屋花き商事本部</strong><br>
-      TEL: 052-332-8287
-    </div>
-    <div class="clear"></div>
-  </div>
+<div id="sheetsContainer">
+  <!-- 動的にシートが生成・追加されます -->
 </div>
 
 <script>
-  // 初期行数
+  let sheetCount = 0;
   const INITIAL_ROWS = 15;
 
   window.onload = function() {
-    const tbody = document.getElementById('orderTableBody');
+    addNewSheet(); // 1枚目のシート作成
+  }
+
+  function getFirstSheetCustomerInfo() {
+    if (sheetCount === 0) return null;
+    const firstSheet = document.getElementById('sheet-1');
+    if (!firstSheet) return null;
+
+    return {
+      name: firstSheet.querySelector('.cust-name').value || '',
+      staff: firstSheet.querySelector('.cust-staff').value || '',
+      address: firstSheet.querySelector('.cust-address').value || '',
+      tel: firstSheet.querySelector('.cust-tel').value || '',
+      delivery: firstSheet.querySelector('input[name="delivery-1"]:checked')?.value || '店頭お渡し',
+      condition: firstSheet.querySelector('input[name="condition-1"]:checked')?.value || 'まとめて'
+    };
+  }
+
+  function addNewSheet() {
+    sheetCount++;
+    const sheetId = sheetCount;
+    const customerInfo = getFirstSheetCustomerInfo();
+
+    const sheetsContainer = document.getElementById('sheetsContainer');
+    const sheetDiv = document.createElement('div');
+    sheetDiv.className = 'a4-container';
+    sheetDiv.id = `sheet-${sheetId}`;
+
+    const isFirst = (sheetId === 1);
+
+    sheetDiv.innerHTML = `
+      <div class="sheet-control-bar">
+        <span>シート【${sheetId}枚目】</span>
+        ${!isFirst ? `<button class="btn-delete-sheet" onclick="removeSheet(${sheetId})">🗑️ このシートを削除</button>` : ''}
+      </div>
+
+      <div class="header">
+        <div class="logo-area">
+          <p class="logo-text" ondblclick="openAdminModal()" title="ダブルクリックで設定">flonet</p>
+          <span class="exhibit-tag">展示会 当日受注シート</span>
+        </div>
+        <div class="header-right">
+          <p class="company-title">株式会社名古屋花き商事本部 展示会受注受付 御中</p>
+          <p class="fax-number">FAX: 052-332-8287</p>
+        </div>
+        <div class="clear"></div>
+      </div>
+
+      <div class="title-area">
+        <h1>【 flonet見本市 当日受注エントリーシート 】</h1>
+        <div class="deadlineText" style="font-size: 9.5pt; color: #d32f2f; font-weight: bold; display: none;"></div>
+      </div>
+
+      <div class="mfg-header-box">
+        <span class="mfg-header-label">【対象メーカー名】</span>
+        <select class="mfg-header-select main-mfg-select" onchange="syncManufacturerName(${sheetId})">
+          <option value="">▼ メーカーを選択してください</option>
+          <optgroup label="【第５倉庫 ２F】">
+            <option value="アスカ商会">アスカ商会</option>
+            <option value="sakagen（坂源）">sakagen（坂源）</option>
+            <option value="magnet(マグネット)">magnet(マグネット)</option>
+            <option value="三和トレーディング">三和トレーディング</option>
+            <option value="志成販売(she say)">志成販売(she say)</option>
+            <option value="ネイチャーデザインズ">ネイチャーデザインズ</option>
+          </optgroup>
+          <optgroup label="【第５倉庫 ３F】">
+            <option value="フロールエバー">フロールエバー</option>
+            <option value="大地農園">大地農園</option>
+            <option value="インターリンク">インターリンク</option>
+            <option value="コアトレーディング">コアトレーディング</option>
+            <option value="東京堂">東京堂</option>
+          </optgroup>
+          <optgroup label="【第６倉庫 １F】">
+            <option value="コベントガーデン">コベントガーデン</option>
+            <option value="友膳(you-zan)">友膳(you-zan)</option>
+            <option value="村田屋産業">村田屋産業</option>
+            <option value="エルコミューン(el comuun)">エルコミューン(el comuun)</option>
+            <option value="カルナック">カルナック</option>
+            <option value="ミュールミル(murmures)">ミュールミル(murmures)</option>
+          </optgroup>
+          <optgroup label="【第６倉庫 ２F】">
+            <option value="クレイ/松村工芸">クレイ/松村工芸</option>
+            <option value="ホワイエ">ホワイエ</option>
+            <option value="星野">星野</option>
+            <option value="ポッシュリビング">ポッシュリビング</option>
+            <option value="YARD">YARD</option>
+          </optgroup>
+          <option value="__OTHER__">その他（直接入力）</option>
+        </select>
+        <input type="text" class="mfg-header-custom-input main-mfg-custom" placeholder="メーカー名を入力" oninput="syncManufacturerName(${sheetId})">
+      </div>
+
+      <table class="customer-table">
+        <tr>
+          <th style="width: 12%;">貴社名</th>
+          <td style="width: 40%;"><input type="text" class="cust-name" placeholder="お名前 / 店舗名" value="${customerInfo ? customerInfo.name : ''}" oninput="syncCustomerInfoToAllSheets()"></td>
+          <th style="width: 12%;">ご担当者</th>
+          <td style="width: 36%;"><input type="text" class="cust-staff" value="${customerInfo ? customerInfo.staff : ''}" oninput="syncCustomerInfoToAllSheets()"></td>
+        </tr>
+        <tr>
+          <th>ご住所</th>
+          <td><input type="text" class="cust-address" placeholder="〒" value="${customerInfo ? customerInfo.address : ''}" oninput="syncCustomerInfoToAllSheets()"></td>
+          <th>お電話番号</th>
+          <td><input type="text" class="cust-tel" value="${customerInfo ? customerInfo.tel : ''}" oninput="syncCustomerInfoToAllSheets()"></td>
+        </tr>
+        <tr>
+          <th>お渡し方法</th>
+          <td>
+            <div class="radio-wrapper">
+              <label class="radio-label"><input type="radio" name="delivery-${sheetId}" value="店頭お渡し" ${!customerInfo || customerInfo.delivery === '店頭お渡し' ? 'checked' : ''} onchange="syncCustomerInfoToAllSheets()"> 店頭渡し</label>
+              <label class="radio-label"><input type="radio" name="delivery-${sheetId}" value="直送" ${customerInfo && customerInfo.delivery === '直送' ? 'checked' : ''} onchange="syncCustomerInfoToAllSheets()"> 直送</label>
+            </div>
+          </td>
+          <th>発送時期・条件</th>
+          <td>
+            <div class="radio-wrapper">
+              <label class="radio-label"><input type="radio" name="condition-${sheetId}" value="まとめて" ${!customerInfo || customerInfo.condition === 'まとめて' ? 'checked' : ''} onchange="syncCustomerInfoToAllSheets()"> まとめて</label>
+              <label class="radio-label"><input type="radio" name="condition-${sheetId}" value="順次発送" ${customerInfo && customerInfo.condition === '順次発送' ? 'checked' : ''} onchange="syncCustomerInfoToAllSheets()"> 入荷順発送</label>
+            </div>
+          </td>
+        </tr>
+      </table>
+
+      <table class="order-table">
+        <thead>
+          <tr>
+            <th style="width: 4%;">No</th>
+            <th style="width: 16%;">メーカー名</th>
+            <th style="width: 12%;">品番</th>
+            <th style="width: 22%;">品名</th>
+            <th style="width: 12%;">上代</th>
+            <th style="width: 7%;">数量</th>
+            <th style="width: 13%;">合計金額</th>
+            <th style="width: 14%;">用途区分</th>
+          </tr>
+        </thead>
+        <tbody class="orderTableBody">
+        </tbody>
+      </table>
+
+      <div style="width: 100%;">
+        <button type="button" style="float:left; padding:4px 10px; font-weight:bold; background-color:#3b82f6; color:white; border:none; border-radius:4px; cursor:pointer;" onclick="addTenRowsToSheet(${sheetId})">➕ 10行追加</button>
+        <table class="summary-table">
+          <tr>
+            <th>受注合計金額（税抜）</th>
+            <td class="grandTotalDisplay">0 円</td>
+          </tr>
+        </table>
+        <div class="clear"></div>
+      </div>
+
+      <div class="footer-area">
+        <div class="notes-box">
+          <p style="margin: 0; font-weight: bold; color: #1b4d3e;">【特記事項・備考】</p>
+          <input type="text" class="cust-notes" style="width: 100%; height: 7mm; margin-top: 2px;" placeholder="指定納期やワークショップ日程などがあればご記入ください">
+        </div>
+        <div class="company-box">
+          <strong>株式会社名古屋花き商事本部</strong><br>
+          TEL: 052-332-7087
+        </div>
+        <div class="clear"></div>
+      </div>
+    `;
+
+    sheetsContainer.appendChild(sheetDiv);
+
+    // 明細行の作成
+    const tbody = sheetDiv.querySelector('.orderTableBody');
     for (let i = 1; i <= INITIAL_ROWS; i++) {
-      appendRow(tbody, i);
+      appendRowToSheet(tbody, sheetId, i);
+    }
+
+    if (!isFirst) {
+      sheetDiv.scrollIntoView({ behavior: 'smooth' });
     }
   }
 
-  function appendRow(tbody, rowNum) {
+  function removeSheet(sheetId) {
+    if (confirm(`シート【${sheetId}枚目】を削除してもよろしいですか？`)) {
+      const sheet = document.getElementById(`sheet-${sheetId}`);
+      if (sheet) sheet.remove();
+    }
+  }
+
+  function appendRowToSheet(tbody, sheetId, rowNum) {
+    const sheet = document.getElementById(`sheet-${sheetId}`);
+    let mfgName = "";
+    if (sheet) {
+      const selectVal = sheet.querySelector('.main-mfg-select')?.value || "";
+      mfgName = (selectVal === "__OTHER__") ? sheet.querySelector('.main-mfg-custom')?.value : selectVal;
+    }
+
     const tr = document.createElement('tr');
-    tr.id = `row-${rowNum}`;
+    tr.id = `s${sheetId}-row-${rowNum}`;
     tr.innerHTML = `
       <td class="line-num">${rowNum}</td>
-      <td><input type="text" class="mfg-input"></td>
+      <td><input type="text" class="mfg-input" value="${mfgName}" readonly tabindex="-1" style="background-color: #f1f5f9; text-align: center; pointer-events: none;"></td>
       <td><input type="text" class="code-input"></td>
       <td><input type="text" class="name-input"></td>
       <td>
         <div class="amount-wrapper">
-          <input type="number" id="price-${rowNum}" style="text-align:right; padding-right:16px;" oninput="calcRowTotal(${rowNum})">
+          <input type="number" class="price-input" style="text-align:right; padding-right:16px;" oninput="calcRowTotal(${sheetId}, ${rowNum})">
         </div>
       </td>
       <td>
-        <input type="number" id="qty-${rowNum}" style="text-align:center;" oninput="calcRowTotal(${rowNum})">
+        <input type="number" class="qty-input" style="text-align:center;" oninput="calcRowTotal(${sheetId}, ${rowNum})">
       </td>
       <td>
         <div class="amount-wrapper">
-          <input type="text" id="total-${rowNum}" class="total-box" readonly>
+          <input type="text" class="total-box" readonly tabindex="-1">
         </div>
       </td>
       <td>
@@ -289,34 +461,83 @@
     tbody.appendChild(tr);
   }
 
-  function calcRowTotal(rowNum) {
-    const price = parseFloat(document.getElementById(`price-${rowNum}`).value) || 0;
-    const qty = parseFloat(document.getElementById(`qty-${rowNum}`).value) || 0;
-    const totalField = document.getElementById(`total-${rowNum}`);
+  function addTenRowsToSheet(sheetId) {
+    const sheet = document.getElementById(`sheet-${sheetId}`);
+    const tbody = sheet.querySelector('.orderTableBody');
+    const currentRows = tbody.querySelectorAll('tr').length;
+    for (let i = 1; i <= 10; i++) {
+      appendRowToSheet(tbody, sheetId, currentRows + i);
+    }
+  }
+
+  function syncManufacturerName(sheetId) {
+    const sheet = document.getElementById(`sheet-${sheetId}`);
+    const selectEl = sheet.querySelector('.main-mfg-select');
+    const customInputEl = sheet.querySelector('.main-mfg-custom');
+    
+    let selectedMfg = selectEl.value;
+
+    if (selectedMfg === "__OTHER__") {
+      customInputEl.style.display = "inline-block";
+      selectedMfg = customInputEl.value;
+    } else {
+      customInputEl.style.display = "none";
+    }
+
+    const mfgInputs = sheet.querySelectorAll('.mfg-input');
+    mfgInputs.forEach(input => {
+      input.value = selectedMfg;
+    });
+  }
+
+  // いずれかのシートで顧客情報を変更したら全シートへ自動同期
+  function syncCustomerInfoToAllSheets() {
+    const firstSheet = document.getElementById('sheet-1');
+    if (!firstSheet) return;
+
+    const name = firstSheet.querySelector('.cust-name').value;
+    const staff = firstSheet.querySelector('.cust-staff').value;
+    const address = firstSheet.querySelector('.cust-address').value;
+    const tel = firstSheet.querySelector('.cust-tel').value;
+    const delivery = firstSheet.querySelector('input[name="delivery-1"]:checked')?.value || '店頭お渡し';
+    const condition = firstSheet.querySelector('input[name="condition-1"]:checked')?.value || 'まとめて';
+
+    document.querySelectorAll('.a4-container').forEach(sheet => {
+      const sId = sheet.id.replace('sheet-', '');
+      sheet.querySelector('.cust-name').value = name;
+      sheet.querySelector('.cust-staff').value = staff;
+      sheet.querySelector('.cust-address').value = address;
+      sheet.querySelector('.cust-tel').value = tel;
+
+      const delRadio = sheet.querySelector(`input[name="delivery-${sId}"][value="${delivery}"]`);
+      if (delRadio) delRadio.checked = true;
+
+      const condRadio = sheet.querySelector(`input[name="condition-${sId}"][value="${condition}"]`);
+      if (condRadio) condRadio.checked = true;
+    });
+  }
+
+  function calcRowTotal(sheetId, rowNum) {
+    const row = document.getElementById(`s${sheetId}-row-${rowNum}`);
+    const price = parseFloat(row.querySelector('.price-input').value) || 0;
+    const qty = parseFloat(row.querySelector('.qty-input').value) || 0;
+    const totalField = row.querySelector('.total-box');
     const total = price * qty;
     
     totalField.value = total > 0 ? total.toLocaleString() : "";
-    updateGrandTotal();
+    updateGrandTotal(sheetId);
   }
 
-  function updateGrandTotal() {
+  function updateGrandTotal(sheetId) {
+    const sheet = document.getElementById(`sheet-${sheetId}`);
     let grandTotal = 0;
-    const rows = document.querySelectorAll('#orderTableBody tr');
-    rows.forEach((_, idx) => {
-      const rowNum = idx + 1;
-      const price = parseFloat(document.getElementById(`price-${rowNum}`)?.value) || 0;
-      const qty = parseFloat(document.getElementById(`qty-${rowNum}`)?.value) || 0;
+    const rows = sheet.querySelectorAll('.orderTableBody tr');
+    rows.forEach(row => {
+      const price = parseFloat(row.querySelector('.price-input').value) || 0;
+      const qty = parseFloat(row.querySelector('.qty-input').value) || 0;
       grandTotal += (price * qty);
     });
-    document.getElementById('grandTotalDisplay').innerText = grandTotal.toLocaleString() + " 円";
-  }
-
-  function addTenRows() {
-    const tbody = document.getElementById('orderTableBody');
-    const currentRows = tbody.querySelectorAll('tr').length;
-    for (let i = 1; i <= 10; i++) {
-      appendRow(tbody, currentRows + i);
-    }
+    sheet.querySelector('.grandTotalDisplay').innerText = grandTotal.toLocaleString() + " 円";
   }
 
   function openAdminModal() {
@@ -332,53 +553,72 @@
     document.getElementById('adminModal').style.display = 'none';
   }
 
+  // 時間を省いて年月日（YYYY年MM月DD日）のみで表示するように修正
   function saveDeadline() {
-    const deadlineVal = document.getElementById('inputDeadline').value;
-    const element = document.getElementById('deadlineText');
-    if (deadlineVal) {
-      element.innerText = `※会場受注受領日時: ${deadlineVal.replace('T', ' ')}`;
-      element.style.display = 'block';
-    } else {
-      element.style.display = 'none';
-    }
+    const deadlineVal = document.getElementById('inputDeadline').value; // 例: "2026-10-15"
+    document.querySelectorAll('.deadlineText').forEach(element => {
+      if (deadlineVal) {
+        const parts = deadlineVal.split('-');
+        if (parts.length === 3) {
+          const formattedDate = `${parts[0]}年${parseInt(parts[1], 10)}月${parseInt(parts[2], 10)}日`;
+          element.innerText = `※会場受注受領期限: ${formattedDate} まで`;
+          element.style.display = 'block';
+        }
+      } else {
+        element.style.display = 'none';
+      }
+    });
     closeAdminModal();
   }
 
-  async function generatePDFOnly() {
-    const cName = document.getElementById('cust-name').value || "未入力";
+  async function generateAllSheetsPDF() {
+    const firstSheet = document.getElementById('sheet-1');
+    const cName = firstSheet ? firstSheet.querySelector('.cust-name').value || "未入力" : "未入力";
+
     if (cName === "未入力") {
       alert("「貴社名」をご入力ください。");
       return;
     }
 
-    const target = document.getElementById('captureTarget');
-    target.classList.add('pdf-mode');
-
-    const canvas = await html2canvas(target, { scale: 2.5, useCORS: true, logging: false });
-    const imgData = canvas.toDataURL('image/jpeg', 1.0);
-    
     const { jsPDF } = window.jspdf;
-    const contentHeightMm = (canvas.height / canvas.width) * 210; 
-    const pdf = new jsPDF('p', 'mm', [210, contentHeightMm]);
-    pdf.addImage(imgData, 'JPEG', 0, 0, 210, contentHeightMm);
-    
-    const fileName = `当日受注シート_${cName}.pdf`;
-    pdf.save(fileName);
+    let pdf = null;
+    const sheets = document.querySelectorAll('.a4-container');
 
-    target.classList.remove('pdf-mode');
-    alert(`「${fileName}」をダウンロードフォルダーに保存しました！`);
+    for (let i = 0; i < sheets.length; i++) {
+      const target = sheets[i];
+      target.classList.add('pdf-mode');
+
+      const canvas = await html2canvas(target, { scale: 2.5, useCORS: true, logging: false });
+      const imgData = canvas.toDataURL('image/jpeg', 1.0);
+      const contentHeightMm = (canvas.height / canvas.width) * 210;
+
+      if (i === 0) {
+        pdf = new jsPDF('p', 'mm', [210, contentHeightMm]);
+      } else {
+        pdf.addPage([210, contentHeightMm], 'p');
+      }
+
+      pdf.addImage(imgData, 'JPEG', 0, 0, 210, contentHeightMm);
+      target.classList.remove('pdf-mode');
+    }
+
+    const fileName = `当日受注シート_まとめ_${cName}.pdf`;
+    pdf.save(fileName);
+    alert(`全${sheets.length}枚のシートを「${fileName}」として1つのPDFに保存しました！`);
   }
 
   function openMailerOnly() {
-    const cName = document.getElementById('cust-name').value || "未入力";
+    const firstSheet = document.getElementById('sheet-1');
+    const cName = firstSheet ? firstSheet.querySelector('.cust-name').value || "未入力" : "未入力";
+
     if (cName === "未入力") {
       alert("「貴社名」をご入力ください。");
       return;
     }
 
-    const toAddress = "order@flonet.example.com"; 
-    const subject = encodeURIComponent(`【展示会当日受注】${cName}様分`);
-    const bodyText = `株式会社名古屋花き商事本部 御中\n\n展示会当日の受注シートデータを送信いたします。\nPDFファイルを添付してご確認ください。\n\n貴社名: ${cName}`;
+    const toAddress = "ft-order@flonet.co.jp"; 
+    const subject = encodeURIComponent(`【展示会当日受注】${cName}様分（複数メーカー分）`);
+    const bodyText = `株式会社名古屋花き商事本部 御中\n\n展示会当日の受注シートデータを送信いたします。\n作成したPDFファイルを添付してご確認ください。\n\n貴社名: ${cName}`;
     const body = encodeURIComponent(bodyText);
 
     window.location.href = `mailto:${toAddress}?subject=${subject}&body=${body}`;
