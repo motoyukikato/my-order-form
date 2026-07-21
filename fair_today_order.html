@@ -58,12 +58,19 @@
   .step-card.active { display: block; }
   
   .step-label {
-    font-size: 16pt;
+    font-size: 15pt;
     font-weight: bold;
     color: #1b4d3e;
-    margin-bottom: 12px;
+    margin-bottom: 8px;
     border-left: 6px solid #1b4d3e;
     padding-left: 10px;
+  }
+
+  .step-sub-note {
+    font-size: 10pt;
+    color: #d32f2f;
+    font-weight: bold;
+    margin-bottom: 12px;
   }
   
   .big-input {
@@ -171,12 +178,13 @@
 <div class="modal-overlay" id="itemModal">
   <div class="modal-content">
 
-    <!-- Step 1: 対象メーカー選択 -->
+    <!-- Step 1: 対象メーカー選択（場所の案内を明確化） -->
     <div class="step-card active" id="stepCard1">
-      <div class="step-label">【1/6】 対象メーカー選択</div>
+      <div class="step-label">【1/6】 対象メーカー（※用紙上のプルダウン選択）</div>
+      <div class="step-sub-note">※変更する場合は、用紙上部にある緑色の「メーカー名選択枠」から変更してください。</div>
       <select id="modalSheetSelect" class="big-input"></select>
       <div class="btn-step-group">
-        <button class="btn-next-step" onclick="nextCard(2)" style="width:100%;">次へ ➔</button>
+        <button class="btn-next-step" onclick="nextCard(2)" style="width:100%;">確認して次へ ➔</button>
       </div>
     </div>
 
