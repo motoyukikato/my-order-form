@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>大型花器 代替品検索ツール</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+  <style>
+    :root { --primary: #2c3e50; --accent: #27ae60; --bg: #f4f7f6; --card: #fff; --border: #cbd5e1; }
+    * { box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; margin: 0; padding: 12px; background: var(--bg); color: #1e293b; font-size: 13px; }
+    .container { max-width: 1200px; margin: 0 auto; }
+    header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; border-bottom: 2px solid var(--primary); padding-bottom: 8px; }
+    h1 { margin: 0; font-size: 16px; color: var(--primary); }
+    .badge { font-size: 11px; padding: 3px 8px; border-radius: 12px; font-weight: bold; }
+    .badge-ok { background: #dcfce7; color: #166534; }
+    .badge-err { background: #fee2e2; color: #991b1b; }
+    
+    .import-area { background: #e0f2fe; border: 1px dashed #0284c7; padding: 12px; border-radius: 6px; margin-bottom: 12px; text-align: center; }
+    .file-label { display: block; background: #0284c7; color: #fff; padding: 10px 16px; border-radius: 6px; font-weight: bold; font-size: 14px; cursor: pointer; text-align: center; }
+    .file-input { display: none; }
+    .file-info { margin-top: 6px; font-size: 11px; color: #0369a1; word-break: break-all; }
+
+    .filter-card { background: var(--card); padding: 12px; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); margin-bottom: 12px; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 8px; }
+    .form-group { display: flex; flex-direction: column; }
+    .form-group label { font-size: 11px; font-weight: bold; margin-bottom: 2px; color: var(--primary); }
+    input, select { padding: 6px; border: 1px solid var(--border); border-radius: 4px; font-size: 13px; background: #fff; }
+    .range { display: flex; gap: 4px; align-items: center; }
+    .range input { width: 100%; }
+    .btn-reset { grid-column: 1 / -1; justify-self: end; background: #f1f5f9; border: 1px solid var(--border); padding: 6px 12px; border-radius: 4px; cursor: pointer; font-weight: bold; }
+    
+    .table-container { background: var(--card); border-radius: 8px; overflow-x: auto; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+    table { width: 100%; border-collapse: collapse; white-space: nowrap; }
+    th { background: var(--primary); color: #fff; padding: 8px; text-align: left; }
+    td { padding: 8px; border-bottom: 1px solid #f1f5f9; }
+    tr:nth-child(even) { background: #f8fafc; }
+    .mfr { background: #e2e8f0; padding: 2px 5px; border-radius: 3px; font-size: 10px; font-weight: bold; }
+    .hole-yes { color: #0d9488; font-weight: bold; }
+    .hole-no { color: #e11d48; font-weight: bold; }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <header>
+    <h1>🪴 大型花器 代替品検索</h1>
+    <div id="status" class="badge badge-err">CSV未選択</div>
+  </header>
+
+  <!-- iPhone用ファイル選択エリア -->
+  <div class="import-area">
+    <label class="file-label" for="csvFile">
+      📁 タップして CSV ファイルを選択
+    </label>
+    <input type="file" id="csvFile" class="file-input" accept="*/*" onchange="handleFile(this)">
+    <div id="importMsg" class="file-info">※Excelで保存したCSVをそのまま選択できます</div>
+  </div>
+
+  <div class="filter-card">
+    <div class="grid">
+      <div class="form-group"><label>キーワード</label><input type="text" id="kw" placeholder="型番・商品名"></div>
+      <div class="form-group"><label>メーカー</label><select id="mfr"><option value="">すべて</option></select></div>
+      <div class="form-group"><label>号数</label><select id="pot"><option value="">すべて</option></select></div>
+      <div class="form-group"><label>素材</label><select id="mat"><option value="">すべて</option></select></div>
+      <div class="form-group"><label>カラー</label><select id="col"><option value="">すべて</option></select></div>
+      <div class="form-group">
+        <label>高さ H (cm)</label>
+        <div class="range"><input type="number" id="minH" placeholder="最小"><span>〜</span><input type="number" id="maxH" placeholder="最大"></div>
+      </div>
+      <div class="form-group">
+        <label>内径 (cm)</label>
+        <div class="range"><input type="number" id="minIn" placeholder="最小"><span>〜</span><input type="number" id="maxIn" placeholder="最大"></div>
+      </div>
+      <div class="form-group"><label>底穴</label><select id="hole"><option value="">すべて</option><option value="あり">あり</option><option value="なし">なし</option></select></div>
+      <button class="btn-reset" onclick="resetForm()">条件クリア</button>
+    </div>
+  </div>
+
+  <div style="margin-bottom: 8px; font-weight: bold;">該当: <span id="count" style="color: var(--accent); font-size: 15px;">0</span> 件</div>
+
+  <div class="table-container">
+    <table>
+      <thead>
+        <tr>
+          <th>メーカー</th><th>型番</th><th>商品名</th><th>号数</th><th>外寸 (cm)</th><th>内径 (cm)</th><th>素材</th><th>カラー</th><th>底穴</th><th style="text-align:right;">上代 (税抜)</th>
+        </tr>
+      </thead>
+      <tbody id="tb">
+        <tr><td colspan="10" style="text-align:center; padding:20px; color:#888;">上のボタンからCSVファイルを選択してください。</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<script>
+  let vaseData = [];
+
+  // 文字コード（UTF-8 / Shift-JIS）を全自動判定して読み込む関数
+  function handleFile(input) {
+    const file = input.files[0];
+    if (!file) return;
+
+    const msgEl = document.getElementById('importMsg');
+    msgEl.textContent = '読み込み中: ' + file.name;
+
+    const reader = new FileReader();
+
+    reader.onload = function(e) {
+      const buffer = e.target.result;
+      let text = '';
+
+      // 1. まず UTF-8 でデコードを試みる
+      try {
+        const utf8Decoder = new TextDecoder('utf-8', { fatal: true });
+        text = utf8Decoder.decode(buffer);
+      } catch (err) {
+        // 2. UTF-8 でエラー（Shift-JIS等）の場合は Shift-JIS でデコード
+        const sjisDecoder = new TextDecoder('shift-jis');
+        text = sjisDecoder.decode(buffer);
+      }
+
+      parseCSVText(text, file.name);
+    };
+
+    reader.onerror = function() {
+      alert('ファイルの読み込みに失敗しました。');
+      msgEl.textContent = 'エラー: ファイルを読めませんでした';
+    };
+
+    // バイナリ（ArrayBuffer）として読み込んで文字コードを自動処理
+    reader.readAsArrayBuffer(file);
+  }
+
+  function parseCSVText(csvText, fileName) {
+    Papa.parse(csvText, {
+      header: true,
+      skipEmptyLines: true,
+      complete: function(res) {
+        if (res.data && res.data.length > 0) {
+          vaseData = processData(res.data);
+          
+          if (vaseData.length > 0) {
+            setStatus('読み込み成功 (' + vaseData.length + '件)', 'badge-ok');
+            document.getElementById('importMsg').textContent = '✅ ' + fileName + ' (' + vaseData.length + '件) を読み込みました';
+            init();
+            return;
+          }
+        }
+        alert('CSVのヘッダー項目（1行目）を確認してください。');
+        document.getElementById('importMsg').textContent = '⚠️ データ項目が不一致です';
+      },
+      error: function(err) {
+        alert('CSV解析エラー: ' + err);
+      }
+    });
+  }
+
+  function setStatus(txt, cls) {
+    const el = document.getElementById('status');
+    el.textContent = txt;
+    el.className = 'badge ' + cls;
+  }
+
+  function processData(data) {
+    return data.map(rawRow => {
+      const row = {};
+      Object.keys(rawRow).forEach(key => {
+        if (key) {
+          // BOM除去と前後の空欄カット
+          const cleanKey = key.replace(/^\ufeff/, '').trim();
+          row[cleanKey] = rawRow[key] ? rawRow[key].trim() : '';
+        }
+      });
+
+      return {
+        mfr: row['メーカー'] || '',
+        model: row['型番'] || '',
+        name: row['商品名'] || '',
+        pot: row['対応号数'] || '',
+        out: row['外寸'] || '',
+        h: parseFloat(row['高さ_cm']) || 0,
+        in: parseFloat(row['内径_cm']) || 0,
+        mat: row['素材'] || '',
+        col: row['カラー'] || '',
+        hole: row['底穴'] || '',
+        price: parseInt((row['上代_税抜'] || '').replace(/[^0-9]/g, '')) || 0
+      };
+    }).filter(item => item.mfr || item.model || item.name);
+  }
+
+  function init() {
+    fill('mfr', 'mfr'); fill('pot', 'pot'); fill('mat', 'mat'); fill('col', 'col');
+    
+    const inputs = document.querySelectorAll('.filter-card input, .filter-card select');
+    inputs.forEach(e => {
+      e.oninput = render;
+      e.onchange = render;
+    });
+    
+    render();
+  }
+
+  function fill(id, key) {
+    const s = document.getElementById(id);
+    const opts = [...new Set(vaseData.map(x => x[key]))].filter(Boolean);
+    s.innerHTML = '<option value="">すべて</option>';
+    opts.forEach(o => { const e = document.createElement('option'); e.value = o; e.textContent = o; s.appendChild(e); });
+  }
+
+  function render() {
+    const kw = (document.getElementById('kw').value || '').toLowerCase();
+    const m = document.getElementById('mfr').value;
+    const p = document.getElementById('pot').value;
+    const mat = document.getElementById('mat').value;
+    const c = document.getElementById('col').value;
+    const minH = parseFloat(document.getElementById('minH').value);
+    const maxH = parseFloat(document.getElementById('maxH').value);
+    const minIn = parseFloat(document.getElementById('minIn').value);
+    const maxIn = parseFloat(document.getElementById('maxIn').value);
+    const h = document.getElementById('hole').value;
+
+    const res = vaseData.filter(x => {
+      if (kw && !`${x.mfr} ${x.model} ${x.name} ${x.mat} ${x.col}`.toLowerCase().includes(kw)) return false;
+      if (m && x.mfr !== m) return false;
+      if (p && x.pot !== p) return false;
+      if (mat && x.mat !== mat) return false;
+      if (c && x.col !== c) return false;
+      if (!isNaN(minH) && x.h < minH) return false;
+      if (!isNaN(maxH) && x.h > maxH) return false;
+      if (!isNaN(minIn) && x.in < minIn) return false;
+      if (!isNaN(maxIn) && x.in > maxIn) return false;
+      if (h && x.hole !== h) return false;
+      return true;
+    });
+
+    const tb = document.getElementById('tb');
+    tb.innerHTML = '';
+    document.getElementById('count').textContent = res.length;
+
+    if (res.length === 0) {
+      tb.innerHTML = `<tr><td colspan="10" style="text-align:center; padding:20px; color:#888;">該当するデータがありません。</td></tr>`;
+      return;
+    }
+
+    res.forEach(x => {
+      const tr = document.createElement('tr');
+      const hCls = x.hole === 'あり' ? 'hole-yes' : 'hole-no';
+      tr.innerHTML = `
+        <td><span class="mfr">${x.mfr}</span></td>
+        <td><code>${x.model}</code></td>
+        <td><strong>${x.name}</strong></td>
+        <td>${x.pot}</td>
+        <td>${x.out}</td>
+        <td>${x.in ? 'Φ'+x.in : '-'}</td>
+        <td>${x.mat}</td>
+        <td>${x.col}</td>
+        <td><span class="${hCls}">${x.hole}</span></td>
+        <td style="text-align:right; font-weight:bold;">${x.price ? '¥'+x.price.toLocaleString() : '-'}</td>
+      `;
+      tb.appendChild(tr);
+    });
+  }
+
+  function resetForm() {
+    document.querySelectorAll('.filter-card input').forEach(i => i.value = '');
+    document.querySelectorAll('.filter-card select').forEach(s => s.value = '');
+    render();
+  }
+</script>
+
+</body>
+</html>
