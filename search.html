@@ -15,11 +15,7 @@
     .badge { font-size: 11px; padding: 3px 8px; border-radius: 12px; font-weight: bold; }
     .badge-ok { background: #dcfce7; color: #166534; }
     .badge-err { background: #fee2e2; color: #991b1b; }
-    
-    .import-area { background: #e0f2fe; border: 1px dashed #0284c7; padding: 12px; border-radius: 6px; margin-bottom: 12px; text-align: center; }
-    .file-label { display: block; background: #0284c7; color: #fff; padding: 10px 16px; border-radius: 6px; font-weight: bold; font-size: 14px; cursor: pointer; text-align: center; }
-    .file-input { display: none; }
-    .file-info { margin-top: 6px; font-size: 11px; color: #0369a1; word-break: break-all; }
+    .badge-load { background: #e0f2fe; color: #0369a1; }
 
     .filter-card { background: var(--card); padding: 12px; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); margin-bottom: 12px; }
     .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 8px; }
@@ -38,6 +34,7 @@
     .mfr { background: #e2e8f0; padding: 2px 5px; border-radius: 3px; font-size: 10px; font-weight: bold; }
     .hole-yes { color: #0d9488; font-weight: bold; }
     .hole-no { color: #e11d48; font-weight: bold; }
+    .stock-val { font-weight: bold; color: #0284c7; }
   </style>
 </head>
 <body>
@@ -45,17 +42,8 @@
 <div class="container">
   <header>
     <h1>🪴 大型花器 代替品検索</h1>
-    <div id="status" class="badge badge-err">CSV未選択</div>
+    <div id="status" class="badge badge-load">データ読み込み中...</div>
   </header>
-
-  <!-- iPhone用ファイル選択エリア -->
-  <div class="import-area">
-    <label class="file-label" for="csvFile">
-      📁 タップして CSV ファイルを選択
-    </label>
-    <input type="file" id="csvFile" class="file-input" accept="*/*" onchange="handleFile(this)">
-    <div id="importMsg" class="file-info">※Excelで保存したCSVをそのまま選択できます</div>
-  </div>
 
   <div class="filter-card">
     <div class="grid">
@@ -83,11 +71,11 @@
     <table>
       <thead>
         <tr>
-          <th>メーカー</th><th>型番</th><th>商品名</th><th>号数</th><th>外寸 (cm)</th><th>内径 (cm)</th><th>素材</th><th>カラー</th><th>底穴</th><th style="text-align:right;">上代 (税抜)</th>
+          <th>メーカー</th><th>型番</th><th>商品名</th><th>号数</th><th>外寸 (cm)</th><th>内径 (cm)</th><th>素材</th><th>カラー</th><th>底穴</th><th>在庫数</th><th style="text-align:right;">上代 (税抜)</th>
         </tr>
       </thead>
       <tbody id="tb">
-        <tr><td colspan="10" style="text-align:center; padding:20px; color:#888;">上のボタンからCSVファイルを選択してください。</td></tr>
+        <tr><td colspan="11" style="text-align:center; padding:20px; color:#888;">最新データを取得しています...</td></tr>
       </tbody>
     </table>
   </div>
@@ -96,44 +84,11 @@
 <script>
   let vaseData = [];
 
-  // 文字コード（UTF-8 / Shift-JIS）を全自動判定して読み込む関数
-  function handleFile(input) {
-    const file = input.files[0];
-    if (!file) return;
-
-    const msgEl = document.getElementById('importMsg');
-    msgEl.textContent = '読み込み中: ' + file.name;
-
-    const reader = new FileReader();
-
-    reader.onload = function(e) {
-      const buffer = e.target.result;
-      let text = '';
-
-      // 1. まず UTF-8 でデコードを試みる
-      try {
-        const utf8Decoder = new TextDecoder('utf-8', { fatal: true });
-        text = utf8Decoder.decode(buffer);
-      } catch (err) {
-        // 2. UTF-8 でエラー（Shift-JIS等）の場合は Shift-JIS でデコード
-        const sjisDecoder = new TextDecoder('shift-jis');
-        text = sjisDecoder.decode(buffer);
-      }
-
-      parseCSVText(text, file.name);
-    };
-
-    reader.onerror = function() {
-      alert('ファイルの読み込みに失敗しました。');
-      msgEl.textContent = 'エラー: ファイルを読めませんでした';
-    };
-
-    // バイナリ（ArrayBuffer）として読み込んで文字コードを自動処理
-    reader.readAsArrayBuffer(file);
-  }
-
-  function parseCSVText(csvText, fileName) {
-    Papa.parse(csvText, {
+  // 画面が開いた瞬間に GitHub 上の data.csv を自動取得
+  window.addEventListener('DOMContentLoaded', () => {
+    // キャッシュ対策としてタイムスタンプを付与
+    Papa.parse('data.csv?t=' + new Date().getTime(), {
+      download: true,
       header: true,
       skipEmptyLines: true,
       complete: function(res) {
@@ -141,20 +96,20 @@
           vaseData = processData(res.data);
           
           if (vaseData.length > 0) {
-            setStatus('読み込み成功 (' + vaseData.length + '件)', 'badge-ok');
-            document.getElementById('importMsg').textContent = '✅ ' + fileName + ' (' + vaseData.length + '件) を読み込みました';
+            setStatus('最新データ連携中 (' + vaseData.length + '件)', 'badge-ok');
             init();
             return;
           }
         }
-        alert('CSVのヘッダー項目（1行目）を確認してください。');
-        document.getElementById('importMsg').textContent = '⚠️ データ項目が不一致です';
+        setStatus('データ未登録', 'badge-err');
+        document.getElementById('tb').innerHTML = `<tr><td colspan="11" style="text-align:center; padding:20px; color:#e11d48;">data.csv の読み込みに失敗したか、空データです。</td></tr>`;
       },
       error: function(err) {
-        alert('CSV解析エラー: ' + err);
+        setStatus('読み込みエラー', 'badge-err');
+        document.getElementById('tb').innerHTML = `<tr><td colspan="11" style="text-align:center; padding:20px; color:#e11d48;">data.csv が見つかりません。GitHub上に配置されているか確認してください。</td></tr>`;
       }
     });
-  }
+  });
 
   function setStatus(txt, cls) {
     const el = document.getElementById('status');
@@ -162,12 +117,12 @@
     el.className = 'badge ' + cls;
   }
 
+  // データ整形（BOM除去・在庫数対応）
   function processData(data) {
     return data.map(rawRow => {
       const row = {};
       Object.keys(rawRow).forEach(key => {
         if (key) {
-          // BOM除去と前後の空欄カット
           const cleanKey = key.replace(/^\ufeff/, '').trim();
           row[cleanKey] = rawRow[key] ? rawRow[key].trim() : '';
         }
@@ -184,6 +139,7 @@
         mat: row['素材'] || '',
         col: row['カラー'] || '',
         hole: row['底穴'] || '',
+        stock: row['在庫数'] || row['数量'] || '-',  // 在庫数または数量列に対応
         price: parseInt((row['上代_税抜'] || '').replace(/[^0-9]/g, '')) || 0
       };
     }).filter(item => item.mfr || item.model || item.name);
@@ -239,7 +195,7 @@
     document.getElementById('count').textContent = res.length;
 
     if (res.length === 0) {
-      tb.innerHTML = `<tr><td colspan="10" style="text-align:center; padding:20px; color:#888;">該当するデータがありません。</td></tr>`;
+      tb.innerHTML = `<tr><td colspan="11" style="text-align:center; padding:20px; color:#888;">該当するデータがありません。</td></tr>`;
       return;
     }
 
@@ -256,6 +212,7 @@
         <td>${x.mat}</td>
         <td>${x.col}</td>
         <td><span class="${hCls}">${x.hole}</span></td>
+        <td><span class="stock-val">${x.stock}</span></td>
         <td style="text-align:right; font-weight:bold;">${x.price ? '¥'+x.price.toLocaleString() : '-'}</td>
       `;
       tb.appendChild(tr);
