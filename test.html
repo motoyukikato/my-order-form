@@ -1,198 +1,623 @@
 <!DOCTYPE html>
-<html>
+<html lang="ja">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>商品価格チェッカー（iPhoneピント完全対策版）</title>
-  <style>
-    body { font-family: sans-serif; margin: 0; overflow: hidden; background: #000; }
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="theme-color" content="#3b5998">
+    <title>商事本部受注システム(Android)</title>
     
-    /* カメラ映像の親コンテナ（はみ出たビデオを隠す） */
-    #preview { 
-      width: 100vw; 
-      height: 60vh; 
-      position: relative; 
-      overflow: hidden; 
-    }
+    <script src="https://unpkg.com/html5-qrcode"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     
-    /* 【iPhone対策①】ビデオ要素自体をCSSで1.5倍に拡大して表示（疑似デジタルズーム）
-       これにより、ユーザーが「近づけなくても大きく映る」状態を作ります */
-    #preview video { 
-      width: 100%; 
-      height: 100%; 
-      object-fit: cover; 
-      transform: scale(1.5); /* 1.5倍にズームアップ */
-      transform-origin: center center;
-    }
-    
-    /* 【iPhone対策②】スキャンエリアをさらに極細に（ユーザーを強制的に遠ざける） */
-    .viewport { 
-      position: absolute; 
-      top: 50%; 
-      left: 50%; 
-      transform: translate(-50%, -50%);
-      width: 80%;       /* 横幅は広く */
-      height: 8%;       /* 縦幅を限界まで細く（20% → 8%） */
-      border: 3px solid #0f0; 
-      box-shadow: 0 0 0 2000px rgba(0,0,0,0.65); /* 周囲をかなり暗くして枠を際立たせる */
-      z-index: 10; 
-    }
-    
-    /* ユーザーへの明確な物理的指示 */
-    .guide-text {
-      position: absolute;
-      bottom: -40px;
-      left: 50%;
-      transform: translateX(-50%);
-      color: #0f0;
-      font-size: 0.85rem;
-      font-weight: bold;
-      white-space: nowrap;
-      text-shadow: 2px 2px 3px #000;
-      background: rgba(0,0,0,0.6);
-      padding: 4px 12px;
-      border-radius: 10px;
-    }
-    
-    .info-panel { 
-      height: 40vh; 
-      background: white; 
-      padding: 20px; 
-      text-align: center; 
-      border-top-left-radius: 20px; 
-      border-top-right-radius: 20px; 
-      position: relative; 
-      z-index: 20; 
-      box-sizing: border-box; 
-    }
-    #result { font-size: 1.2rem; font-weight: bold; color: #333; margin-top: 10px; }
-    .loading-text { color: #f39c12; font-weight: bold; }
-  </style>
+    <style>
+        body { 
+            font-family: Roboto, sans-serif; 
+            margin: 0; 
+            padding-bottom: 90px; 
+            background: #f4f7f9; 
+            user-select: none;
+            touch-action: manipulation; 
+            overscroll-behavior-y: contain;
+        }
+        header { background: #3b5998; text-align: center; padding: 12px; color: white; font-weight: bold; position: sticky; top: 0; z-index: 100; box-shadow: 0 2px 4px rgba(0,0,0,0.2); }
+        .page-section { display: none; padding: 10px; }
+        .active { display: block; }
+        .card { background: #fff; padding: 15px; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.12); margin-bottom: 10px; }
+        .btn-main { padding: 14px; border: none; border-radius: 4px; width: 100%; font-size: 1em; font-weight: bold; color: white; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; }
+        .btn-main:active { opacity: 0.7; transform: translateY(1px); }
+        
+        #reader { width: 100% !important; background: #000; border-radius: 4px; }
+        .item-row { border-bottom: 1px solid #eee; padding: 12px 0; display: flex; justify-content: space-between; align-items: center; }
+        .qty-ctrl-btn { width: 44px; height: 44px; border-radius: 4px; border: 1px solid #ddd; background: #f8f9fa; font-size: 1.5em; display: flex; align-items: center; justify-content: center; }
+        .qty-num-box { min-width: 60px; height: 42px; line-height: 42px; text-align: center; background: #fff; border: 2px solid #3b5998; border-radius: 4px; font-weight: bold; font-size: 1.2em; color: #3b5998; }
+        
+        #common-note { width: 100%; height: 80px; margin-top: 10px; padding: 10px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; font-size: 16px; }
+        .total-box { text-align: right; padding: 15px; font-size: 1.3em; color: #d9534f; font-weight: bold; }
+        
+        nav { position: fixed; bottom: 0; width: 100%; display: flex; background: #fff; border-top: 1px solid #ddd; z-index: 100; height: 65px; }
+        nav button { flex: 1; background: none; border: none; color: #757575; font-size: 11px; padding: 8px 0; }
+        nav button.active-nav { color: #3b5998; border-top: 3px solid #3b5998; }
+
+        #qty-modal { display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); z-index:200; justify-content:center; align-items:center; }
+        .modal-content { background:#fff; width:90%; border-radius:4px; padding:20px; box-shadow: 0 19px 38px rgba(0,0,0,0.3); }
+        .qty-display { font-size: 3em; font-weight: bold; margin-bottom: 15px; text-align:center; border-bottom: 2px solid #3b5998; color: #3b5998; padding: 5px; min-height: 1.2em;}
+        .numpad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+        .numpad button { height: 60px; font-size: 1.5em; border: 1px solid #eee; border-radius: 4px; background: #fdfdfd; }
+    </style>
 </head>
 <body>
-  <div id="preview">
-    <div class="viewport">
-      <div class="guide-text">【ピント対策】20cmほど離して並行に合わせてください</div>
+
+<header id="app-title">受注システム (Android)</header>
+
+<div id="qty-modal">
+    <div class="modal-content">
+        <div id="modal-p-name" style="font-weight:bold; margin-bottom:5px;">商品名</div>
+        <div id="modal-p-info" style="font-size:0.8em; color:#666; margin-bottom:15px;"></div>
+        <div class="qty-display" id="qty-val">1</div>
+        <div class="numpad">
+            <button onclick="numIn('1')">1</button><button onclick="numIn('2')">2</button><button onclick="numIn('3')">3</button>
+            <button onclick="numIn('4')">4</button><button onclick="numIn('5')">5</button><button onclick="numIn('6')">6</button>
+            <button onclick="numIn('7')">7</button><button onclick="numIn('8')">8</button><button onclick="numIn('9')">9</button>
+            <button onclick="numIn('C')" style="color:#d9534f">C</button><button onclick="numIn('0')">0</button><button onclick="numIn('B')"><i class="fas fa-backspace"></i></button>
+        </div>
+        <div style="display:flex; gap:10px; margin-top:20px;">
+            <button class="btn-main" style="background:#757575; flex:1;" onclick="closeQtyModal()">戻る</button>
+            <button id="confirm-btn" class="btn-main" style="background:#3b5998; flex:2;">確定</button>
+        </div>
     </div>
-  </div>
-  <div class="info-panel">
-    <div id="status" class="loading-text">データを読み込み中...</div>
-    <div id="result">準備しています</div>
-  </div>
+</div>
 
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/quagga/0.12.1/quagga.min.js"></script>
-  <script>
-    const resultDiv = document.getElementById('result');
-    const statusDiv = document.getElementById('status');
-    const GAS_URL = "https://script.google.com/macros/s/AKfycbzWjmJZDeCqYzqLjVMTEvbVC9jpLLJHCtBr0_I7lP5J0PyDLXyq02Ht3kPmqV1NifV9/exec";
+<section id="home" class="page-section active">
+    <div class="card">
+        <div id="c-none" style="text-align:center; color:#999;">顧客を選択してください</div>
+        <div id="c-detail" style="display:none;">
+            <b id="r-name" style="color:#3b5998; font-size:1.1em;"></b><br>
+            <small id="r-addr1"></small><br>
+            <small id="r-addr2" style="color:#666;"></small><br>
+            <small id="r-tel"></small>
+        </div>
+    </div>
+
+    <div style="display: flex; gap: 10px; margin-bottom:15px;">
+        <button class="btn-main" style="background:#2e7d32; flex: 2;" onclick="startCamera('customer')">
+            <i class="fas fa-qrcode"></i> 顧客スキャン
+        </button>
+        <button class="btn-main" style="background:#757575; flex: 1;" onclick="openTelModal()">手入力</button>
+    </div>
+
+    <div id="product-input-area" style="display:none; margin-bottom: 15px;">
+        <div style="display: flex; gap: 8px;">
+            <input type="text" id="part-no-input" list="product-list" placeholder="品番・JAN入力" style="flex: 3; padding: 12px; border: 1px solid #ccc; border-radius: 4px; font-size: 16px;">
+            <button class="btn-main" style="background:#3b5998; flex: 1;" onclick="handleManualInput()">追加</button>
+        </div>
+        <datalist id="product-list"></datalist>
+    </div>
     
-    let productDatabase = []; 
-    let isLocked = false;
+    <div id="cart-area" style="display:none;">
+        <div id="cart-list" class="card" style="padding: 0 10px;"></div>
+        <div class="total-box">合計: ¥<span id="cart-total">0</span></div>
+        <textarea id="common-note" placeholder="備考・送り先など"></textarea>
+        <div style="display:flex; gap:10px; margin-top:15px;">
+            <button type="button" class="btn-main" style="background:#ffa000; color:#fff; flex: 1;" onclick="holdOrder()">
+                <i class="fas fa-pause"></i> 保留
+            </button>
+            <button type="button" class="btn-main" style="background:#d32f2f; flex: 2;" id="submit-btn" onclick="submitFinalOrder()">
+                <i class="fas fa-paper-plane"></i> 送信
+            </button>
+        </div>
+    </div>
+</section>
 
-    async function loadDatabase() {
-      try {
-        const response = await fetch(GAS_URL);
-        if (!response.ok) throw new Error("Network error");
-        productDatabase = await response.json();
-        
-        statusDiv.innerText = "同期完了";
-        statusDiv.className = "";
-        resultDiv.innerText = "スキャン待機中";
-        
-        initScanner(); 
-      } catch (err) {
-        console.error(err);
-        alert("データの取得に失敗しました。電波の良い場所で再試行してください。");
-      }
-    }
+<section id="scanner-page" class="page-section">
+    <div id="camera-guide" style="background:#fff3cd; color:#856404; padding:10px; text-align:center; font-size:14px;">
+        📸 ピントが合わない時は、一度離してからゆっくり近づけてください
+    </div>
+    <div id="reader"></div>
+    <div style="padding:20px; text-align:center;">
+        <button class="btn-main" style="background:#424242;" onclick="stopCamera()">キャンセル</button>
+    </div>
+</section>
 
-    function initScanner() {
-      Quagga.init({
-        inputStream: { 
-          type: "LiveStream", 
-          target: document.querySelector('#preview'),
-          constraints: { 
-            // iPhoneでの誤認識を防ぐためにHD解像度を指定
-            width: { min: 640, ideal: 1280, max: 1920 },
-            height: { min: 480, ideal: 720, max: 1080 },
-            facingMode: "environment"
-          }
-        },
-        // 映像を拡大しているため、検知エリア（locator）もやや狭めて計算不可を減らす
-        locator: {
-          patchSize: "medium",
-          halfSample: true
-        },
-        decoder: { 
-          readers: ["ean_reader"],
-          multiple: false // 1度のスキャンで1つだけ読む
+<section id="history" class="page-section">
+    <div id="pending-list-area"></div>
+    <hr>
+    
+    <div style="margin-bottom: 15px; padding: 0 10px;">
+        <input type="text" id="history-filter-input" placeholder="顧客名や品番で絞り込み..." 
+               oninput="filterHistory()" 
+               style="width: 100%; padding: 12px; border: 2px solid #3b5998; border-radius: 4px; font-size: 16px; box-sizing: border-box;">
+    </div>
+    <div id="h-list"></div>
+</section>
+
+<nav>
+    <button onclick="showPage('home')" id="n-home" class="active-nav"><i class="fas fa-shopping-cart fa-lg"></i><br>カート</button>
+    <button onclick="startCamera('product')"><i class="fas fa-barcode fa-lg"></i><br>スキャン</button>
+    <button onclick="showPage('history')"><i class="fas fa-list-ul fa-lg"></i><br>履歴</button>
+</nav>
+
+<script>
+    const urlParams = new URLSearchParams(window.location.search);
+    const MY_MAKER = urlParams.get('m');
+    // ↓こちらが元の動いていたURLです
+const GAS_URL = "https://script.google.com/macros/s/AKfycbw2uj-DHEOSdfDzGviyQcJ0KeD-l5I73ckjJW0fWbk4A_zO_FZlyVJDUEEEfHEnqg7Etw/exec";
+
+    let html5QrCode = null, customer = null, cart = [], tempProduct = null, isTelMode = false;
+    let editContext = null; // 修正対象の情報を保持用
+    let allProducts = [];
+　　let cachedHistory = [];
+    window.addEventListener('popstate', function(e) {
+        if (document.getElementById('qty-modal').style.display === 'flex') {
+            closeQtyModal();
+            history.pushState(null, null, null);
+        } else if (document.getElementById('scanner-page').classList.contains('active')) {
+            stopCamera();
+            history.pushState(null, null, null);
         }
-      }, function(err) {
-        if (err) { alert("カメラエラー: " + err.name); return; }
-        
-        const video = document.querySelector('#preview video');
-        if (video) {
-          video.setAttribute('playsinline', 'true');
-          video.muted = true;
-          video.play().catch(e => console.log("Play error:", e));
-        }
-        
-        Quagga.start();
-      });
-    }
-
-    Quagga.onDetected(function(data) {
-      if (isLocked) return;
-      
-      const code = data.codeResult.code;
-      if (code.length !== 13 && code.length !== 8) return;
-
-      // 簡易的なチェックディジット（バーコードの整合性）簡易検証
-      // Quaggaの誤読（ピントがボケている時のデタラメな数字の読み取り）をフィルタリング
-      if (!isValidJAN(code)) return;
-
-      const product = productDatabase.find(item => item.jan === code);
-
-      isLocked = true;
-      if (navigator.vibrate) navigator.vibrate(100);
-
-      if (product) {
-        resultDiv.innerHTML = `<span style="color:blue;">${product.name}</span><br><span style="font-size:2rem;">¥${product.price}</span>`;
-        statusDiv.innerText = "読み取り成功";
-      } else {
-        resultDiv.innerHTML = `未登録<br><span style="color:red; font-size:1rem;">${code}</span>`;
-        statusDiv.innerText = "データがありません";
-      }
-
-      setTimeout(() => {
-        isLocked = false;
-        statusDiv.innerText = "スキャンしてください";
-      }, 2000);
     });
 
-    // JANコードの簡易チェックディジット検証（誤読防止）
-    function isValidJAN(code) {
-      if (code.length !== 13 && code.length !== 8) return false;
-      const digits = code.split('').map(Number);
-      const checkDigit = digits.pop();
-      
-      let sum = 0;
-      if (code.length === 13) {
-        // 13桁の検証
-        for (let i = 0; i < digits.length; i++) {
-          sum += (i % 2 === 0) ? digits[i] * 1 : digits[i] * 3;
+    window.onload = () => {
+        history.pushState(null, null, null);
+        if (MY_MAKER) {
+            document.getElementById("app-title").innerText = MY_MAKER + " 受注システム";
+            preloadAllProducts();
         }
-      } else {
-        // 8桁の検証
-        for (let i = 0; i < digits.length; i++) {
-          sum += (i % 2 === 0) ? digits[i] * 3 : digits[i] * 1;
-        }
-      }
-      const calculated = (10 - (sum % 10)) % 10;
-      return checkDigit === calculated;
+    };
+
+async function preloadAllProducts() {
+        if (!MY_MAKER) return;
+        try {
+            const res = await fetch(GAS_URL, { method: "POST", body: JSON.stringify({ action: "getAllProducts", targetMaker: MY_MAKER }) });
+            allProducts = await res.json();
+            const list = document.getElementById("product-list");
+            list.innerHTML = ""; 
+            
+            allProducts.forEach(p => {
+                // ▼ 1. 品番で引ける候補
+                const opt1 = document.createElement("option");
+                opt1.value = p.partNo;
+                opt1.textContent = p.name;
+                list.appendChild(opt1);
+
+                // ▼ 2. 品名でも引けるように追加の候補を作成
+                if (p.name) {
+                    const opt2 = document.createElement("option");
+                    opt2.value = p.name;
+                    list.appendChild(opt2);
+                }
+            });
+        } catch (e) { console.error("Load failed", e); }
     }
 
-    window.onload = loadDatabase;
-  </script>
+    function numIn(n) {
+        let v = document.getElementById("qty-val");
+        const defaultLot = String(tempProduct && tempProduct.lot ? String(tempProduct.lot).normalize("NFKC").replace(/[^0-9]/g, '') : "1") || "1";
+        
+        if (n === 'C') { 
+            v.innerText = isTelMode ? "" : defaultLot; 
+            v.dataset.isFirstInput = "true"; // クリアした時は「最初の入力」に戻す
+            return; 
+        }
+        if (n === 'B') { 
+            v.innerText = v.innerText.length > 1 ? v.innerText.slice(0, -1) : (isTelMode ? "" : "0"); 
+            v.dataset.isFirstInput = "false"; // 1文字消した後は「追記モード」にする
+            return; 
+        }
+        
+        if (isTelMode) {
+            v.innerText += n;
+        } else {
+            // ★ 初回入力、または現在の数字が「0」の時は上書きし、それ以外は横に繋げる
+            if (v.dataset.isFirstInput === "true" || v.innerText === "0") {
+                v.innerText = n;
+                v.dataset.isFirstInput = "false"; // 1文字打ったら「追記モード」に切り替え
+            } else {
+                v.innerText += n;
+            }
+        }
+    }
+
+    function openQtyModal(p, context = null) {
+        isTelMode = !p;
+        tempProduct = p;
+        editContext = context; 
+        
+        const v = document.getElementById("qty-val");
+        const title = document.getElementById("modal-p-name");
+        const info = document.getElementById("modal-p-info");
+
+        if (p) {
+            title.innerText = (context ? "【数量変更】" : "") + p.name;
+            const price = p.listPrice ? p.listPrice.toLocaleString() : "0";
+            info.innerHTML = `上代: ¥${price} | ロット: ${p.lot || 1}`;
+            
+            let cleanLot = p.lot ? String(p.lot).normalize("NFKC").replace(/[^0-9]/g, '') : "1";
+            v.innerText = context ? context.currentQty : (cleanLot || "1");
+            v.dataset.isFirstInput = "true"; // ★ 画面を開いた時は「最初の入力」にする
+        } else {
+            title.innerText = "電話番号入力";
+            info.innerText = "ハイフンなし";
+            v.innerText = "";
+            v.dataset.isFirstInput = "false"; // ★ 電話番号は最初から「追記モード」
+        }
+        
+        document.getElementById("qty-modal").style.display = "flex";
+        document.getElementById("confirm-btn").onclick = confirmQty;
+        history.pushState(null, null, null);
+    }
+    function closeQtyModal() { 
+        document.getElementById("qty-modal").style.display = "none"; 
+        editContext = null;
+    }
+
+ async function startCamera(mode) {
+        // もし商品スキャンモードなのに顧客が選ばれていなければ警告
+        if (mode === 'product' && !customer) {
+            return alert("先に顧客を選択してください");
+        }
+
+        showPage('scanner-page');
+        
+        // 1. 既に起動している場合は確実に停止・クリアする
+        if (html5QrCode) { 
+            try { await html5QrCode.stop(); } catch (e) {} 
+            html5QrCode = null; 
+        }
+        
+        // 2. 表示エリアを一旦リセット
+        document.getElementById("reader").innerHTML = "";
+        
+        try {
+            // 3. 端末のカメラ一覧を取得
+            const devices = await Html5Qrcode.getCameras();
+            if (!devices || devices.length === 0) return alert("カメラが見つかりません");
+
+            // 4. 背面（back/rear）カメラを探す
+            const backCameras = devices.filter(d => 
+                d.label.toLowerCase().includes('back') || 
+                d.label.toLowerCase().includes('rear')
+            );
+            const targetId = backCameras.length > 0 
+                ? backCameras[backCameras.length - 1].id 
+                : devices[devices.length - 1].id;
+
+            // 5. 特定したIDを使ってカメラを起動
+            html5QrCode = new Html5Qrcode("reader");
+            await html5QrCode.start(
+                targetId, 
+                { fps: 10, qrbox: 250 }, 
+                (text) => {
+                    // スキャン成功時の処理
+                    html5QrCode.stop().then(() => {
+                        showPage('home'); // スキャン画面を閉じてホームに戻る
+                        
+                        const scannedText = text.trim();
+                        
+                        // 顧客スキャンか商品スキャンかで処理を分ける
+                        if (mode === 'customer') {
+                            fetchCustomer(scannedText);
+                        } else {
+                            fetchProduct(scannedText);
+                        }
+                    }).catch(err => console.error("カメラ停止エラー", err));
+                }
+            );
+        } catch (err) {
+            console.error(err);
+            alert("カメラ起動エラーが発生しました。");
+            showPage('home');
+        }
+    }
+
+    function stopCamera() { if (html5QrCode) html5QrCode.stop(); showPage('home'); }
+
+    function fetchProduct(code) {
+        const cleanCode = String(code).trim().toUpperCase();
+        if (!cleanCode) return;
+
+        // 1. まず「品番」または「JAN」の完全一致を探す
+        let p = allProducts.find(item => 
+            String(item.partNo || "").toUpperCase() === cleanCode || 
+            String(item.jan || "").toUpperCase() === cleanCode
+        );
+
+        // 2. それで見つからない場合は、「品名」の部分一致（または完全一致）で探す
+        if (!p) {
+            p = allProducts.find(item => 
+                String(item.name || "").toUpperCase().includes(cleanCode)
+            );
+        }
+
+        if (p) {
+            openQtyModal(p);
+        } else {
+            alert("未登録: [" + cleanCode + "]");
+        }
+    }
+
+    async function fetchCustomer(val) {
+        try {
+            const res = await fetch(GAS_URL, { method: "POST", body: JSON.stringify({ action: "customerSearch", val: val }) });
+            const d = await res.json();
+            if (d && d.customer) { 
+                customer = d; 
+                updateCustomerDisplay(); 
+            } else {
+                alert("顧客が見つかりません");
+            }
+        } catch(e) { alert("通信エラー"); }
+    }
+
+    function updateCustomerDisplay() {
+        document.getElementById("r-name").innerText = customer.customer;
+        document.getElementById("r-addr1").innerText = customer.address1 || "";
+        document.getElementById("r-addr2").innerText = customer.address2 || "";
+        document.getElementById("r-tel").innerText = "TEL: " + (customer.tel || "");
+        document.getElementById("c-none").style.display = "none";
+        document.getElementById("c-detail").style.display = "block";
+        document.getElementById("product-input-area").style.display = "block";
+    }
+
+    function renderCart() {
+        const list = document.getElementById("cart-list");
+        let total = 0;
+        if (cart.length === 0) {
+            list.innerHTML = "<p style='text-align:center; color:#ccc; padding:20px;'>空です</p>";
+            document.getElementById("cart-area").style.display = "none";
+            return;
+        }
+        list.innerHTML = cart.map((item, i) => {
+            total += (item.price * item.quantity);
+            return `<div class="item-row">
+                <div style="flex:1"><b>${item.name}</b><br><small>¥${item.price.toLocaleString()}</small></div>
+                <div style="display:flex; align-items:center; gap:10px;">
+                    <button class="qty-ctrl-btn" onclick="changeQty(${i},-1)">-</button>
+                    <div class="qty-num-box" onclick="openQtyEditDirect('cart', ${i})">${item.quantity}</div>
+                    <button class="qty-ctrl-btn" onclick="changeQty(${i},1)">+</button>
+                </div>
+            </div>`;
+        }).join('');
+        document.getElementById("cart-total").innerText = total.toLocaleString();
+        document.getElementById("cart-area").style.display = "block";
+    }
+
+    // カート内または履歴内の数字タップで手入力モーダルを開く
+    function openQtyEditDirect(type, idOrIdx, currentQty, ts = null, pn = null, name = "") {
+        if(type === 'cart') {
+            const item = cart[idOrIdx];
+            openQtyModal(item, { type: 'cart', index: idOrIdx, currentQty: item.quantity });
+        } else if (type === 'history') {
+            openQtyModal({ name: name, lot: "1" }, { type: 'history', timestamp: ts, partNo: pn, currentQty: currentQty });
+        }
+    }
+
+    function changeQty(i, d) { cart[i].quantity += d; if (cart[i].quantity <= 0) cart.splice(i, 1); renderCart(); }
+
+    function confirmQty() {
+        let val = document.getElementById("qty-val").innerText;
+        if (isTelMode) { 
+            if (val.length < 9) return alert("番号が短すぎます"); 
+            closeQtyModal(); 
+            fetchCustomer(val); 
+        } else {
+            // 全角数字対策
+            let cleanVal = String(val).normalize("NFKC").replace(/[^0-9]/g, '');
+            let q = parseInt(cleanVal);
+            if (isNaN(q)) q = 0;
+
+            if (editContext) {
+                // 修正モードの場合
+                if (editContext.type === 'cart') {
+                    if (q <= 0) cart.splice(editContext.index, 1);
+                    else cart[editContext.index].quantity = q;
+                    renderCart();
+                    closeQtyModal();
+                } else if (editContext.type === 'history') {
+                    // ▼ 修正: 画面を閉じて記憶が消える「前」に、必要なデータを抜き出しておく
+                    let targetTs = editContext.timestamp;
+                    let targetPn = editContext.partNo;
+                    closeQtyModal();
+                    
+                    // ▼ 追加: 押した瞬間に「更新中」と表示させて、止まっているように見えないようにする
+                    document.getElementById("h-list").innerHTML = "<div style='text-align:center; padding:20px;'><i class='fas fa-spinner fa-spin'></i> 数量を更新中...</div>";
+                    
+                    execUpdate(targetTs, targetPn, q);
+                }
+            } else {
+                // 新規追加モード
+                if (q > 0) {
+                    cart.push({ name: tempProduct.name, price: tempProduct.price || 0, listPrice: tempProduct.listPrice || 0, quantity: q, partNo: tempProduct.partNo, jan: tempProduct.jan || "", lot: tempProduct.lot || "1" });
+                    renderCart();
+                }
+                closeQtyModal();
+                document.getElementById("part-no-input").value = "";
+            }
+        }
+    }
+
+    function showPage(id) {
+        document.querySelectorAll('.page-section').forEach(p => p.classList.remove('active'));
+        document.getElementById(id).classList.add('active');
+        document.querySelectorAll('nav button').forEach(b => b.classList.remove('active-nav'));
+        const navId = (id === 'scanner-page') ? 'n-home' : 'n-' + id;
+        const navBtn = document.getElementById(navId);
+        if (navBtn) navBtn.classList.add('active-nav');
+        if (id === 'history') loadHistory();
+    }
+
+function openTelModal() { openQtyModal(null); }
+    function handleManualInput() { fetchProduct(document.getElementById("part-no-input").value); }
+
+    async function submitFinalOrder() {
+        if (!customer || cart.length === 0) return alert("顧客またはカートを確認してください");
+        if (!confirm("送信しますか？")) return;
+        
+        const btn = document.getElementById('submit-btn');
+        btn.disabled = true; 
+        btn.innerText = "送信中...";
+        
+        try {
+            // Android用のGASが待っている正しいデータ形式
+            const payload = { 
+                action: "submitOrder", 
+                customer: customer, 
+                cart: cart, 
+                note: document.getElementById('common-note').value, 
+                maker: MY_MAKER 
+            };
+            
+            const res = await fetch(GAS_URL, { 
+                method: "POST", 
+                body: JSON.stringify(payload) 
+            });
+            
+            if (res.ok) { 
+                alert("送信完了！"); 
+                location.reload(); 
+            } else {
+                throw new Error("HTTPエラー: " + res.status);
+            }
+        } catch (e) { 
+            // エラー時もボタンを元に戻して再操作できるようにする
+            alert("送信失敗\n\n※URLが「/exec」で終わっているか、GASのアクセス権限が「全員」になっているか確認してください。"); 
+            btn.disabled = false; 
+            btn.innerText = "送信"; 
+        }
+    }
+    function holdOrder() {
+        if (!customer || cart.length === 0) return alert("顧客と商品を選択してください");
+        const holdData = { customer: customer, cart: cart, note: document.getElementById('common-note').value, date: new Date().toLocaleString() };
+        let current = JSON.parse(localStorage.getItem("pendingOrders") || "[]");
+        current.push(holdData);
+        localStorage.setItem("pendingOrders", JSON.stringify(current));
+        alert("保留しました");
+        location.reload();
+    }
+
+    async function loadHistory() {
+        const pendingArea = document.getElementById("pending-list-area");
+        const listArea = document.getElementById("h-list");
+        const pending = JSON.parse(localStorage.getItem("pendingOrders") || "[]");
+        
+        pendingArea.innerHTML = pending.length ? "<h3>保留中</h3>" + pending.map((item, idx) => `
+            <div class="card" style="border-left:6px solid #ffa000;">
+                <b>${item.customer.customer} 様</b><br><small>${item.date}</small>
+                <div style="margin-top:10px; display:flex; gap:5px;">
+                    <button class="btn-main" style="background:#ffa000; padding:8px;" onclick="restoreOrder(${idx})">再開</button>
+                    <button class="btn-main" style="background:#ccc; padding:8px;" onclick="deletePending(${idx})">削除</button>
+                </div>
+            </div>`).join('') : "";
+
+        listArea.innerHTML = "<div style='text-align:center; padding:20px;'><i class='fas fa-spinner fa-spin'></i> 読み込み中...</div>";
+        try {
+            const res = await fetch(GAS_URL, { method: "POST", body: JSON.stringify({ action: "getOrderHistory", targetMaker: MY_MAKER }) });
+            const historyData = await res.json();
+            cachedHistory = historyData; // ★ここで取得したデータを保存します
+            renderHistoryList(cachedHistory); // ★描画専用の関数にパスします
+        } catch (e) { 
+            listArea.innerHTML = "<p style='text-align:center; color:#d32f2f;'>読込失敗</p>"; 
+        }
+    }
+　　function renderHistoryList(data) {
+        const listArea = document.getElementById("h-list");
+        if (data.length === 0) {
+            listArea.innerHTML = "<p style='text-align:center; color:#999; padding:20px;'>履歴はありません</p>";
+            return;
+        }
+        
+        listArea.innerHTML = data.map(item => `
+            <div class="card" style="border-left:4px solid #3b5998;">
+                <small>${item.displayDate} / ${item.customerName}</small><br><b>${item.name}</b><br>
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-top:5px;">
+                    <span>¥${item.subtotal.toLocaleString()}</span>
+                    <div style="display:flex; align-items:center; gap:8px;">
+                        <button onclick="execUpdate('${item.timestamp}','${item.partNo}',${item.qty-1})" class="qty-ctrl-btn" style="width:36px; height:36px;">-</button>
+                        <div class="qty-num-box" style="min-width:50px;" onclick="openQtyEditDirect('history', null, ${item.qty}, '${item.timestamp}', '${item.partNo}', '${item.name}')">${item.qty}</div>
+                        <button onclick="execUpdate('${item.timestamp}','${item.partNo}',${item.qty+1})" class="qty-ctrl-btn" style="width:36px; height:36px;">+</button>
+                        <button onclick="execDelete('${item.timestamp}','${item.partNo}')" style="border:none; background:none; color:#ccc; margin-left:5px;"><i class="fas fa-trash fa-lg"></i></button>
+                    </div>
+                </div>
+                <!-- ★ 新規注文ボタン ★ -->
+                <div style="margin-top: 12px; text-align: right;">
+                    <button class="btn-main" style="background:#2e7d32; font-size:0.85em; padding:8px 12px; width:auto; display:inline-block;" onclick="setCustomerFromHistory('${item.customerName}')">
+                        <i class="fas fa-user-check"></i> この顧客で新規注文
+                    </button>
+                </div>
+            </div>`).join('');
+    }
+
+    function filterHistory() {
+        const keyword = document.getElementById("history-filter-input").value.trim().toLowerCase();
+        if (!keyword) {
+            renderHistoryList(cachedHistory);
+            return;
+        }
+        const filtered = cachedHistory.filter(item => 
+            (item.customerName && item.customerName.toLowerCase().includes(keyword)) ||
+            (item.partNo && item.partNo.toLowerCase().includes(keyword))
+        );
+        renderHistoryList(filtered);
+    }
+
+    async function setCustomerFromHistory(customerName) {
+        if (!confirm(customerName + " 様を現在の注文の宛先に設定しますか？")) return;
+        
+        showPage('home');
+        document.getElementById("c-none").innerHTML = "<i class='fas fa-spinner fa-spin'></i> 顧客情報を取得中...";
+        
+        try {
+            const res = await fetch(GAS_URL, { method: "POST", body: JSON.stringify({ action: "customerSearch", val: customerName }) });
+            const d = await res.json();
+            
+            if (d && d.customer) { 
+                customer = d; 
+                updateCustomerDisplay(); 
+            } else { 
+                alert("詳細情報の取得に失敗しました。");
+                document.getElementById("c-none").innerHTML = "顧客を選択してください";
+            }
+        } catch (e) {
+            alert("通信エラーが発生しました");
+            document.getElementById("c-none").innerHTML = "顧客を選択してください";
+        }
+    }
+    function restoreOrder(idx) {
+        const pending = JSON.parse(localStorage.getItem("pendingOrders") || "[]");
+        const t = pending[idx];
+        if (confirm("再開しますか？")) {
+            customer = t.customer; cart = t.cart;
+            document.getElementById('common-note').value = t.note || "";
+            deletePending(idx, false);
+            updateCustomerDisplay(); renderCart(); showPage('home');
+        }
+    }
+
+    function deletePending(idx, ask=true) {
+        if (ask && !confirm("削除しますか？")) return;
+        let p = JSON.parse(localStorage.getItem("pendingOrders") || "[]");
+        p.splice(idx, 1);
+        localStorage.setItem("pendingOrders", JSON.stringify(p));
+        loadHistory();
+    }
+
+    async function execUpdate(ts, pn, nq) {
+        if (nq <= 0) return execDelete(ts, pn);
+        try {
+            const res = await fetch(GAS_URL, { method: "POST", body: JSON.stringify({ action: "updateOrderQty", timestamp: ts, partNo: pn, newQty: nq, maker: MY_MAKER }) });
+            const result = await res.json();
+            if (result.success) loadHistory();
+        } catch(e) { alert("通信エラー"); }
+    }
+
+    async function execDelete(ts, pn) {
+        if (!confirm("削除しますか？")) return;
+        try {
+            const res = await fetch(GAS_URL, { method: "POST", body: JSON.stringify({ action: "deleteOrderLine", timestamp: ts, partNo: pn, maker: MY_MAKER }) });
+            const result = await res.json();
+            if (result.success) loadHistory();
+        } catch(e) { alert("通信エラー"); }
+    }
+</script>
 </body>
 </html>
