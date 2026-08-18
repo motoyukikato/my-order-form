@@ -165,18 +165,27 @@ const GAS_URL = "https://script.google.com/macros/s/AKfycbw2uj-DHEOSdfDzGviyQcJ0
         }
     };
 
-    async function preloadAllProducts() {
+async function preloadAllProducts() {
         if (!MY_MAKER) return;
         try {
             const res = await fetch(GAS_URL, { method: "POST", body: JSON.stringify({ action: "getAllProducts", targetMaker: MY_MAKER }) });
             allProducts = await res.json();
             const list = document.getElementById("product-list");
             list.innerHTML = ""; 
+            
             allProducts.forEach(p => {
-                const option = document.createElement("option");
-                option.value = p.partNo;
-                option.textContent = p.name;
-                list.appendChild(option);
+                // ▼ 1. 品番で引ける候補
+                const opt1 = document.createElement("option");
+                opt1.value = p.partNo;
+                opt1.textContent = p.name;
+                list.appendChild(opt1);
+
+                // ▼ 2. 品名でも引けるように追加の候補を作成
+                if (p.name) {
+                    const opt2 = document.createElement("option");
+                    opt2.value = p.name;
+                    list.appendChild(opt2);
+                }
             });
         } catch (e) { console.error("Load failed", e); }
     }
@@ -305,8 +314,26 @@ const GAS_URL = "https://script.google.com/macros/s/AKfycbw2uj-DHEOSdfDzGviyQcJ0
 
     function fetchProduct(code) {
         const cleanCode = String(code).trim().toUpperCase();
-        let p = allProducts.find(item => String(item.partNo || "").toUpperCase() === cleanCode || String(item.jan || "") === cleanCode);
-        if (p) openQtyModal(p); else alert("未登録: [" + cleanCode + "]");
+        if (!cleanCode) return;
+
+        // 1. まず「品番」または「JAN」の完全一致を探す
+        let p = allProducts.find(item => 
+            String(item.partNo || "").toUpperCase() === cleanCode || 
+            String(item.jan || "").toUpperCase() === cleanCode
+        );
+
+        // 2. それで見つからない場合は、「品名」の部分一致（または完全一致）で探す
+        if (!p) {
+            p = allProducts.find(item => 
+                String(item.name || "").toUpperCase().includes(cleanCode)
+            );
+        }
+
+        if (p) {
+            openQtyModal(p);
+        } else {
+            alert("未登録: [" + cleanCode + "]");
+        }
     }
 
     async function fetchCustomer(val) {
