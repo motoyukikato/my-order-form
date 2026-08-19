@@ -249,26 +249,52 @@ function openTelModal() {
 }
     // --- 以下、既存の機能関数（そのまま統合） ---
 
-   async function preloadAllProducts() {
-    if (!MY_MAKER) return;
+  async function preloadAllProducts() {
+  if (!MY_MAKER) return;
+  
+  const cacheKey = "PRODUCTS_CACHE_" + MY_MAKER;
+  const cachedData = localStorage.getItem(cacheKey);
+  const inputElem = document.getElementById("part-no-input");
+
+  // 【ステップ1】スマホ内に保存データがあれば、即座（0秒）でセットして入力欄を有効化
+  if (cachedData) {
     try {
-        const res = await fetch(GAS_URL, { method: "POST", body: JSON.stringify({ action: "getAllProducts", targetMaker: MY_MAKER }) });
-        allProducts = await res.json();
-        
-        // ▼ 変更点：datalistへの追加をやめ、入力欄を有効化する ▼
-        const inputElem = document.getElementById("part-no-input");
-        if (inputElem) {
-            inputElem.placeholder = "品番・品名・JANを入力";
-            inputElem.disabled = false;
-        }
-    } catch (e) { 
-        console.error("Load failed", e);
-        // エラー時はプレースホルダーを変更して知らせる
-        const inputElem = document.getElementById("part-no-input");
-        if (inputElem) {
-            inputElem.placeholder = "読み込みエラー";
-        }
+      allProducts = JSON.parse(cachedData);
+      if (inputElem) {
+        inputElem.placeholder = "品番・品名・JANを入力";
+        inputElem.disabled = false;
+      }
+      console.log("ローカルキャッシュから商品データを即座にロードしました");
+    } catch (e) {
+      console.error("キャッシュ解析エラー", e);
     }
+  }
+
+  // 【ステップ2】バックグラウンドでGASから最新データを取得して更新
+  try {
+    const res = await fetch(GAS_URL, { 
+      method: "POST", 
+      body: JSON.stringify({ action: "getAllProducts", targetMaker: MY_MAKER }) 
+    });
+    const data = await res.json();
+
+    if (Array.isArray(data) && data.length > 0) {
+      allProducts = data;
+      localStorage.setItem(cacheKey, JSON.stringify(data)); // キャッシュ保存
+      
+      if (inputElem) {
+        inputElem.placeholder = "品番・品名・JANを入力";
+        inputElem.disabled = false;
+      }
+      console.log("GASから最新の商品データを取得・更新しました");
+    }
+  } catch (e) { 
+    console.error("Load failed", e);
+    // 初回かつキャッシュも無い場合のみエラー表示
+    if (!cachedData && inputElem) {
+      inputElem.placeholder = "読み込みエラー";
+    }
+  }
 }
 
     function numIn(n) {
