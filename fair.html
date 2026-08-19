@@ -13,26 +13,25 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
         body { 
-    font-family: sans-serif; 
-    margin: 0; 
-    padding-bottom: 90px; 
-    background: #f4f7f9; 
-    -webkit-user-select: none; 
-    touch-action: manipulation; /* ←これを追加しました */
-}
+            font-family: sans-serif; 
+            margin: 0; 
+            padding-bottom: 90px; 
+            background: #f4f7f9; 
+            -webkit-user-select: none; 
+            touch-action: manipulation;
+        }
         header { 
-    background: #fff; 
-    text-align: center; 
-    padding: 12px; 
-    border-bottom: 3px solid #3b5998; 
-    font-weight: bold; 
-    position: sticky; 
-    top: 0; 
-    z-index: 100; 
-    /* --- ここを追加 --- */
-    touch-action: manipulation; 
-    user-select: none;
-}
+            background: #fff; 
+            text-align: center; 
+            padding: 12px; 
+            border-bottom: 3px solid #3b5998; 
+            font-weight: bold; 
+            position: sticky; 
+            top: 0; 
+            z-index: 100; 
+            touch-action: manipulation; 
+            user-select: none;
+        }
         .page-section { display: none; padding: 10px; }
         .active { display: block; }
         .card { background: #fff; padding: 15px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); margin-bottom: 10px; }
@@ -83,17 +82,17 @@
     <div class="card">
         <div id="c-none" style="text-align:center; color:#999; padding: 10px;">顧客情報を選択してください</div>
         <div id="c-detail" style="display:none;">
-    <b id="r-name" style="color:#3b5998; font-size:1.2em;"></b><br>
-    <small id="r-addr1" style="color:#666;"></small><br>
-    <small id="r-addr2" style="color:#666;"></small><br>
-    <small id="r-tel" style="color:#666;"></small>
-</div>
+            <b id="r-name" style="color:#3b5998; font-size:1.2em;"></b><br>
+            <small id="r-addr1" style="color:#666;"></small><br>
+            <small id="r-addr2" style="color:#666;"></small><br>
+            <small id="r-tel" style="color:#666;"></small>
+        </div>
     </div>
     <div style="display: flex; gap: 10px; margin-bottom:15px;">
         <button class="btn-main" style="background:#28a745; flex: 2;" onclick="startCamera('customer')"><i class="fas fa-qrcode"></i> 顧客スキャン</button>
         <button class="btn-main" style="background:#6c757d; flex: 1;" onclick="openTelModal()">手入力</button>
     </div>
-   <div id="product-input-area" style="display:none; margin-bottom: 15px;">
+    <div id="product-input-area" style="display:none; margin-bottom: 15px;">
         <div style="position: relative;">
             <div style="display: flex; gap: 8px;">
                 <input type="text" id="part-no-input" autocomplete="off" 
@@ -104,7 +103,6 @@
             </div>
             <div id="autocomplete-list" style="display:none; position:absolute; top:52px; left:0; width:100%; max-height:250px; overflow-y:auto; background:#fff; border:1px solid #ccc; border-radius:8px; box-shadow:0 6px 12px rgba(0,0,0,0.15); z-index:1000;"></div>
         </div>
-    </div>
     </div>
     <div id="cart-area" style="display:none;">
         <div id="cart-list" class="card" style="padding: 0 15px;"></div>
@@ -141,7 +139,6 @@
     </div>
     <div id="h-list"></div>
 </section>
-    
 
 <section id="admin-page" class="page-section">
     <div style="text-align:center; padding:20px; background:#fff; border-bottom: 2px solid #d9534f;">
@@ -152,52 +149,44 @@
     <div class="card" style="margin-top:20px;">
         <h4 style="margin-top:0; color:#333;"><i class="fas fa-exchange-alt"></i> メーカー切替</h4>
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 20px;">
-    <button class="btn-main" style="background:#007bff; font-size:0.9em;" onclick="switchMaker('カルナック')">カルナック</button>
-    <button class="btn-main" style="background:#0056b3; font-size:0.9em;" onclick="switchMaker('星野㈱')">星野㈱</button>
-    
-    <button class="btn-main" style="background:#28a745; font-size:0.9em;" onclick="switchMaker('YARD')">YARD</button>
-    <button class="btn-main" style="background:#218838; font-size:0.9em;" onclick="switchMaker('エルコミューン')">エルコミューン</button>
-    
-    <button class="btn-main" style="background:#fd7e14; font-size:0.9em;" onclick="switchMaker('asca')">asca</button>
-    <button class="btn-main" style="background:#ffc107; color:#000; font-size:0.9em;" onclick="switchMaker('ネイチャーデザインズ')">ネイチャーデザインズ</button>
-    
-    <button class="btn-main" style="background:#e83e8c; font-size:0.9em;" onclick="switchMaker('大地農園')">大地農園</button>
-    <button class="btn-main" style="background:#dc3545; font-size:0.9em;" onclick="switchMaker('フロールエバー')">フロールエバー</button>
-    
-    <button class="btn-main" style="background:#8b4513; font-size:0.9em;" onclick="switchMaker('コアトレーディング')">コアトレーディング</button>
-    <button class="btn-main" style="background:#a0522d; font-size:0.9em;" onclick="switchMaker('ホワイエ')">ホワイエ</button>
-    
-    <button class="btn-main" style="background:#6f42c1; font-size:0.9em;" onclick="switchMaker('ミュールミル')">ミュールミル</button>
-    <button class="btn-main" style="background:#5a32a3; font-size:0.9em;" onclick="switchMaker('ラライワント')">ラライワント</button>
-    
-    <button class="btn-main" style="background:#17a2b8; font-size:0.9em;" onclick="switchMaker('友膳')">友膳</button>
-    <button class="btn-main" style="background:#6c757d; font-size:0.9em;" onclick="switchMaker('松村工芸・クレイ')">松村工芸・クレイ</button>
-    
-    <button class="btn-main" style="background:#4b0082; font-size:0.9em;" onclick="switchMaker('ポッシュリビング')">ポッシュリビング</button>
-    <button class="btn-main" style="background:#2f4f4f; font-size:0.9em;" onclick="switchMaker('東京堂')">東京堂</button>
-    <button class="btn-main" style="background:#800000; font-size:0.9em;" onclick="switchMaker('マグネット')">マグネット</button>
-    <button class="btn-main" style="background:#556b2f; font-size:0.9em;" onclick="switchMaker('志成販売')">志成販売</button>
-    <button class="btn-main" style="background:#b8860b; font-size:0.9em;" onclick="switchMaker('コベントガーデン')">コベントガーデン</button>
-    <button class="btn-main" style="background:#20b2aa; font-size:0.9em;" onclick="switchMaker('坂源')">坂源</button>
-    <button class="btn-main" style="background:#4682b4; font-size:0.9em;" onclick="switchMaker('インターリンク')">インターリンク</button>
-    <button class="btn-main" style="background:#cd5c5c; font-size:0.9em;" onclick="switchMaker('三和トレーディング')">三和トレーディング</button>
-    <button class="btn-main" style="background:#483d8b; font-size:0.9em;" onclick="switchMaker('村田屋産業')">村田屋産業</button>
-</div>
-            </div>
-
-        <hr style="border:0; border-top:1px solid #eee; margin:20px 0;">
-
-        <p style="font-size:0.9em; color:#666; text-align:center; margin-bottom:15px;">
-           <i class="fas fa-info-circle"></i> 商品情報を最新にします
-        </p>
-        <button class="btn-main" style="background:#333; margin-bottom:12px;" onclick="preloadAllProducts(); alert('マスタを更新しました');">
-            <i class="fas fa-sync-alt"></i> 商品マスタを強制更新
-        </button>
-        
-        <button class="btn-main" style="background:#6c757d;" onclick="showPage('home')">
-            <i class="fas fa-chevron-left"></i> 戻る
-        </button>
+            <button class="btn-main" style="background:#007bff; font-size:0.9em;" onclick="switchMaker('カルナック')">カルナック</button>
+            <button class="btn-main" style="background:#0056b3; font-size:0.9em;" onclick="switchMaker('星野㈱')">星野㈱</button>
+            <button class="btn-main" style="background:#28a745; font-size:0.9em;" onclick="switchMaker('YARD')">YARD</button>
+            <button class="btn-main" style="background:#218838; font-size:0.9em;" onclick="switchMaker('エルコミューン')">エルコミューン</button>
+            <button class="btn-main" style="background:#fd7e14; font-size:0.9em;" onclick="switchMaker('asca')">asca</button>
+            <button class="btn-main" style="background:#ffc107; color:#000; font-size:0.9em;" onclick="switchMaker('ネイチャーデザインズ')">ネイチャーデザインズ</button>
+            <button class="btn-main" style="background:#e83e8c; font-size:0.9em;" onclick="switchMaker('大地農園')">大地農園</button>
+            <button class="btn-main" style="background:#dc3545; font-size:0.9em;" onclick="switchMaker('フロールエバー')">フロールエバー</button>
+            <button class="btn-main" style="background:#8b4513; font-size:0.9em;" onclick="switchMaker('コアトレーディング')">コアトレーディング</button>
+            <button class="btn-main" style="background:#a0522d; font-size:0.9em;" onclick="switchMaker('ホワイエ')">ホワイエ</button>
+            <button class="btn-main" style="background:#6f42c1; font-size:0.9em;" onclick="switchMaker('ミュールミル')">ミュールミル</button>
+            <button class="btn-main" style="background:#5a32a3; font-size:0.9em;" onclick="switchMaker('ラライワント')">ラライワント</button>
+            <button class="btn-main" style="background:#17a2b8; font-size:0.9em;" onclick="switchMaker('友膳')">友膳</button>
+            <button class="btn-main" style="background:#6c757d; font-size:0.9em;" onclick="switchMaker('松村工芸・クレイ')">松村工芸・クレイ</button>
+            <button class="btn-main" style="background:#4b0082; font-size:0.9em;" onclick="switchMaker('ポッシュリビング')">ポッシュリビング</button>
+            <button class="btn-main" style="background:#2f4f4f; font-size:0.9em;" onclick="switchMaker('東京堂')">東京堂</button>
+            <button class="btn-main" style="background:#800000; font-size:0.9em;" onclick="switchMaker('マグネット')">マグネット</button>
+            <button class="btn-main" style="background:#556b2f; font-size:0.9em;" onclick="switchMaker('志成販売')">志成販売</button>
+            <button class="btn-main" style="background:#b8860b; font-size:0.9em;" onclick="switchMaker('コベントガーデン')">コベントガーデン</button>
+            <button class="btn-main" style="background:#20b2aa; font-size:0.9em;" onclick="switchMaker('坂源')">坂源</button>
+            <button class="btn-main" style="background:#4682b4; font-size:0.9em;" onclick="switchMaker('インターリンク')">インターリンク</button>
+            <button class="btn-main" style="background:#cd5c5c; font-size:0.9em;" onclick="switchMaker('三和トレーディング')">三和トレーディング</button>
+            <button class="btn-main" style="background:#483d8b; font-size:0.9em;" onclick="switchMaker('村田屋産業')">村田屋産業</button>
+        </div>
     </div>
+
+    <hr style="border:0; border-top:1px solid #eee; margin:20px 0;">
+
+    <p style="font-size:0.9em; color:#666; text-align:center; margin-bottom:15px;">
+       <i class="fas fa-info-circle"></i> 商品情報を最新にします
+    </p>
+    <button class="btn-main" style="background:#333; margin-bottom:12px;" onclick="preloadAllProducts(); alert('マスタを更新しました');">
+        <i class="fas fa-sync-alt"></i> 商品マスタを強制更新
+    </button>
+    
+    <button class="btn-main" style="background:#6c757d;" onclick="showPage('home')">
+        <i class="fas fa-chevron-left"></i> 戻る
+    </button>
 </section>
 
 <nav>
@@ -205,6 +194,7 @@
     <button onclick="startCamera('product')"><i class="fas fa-barcode fa-2x"></i><br>スキャン</button>
     <button onclick="showPage('history')"><i class="fas fa-list-ul fa-2x"></i><br>保留/履歴</button>
 </nav>
+
 <script>
     const urlParams = new URLSearchParams(window.location.search);
     const MY_MAKER = urlParams.get('m');
@@ -214,23 +204,18 @@
     let allProducts = [], pendingOrders = [];
     let headerTapCount = 0;
     let headerTapTimer;
+    let isSubmitting = false;
 
-    // --- 起動時の処理を一つにまとめました ---
     window.onload = () => {
-        // 1. メーカー名があればタイトルを表示
         if (MY_MAKER) {
             document.getElementById("app-title").innerText = MY_MAKER + " 受注システム";
             preloadAllProducts();
         }
 
-        // 2. 隠しコマンド（タイトル連打）の設定
         document.getElementById("app-title").addEventListener('click', function() {
             headerTapCount++;
-            
             clearTimeout(headerTapTimer);
-            headerTapTimer = setTimeout(() => {
-                headerTapCount = 0;
-            }, 3000);
+            headerTapTimer = setTimeout(() => { headerTapCount = 0; }, 3000);
 
             if (headerTapCount === 5) {
                 headerTapCount = 0;
@@ -243,84 +228,75 @@
             }
         });
     };
-// HTMLの「手入力」ボタンから呼ばれる関数
-function openTelModal() {
-    openQtyModal(); // 引数なしで呼ぶことで「電話番号入力モード」として起動します
-}
-    // --- 以下、既存の機能関数（そのまま統合） ---
 
-  async function preloadAllProducts() {
-  if (!MY_MAKER) return;
-  
-  const cacheKey = "PRODUCTS_CACHE_" + MY_MAKER;
-  const cachedData = localStorage.getItem(cacheKey);
-  const inputElem = document.getElementById("part-no-input");
-
-  // 【ステップ1】スマホ内に保存データがあれば、即座（0秒）でセットして入力欄を有効化
-  if (cachedData) {
-    try {
-      allProducts = JSON.parse(cachedData);
-      if (inputElem) {
-        inputElem.placeholder = "品番・品名・JANを入力";
-        inputElem.disabled = false;
-      }
-      console.log("ローカルキャッシュから商品データを即座にロードしました");
-    } catch (e) {
-      console.error("キャッシュ解析エラー", e);
-    }
-  }
-
-// 【ステップ2】バックグラウンドでGASから最新データを取得して更新
-  try {
-    const res = await fetch(GAS_URL, { 
-      method: "POST", 
-      headers: {
-        "Content-Type": "text/plain;charset=utf-8" // ★ CORS通信ブロックを回避する必須ヘッダー
-      },
-      body: JSON.stringify({ 
-        action: "getAllProducts", 
-        targetMaker: MY_MAKER,
-        _ts: Date.now() // キャッシュ防止
-      }) 
-    });
-    
-    if (!res.ok) {
-      throw new Error("HTTPエラー: " + res.status);
+    function openTelModal() {
+        openQtyModal();
     }
 
-    const data = await res.json();
+    async function preloadAllProducts() {
+        if (!MY_MAKER) return;
+        
+        const cacheKey = "PRODUCTS_CACHE_" + MY_MAKER;
+        const cachedData = localStorage.getItem(cacheKey);
+        const inputElem = document.getElementById("part-no-input");
 
-    // GAS側からエラーメッセージ（オブジェクト）が返ってきた場合
-    if (data && data.error) {
-      console.error("GASからのエラー:", data.error);
-      if (!cachedData && inputElem) {
-        inputElem.placeholder = "エラー: " + data.error;
-      }
-      return;
-    }
+        if (cachedData) {
+            try {
+                allProducts = JSON.parse(cachedData);
+                if (inputElem) {
+                    inputElem.placeholder = "品番・品名・JANを入力";
+                    inputElem.disabled = false;
+                }
+                console.log("ローカルキャッシュから商品データをロードしました");
+            } catch (e) {
+                console.error("キャッシュ解析エラー", e);
+            }
+        }
 
-    // 正常に商品配列が取得できた場合
-    if (Array.isArray(data) && data.length > 0) {
-      allProducts = data;
-      localStorage.setItem(cacheKey, JSON.stringify(data)); // キャッシュ保存
-      
-      if (inputElem) {
-        inputElem.placeholder = "品番・品名・JANを入力";
-        inputElem.disabled = false;
-      }
-      console.log("GASから最新の商品データを取得・更新しました");
-    } else if (Array.isArray(data) && data.length === 0) {
-      if (!cachedData && inputElem) {
-        inputElem.placeholder = "商品データが0件です";
-      }
-    }
-  } catch (e) { 
-    console.error("Load failed:", e);
-    // 初回かつキャッシュも無い場合のみエラー表示
-    if (!cachedData && inputElem) {
-      inputElem.placeholder = "通信エラー: " + e.message;
-    }
-  }
+        try {
+            const res = await fetch(GAS_URL, { 
+                method: "POST", 
+                headers: { "Content-Type": "text/plain;charset=utf-8" },
+                body: JSON.stringify({ 
+                    action: "getAllProducts", 
+                    targetMaker: MY_MAKER,
+                    _ts: Date.now()
+                }) 
+            });
+            
+            if (!res.ok) throw new Error("HTTPエラー: " + res.status);
+
+            const data = await res.json();
+
+            if (data && data.error) {
+                console.error("GASからのエラー:", data.error);
+                if (!cachedData && inputElem) {
+                    inputElem.placeholder = "エラー: " + data.error;
+                }
+                return;
+            }
+
+            if (Array.isArray(data) && data.length > 0) {
+                allProducts = data;
+                localStorage.setItem(cacheKey, JSON.stringify(data));
+                
+                if (inputElem) {
+                    inputElem.placeholder = "品番・品名・JANを入力";
+                    inputElem.disabled = false;
+                }
+                console.log("GASから最新の商品データを取得・更新しました");
+            } else if (Array.isArray(data) && data.length === 0) {
+                if (!cachedData && inputElem) {
+                    inputElem.placeholder = "商品データが0件です";
+                }
+            }
+        } catch (e) { 
+            console.error("Load failed:", e);
+            if (!cachedData && inputElem) {
+                inputElem.placeholder = "通信エラー: " + e.message;
+            }
+        }
+    } // ★ 関数の閉じカッコを修正
 
     function numIn(n) {
         let v = document.getElementById("qty-val");
@@ -360,9 +336,8 @@ function openTelModal() {
             const price = p.listPrice ? p.listPrice.toLocaleString() : (p.price ? p.price.toLocaleString() : "0");
             modalInfo.innerHTML = `上代: ¥${price} / 在庫: ${p.stock || "--"} / ロット: ${p.lot || "1"}`;
             
-            // ▼ 修正箇所: ロットの全角数字を半角にし、数字以外（スペース等）を取り除く
             let cleanLot = p.lot ? String(p.lot).normalize("NFKC").replace(/[^0-9]/g, '') : "1";
-            qtyDisplay.innerText = cleanLot || "1"; // もし空っぽになれば強制的に1にする
+            qtyDisplay.innerText = cleanLot || "1";
 
         } else {
             isTelMode = true;
@@ -382,7 +357,6 @@ function openTelModal() {
             if (val.length < 9) return alert("番号が短いです");
             closeQtyModal(); fetchCustomer(val);
         } else {
-            // ▼ 修正箇所: 決定ボタンを押した時も、確実に半角数字に変換してから処理する
             let cleanVal = String(val).normalize("NFKC").replace(/[^0-9]/g, '');
             let q = parseInt(cleanVal);
             
@@ -407,7 +381,7 @@ function openTelModal() {
         }
         list.innerHTML = cart.map((item, i) => {
             const itemPrice = item.price || 0;
-total += (itemPrice * item.quantity);
+            total += (itemPrice * item.quantity);
             return `
             <div class="item-row">
                 <div style="flex: 1;">
@@ -445,64 +419,58 @@ total += (itemPrice * item.quantity);
         };
     }
 
-   // ※関数のすぐ上の行に書いてください（連打防止用）
-let isSubmitting = false;
-
-async function submitFinalOrder() {
-    if (!customer || cart.length === 0) return;
-    if (isSubmitting) return; // 送信中の連打を無効化
-    if (!confirm("送信しますか？")) return;
-    
-    const btn = document.getElementById("submit-btn");
-    isSubmitting = true;
-    if (btn) {
-        btn.disabled = true; 
-        btn.innerText = "送信中...";
-    }
-    
-    try {
-        const payload = { 
-            action: "orderSubmit", 
-            data: { 
-                ...customer, 
-                items: cart, 
-                commonNote: document.getElementById("common-note")?.value || "", 
-                maker: MY_MAKER,
-                _ts: Date.now() // iOSのキャッシュ防止用
-            } 
-        };
+    async function submitFinalOrder() {
+        if (!customer || cart.length === 0) return;
+        if (isSubmitting) return;
+        if (!confirm("送信しますか？")) return;
         
-        const res = await fetch(GAS_URL, { 
-            method: "POST", 
-            headers: {
-                "Content-Type": "text/plain;charset=utf-8" // ★ iOS/SafariでのCORSブロックを回避する重要設定
-            },
-            body: JSON.stringify(payload) 
-        });
-        
-        if (!res.ok) {
-            throw new Error("HTTPエラー: " + res.status);
-        }
-
-        const result = await res.json();
-        
-        if (result && result.success) { 
-            alert("完了！"); 
-            if (typeof resetUI === "function") resetUI(); 
-        } else {
-            alert("GASエラー: " + (result.error || "処理に失敗しました"));
-        }
-    } catch (e) { 
-        console.error("注文送信エラー詳細:", e);
-        alert("通信エラーが発生しました: " + e.message); 
-    } finally { 
-        isSubmitting = false; // 送信完了後にロック解除
+        const btn = document.getElementById("submit-btn");
+        isSubmitting = true;
         if (btn) {
-            btn.disabled = false; 
-            btn.innerText = "注文確定・送信"; 
+            btn.disabled = true; 
+            btn.innerText = "送信中...";
+        }
+        
+        try {
+            const payload = { 
+                action: "orderSubmit", 
+                data: { 
+                    ...customer, 
+                    items: cart, 
+                    commonNote: document.getElementById("common-note")?.value || "", 
+                    maker: MY_MAKER,
+                    _ts: Date.now()
+                } 
+            };
+            
+            const res = await fetch(GAS_URL, { 
+                method: "POST", 
+                headers: { "Content-Type": "text/plain;charset=utf-8" },
+                body: JSON.stringify(payload) 
+            });
+            
+            if (!res.ok) throw new Error("HTTPエラー: " + res.status);
+
+            const result = await res.json();
+            
+            if (result && result.success) { 
+                alert("完了！"); 
+                resetUI(); 
+            } else {
+                alert("GASエラー: " + (result.error || "処理に失敗しました"));
+            }
+        } catch (e) { 
+            console.error("注文送信エラー詳細:", e);
+            alert("通信エラーが発生しました: " + e.message); 
+        } finally { 
+            isSubmitting = false;
+            if (btn) {
+                btn.disabled = false; 
+                btn.innerText = "注文確定・送信"; 
+            }
         }
     }
-}
+
     function resetUI() {
         customer = null; cart = [];
         document.getElementById("common-note").value = "";
@@ -522,42 +490,33 @@ async function submitFinalOrder() {
     }
 
     function handleManualInput() {
-    let val = document.getElementById("part-no-input").value;
-    if (val) {
-        // スペースで区切って、最初の要素（品番）だけを取り出す
-        // 例：「A101 ﾊﾟﾘｼﾞｪﾝﾇ」 -> 「A101」
-        const partNoOnly = val.trim().split(" ")[0];
-        
-        fetchProduct(partNoOnly);
-        
-        // 追加ボタンを押したら、次の入力のためにすぐ空にする
-        document.getElementById("part-no-input").value = ""; 
+        let val = document.getElementById("part-no-input").value;
+        if (val) {
+            const partNoOnly = val.trim().split(" ")[0];
+            fetchProduct(partNoOnly);
+            document.getElementById("part-no-input").value = ""; 
+        }
     }
-}
 
-    // ▼ 読み込んだ履歴データを一時保存する変数
     let cachedHistory = []; 
 
-    // 1. 顧客検索（CORSエラー回避・通信失敗時のハンドリング追加）
     async function fetchCustomer(val) {
         if (!val) return;
         try {
             const res = await fetch(GAS_URL, { 
                 method: "POST", 
-                headers: { "Content-Type": "text/plain;charset=utf-8" }, // ★ 通信ブロック回避
+                headers: { "Content-Type": "text/plain;charset=utf-8" },
                 body: JSON.stringify({ action: "customerSearch", val: val, _ts: Date.now() }) 
             });
 
             if (!res.ok) throw new Error("HTTP " + res.status);
             const d = await res.json();
 
-            // GAS側からエラーが返ってきた場合
             if (d && d.error) {
                 alert("検索結果: " + d.error);
                 return;
             }
 
-            // 顧客データが存在する場合
             if (d && (d.customer || d.customerId)) { 
                 customer = d; 
                 updateCustomerDisplay(); 
@@ -570,7 +529,6 @@ async function submitFinalOrder() {
         }
     }
 
-    // 2. 顧客表示更新（HTML要素の安全チェック追加）
     function updateCustomerDisplay() {
         if (!customer) return;
 
@@ -593,7 +551,6 @@ async function submitFinalOrder() {
         if (elProdArea) elProdArea.style.display = "block";
     }
 
-    // 3. 商品検索
     function fetchProduct(code) {
         if (!code) return;
         const searchVal = normalizeText(code);
@@ -610,7 +567,6 @@ async function submitFinalOrder() {
         }
     }
 
-    // 4. 履歴読み込み関数（CORSエラー回避追加）
     async function loadHistory() {
         const list = document.getElementById("h-list");
         if (list) {
@@ -619,7 +575,7 @@ async function submitFinalOrder() {
         try {
             const res = await fetch(GAS_URL, { 
                 method: "POST", 
-                headers: { "Content-Type": "text/plain;charset=utf-8" }, // ★ 通信ブロック回避
+                headers: { "Content-Type": "text/plain;charset=utf-8" },
                 body: JSON.stringify({ action: "getOrderHistory", targetMaker: MY_MAKER, _ts: Date.now() }) 
             });
 
@@ -641,7 +597,6 @@ async function submitFinalOrder() {
         }
     }
 
-    // 5. 履歴のリストを描画する専用関数
     function renderHistoryList(data) {
         const list = document.getElementById("h-list");
         if (!list) return;
@@ -671,14 +626,13 @@ async function submitFinalOrder() {
             </div>`;
         }).join('');
     }
-    // ▼ 新規追加: 検索窓の文字で履歴を絞り込む関数
+
     function filterHistory() {
         const keyword = document.getElementById("history-filter-input").value.trim().toLowerCase();
         if (!keyword) {
             renderHistoryList(cachedHistory);
             return;
         }
-        // 顧客名または品番で部分一致検索
         const filtered = cachedHistory.filter(item => 
             (item.customerName && item.customerName.toLowerCase().includes(keyword)) ||
             (item.partNo && item.partNo.toLowerCase().includes(keyword))
@@ -686,7 +640,6 @@ async function submitFinalOrder() {
         renderHistoryList(filtered);
     }
 
-    // ▼ 新規追加: 履歴から顧客を選択し、ホーム画面の宛先にセットする関数
     async function setCustomerFromHistory(customerName) {
         if (!confirm(customerName + " 様を現在の注文の宛先に設定しますか？")) return;
         
@@ -694,15 +647,18 @@ async function submitFinalOrder() {
         document.getElementById("c-none").innerHTML = "<i class='fas fa-spinner fa-spin'></i> 顧客情報を取得中...";
         
         try {
-            // 顧客名を使ってGASに詳細情報を検索させる
-            const res = await fetch(GAS_URL, { method: "POST", body: JSON.stringify({ action: "customerSearch", val: customerName }) });
+            const res = await fetch(GAS_URL, { 
+                method: "POST", 
+                headers: { "Content-Type": "text/plain;charset=utf-8" },
+                body: JSON.stringify({ action: "customerSearch", val: customerName, _ts: Date.now() }) 
+            });
             const d = await res.json();
             
-            if (d.customer) { 
+            if (d && (d.customer || d.customerId)) { 
                 customer = d; 
                 updateCustomerDisplay(); 
             } else { 
-                alert("詳細情報の取得に失敗しました。お手数ですが電話番号等で再検索してください。");
+                alert("詳細情報の取得に失敗しました。電話番号等で再検索してください。");
                 document.getElementById("c-none").innerHTML = "顧客情報を選択してください";
             }
         } catch (e) {
@@ -711,29 +667,30 @@ async function submitFinalOrder() {
         }
     }
 
-    // ▼ 2. 履歴の数量更新の関数
     async function execDirectUpdate(ts, partNo, newQty, oldQty) {
         if (newQty <= 0) return loadHistory();
         try {
-            await fetch(GAS_URL, { method: "POST", body: JSON.stringify({ action: "updateOrderQty", timestamp: ts, partNo: partNo, newQty: newQty, maker: MY_MAKER }) });
+            await fetch(GAS_URL, { 
+                method: "POST", 
+                headers: { "Content-Type": "text/plain;charset=utf-8" },
+                body: JSON.stringify({ action: "updateOrderQty", timestamp: ts, partNo: partNo, newQty: newQty, maker: MY_MAKER }) 
+            });
             loadHistory();
         } catch (e) { alert("通信エラー"); }
     }
 
-    // ▼ 3. 【新規追加】履歴から完全に削除するための関数
     async function execDirectDelete(ts, partNo) {
         if (!confirm("この注文履歴を削除しますか？\n（スプレッドシートからも完全に消去されます）")) return;
         
-        // 削除中は履歴一覧をローディング表示にする
         const list = document.getElementById("h-list");
-        list.innerHTML = "<div style='text-align:center; padding:20px;'><i class='fas fa-spinner fa-spin'></i> 削除中...</div>";
+        if (list) list.innerHTML = "<div style='text-align:center; padding:20px;'><i class='fas fa-spinner fa-spin'></i> 削除中...</div>";
         
         try {
             await fetch(GAS_URL, { 
                 method: "POST", 
+                headers: { "Content-Type": "text/plain;charset=utf-8" },
                 body: JSON.stringify({ action: "deleteOrderLine", timestamp: ts, partNo: partNo, maker: MY_MAKER }) 
             });
-            // 削除が終わったら履歴を再読み込み
             loadHistory();
         } catch (e) { 
             alert("通信エラー"); 
@@ -744,11 +701,12 @@ async function submitFinalOrder() {
     function normalizeText(str) {
         if (!str) return "";
         return String(str)
-            .normalize("NFKC") // 全角英数→半角、半角カナ→全角に一括統一
-            .replace(/[\u3041-\u3096]/g, match => String.fromCharCode(match.charCodeAt(0) + 0x60)) // ひらがなをカタカナに変換
-            .toUpperCase() // 大文字・小文字を統一
+            .normalize("NFKC")
+            .replace(/[\u3041-\u3096]/g, match => String.fromCharCode(match.charCodeAt(0) + 0x60))
+            .toUpperCase()
             .trim();
     }
+
     function switchMaker(makerName) {
         if (confirm(makerName + " に切り替えますか？")) {
             const url = new URL(window.location.href);
@@ -757,48 +715,43 @@ async function submitFinalOrder() {
         }
     }
     
-    // カメラ関連（既存のまま）
-async function startCamera(mode) {
-    if (mode === 'product' && !customer) return alert("先に顧客を選択してください");
-    
-    // 1. もし既にスキャナーが動いていたら、一度完全に停止させる
-    if (html5QrCode && html5QrCode.getState() !== 1) { // 1は「IDLE（待機中）」の状態
+    async function startCamera(mode) {
+        if (mode === 'product' && !customer) return alert("先に顧客を選択してください");
+        
+        if (html5QrCode && html5QrCode.getState() !== 1) {
+            try {
+                await html5QrCode.stop();
+            } catch (e) {
+                console.log("Stop failed, but continuing...");
+            }
+        }
+
+        showPage('scanner-page');
+        document.getElementById('camera-guide').style.display = 'block';
+
+        if (html5QrCode === null) html5QrCode = new Html5Qrcode("reader");
+
         try {
-            await html5QrCode.stop();
-        } catch (e) {
-            // 停止に失敗しても次へ進む
-            console.log("Stop failed, but continuing...");
+            await html5QrCode.start(
+                { facingMode: "environment" }, 
+                { fps: 20, qrbox: 250 }, 
+                (text) => {
+                    html5QrCode.stop().then(() => {
+                        document.getElementById('camera-guide').style.display = 'none';
+                        showPage('home');
+                        if (mode === 'customer') {
+                            fetchCustomer(text.trim());
+                        } else {
+                            fetchProduct(text.trim());
+                        }
+                    }).catch(err => console.error("Stop error", err));
+                }
+            );
+        } catch (err) { 
+            console.error(err);
+            alert("カメラを起動できませんでした。ブラウザの再読み込みを試してください。"); 
         }
     }
-
-    showPage('scanner-page');
-    document.getElementById('camera-guide').style.display = 'block';
-
-    // 2. インスタンスがない場合だけ新しく作る
-    if (html5QrCode === null) html5QrCode = new Html5Qrcode("reader");
-
-    try {
-        await html5QrCode.start(
-            { facingMode: "environment" }, 
-            { fps: 20, qrbox: 250 }, 
-            (text) => {
-                // スキャン成功時の処理
-                html5QrCode.stop().then(() => {
-                    document.getElementById('camera-guide').style.display = 'none';
-                    showPage('home');
-                    if (mode === 'customer') {
-                        fetchCustomer(text.trim());
-                    } else {
-                        fetchProduct(text.trim());
-                    }
-                }).catch(err => console.error("Stop error", err));
-            }
-        );
-    } catch (err) { 
-        console.error(err);
-        alert("カメラを起動できませんでした。ブラウザの再読み込みを試してください。"); 
-    }
-}
 
     function stopCamera() {
         if (html5QrCode && html5QrCode.getState() !== 1) {
@@ -809,13 +762,13 @@ async function startCamera(mode) {
         } else { showPage('home'); }
     }
 
-function renderPendingList() {
+    function renderPendingList() {
         const area = document.getElementById("pending-list-area");
+        if (!area) return;
         if (pendingOrders.length === 0) { area.innerHTML = ""; return; }
         area.innerHTML = '<h4>▼ 保留中</h4>' + pendingOrders.map((ord, i) => `<div class="card" onclick="resumeOrder(${i})"><b>${ord.customer.customer} 様</b></div>`).join('');
     }
 
-    // ▼▼ ここから貼り付ける ▼▼
     function showSuggestions(val) {
         const listDiv = document.getElementById("autocomplete-list");
         if (!listDiv) return;
@@ -859,40 +812,30 @@ function renderPendingList() {
         listDiv.style.display = "block";
     }
 
-  document.addEventListener("click", function (e) {
+    document.addEventListener("click", function (e) {
         if (e.target.id !== "part-no-input") {
             const listDiv = document.getElementById("autocomplete-list");
             if (listDiv) listDiv.style.display = "none";
         }
     });
-    // ▲▲ ここまで貼り付ける ▲▲
 
-    // ↓↓↓ 【修正】御社の既存システムと完全に連動させた「保留・復元」の正しい処理 ↓↓↓
-    
-    // ① 最初の画面の「保留」ボタンを押したときの処理
     window.holdOrder = function() {
         if (!customer && cart.length === 0) {
             alert("保留する注文データがありません。");
             return;
         }
 
-        // 現在入力中のデータをオブジェクトにまとめる
         const currentOrder = {
             customer: customer || { customer: "顧客未選択" },
             cart: [...cart],
             commonNote: document.getElementById("common-note").value || ""
         };
 
-        // アプリ内の保留リスト（配列）に追加
         pendingOrders.push(currentOrder);
-        
         alert(`${currentOrder.customer.customer} 様の注文を一時保留しました。次の注文を入力できます。`);
-        
-        // 画面をクリアして初期状態に戻す
         resetUI();
     };
 
-    // ② 「保留/履歴」ページで、保留したカードをタップしたときに復元する処理
     window.resumeOrder = function(index) {
         const targetOrder = pendingOrders[index];
         if (!targetOrder) return;
@@ -901,7 +844,6 @@ function renderPendingList() {
             return;
         }
 
-        // 顧客情報を復元
         if (targetOrder.customer && targetOrder.customer.customer !== "顧客未選択") {
             customer = targetOrder.customer;
             updateCustomerDisplay();
@@ -909,27 +851,18 @@ function renderPendingList() {
             customer = null;
             document.getElementById("c-none").style.display = "block";
             document.getElementById("c-detail").style.display = "none";
-            document.getElementById("product-input-area").style.display = "block"; // 商品入力だけは可能にする
+            document.getElementById("product-input-area").style.display = "block";
         }
 
-        // カートの中身とメモを復元
         cart = [...targetOrder.cart];
         document.getElementById("common-note").value = targetOrder.commonNote;
-        
-        // カートの再描画
         renderCart();
 
-        // 復元したデータは保留リストから削除する
         pendingOrders.splice(index, 1);
-
-        // カート画面（home）に戻す
         showPage('home');
         alert("注文を復元しました。");
     };
-    // ↑↑↑ ここまで ↑↑↑
-
 </script>
-
 
 </body>
 </html>
