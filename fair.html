@@ -270,14 +270,36 @@ function openTelModal() {
     }
   }
 
-  // 【ステップ2】バックグラウンドでGASから最新データを取得して更新
+// 【ステップ2】バックグラウンドでGASから最新データを取得して更新
   try {
     const res = await fetch(GAS_URL, { 
       method: "POST", 
-      body: JSON.stringify({ action: "getAllProducts", targetMaker: MY_MAKER }) 
+      headers: {
+        "Content-Type": "text/plain;charset=utf-8" // ★ CORS通信ブロックを回避する必須ヘッダー
+      },
+      body: JSON.stringify({ 
+        action: "getAllProducts", 
+        targetMaker: MY_MAKER,
+        _ts: Date.now() // キャッシュ防止
+      }) 
     });
+    
+    if (!res.ok) {
+      throw new Error("HTTPエラー: " + res.status);
+    }
+
     const data = await res.json();
 
+    // GAS側からエラーメッセージ（オブジェクト）が返ってきた場合
+    if (data && data.error) {
+      console.error("GASからのエラー:", data.error);
+      if (!cachedData && inputElem) {
+        inputElem.placeholder = "エラー: " + data.error;
+      }
+      return;
+    }
+
+    // 正常に商品配列が取得できた場合
     if (Array.isArray(data) && data.length > 0) {
       allProducts = data;
       localStorage.setItem(cacheKey, JSON.stringify(data)); // キャッシュ保存
@@ -287,15 +309,18 @@ function openTelModal() {
         inputElem.disabled = false;
       }
       console.log("GASから最新の商品データを取得・更新しました");
+    } else if (Array.isArray(data) && data.length === 0) {
+      if (!cachedData && inputElem) {
+        inputElem.placeholder = "商品データが0件です";
+      }
     }
   } catch (e) { 
-    console.error("Load failed", e);
+    console.error("Load failed:", e);
     // 初回かつキャッシュも無い場合のみエラー表示
     if (!cachedData && inputElem) {
-      inputElem.placeholder = "読み込みエラー";
+      inputElem.placeholder = "通信エラー: " + e.message;
     }
   }
-}
 
     function numIn(n) {
         let v = document.getElementById("qty-val");
