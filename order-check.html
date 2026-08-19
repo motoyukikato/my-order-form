@@ -55,7 +55,7 @@
         <input type="tel" id="auth-code" maxlength="4" 
                style="width:100%; padding:15px; font-size:24px; text-align:center; letter-spacing:10px; border:2px solid #4267B2; border-radius:8px; margin-bottom:15px; box-sizing: border-box;" 
                placeholder="0000">
-        <button class="btn btn-scan" onclick="verifyAndShow()">確認して明細を表示</button>
+        <button id="verify-btn" class="btn btn-scan" onclick="verifyAndShow()">確認して明細を表示</button>
     </div>
 
     <div id="result-view" style="display:none;">
@@ -93,28 +93,21 @@
 </div>
 
 <script>
-    // 【重要】GASで新しいデプロイを行ったら、URLを最新のものに差し替えてください
     const GAS_URL = "https://script.google.com/macros/s/AKfycbxkdpyh0y36H_CMW6VI8p_YBUg0u4OPzfEeJ4ODdYwrnwxjbosG2KSnupuoEjdLiDEv/exec"; 
 
     let currentScannedId = "";
     let lastFetchedData = [];
 
-   async function startScan() {
+    async function startScan() {
         const scanner = new Html5Qrcode("reader");
         document.getElementById("start-btn").style.display = "none";
         try {
             await scanner.start({ facingMode: "environment" }, { fps: 15, qrbox: 250 }, 
                 async (text) => {
                     await scanner.stop();
-                    
-                    // 1. スキャンしたIDを一旦保存する
                     currentScannedId = text.trim(); 
-                    
-                    // 2. すぐに fetchHistory(text) を呼ばず、入力画面を出す
                     document.getElementById("scan-view").style.display = "none";
                     document.getElementById("auth-view").style.display = "block";
-                    
-                    // 3. 入力欄に自動でカーソルを合わせる（スマホだとキーボードが出ます）
                     document.getElementById("auth-code").focus();
                 }
             );
@@ -123,45 +116,37 @@
             document.getElementById("start-btn").style.display = "block";
         }
     }
-    // 新しく追加する関数
+
     function verifyAndShow() {
-        const authCode = document.getElementById("auth-code").value;
+        const authCode = document.getElementById("auth-code").value.trim();
         if (authCode.length !== 4) {
             return alert("下4桁を正しく入力してください");
         }
 
-        // 認証画面を消して、ローディング（照合中）を出す
         document.getElementById("auth-view").style.display = "none";
         document.getElementById("loading").style.display = "block";
 
-        // ここで初めてGASに問い合わせる（IDと下4桁をセットで送る）
+        // JSONP呼び出し（キャッシュ防止のタイムスタンプ付与 + DOM自動クリーンアップ）
         const script = document.createElement('script');
-        script.src = `${GAS_URL}?id=${encodeURIComponent(currentScannedId)}&auth=${authCode}&callback=showResult`;
+        script.id = 'jsonp-script';
+        script.src = `${GAS_URL}?id=${encodeURIComponent(currentScannedId)}&auth=${encodeURIComponent(authCode)}&callback=showResult&_=${Date.now()}`;
         document.body.appendChild(script);
     }
 
-    // 履歴取得 (JSONP方式)
-    function fetchHistory(id) {
-        document.getElementById("scan-view").style.display = "none";
-        document.getElementById("loading").style.display = "block";
-        
-        // callback=showResult を指定してGASを叩く
-        const script = document.createElement('script');
-        script.src = `${GAS_URL}?id=${encodeURIComponent(id)}&callback=showResult`;
-        document.body.appendChild(script);
-    }
-
-    // GASからのデータを受け取って表示
     function showResult(data) {
+        // 使用済みscriptタグの削除
+        const oldScript = document.getElementById('jsonp-script');
+        if (oldScript) oldScript.remove();
+
         document.getElementById("loading").style.display = "none";
         document.getElementById("result-view").style.display = "block";
         const tableBody = document.getElementById("history-table-body");
         let total = 0;
         lastFetchedData = data;
 
-        if (data && data.length > 0) {
+        if (data && Array.isArray(data) && data.length > 0) {
             document.getElementById("email-btn").style.display = "block";
-            document.getElementById("cust-name").innerText = data[0].customerName + " 様";
+            document.getElementById("cust-name").innerText = (data[0].customerName || "お客様") + " 様";
             
             tableBody.innerHTML = data.map(item => {
                 total += Number(item.subtotal || 0);
@@ -180,8 +165,9 @@
             }).join('');
             document.getElementById("total-amount").innerText = total.toLocaleString();
         } else {
-            tableBody.innerHTML = '<tr><td colspan="2" style="text-align:center; padding:30px; color:#999;">履歴がありません。<br><small>(ID: ' + currentScannedId + ')</small></td></tr>';
+            tableBody.innerHTML = '<tr><td colspan="2" style="text-align:center; padding:30px; color:#d9534f;">該当する注文履歴が見つかりません。<br><small style="color:#666;">（電話番号の下4桁が合っているかご確認ください）</small></td></tr>';
             document.getElementById("email-btn").style.display = "none";
+            document.getElementById("cust-name").innerText = "---";
         }
     }
 
@@ -195,7 +181,8 @@
         btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> 送信中...';
 
         const script = document.createElement('script');
-        script.src = `${GAS_URL}?action=sendEmail&id=${encodeURIComponent(currentScannedId)}&email=${encodeURIComponent(newEmail.trim())}&callback=onEmailSent`;
+        script.id = 'email-script';
+        script.src = `${GAS_URL}?action=sendEmail&id=${encodeURIComponent(currentScannedId)}&email=${encodeURIComponent(newEmail.trim())}&callback=onEmailSent&_=${Date.now()}`;
         document.body.appendChild(script);
 
         setTimeout(() => {
@@ -204,6 +191,9 @@
     }
 
     function onEmailSent(response) {
+        const oldScript = document.getElementById('email-script');
+        if (oldScript) oldScript.remove();
+
         const btn = document.getElementById("email-btn");
         if (!btn.disabled || btn.innerHTML.includes('送信完了')) return;
         alert("請書メールを送信しました！");
