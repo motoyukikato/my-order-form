@@ -535,22 +535,65 @@ async function submitFinalOrder() {
     }
 }
 
+    // ▼ 読み込んだ履歴データを一時保存する変数
+    let cachedHistory = []; 
+
+    // 1. 顧客検索（CORSエラー回避・通信失敗時のハンドリング追加）
     async function fetchCustomer(val) {
-        const res = await fetch(GAS_URL, { method: "POST", body: JSON.stringify({ action: "customerSearch", val: val }) });
-        const d = await res.json();
-        if (d.customer) { customer = d; updateCustomerDisplay(); } else alert("未登録");
+        if (!val) return;
+        try {
+            const res = await fetch(GAS_URL, { 
+                method: "POST", 
+                headers: { "Content-Type": "text/plain;charset=utf-8" }, // ★ 通信ブロック回避
+                body: JSON.stringify({ action: "customerSearch", val: val, _ts: Date.now() }) 
+            });
+
+            if (!res.ok) throw new Error("HTTP " + res.status);
+            const d = await res.json();
+
+            // GAS側からエラーが返ってきた場合
+            if (d && d.error) {
+                alert("検索結果: " + d.error);
+                return;
+            }
+
+            // 顧客データが存在する場合
+            if (d && (d.customer || d.customerId)) { 
+                customer = d; 
+                updateCustomerDisplay(); 
+            } else {
+                alert("該当する顧客が見つかりません");
+            }
+        } catch (e) {
+            console.error("顧客検索エラー:", e);
+            alert("通信エラーが発生しました: " + e.message);
+        }
     }
 
+    // 2. 顧客表示更新（HTML要素の安全チェック追加）
     function updateCustomerDisplay() {
-        document.getElementById("r-name").innerText = customer.customer;
-        const addr2 = customer.address2 ? " " + customer.address2 : "";
-        document.getElementById("r-addr1").innerText = "〒" + customer.zip + " " + customer.address1 + addr2;
-        document.getElementById("r-tel").innerText = "TEL: " + customer.tel;
-        document.getElementById("c-none").style.display = "none";
-        document.getElementById("c-detail").style.display = "block";
-        document.getElementById("product-input-area").style.display = "block";
+        if (!customer) return;
+
+        const elName = document.getElementById("r-name");
+        const elAddr1 = document.getElementById("r-addr1");
+        const elTel = document.getElementById("r-tel");
+        const elNone = document.getElementById("c-none");
+        const elDetail = document.getElementById("c-detail");
+        const elProdArea = document.getElementById("product-input-area");
+
+        if (elName) elName.innerText = customer.customer || "";
+        if (elAddr1) {
+            const addr2 = customer.address2 ? " " + customer.address2 : "";
+            elAddr1.innerText = "〒" + (customer.zip || "") + " " + (customer.address1 || "") + addr2;
+        }
+        if (elTel) elTel.innerText = "TEL: " + (customer.tel || "");
+
+        if (elNone) elNone.style.display = "none";
+        if (elDetail) elDetail.style.display = "block";
+        if (elProdArea) elProdArea.style.display = "block";
     }
 
+    // 3. 商品検索
     function fetchProduct(code) {
         if (!code) return;
         const searchVal = normalizeText(code);
@@ -560,34 +603,57 @@ async function submitFinalOrder() {
             const targetName = normalizeText(item.name);
             return (targetPartNo.includes(searchVal) || targetJan.includes(searchVal) || targetName.includes(searchVal));
         });
-        if (p) { openQtyModal(p); } else { alert("商品が見つかりません: [" + code + "]"); }
-    }
-
-   // ▼ 新規追加: 読み込んだ履歴データを一時保存する変数
-    let cachedHistory = []; 
-
-    // ▼ 修正: 履歴読み込み関数（描画部分を切り離し）
-    async function loadHistory() {
-        const list = document.getElementById("h-list");
-        list.innerHTML = "<div style='text-align:center; padding:20px;'><i class='fas fa-spinner fa-spin'></i> 読み込み中...</div>";
-        try {
-            const res = await fetch(GAS_URL, { method: "POST", body: JSON.stringify({ action: "getOrderHistory", targetMaker: MY_MAKER }) });
-            const data = await res.json();
-            cachedHistory = data; // 取得したデータを保存
-            renderHistoryList(cachedHistory); // 描画処理へ渡す
-        } catch (e) { 
-            list.innerHTML = "<p style='text-align:center; color:#d9534f;'>読み込みに失敗しました</p>"; 
+        if (p) { 
+            openQtyModal(p); 
+        } else { 
+            alert("商品が見つかりません: [" + code + "]"); 
         }
     }
 
-    // ▼ 新規追加: 履歴のリストを描画する専用関数
+    // 4. 履歴読み込み関数（CORSエラー回避追加）
+    async function loadHistory() {
+        const list = document.getElementById("h-list");
+        if (list) {
+            list.innerHTML = "<div style='text-align:center; padding:20px;'><i class='fas fa-spinner fa-spin'></i> 読み込み中...</div>";
+        }
+        try {
+            const res = await fetch(GAS_URL, { 
+                method: "POST", 
+                headers: { "Content-Type": "text/plain;charset=utf-8" }, // ★ 通信ブロック回避
+                body: JSON.stringify({ action: "getOrderHistory", targetMaker: MY_MAKER, _ts: Date.now() }) 
+            });
+
+            if (!res.ok) throw new Error("HTTP " + res.status);
+            const data = await res.json();
+
+            if (data && data.error) {
+                if (list) list.innerHTML = `<p style='text-align:center; color:#d9534f;'>エラー: ${data.error}</p>`;
+                return;
+            }
+
+            cachedHistory = Array.isArray(data) ? data : []; 
+            renderHistoryList(cachedHistory); 
+        } catch (e) { 
+            console.error("履歴読み込みエラー:", e);
+            if (list) {
+                list.innerHTML = "<p style='text-align:center; color:#d9534f;'>読み込みに失敗しました (" + e.message + ")</p>"; 
+            }
+        }
+    }
+
+    // 5. 履歴のリストを描画する専用関数
     function renderHistoryList(data) {
         const list = document.getElementById("h-list");
-        if (data.length === 0) { 
+        if (!list) return;
+
+        if (!data || data.length === 0) { 
             list.innerHTML = "<p style='text-align:center; color:#999; padding:20px;'>履歴はありません</p>"; 
             return; 
         }
-        list.innerHTML = '<h4>▼ 送信済み履歴</h4>' + data.map(item => `
+
+        list.innerHTML = '<h4>▼ 送信済み履歴</h4>' + data.map(item => {
+            const safeCustomerName = (item.customerName || '').replace(/'/g, "\\'");
+            return `
             <div class="card" style="font-size:0.9em; border-left: 5px solid #3b5998; margin-bottom:10px;">
                 <b>${item.customerName} 様</b> <small>${item.displayDate}</small><br>
                 品番：${item.partNo} | ${item.name}<br>
@@ -598,13 +664,13 @@ async function submitFinalOrder() {
                     </span>
                 </div>
                 <div style="margin-top: 12px; text-align: right;">
-                    <button class="btn-main" style="background:#28a745; font-size:0.85em; padding:8px 12px; width:auto; display:inline-block;" onclick="setCustomerFromHistory('${item.customerName}')">
+                    <button class="btn-main" style="background:#28a745; font-size:0.85em; padding:8px 12px; width:auto; display:inline-block;" onclick="setCustomerFromHistory('${safeCustomerName}')">
                         <i class="fas fa-user-check"></i> この顧客で新規注文
                     </button>
                 </div>
-            </div>`).join('');
+            </div>`;
+        }).join('');
     }
-
     // ▼ 新規追加: 検索窓の文字で履歴を絞り込む関数
     function filterHistory() {
         const keyword = document.getElementById("history-filter-input").value.trim().toLowerCase();
