@@ -338,6 +338,9 @@ async function preloadAllProducts() {
 
 let isCustomerSearching = false;
 
+   // ※関数の上の行にあることを確認（無ければ追加してください）
+    let isCustomerSearching = false;
+
     async function fetchCustomer(val) {
         if (!val) return;
         
@@ -345,11 +348,10 @@ let isCustomerSearching = false;
         isCustomerSearching = true;
 
         try {
-            // bodyをURLSearchParams形式にするか、JSONテキストとして送信
             const res = await fetch(GAS_URL, { 
                 method: "POST",
                 headers: {
-                    "Content-Type": "text/plain;charset=utf-8" // GASのCORS事前検証(Preflight)を回避するための標準設定
+                    "Content-Type": "text/plain;charset=utf-8" // CORS事前検証を回避
                 },
                 body: JSON.stringify({ action: "customerSearch", val: val }) 
             });
@@ -360,17 +362,22 @@ let isCustomerSearching = false;
 
             const d = await res.json();
             
-            if (d && d.customer) { 
+            // ★ GAS側からエラーメッセージが返ってきた場合
+            if (d && d.error) {
+                alert("検索エラー: " + d.error);
+            } 
+            // ★ 正常に顧客データが取得できた場合
+            else if (d && d.customer) { 
                 customer = d; 
                 updateCustomerDisplay(); 
             } else {
-                alert("顧客が見つかりません: " + val);
+                alert("該当する顧客が見つかりません: " + val);
             }
         } catch(e) { 
             console.error("顧客検索エラー詳細:", e);
             alert("通信エラーが発生しました\n詳細: " + e.message); 
         } finally {
-            isCustomerSearching = false;
+            isCustomerSearching = false; // 処理完了後に必ずロック解除
         }
     }
 
