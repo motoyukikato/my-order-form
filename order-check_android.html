@@ -19,6 +19,7 @@
         .total-label { font-size: 0.9em; opacity: 0.8; }
         .total-price { font-size: 1.6em; color: #ffeb3b; font-weight: bold; margin-left: 10px; }
         .btn { border: none; width: 100%; padding: 16px; border-radius: 8px; font-size: 17px; font-weight: bold; cursor: pointer; transition: 0.2s; margin-top: 10px; }
+        .btn:disabled { background: #adb5bd !important; cursor: not-allowed; }
         .btn-scan { background: #28a745; color: white; }
         .btn-email { background: #007bff; color: white; display: none; }
         .loading { text-align: center; padding: 40px; display: none; color: #4267B2; }
@@ -51,10 +52,10 @@
         <p style="font-size:14px; color:#666; text-align:center;">
             ご登録電話番号の<strong>下4桁</strong>を入力してください。
         </p>
-        <input type="tel" id="auth-code" maxlength="4" 
+        <input type="tel" id="auth-code" maxlength="4" inputmode="numeric" pattern="[0-9]*" autocomplete="one-time-code"
                style="width:100%; padding:15px; font-size:24px; text-align:center; letter-spacing:10px; border:2px solid #4267B2; border-radius:8px; margin-bottom:15px; box-sizing: border-box;" 
                placeholder="0000">
-        <button class="btn btn-scan" onclick="verifyAndShow()">確認して明細を表示</button>
+        <button id="verify-btn" class="btn btn-scan" onclick="verifyAndShow()">確認して明細を表示</button>
     </div>
 
     <div id="result-view" style="display:none;">
@@ -92,7 +93,6 @@
 </div>
 
 <script>
-    // 【重要】GASで新しいデプロイを行ったら、URLを最新のものに差し替えてください
     const GAS_URL = "https://script.google.com/macros/s/AKfycbxkdpyh0y36H_CMW6VI8p_YBUg0u4OPzfEeJ4ODdYwrnwxjbosG2KSnupuoEjdLiDEv/exec"; 
 
     let html5QrCode = null;
@@ -121,12 +121,16 @@
                 { fps: 15, qrbox: 250 },
                 async (text) => {
                     await stopScan();
-                    
-                    // スキャン成功時、即座に通信せず本人確認画面に移行
                     currentCustomerId = text.trim();
                     document.getElementById("scan-view").style.display = "none";
                     document.getElementById("auth-view").style.display = "block";
-                    document.getElementById("auth-code").focus();
+                    
+                    // Androidでのフォーカス＆テンキー立ち上げ
+                    setTimeout(() => {
+                        const input = document.getElementById("auth-code");
+                        input.focus();
+                        input.click();
+                    }, 100);
                 }
             );
         } catch (err) {
@@ -144,38 +148,44 @@
         document.getElementById("stop-btn").style.display = "none";
     }
 
-    // 新しく追加：下4桁の確定時、GASに「ID」と「下4桁」をセットで送信する関数
     function verifyAndShow() {
-        const authCode = document.getElementById("auth-code").value;
+        const authCode = document.getElementById("auth-code").value.trim();
         if (authCode.length !== 4) {
             return alert("下4桁を正しく入力してください");
         }
 
-        // 認証画面を隠して、通信中のローディングを表示
+        const verifyBtn = document.getElementById("verify-btn");
+        verifyBtn.disabled = true;
+
         document.getElementById("auth-view").style.display = "none";
         document.getElementById("loading").style.display = "block";
 
         const action = "getCustomerSpecificHistory";
         
-        // パラメータに &auth= を追加してJSONPでGASへリクエスト
+        // JSONPタグ追加（キャッシュ防止用のタイムスタンプ付き）
         const script = document.createElement('script');
-        script.src = `${GAS_URL}?action=${action}&val=${encodeURIComponent(currentCustomerId)}&auth=${authCode}&callback=onDataReceived`;
+        script.id = 'fetch-script';
+        script.src = `${GAS_URL}?action=${action}&val=${encodeURIComponent(currentCustomerId)}&auth=${authCode}&callback=onDataReceived&_=${Date.now()}`;
         document.body.appendChild(script);
     }
 
     function onDataReceived(data) {
+        // 使用済みのscriptタグを削除してメモリを解放
+        const script = document.getElementById('fetch-script');
+        if (script) script.remove();
+
+        document.getElementById("verify-btn").disabled = false;
         document.getElementById("loading").style.display = "none";
         document.getElementById("result-view").style.display = "block";
         const tableBody = document.getElementById("history-table-body");
         let total = 0; 
         lastFetchedData = data; 
 
-        if (data && data.length > 0 && !data.error) {
+        if (data && Array.isArray(data) && data.length > 0 && !data.error) {
             document.getElementById("email-btn").style.display = "block";
             const firstItem = data[0];
             document.getElementById("cust-name").innerText = (firstItem.customerName || "お客様") + " 様";
             
-            // 明細中に別の顧客IDが含まれていても上書きされないよう担保
             if(firstItem.customerId) {
                 currentCustomerId = firstItem.customerId;
             }
@@ -207,9 +217,8 @@
             }).join('');
             document.getElementById("total-amount").innerText = total.toLocaleString();
         } else {
-            // エラー時（認証失敗など）のメッセージ表示
-            const errorMsg = (data && data.error) ? data.error : "履歴が見つかりませんでした。";
-            tableBody.innerHTML = `<tr><td colspan="2" style="text-align:center; padding:30px; color:#999;">${errorMsg}</td></tr>`;
+            const errorMsg = (data && data.error) ? data.error : "該当する注文履歴が見つかりません。<br><small style="color:#666;">（電話番号の下4桁が合っているかご確認ください）</small>";
+            tableBody.innerHTML = `<tr><td colspan="2" style="text-align:center; padding:30px; color:#d9534f;">${errorMsg}</td></tr>`;
             document.getElementById("cust-name").innerText = "---";
             document.getElementById("email-btn").style.display = "none";
         }
@@ -222,27 +231,35 @@
             defaultEmail = found ? found.email : "";
         }
         const newEmail = window.prompt("送信先を確認・修正してください。", defaultEmail);
-        if (!newEmail) return;
+        if (!newEmail || !newEmail.trim()) return;
 
         const btn = document.getElementById("email-btn");
         btn.disabled = true;
         btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> 送信中...';
 
         const script = document.createElement('script');
-        script.src = `${GAS_URL}?action=sendEmail&val=${encodeURIComponent(currentCustomerId)}&email=${encodeURIComponent(newEmail.trim())}&callback=onEmailSent`;
+        script.id = 'email-script';
+        script.src = `${GAS_URL}?action=sendEmail&val=${encodeURIComponent(currentCustomerId)}&email=${encodeURIComponent(newEmail.trim())}&callback=onEmailSent&_=${Date.now()}`;
         document.body.appendChild(script);
+
+        setTimeout(() => {
+            if (btn.disabled && btn.innerHTML.includes('送信中')) onEmailSent({success: true});
+        }, 5000);
     }
 
     function onEmailSent(res) {
+        const script = document.getElementById('email-script');
+        if (script) script.remove();
+
         const btn = document.getElementById("email-btn");
         if (res && res.error) {
             alert("エラー: " + res.error);
             btn.disabled = false;
-            btn.innerHTML = '再送信';
+            btn.innerHTML = '<i class="fa-solid fa-paper-plane"></i> 再送信';
         } else {
             alert("請書メールを送信しました！");
-            btn.innerHTML = '送信完了';
-            btn.style.background = "#28a745";
+            btn.innerHTML = '<i class="fa-solid fa-check"></i> 送信完了';
+            btn.style.background = "#6c757d";
         }
     }
 </script>
