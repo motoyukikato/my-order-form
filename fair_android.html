@@ -336,30 +336,41 @@ async function preloadAllProducts() {
         }
     }
 
-let isCustomerSearching = false; // 二重送信防止フラグ
+let isCustomerSearching = false;
 
     async function fetchCustomer(val) {
         if (!val) return;
         
-        // すでに検索中の場合は処理を中断（連打・重複スキャン防止）
         if (isCustomerSearching) return;
         isCustomerSearching = true;
 
         try {
-            const res = await fetch(GAS_URL, { method: "POST", body: JSON.stringify({ action: "customerSearch", val: val }) });
+            // bodyをURLSearchParams形式にするか、JSONテキストとして送信
+            const res = await fetch(GAS_URL, { 
+                method: "POST",
+                headers: {
+                    "Content-Type": "text/plain;charset=utf-8" // GASのCORS事前検証(Preflight)を回避するための標準設定
+                },
+                body: JSON.stringify({ action: "customerSearch", val: val }) 
+            });
+            
+            if (!res.ok) {
+                throw new Error("HTTPエラー: " + res.status);
+            }
+
             const d = await res.json();
             
             if (d && d.customer) { 
                 customer = d; 
                 updateCustomerDisplay(); 
             } else {
-                alert("顧客が見つかりません");
+                alert("顧客が見つかりません: " + val);
             }
         } catch(e) { 
-            console.error("顧客検索エラー:", e);
-            alert("通信エラーが発生しました。少しおいて再度お試しください。"); 
+            console.error("顧客検索エラー詳細:", e);
+            alert("通信エラーが発生しました\n詳細: " + e.message); 
         } finally {
-            isCustomerSearching = false; // 処理完了後にロック解除
+            isCustomerSearching = false;
         }
     }
 
