@@ -420,47 +420,64 @@ total += (itemPrice * item.quantity);
         };
     }
 
-    async function submitFinalOrder() {
-        if (!customer || cart.length === 0) return;
-        if (!confirm("送信しますか？")) return;
-        
-        const btn = document.getElementById("submit-btn");
+   // ※関数のすぐ上の行に書いてください（連打防止用）
+let isSubmitting = false;
+
+async function submitFinalOrder() {
+    if (!customer || cart.length === 0) return;
+    if (isSubmitting) return; // 送信中の連打を無効化
+    if (!confirm("送信しますか？")) return;
+    
+    const btn = document.getElementById("submit-btn");
+    isSubmitting = true;
+    if (btn) {
         btn.disabled = true; 
         btn.innerText = "送信中...";
+    }
+    
+    try {
+        const payload = { 
+            action: "orderSubmit", 
+            data: { 
+                ...customer, 
+                items: cart, 
+                commonNote: document.getElementById("common-note")?.value || "", 
+                maker: MY_MAKER,
+                _ts: Date.now() // iOSのキャッシュ防止用
+            } 
+        };
         
-        try {
-            const payload = { 
-                action: "orderSubmit", 
-                data: { 
-                    ...customer, 
-                    items: cart, 
-                    commonNote: document.getElementById("common-note").value, 
-                    maker: MY_MAKER 
-                } 
-            };
-            
-            const res = await fetch(GAS_URL, { 
-                method: "POST", 
-                body: JSON.stringify(payload) 
-            });
-            
-            const result = await res.json();
-            
-            // ▼ 失敗したときに原因を表示する処理を追加しています ▼
-            if (result.success) { 
-                alert("完了！"); 
-                resetUI(); 
-            } else {
-                alert("GASエラー: " + result.error);
-            }
-        } catch (e) { 
-            alert("通信エラーが発生しました: " + e.message); 
-        } finally { 
+        const res = await fetch(GAS_URL, { 
+            method: "POST", 
+            headers: {
+                "Content-Type": "text/plain;charset=utf-8" // ★ iOS/SafariでのCORSブロックを回避する重要設定
+            },
+            body: JSON.stringify(payload) 
+        });
+        
+        if (!res.ok) {
+            throw new Error("HTTPエラー: " + res.status);
+        }
+
+        const result = await res.json();
+        
+        if (result && result.success) { 
+            alert("完了！"); 
+            if (typeof resetUI === "function") resetUI(); 
+        } else {
+            alert("GASエラー: " + (result.error || "処理に失敗しました"));
+        }
+    } catch (e) { 
+        console.error("注文送信エラー詳細:", e);
+        alert("通信エラーが発生しました: " + e.message); 
+    } finally { 
+        isSubmitting = false; // 送信完了後にロック解除
+        if (btn) {
             btn.disabled = false; 
             btn.innerText = "注文確定・送信"; 
         }
     }
-
+}
     function resetUI() {
         customer = null; cart = [];
         document.getElementById("common-note").value = "";
