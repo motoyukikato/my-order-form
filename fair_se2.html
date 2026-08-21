@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="theme-color" content="#3b5998">
-    <title>商事本部受注システム(別サイトテスト版)</title>
+    <title>商事本部受注システム(予備用)</title>
     
     <script src="https://unpkg.com/html5-qrcode"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
@@ -24,16 +24,16 @@
         .page-section { display: none; padding: 10px; }
         .active { display: block; }
         .card { background: #fff; padding: 15px; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.12); margin-bottom: 10px; }
-        .btn-main { padding: 14px; border: none; border-radius: 4px; width: 100%; font-size: 1em; font-weight: bold; color: white; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; }
+        .btn-main { padding: 14px; border: none; border-radius: 4px; width: 100%; font-size: 1em; font-weight: bold; color: white; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; box-sizing: border-box; }
         .btn-main:active { opacity: 0.7; transform: translateY(1px); }
         
-        /* 📸 カメラ位置切れの強制修正スタイル */
+        /* 📸 カメラ位置切れ防止スタイル */
         #scanner-page.active {
             display: flex;
             flex-direction: column;
             justify-content: flex-start;
             align-items: center;
-            height: calc(100vh - 140px); /* 画面内に収める */
+            height: calc(100vh - 140px);
             padding: 0;
             box-sizing: border-box;
             overflow: hidden;
@@ -63,18 +63,13 @@
             max-height: 100% !important;
             border: none !important;
         }
-        /* html5-qrcodeが生成する内部タグを強力上書き */
         #reader video {
             max-height: 55vh !important;
             object-fit: contain !important;
             margin: 0 auto;
         }
-        #reader__scan_region {
-            background: transparent !important;
-        }
-        #reader__dashboard {
-            display: none !important; /* 余計なUIを非表示 */
-        }
+        #reader__scan_region { background: transparent !important; }
+        #reader__dashboard { display: none !important; }
 
         .item-row { border-bottom: 1px solid #eee; padding: 12px 0; display: flex; justify-content: space-between; align-items: center; }
         .qty-ctrl-btn { width: 44px; height: 44px; border-radius: 4px; border: 1px solid #ddd; background: #f8f9fa; font-size: 1.5em; display: flex; align-items: center; justify-content: center; }
@@ -92,11 +87,17 @@
         .qty-display { font-size: 3em; font-weight: bold; margin-bottom: 15px; text-align:center; border-bottom: 2px solid #3b5998; color: #3b5998; padding: 5px; min-height: 1.2em;}
         .numpad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
         .numpad button { height: 60px; font-size: 1.5em; border: 1px solid #eee; border-radius: 4px; background: #fdfdfd; }
+
+        /* 👑 管理者画面用スタイル */
+        .admin-table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 12px; }
+        .admin-table th, .admin-table td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+        .admin-table th { background-color: #3b5998; color: white; }
+        .table-wrapper { overflow-x: auto; max-width: 100%; }
     </style>
 </head>
 <body>
 
-<header id="app-title">受注システム (テスト版)</header>
+<header id="app-title">受注システム (予備用)</header>
 
 <div id="qty-modal">
     <div class="modal-content">
@@ -116,6 +117,7 @@
     </div>
 </div>
 
+<!-- 🛒 ホーム（カート）画面 -->
 <section id="home" class="page-section active">
     <div class="card">
         <div id="c-none" style="text-align:center; color:#999;">顧客を選択してください</div>
@@ -157,6 +159,7 @@
     </div>
 </section>
 
+<!-- 📷 スキャン画面 -->
 <section id="scanner-page" class="page-section">
     <div id="camera-guide">
         📸 読み取りにくい場合は、カメラから15〜20cmほど離してみてください
@@ -169,10 +172,10 @@
     </div>
 </section>
 
+<!-- 📜 履歴画面 -->
 <section id="history" class="page-section">
     <div id="pending-list-area"></div>
     <hr>
-    
     <div style="margin-bottom: 15px; padding: 0 10px;">
         <input type="text" id="history-filter-input" placeholder="顧客名や品番で絞り込み..." 
                oninput="filterHistory()" 
@@ -181,10 +184,33 @@
     <div id="h-list"></div>
 </section>
 
+<!-- 👑 管理者画面 -->
+<section id="admin" class="page-section">
+    <div class="card">
+        <h3><i class="fas fa-user-shield"></i> 管理者メニュー</h3>
+        <p style="font-size: 12px; color: #666;">全メーカー・全受注データの確認とCSV出力が可能です。</p>
+        <button class="btn-main" style="background:#00796b; margin-bottom: 10px;" onclick="downloadCSV()">
+            <i class="fas fa-file-csv"></i> 全注文データCSV出力
+        </button>
+        <button class="btn-main" style="background:#3b5998;" onclick="loadAdminAllOrders()">
+            <i class="fas fa-sync"></i> データ最新化
+        </button>
+    </div>
+    
+    <div class="card table-wrapper">
+        <h4>全受注データ一覧</h4>
+        <div id="admin-data-container">
+            <p style="text-align:center; color:#999; padding:10px;">データを読み込んでいます...</p>
+        </div>
+    </div>
+</section>
+
+<!-- 🧭 ナビゲーション -->
 <nav>
     <button onclick="showPage('home')" id="n-home" class="active-nav"><i class="fas fa-shopping-cart fa-lg"></i><br>カート</button>
     <button onclick="startCamera('product')"><i class="fas fa-barcode fa-lg"></i><br>スキャン</button>
-    <button onclick="showPage('history')"><i class="fas fa-list-ul fa-lg"></i><br>履歴</button>
+    <button onclick="showPage('history')" id="n-history"><i class="fas fa-list-ul fa-lg"></i><br>履歴</button>
+    <button onclick="showPage('admin')" id="n-admin"><i class="fas fa-user-cog fa-lg"></i><br>管理者</button>
 </nav>
 
 <script>
@@ -198,6 +224,7 @@
     let allCustomers = [];
     let customerMap = {}; 
     let cachedHistory = [];
+    let adminAllData = [];
 
     function normalizeText(str) {
         return String(str || "").trim().replace(/[！-～]/g, s => String.fromCharCode(s.charCodeAt(0) - 0xFEE0)).replace(/\s+/g, "").toLowerCase();
@@ -216,7 +243,7 @@
     window.onload = () => {
         history.pushState(null, null, null);
         if (MY_MAKER) {
-            document.getElementById("app-title").innerText = MY_MAKER + " 受注システム (テスト版)";
+            document.getElementById("app-title").innerText = MY_MAKER + " 受注システム (予備用)";
         }
         preloadMasterData();
     };
@@ -556,7 +583,9 @@
         const navId = (id === 'scanner-page') ? 'n-home' : 'n-' + id;
         const navBtn = document.getElementById(navId);
         if (navBtn) navBtn.classList.add('active-nav');
+        
         if (id === 'history') loadHistory();
+        if (id === 'admin') loadAdminAllOrders();
     }
 
     function openTelModal() { openQtyModal(null); }
@@ -713,7 +742,10 @@
         try {
             const res = await fetch(GAS_URL, { method: "POST", body: JSON.stringify({ action: "updateOrderQty", timestamp: ts, partNo: pn, newQty: nq, maker: MY_MAKER }) });
             const result = await res.json();
-            if (result.success) loadHistory();
+            if (result.success) {
+                loadHistory();
+                if(document.getElementById('admin').classList.contains('active')) loadAdminAllOrders();
+            }
         } catch(e) { alert("通信エラー"); }
     }
 
@@ -722,8 +754,94 @@
         try {
             const res = await fetch(GAS_URL, { method: "POST", body: JSON.stringify({ action: "deleteOrderLine", timestamp: ts, partNo: pn, maker: MY_MAKER }) });
             const result = await res.json();
-            if (result.success) loadHistory();
+            if (result.success) {
+                loadHistory();
+                if(document.getElementById('admin').classList.contains('active')) loadAdminAllOrders();
+            }
         } catch(e) { alert("通信エラー"); }
+    }
+
+    /* 👑 管理者機能 */
+    async function loadAdminAllOrders() {
+        const container = document.getElementById("admin-data-container");
+        container.innerHTML = "<p style='text-align:center; padding:10px;'><i class='fas fa-spinner fa-spin'></i> データ読み込み中...</p>";
+        try {
+            const res = await fetch(GAS_URL, { 
+                method: "POST", 
+                body: JSON.stringify({ action: "getOrderHistory", targetMaker: "" }) // 空にすることで全データ取得
+            });
+            adminAllData = await res.json();
+            
+            if (adminAllData.length === 0) {
+                container.innerHTML = "<p style='text-align:center; color:#999; padding:10px;'>データがありません</p>";
+                return;
+            }
+
+            let html = `<table class="admin-table">
+                <thead>
+                    <tr>
+                        <th>日時</th>
+                        <th>メーカー</th>
+                        <th>顧客名</th>
+                        <th>品番</th>
+                        <th>商品名</th>
+                        <th>数量</th>
+                        <th>操作</th>
+                    </tr>
+                </thead>
+                <tbody>`;
+            
+            adminAllData.forEach(item => {
+                html += `<tr>
+                    <td>${item.displayDate || ''}</td>
+                    <td>${item.maker || ''}</td>
+                    <td>${item.customerName || ''}</td>
+                    <td>${item.partNo || ''}</td>
+                    <td>${item.name || ''}</td>
+                    <td>${item.qty || 0}</td>
+                    <td>
+                        <button onclick="execDelete('${item.timestamp}','${item.partNo}')" style="color:red; border:none; background:none; cursor:pointer;">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </td>
+                </tr>`;
+            });
+            
+            html += `</tbody></table>`;
+            container.innerHTML = html;
+        } catch (e) {
+            container.innerHTML = "<p style='text-align:center; color:#d32f2f; padding:10px;'>データ取得エラー</p>";
+        }
+    }
+
+    function downloadCSV() {
+        if (adminAllData.length === 0) {
+            return alert("ダウンロードするデータがありません");
+        }
+
+        const headers = ["タイムスタンプ", "メーカー", "顧客ID", "顧客名", "品番", "商品名", "上代", "数量", "小計", "備考"];
+        const rows = adminAllData.map(item => [
+            `"${item.timestamp || ''}"`,
+            `"${item.maker || ''}"`,
+            `"${item.customerId || ''}"`,
+            `"${item.customerName || ''}"`,
+            `"${item.partNo || ''}"`,
+            `"${item.name || ''}"`,
+            item.price || 0,
+            item.qty || 0,
+            item.subtotal || 0,
+            `"${(item.commonNote || '').replace(/"/g, '""')}"`
+        ]);
+
+        const csvContent = "\uFEFF" + [headers.join(","), ...rows.map(e => e.join(","))].join("\n");
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.setAttribute("href", url);
+        link.setAttribute("download", `全受注データ_${new Date().toISOString().slice(0,10)}.csv`);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
     }
 </script>
 </body>
