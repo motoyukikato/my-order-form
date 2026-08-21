@@ -27,7 +27,43 @@
         .btn-main { padding: 14px; border: none; border-radius: 4px; width: 100%; font-size: 1em; font-weight: bold; color: white; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; }
         .btn-main:active { opacity: 0.7; transform: translateY(1px); }
         
-        #reader { width: 100% !important; background: #000; border-radius: 4px; }
+        /* 📸 カメラ全画面レイアウト修正箇所 */
+        #scanner-page.active {
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            align-items: center;
+            min-height: calc(100vh - 130px);
+            padding: 0;
+            box-sizing: border-box;
+        }
+        #camera-guide {
+            width: 100%;
+            background: #fff3cd;
+            color: #856404;
+            padding: 10px;
+            text-align: center;
+            font-size: 13px;
+            box-sizing: border-box;
+        }
+        #reader-wrapper {
+            width: 100%;
+            max-width: 500px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin: auto 0;
+        }
+        #reader { 
+            width: 100% !important; 
+            background: #000; 
+            border-radius: 8px; 
+            overflow: hidden;
+        }
+        #reader video {
+            object-fit: cover !important;
+        }
+
         .item-row { border-bottom: 1px solid #eee; padding: 12px 0; display: flex; justify-content: space-between; align-items: center; }
         .qty-ctrl-btn { width: 44px; height: 44px; border-radius: 4px; border: 1px solid #ddd; background: #f8f9fa; font-size: 1.5em; display: flex; align-items: center; justify-content: center; }
         .qty-num-box { min-width: 60px; height: 42px; line-height: 42px; text-align: center; background: #fff; border: 2px solid #3b5998; border-radius: 4px; font-weight: bold; font-size: 1.2em; color: #3b5998; }
@@ -110,12 +146,14 @@
 </section>
 
 <section id="scanner-page" class="page-section">
-    <div id="camera-guide" style="background:#fff3cd; color:#856404; padding:10px; text-align:center; font-size:14px;">
+    <div id="camera-guide">
         📸 読み取りにくい場合は、カメラから15〜20cmほど離してみてください
     </div>
-    <div id="reader"></div>
-    <div style="padding:20px; text-align:center;">
-        <button class="btn-main" style="background:#424242;" onclick="stopCamera()">キャンセル</button>
+    <div id="reader-wrapper">
+        <div id="reader"></div>
+    </div>
+    <div style="padding:15px 0 20px; text-align:center; width:100%;">
+        <button class="btn-main" style="background:#424242; width:80%; margin:0 auto;" onclick="stopCamera()">キャンセル</button>
     </div>
 </section>
 
@@ -146,7 +184,7 @@
     let editContext = null; 
     let allProducts = [];
     let allCustomers = [];
-    let customerMap = {}; // O(1)高速検索用ハッシュマップ
+    let customerMap = {}; 
     let cachedHistory = [];
 
     function normalizeText(str) {
@@ -199,7 +237,6 @@
             const data = await res.json();
             if (Array.isArray(data)) {
                 allCustomers = data;
-                // ハッシュマップ構築でAndroidでの検索速度を大幅向上
                 customerMap = {};
                 allCustomers.forEach(c => {
                     const idKey = normalizeText(c.customerId).replace(/[^0-9a-zA-Z]/g, "");
@@ -301,11 +338,10 @@
                 ? backCameras[backCameras.length - 1].id 
                 : devices[0].id;
 
-            // 💡 モード（顧客or商品）に応じて読み取り枠とカメラ解像度を動的切替
             const isProductMode = (mode === 'product');
             const qrBoxConfig = isProductMode 
-                ? { width: 280, height: 120 } // JANコード用（横長）
-                : { width: 250, height: 250 }; // 顧客QRコード用（正方形）
+                ? { width: 280, height: 120 }
+                : { width: 250, height: 250 };
 
             html5QrCode = new Html5Qrcode("reader");
             await html5QrCode.start(
@@ -317,7 +353,7 @@
                         width: { ideal: 1280 },
                         height: { ideal: 720 },
                         facingMode: "environment",
-                        advanced: [{ zoom: 1.5 }] // SE2用ピント改善のズーム設定
+                        advanced: [{ zoom: 1.5 }]
                     }
                 }, 
                 (text) => {
@@ -377,7 +413,6 @@
         const searchTarget = normalizeText(val);
         const searchTelOrId = searchTarget.replace(/[^0-9a-zA-Z]/g, "");
 
-        // 1. ハッシュマップからの瞬時検索（O(1)）
         if (customerMap[searchTelOrId]) {
             customer = customerMap[searchTelOrId];
             updateCustomerDisplay();
@@ -389,7 +424,6 @@
             return;
         }
 
-        // 2. あいまい一致（名前の部分一致など）
         if (allCustomers.length > 0) {
             const found = allCustomers.find(c => normalizeText(c.customer).includes(searchTarget));
             if (found) {
@@ -399,7 +433,6 @@
             }
         }
 
-        // 3. フォールバック（通信）
         fetchCustomerFallback(val);
     }
 
