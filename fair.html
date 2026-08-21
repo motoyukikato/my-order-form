@@ -178,10 +178,10 @@
     <hr style="border:0; border-top:1px solid #eee; margin:20px 0;">
 
     <p style="font-size:0.9em; color:#666; text-align:center; margin-bottom:15px;">
-       <i class="fas fa-info-circle"></i> 商品情報を最新にします
+       <i class="fas fa-info-circle"></i> 商品・顧客情報を最新にします
     </p>
-    <button class="btn-main" style="background:#333; margin-bottom:12px;" onclick="preloadAllProducts(); alert('マスタを更新しました');">
-        <i class="fas fa-sync-alt"></i> 商品マスタを強制更新
+    <button class="btn-main" style="background:#333; margin-bottom:12px;" onclick="forceUpdateAllMasters()">
+        <i class="fas fa-sync-alt"></i> 全マスタを強制更新
     </button>
     
     <button class="btn-main" style="background:#6c757d;" onclick="showPage('home')">
@@ -201,12 +201,15 @@
     const GAS_URL = "https://script.google.com/macros/s/AKfycbyICCUuqXRD8NyvwbwTes3uenXBxjzntVnTIAWpJs8QMZBUQryEiGQmzvAQyZT1fTM3/exec";
 
     let html5QrCode = null, customer = null, cart = [], tempProduct = null, isTelMode = false;
-    let allProducts = [], pendingOrders = [];
+    let allProducts = [], allCustomers = [], pendingOrders = [];
     let headerTapCount = 0;
     let headerTapTimer;
     let isSubmitting = false;
 
     window.onload = () => {
+        // 顧客マスタはメーカーに関わらず初期ロード
+        preloadAllCustomers();
+
         if (MY_MAKER) {
             document.getElementById("app-title").innerText = MY_MAKER + " 受注システム";
             preloadAllProducts();
@@ -231,6 +234,48 @@
 
     function openTelModal() {
         openQtyModal();
+    }
+
+    async function preloadAllCustomers() {
+        const cacheKey = "CUSTOMERS_CACHE_ALL";
+        const cachedData = localStorage.getItem(cacheKey);
+
+        if (cachedData) {
+            try {
+                allCustomers = JSON.parse(cachedData);
+                console.log("ローカルキャッシュから顧客データをロードしました");
+            } catch (e) {
+                console.error("顧客キャッシュ解析エラー", e);
+            }
+        }
+
+        try {
+            const res = await fetch(GAS_URL, { 
+                method: "POST", 
+                headers: { "Content-Type": "text/plain;charset=utf-8" },
+                body: JSON.stringify({ 
+                    action: "getAllCustomers", 
+                    _ts: Date.now()
+                }) 
+            });
+            
+            if (!res.ok) throw new Error("HTTPエラー: " + res.status);
+
+            const data = await res.json();
+
+            if (data && data.error) {
+                console.error("GASからの顧客取得エラー:", data.error);
+                return;
+            }
+
+            if (Array.isArray(data) && data.length > 0) {
+                allCustomers = data;
+                localStorage.setItem(cacheKey, JSON.stringify(data));
+                console.log("GASから最新の顧客データを取得・更新しました");
+            }
+        } catch (e) { 
+            console.error("顧客データの読み込み失敗:", e);
+        }
     }
 
     async function preloadAllProducts() {
@@ -296,7 +341,13 @@
                 inputElem.placeholder = "通信エラー: " + e.message;
             }
         }
-    } // ★ 関数の閉じカッコを修正
+    }
+
+    async function forceUpdateAllMasters() {
+        await preloadAllCustomers();
+        await preloadAllProducts();
+        alert("顧客マスタおよび商品マスタを最新化しました");
+    }
 
     function numIn(n) {
         let v = document.getElementById("qty-val");
@@ -500,32 +551,24 @@
 
     let cachedHistory = []; 
 
-    async function fetchCustomer(val) {
+    function fetchCustomer(val) {
         if (!val) return;
-        try {
-            const res = await fetch(GAS_URL, { 
-                method: "POST", 
-                headers: { "Content-Type": "text/plain;charset=utf-8" },
-                body: JSON.stringify({ action: "customerSearch", val: val, _ts: Date.now() }) 
-            });
 
-            if (!res.ok) throw new Error("HTTP " + res.status);
-            const d = await res.json();
+        const searchVal = normalizeText(val);
+        
+        // ローカルにキャッシュされた顧客データから高速検索
+        let found = allCustomers.find(c => {
+            const tel = normalizeText(c.tel || "");
+            const name = normalizeText(c.customer || c.name || "");
+            const id = normalizeText(c.customerId || c.id || "");
+            return tel.includes(searchVal) || name.includes(searchVal) || id.includes(searchVal);
+        });
 
-            if (d && d.error) {
-                alert("検索結果: " + d.error);
-                return;
-            }
-
-            if (d && (d.customer || d.customerId)) { 
-                customer = d; 
-                updateCustomerDisplay(); 
-            } else {
-                alert("該当する顧客が見つかりません");
-            }
-        } catch (e) {
-            console.error("顧客検索エラー:", e);
-            alert("通信エラーが発生しました: " + e.message);
+        if (found) {
+            customer = found;
+            updateCustomerDisplay();
+        } else {
+            alert("該当する顧客が見つかりません: [" + val + "]");
         }
     }
 
@@ -539,7 +582,7 @@
         const elDetail = document.getElementById("c-detail");
         const elProdArea = document.getElementById("product-input-area");
 
-        if (elName) elName.innerText = customer.customer || "";
+        if (elName) elName.innerText = customer.customer || customer.name || "";
         if (elAddr1) {
             const addr2 = customer.address2 ? " " + customer.address2 : "";
             elAddr1.innerText = "〒" + (customer.zip || "") + " " + (customer.address1 || "") + addr2;
@@ -640,31 +683,13 @@
         renderHistoryList(filtered);
     }
 
-    async function setCustomerFromHistory(customerName) {
+    function setCustomerFromHistory(customerName) {
         if (!confirm(customerName + " 様を現在の注文の宛先に設定しますか？")) return;
         
         showPage('home');
-        document.getElementById("c-none").innerHTML = "<i class='fas fa-spinner fa-spin'></i> 顧客情報を取得中...";
         
-        try {
-            const res = await fetch(GAS_URL, { 
-                method: "POST", 
-                headers: { "Content-Type": "text/plain;charset=utf-8" },
-                body: JSON.stringify({ action: "customerSearch", val: customerName, _ts: Date.now() }) 
-            });
-            const d = await res.json();
-            
-            if (d && (d.customer || d.customerId)) { 
-                customer = d; 
-                updateCustomerDisplay(); 
-            } else { 
-                alert("詳細情報の取得に失敗しました。電話番号等で再検索してください。");
-                document.getElementById("c-none").innerHTML = "顧客情報を選択してください";
-            }
-        } catch (e) {
-            alert("通信エラーが発生しました");
-            document.getElementById("c-none").innerHTML = "顧客情報を選択してください";
-        }
+        // 通信せずにローカルキャッシュから検索
+        fetchCustomer(customerName);
     }
 
     async function execDirectUpdate(ts, partNo, newQty, oldQty) {
@@ -766,7 +791,7 @@
         const area = document.getElementById("pending-list-area");
         if (!area) return;
         if (pendingOrders.length === 0) { area.innerHTML = ""; return; }
-        area.innerHTML = '<h4>▼ 保留中</h4>' + pendingOrders.map((ord, i) => `<div class="card" onclick="resumeOrder(${i})"><b>${ord.customer.customer} 様</b></div>`).join('');
+        area.innerHTML = '<h4>▼ 保留中</h4>' + pendingOrders.map((ord, i) => `<div class="card" onclick="resumeOrder(${i})"><b>${ord.customer.customer || ord.customer.name} 様</b></div>`).join('');
     }
 
     function showSuggestions(val) {
@@ -832,7 +857,7 @@
         };
 
         pendingOrders.push(currentOrder);
-        alert(`${currentOrder.customer.customer} 様の注文を一時保留しました。次の注文を入力できます。`);
+        alert(`${currentOrder.customer.customer || currentOrder.customer.name} 様の注文を一時保留しました。次の注文を入力できます。`);
         resetUI();
     };
 
@@ -840,11 +865,13 @@
         const targetOrder = pendingOrders[index];
         if (!targetOrder) return;
 
-        if (!confirm(`${targetOrder.customer.customer} 様の注文をカートに復元しますか？\n（現在カートにある内容は上書きされます）`)) {
+        const custName = targetOrder.customer.customer || targetOrder.customer.name || "顧客未選択";
+
+        if (!confirm(`${custName} 様の注文をカートに復元しますか？\n（現在カートにある内容は上書きされます）`)) {
             return;
         }
 
-        if (targetOrder.customer && targetOrder.customer.customer !== "顧客未選択") {
+        if (targetOrder.customer && custName !== "顧客未選択") {
             customer = targetOrder.customer;
             updateCustomerDisplay();
         } else {
