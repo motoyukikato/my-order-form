@@ -27,15 +27,16 @@
         .btn-main { padding: 14px; border: none; border-radius: 4px; width: 100%; font-size: 1em; font-weight: bold; color: white; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; }
         .btn-main:active { opacity: 0.7; transform: translateY(1px); }
         
-        /* 📸 カメラ全画面レイアウト修正箇所 */
+        /* 📸 カメラ位置切れの強制修正スタイル */
         #scanner-page.active {
             display: flex;
             flex-direction: column;
-            justify-content: space-between;
+            justify-content: flex-start;
             align-items: center;
-            min-height: calc(100vh - 130px);
+            height: calc(100vh - 140px); /* 画面内に収める */
             padding: 0;
             box-sizing: border-box;
+            overflow: hidden;
         }
         #camera-guide {
             width: 100%;
@@ -45,23 +46,34 @@
             text-align: center;
             font-size: 13px;
             box-sizing: border-box;
+            flex-shrink: 0;
         }
         #reader-wrapper {
             width: 100%;
-            max-width: 500px;
+            flex: 1;
             display: flex;
             justify-content: center;
             align-items: center;
-            margin: auto 0;
+            overflow: hidden;
+            background: #000;
+            position: relative;
         }
         #reader { 
             width: 100% !important; 
-            background: #000; 
-            border-radius: 8px; 
-            overflow: hidden;
+            max-height: 100% !important;
+            border: none !important;
         }
+        /* html5-qrcodeが生成する内部タグを強力上書き */
         #reader video {
-            object-fit: cover !important;
+            max-height: 55vh !important;
+            object-fit: contain !important;
+            margin: 0 auto;
+        }
+        #reader__scan_region {
+            background: transparent !important;
+        }
+        #reader__dashboard {
+            display: none !important; /* 余計なUIを非表示 */
         }
 
         .item-row { border-bottom: 1px solid #eee; padding: 12px 0; display: flex; justify-content: space-between; align-items: center; }
@@ -152,7 +164,7 @@
     <div id="reader-wrapper">
         <div id="reader"></div>
     </div>
-    <div style="padding:15px 0 20px; text-align:center; width:100%;">
+    <div style="padding: 10px 0; text-align: center; width: 100%; flex-shrink: 0; background: #fff;">
         <button class="btn-main" style="background:#424242; width:80%; margin:0 auto;" onclick="stopCamera()">キャンセル</button>
     </div>
 </section>
