@@ -265,7 +265,10 @@
             preloadAllProducts();
         }
 
-        // 👑 ヘッダー5回タップでパスワード認証→管理者画面への移行仕様を完全維持
+        // 🛡️ [保護機能] 下書き保存されたデータの復元
+        restoreDraftData();
+
+        // 👑 ヘッダー5回タップで管理者画面移行
         document.getElementById("app-title").addEventListener('click', function() {
             headerTapCount++;
             clearTimeout(headerTapTimer);
@@ -282,6 +285,40 @@
             }
         });
     };
+
+    // 🛡️ [保護機能] 下書きデータ（カート・顧客・メモ・保留）の自動保存＆復元
+    function saveDraftData() {
+        try {
+            const draft = {
+                customer: customer,
+                cart: cart,
+                commonNote: document.getElementById("common-note")?.value || "",
+                pendingOrders: pendingOrders
+            };
+            localStorage.setItem("ORDER_SYSTEM_DRAFT_" + (MY_MAKER || "DEFAULT"), JSON.stringify(draft));
+        } catch (e) { console.error("Draft save failed", e); }
+    }
+
+    function restoreDraftData() {
+        try {
+            const saved = localStorage.getItem("ORDER_SYSTEM_DRAFT_" + (MY_MAKER || "DEFAULT"));
+            if (saved) {
+                const draft = JSON.parse(saved);
+                if (draft.pendingOrders) pendingOrders = draft.pendingOrders;
+                if (draft.customer) {
+                    customer = draft.customer;
+                    updateCustomerDisplay();
+                }
+                if (draft.cart && draft.cart.length > 0) {
+                    cart = draft.cart;
+                    renderCart();
+                }
+                if (draft.commonNote && document.getElementById("common-note")) {
+                    document.getElementById("common-note").value = draft.commonNote;
+                }
+            }
+        } catch (e) { console.error("Draft restore failed", e); }
+    }
 
     function openTelModal() {
         openQtyModal();
@@ -435,6 +472,7 @@
         if (cart.length === 0) {
             list.innerHTML = "<p style='text-align:center; color:#ccc; padding:20px;'>カートは空です</p>";
             document.getElementById("cart-area").style.display = "none";
+            saveDraftData();
             return;
         }
         list.innerHTML = cart.map((item, i) => {
@@ -456,6 +494,7 @@
         }).join('');
         document.getElementById("cart-total").innerText = total.toLocaleString();
         document.getElementById("cart-area").style.display = "block";
+        saveDraftData(); // カート変更時にも保護保存
     }
 
     function changeQty(index, diff) {
@@ -477,6 +516,7 @@
         };
     }
 
+    // 🛡️ [保護機能] 送信エラー発生時にデータを自動保留へ一時避難させる
     async function submitFinalOrder() {
         if (!customer || cart.length === 0) return;
         if (isSubmitting) return;
@@ -501,26 +541,40 @@
             const result = await res.json();
             
             if (result && result.success) { 
-                alert("完了！"); resetUI(); 
+                alert("送信完了しました！"); resetUI(); 
             } else {
-                alert("GASエラー: " + (result.error || "処理に失敗しました"));
+                throw new Error(result.error || "GAS側の処理失敗");
             }
         } catch (e) { 
-            alert("通信エラーが発生しました: " + e.message); 
+            // 🛡️ エラー時はカートを消さず「保留」に退避
+            alert("通信エラーが発生したため、入力データは【保留】へ安全退避しました。\n電波の安定した場所で「保留/履歴」画面から再送信してください。\nエラー詳細: " + e.message); 
+            autoHoldOrderOnFailure();
         } finally { 
             isSubmitting = false;
             if (btn) { btn.disabled = false; btn.innerText = "注文確定・送信"; }
         }
     }
 
+    function autoHoldOrderOnFailure() {
+        const currentOrder = {
+            customer: customer || { customer: "顧客未選択" },
+            cart: [...cart],
+            commonNote: document.getElementById("common-note")?.value || ""
+        };
+        pendingOrders.push(currentOrder);
+        resetUI();
+        showPage('history');
+    }
+
     function resetUI() {
         customer = null; cart = [];
-        document.getElementById("common-note").value = "";
+        if (document.getElementById("common-note")) document.getElementById("common-note").value = "";
         document.getElementById("c-none").style.display = "block";
         document.getElementById("c-detail").style.display = "none";
         document.getElementById("cart-area").style.display = "none";
         document.getElementById("product-input-area").style.display = "none";
         renderCart();
+        saveDraftData();
     }
 
     function showPage(id) {
@@ -555,6 +609,7 @@
         if (found) {
             customer = found;
             updateCustomerDisplay();
+            saveDraftData();
         } else {
             alert("該当する顧客が見つかりません: [" + val + "]");
         }
@@ -750,7 +805,7 @@
         const area = document.getElementById("pending-list-area");
         if (!area) return;
         if (pendingOrders.length === 0) { area.innerHTML = ""; return; }
-        area.innerHTML = '<h4>▼ 保留中</h4>' + pendingOrders.map((ord, i) => `<div class="card" onclick="resumeOrder(${i})"><b>${ord.customer.customer || ord.customer.name} 様</b></div>`).join('');
+        area.innerHTML = '<h4>▼ 保留中</h4>' + pendingOrders.map((ord, i) => `<div class="card hold-card" onclick="resumeOrder(${i})"><b>${ord.customer.customer || ord.customer.name} 様</b> <span style="font-size:0.8em; color:#666;">(タップで復元)</span></div>`).join('');
     }
 
     function showSuggestions(val) {
@@ -792,12 +847,18 @@
         }
     });
 
+    document.addEventListener("input", function(e) {
+        if (e.target.id === "common-note") {
+            saveDraftData();
+        }
+    });
+
     window.holdOrder = function() {
         if (!customer && cart.length === 0) { alert("保留する注文データがありません。"); return; }
         const currentOrder = {
             customer: customer || { customer: "顧客未選択" },
             cart: [...cart],
-            commonNote: document.getElementById("common-note").value || ""
+            commonNote: document.getElementById("common-note")?.value || ""
         };
         pendingOrders.push(currentOrder);
         alert(`${currentOrder.customer.customer || currentOrder.customer.name} 様の注文を一時保留しました。`);
@@ -822,10 +883,11 @@
         }
 
         cart = [...targetOrder.cart];
-        document.getElementById("common-note").value = targetOrder.commonNote;
+        if (document.getElementById("common-note")) document.getElementById("common-note").value = targetOrder.commonNote;
         renderCart();
 
         pendingOrders.splice(index, 1);
+        saveDraftData();
         showPage('home');
         alert("注文を復元しました。");
     };
