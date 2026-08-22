@@ -51,6 +51,7 @@
 
 <header id="app-title">受注システム (Android)</header>
 
+<!-- テンキー入力モーダル（顧客検索・数量入力共通） -->
 <div id="qty-modal">
     <div class="modal-content">
         <div id="modal-p-name" style="font-weight:bold; margin-bottom:5px;">商品名</div>
@@ -150,17 +151,14 @@
     let cachedHistory = [];
     let isSubmitting = false;
 
+    // 高速検索用文字列標準化関数
     function normalizeText(str) {
-        return String(str || "").trim().replace(/[！-～]/g, s => String.fromCharCode(s.charCodeAt(0) - 0xFEE0)).replace(/\s+/g, "").toLowerCase();
+        return String(str || "").trim().toLowerCase().replace(/[！-～]/g, s => String.fromCharCode(s.charCodeAt(0) - 0xFEE0)).replace(/[\s\-\(\)]+/g, "");
     }
 
-    // --- カート状態のローカル保存機能 ---
+    // カート状態の保存・復元
     function saveCartState() {
-        const state = {
-            customer: customer,
-            cart: cart,
-            note: document.getElementById('common-note').value || ""
-        };
+        const state = { customer: customer, cart: cart, note: document.getElementById('common-note').value || "" };
         localStorage.setItem("activeCartState", JSON.stringify(state));
     }
 
@@ -169,25 +167,13 @@
         if (!saved) return;
         try {
             const state = JSON.parse(saved);
-            if (state.customer) {
-                customer = state.customer;
-                updateCustomerDisplay();
-            }
-            if (Array.isArray(state.cart) && state.cart.length > 0) {
-                cart = state.cart;
-                renderCart();
-            }
-            if (state.note) {
-                document.getElementById('common-note').value = state.note;
-            }
-        } catch (e) {
-            console.error("カート状態の復元に失敗しました", e);
-        }
+            if (state.customer) { customer = state.customer; updateCustomerDisplay(); }
+            if (Array.isArray(state.cart) && state.cart.length > 0) { cart = state.cart; renderCart(); }
+            if (state.note) { document.getElementById('common-note').value = state.note; }
+        } catch (e) { console.error("カート状態の復元失敗", e); }
     }
 
-    function clearCartState() {
-        localStorage.removeItem("activeCartState");
-    }
+    function clearCartState() { localStorage.removeItem("activeCartState"); }
 
     window.addEventListener('popstate', function(e) {
         if (document.getElementById('qty-modal').style.display === 'flex') {
@@ -201,12 +187,34 @@
 
     window.onload = () => {
         history.pushState(null, null, null);
-        if (MY_MAKER) {
-            document.getElementById("app-title").innerText = MY_MAKER + " 受注システム";
-        }
+        if (MY_MAKER) { document.getElementById("app-title").innerText = MY_MAKER + " 受注システム"; }
+        
+        // 端末のlocalStorageから爆速即時読み込み（0秒）
+        loadLocalCustomers();
+        
         preloadMasterData();
-        restoreCartState(); // 起動時にカート状態を自動復元
+        restoreCartState();
     };
+
+    // ローカルキャッシュ読み込み処理
+    function loadLocalCustomers() {
+        const localData = localStorage.getItem("cachedCustomers");
+        if (localData) {
+            try {
+                allCustomers = JSON.parse(localData);
+                buildCustomerSearchIndex();
+            } catch(e) { console.error("キャッシュ読込失敗", e); }
+        }
+    }
+
+    // 高速検索用インデックス作成
+    function buildCustomerSearchIndex() {
+        allCustomers.forEach(c => {
+            c._idxName = normalizeText(c.customer);
+            c._idxTel = normalizeText(c.tel);
+            c._idxId = normalizeText(c.customerId);
+        });
+    }
 
     async function preloadMasterData() {
         if (MY_MAKER) {
@@ -215,30 +223,23 @@
                 allProducts = await res.json();
                 const list = document.getElementById("product-list");
                 list.innerHTML = ""; 
-                
                 allProducts.forEach(p => {
-                    if (p.partNo) {
-                        const opt1 = document.createElement("option");
-                        opt1.value = p.partNo;
-                        opt1.textContent = p.name;
-                        list.appendChild(opt1);
-                    }
-                    if (p.name) {
-                        const opt2 = document.createElement("option");
-                        opt2.value = p.name;
-                        list.appendChild(opt2);
-                    }
+                    if (p.partNo) { const opt = document.createElement("option"); opt.value = p.partNo; opt.textContent = p.name; list.appendChild(opt); }
+                    if (p.name) { const opt = document.createElement("option"); opt.value = p.name; list.appendChild(opt); }
                 });
-            } catch (e) { console.error("商品データのロード失敗", e); }
+            } catch (e) { console.error("商品データロード失敗", e); }
         }
 
         try {
             const res = await fetch(GAS_URL, { method: "POST", body: JSON.stringify({ action: "getAllCustomers" }) });
             const data = await res.json();
-            if (Array.isArray(data)) {
+            if (Array.isArray(data) && data.length > 0) {
                 allCustomers = data;
+                buildCustomerSearchIndex();
+                // 端末に顧客マスターを保存
+                localStorage.setItem("cachedCustomers", JSON.stringify(data));
             }
-        } catch (e) { console.error("顧客データのロード失敗", e); }
+        } catch (e) { console.error("顧客データロード失敗", e); }
     }
 
     function numIn(n) {
@@ -287,7 +288,7 @@
             v.dataset.isFirstInput = "true";
         } else {
             title.innerText = "電話番号・ID・顧客名入力";
-            info.innerText = "検索キーワードを入力してください";
+            info.innerText = "検索キーワード（番号等）を入力してください";
             v.innerText = "";
             v.dataset.isFirstInput = "false";
         }
@@ -302,103 +303,17 @@
         editContext = null;
     }
 
-    async function startCamera(mode) {
-        if (mode === 'product' && !customer) {
-            return alert("先に顧客を選択してください");
-        }
-
-        showPage('scanner-page');
-        
-        if (html5QrCode) { 
-            try { await html5QrCode.stop(); } catch (e) {} 
-            html5QrCode = null; 
-        }
-        
-        document.getElementById("reader").innerHTML = "";
-        
-        try {
-            const devices = await Html5Qrcode.getCameras();
-            if (!devices || devices.length === 0) return alert("カメラが見つかりません");
-
-            const backCameras = devices.filter(d => 
-                d.label && (d.label.toLowerCase().includes('back') || d.label.toLowerCase().includes('rear'))
-            );
-            
-            const targetId = backCameras.length > 0 
-                ? backCameras[backCameras.length - 1].id 
-                : devices[0].id;
-
-            html5QrCode = new Html5Qrcode("reader");
-            await html5QrCode.start(
-                targetId, 
-                { fps: 10, qrbox: 250 }, 
-                (text) => {
-                    html5QrCode.stop().then(() => {
-                        showPage('home');
-                        const scannedText = text.trim();
-                        if (mode === 'customer') {
-                            fetchCustomer(scannedText);
-                        } else {
-                            fetchProduct(scannedText);
-                        }
-                    }).catch(err => console.error("カメラ停止エラー", err));
-                }
-            );
-        } catch (err) {
-            console.error(err);
-            alert("カメラ起動エラーが発生しました: " + (err.message || err));
-            showPage('home');
-        }
-    }
-
-    function stopCamera() { 
-        if (html5QrCode) {
-            html5QrCode.stop().then(() => {
-                html5QrCode = null;
-                showPage('home');
-            }).catch(() => showPage('home'));
-        } else {
-            showPage('home'); 
-        }
-    }
-
-    function fetchProduct(code) {
-        const cleanCode = String(code).trim().toUpperCase();
-        if (!cleanCode) return;
-
-        let p = allProducts.find(item => 
-            String(item.partNo || "").toUpperCase() === cleanCode || 
-            String(item.jan || "").toUpperCase() === cleanCode
-        );
-
-        if (!p) {
-            p = allProducts.find(item => 
-                String(item.name || "").toUpperCase().includes(cleanCode)
-            );
-        }
-
-        if (p) {
-            openQtyModal(p);
-        } else {
-            alert("未登録: [" + cleanCode + "]");
-        }
-    }
-
+    // 超高速顧客検索（端末内インデックス一致確認）
     function fetchCustomer(val) {
         if (!val) return;
-        const searchTarget = normalizeText(val);
-        const searchTelOrId = searchTarget.replace(/[^0-9a-zA-Z]/g, "");
+        const query = normalizeText(val);
 
         if (allCustomers.length > 0) {
-            const found = allCustomers.find(c => {
-                const idInSheet = normalizeText(c.customerId).replace(/[^0-9a-zA-Z]/g, "");
-                const telInSheet = normalizeText(c.tel).replace(/[^0-9]/g, "");
-                const nameInSheet = normalizeText(c.customer);
-
-                return (searchTelOrId !== "" && idInSheet === searchTelOrId) ||
-                       (searchTelOrId !== "" && telInSheet === searchTelOrId) ||
-                       (searchTarget !== "" && nameInSheet.includes(searchTarget));
-            });
+            const found = allCustomers.find(c => 
+                (c._idxId && c._idxId === query) ||
+                (c._idxTel && c._idxTel === query) ||
+                (c._idxName && c._idxName.includes(query))
+            );
 
             if (found) {
                 customer = found;
@@ -431,6 +346,50 @@
             alert("通信エラーが発生しました");
             document.getElementById("c-none").innerHTML = "顧客を選択してください";
         }
+    }
+
+    async function startCamera(mode) {
+        if (mode === 'product' && !customer) { return alert("先に顧客を選択してください"); }
+        showPage('scanner-page');
+        
+        if (html5QrCode) { try { await html5QrCode.stop(); } catch (e) {} html5QrCode = null; }
+        document.getElementById("reader").innerHTML = "";
+        
+        try {
+            const devices = await Html5Qrcode.getCameras();
+            if (!devices || devices.length === 0) return alert("カメラが見つかりません");
+            const backCameras = devices.filter(d => d.label && (d.label.toLowerCase().includes('back') || d.label.toLowerCase().includes('rear')));
+            const targetId = backCameras.length > 0 ? backCameras[backCameras.length - 1].id : devices[0].id;
+
+            html5QrCode = new Html5Qrcode("reader");
+            await html5QrCode.start(targetId, { fps: 10, qrbox: 250 }, (text) => {
+                html5QrCode.stop().then(() => {
+                    showPage('home');
+                    const scannedText = text.trim();
+                    if (mode === 'customer') fetchCustomer(scannedText);
+                    else fetchProduct(scannedText);
+                }).catch(err => console.error("カメラ停止エラー", err));
+            });
+        } catch (err) {
+            alert("カメラ起動エラー: " + (err.message || err));
+            showPage('home');
+        }
+    }
+
+    function stopCamera() { 
+        if (html5QrCode) {
+            html5QrCode.stop().then(() => { html5QrCode = null; showPage('home'); }).catch(() => showPage('home'));
+        } else { showPage('home'); }
+    }
+
+    function fetchProduct(code) {
+        const cleanCode = String(code).trim().toUpperCase();
+        if (!cleanCode) return;
+        let p = allProducts.find(item => String(item.partNo || "").toUpperCase() === cleanCode || String(item.jan || "").toUpperCase() === cleanCode);
+        if (!p) p = allProducts.find(item => String(item.name || "").toUpperCase().includes(cleanCode));
+
+        if (p) openQtyModal(p);
+        else alert("未登録: [" + cleanCode + "]");
     }
 
     function updateCustomerDisplay() {
@@ -567,16 +526,12 @@
                 }
             };
             
-            const res = await fetch(GAS_URL, { 
-                method: "POST", 
-                body: JSON.stringify(payload) 
-            });
-            
+            const res = await fetch(GAS_URL, { method: "POST", body: JSON.stringify(payload) });
             const resData = await res.json();
 
             if (resData.success) { 
                 alert("送信完了！"); 
-                clearCartState(); // 送信成功時に一時保存データを削除
+                clearCartState();
                 location.reload(); 
             } else {
                 throw new Error(resData.error || "送信処理失敗");
@@ -596,7 +551,7 @@
         current.push(holdData);
         localStorage.setItem("pendingOrders", JSON.stringify(current));
         alert("保留しました");
-        clearCartState(); // 保留完了時に一時保存データを削除
+        clearCartState();
         location.reload();
     }
 
@@ -624,9 +579,7 @@
             cachedHistory = historyData; 
             filterHistory(); 
         } catch (e) { 
-            if (cachedHistory.length === 0) {
-                listArea.innerHTML = "<p style='text-align:center; color:#d32f2f;'>読込失敗</p>"; 
-            }
+            if (cachedHistory.length === 0) { listArea.innerHTML = "<p style='text-align:center; color:#d32f2f;'>読込失敗</p>"; }
         }
     }
 
@@ -659,10 +612,7 @@
 
     function filterHistory() {
         const keyword = document.getElementById("history-filter-input").value.trim().toLowerCase();
-        if (!keyword) {
-            renderHistoryList(cachedHistory);
-            return;
-        }
+        if (!keyword) { renderHistoryList(cachedHistory); return; }
         const filtered = cachedHistory.filter(item => 
             (item.customerName && item.customerName.toLowerCase().includes(keyword)) ||
             (item.partNo && item.partNo.toLowerCase().includes(keyword)) ||
@@ -673,7 +623,6 @@
 
     function setCustomerFromHistory(customerName) {
         if (!confirm(customerName + " 様を現在の注文の宛先に設定しますか？")) return;
-        
         showPage('home');
         fetchCustomer(customerName);
     }
@@ -702,7 +651,6 @@
 
     async function execUpdate(ts, pn, nq) {
         if (nq <= 0) return execDelete(ts, pn);
-        
         const target = cachedHistory.find(item => item.timestamp === ts && item.partNo === pn);
         if (target) {
             const unitPrice = target.qty > 0 ? (target.subtotal / target.qty) : 0;
@@ -710,31 +658,22 @@
             target.subtotal = unitPrice * nq;
             filterHistory();
         }
-
         try {
             const res = await fetch(GAS_URL, { method: "POST", body: JSON.stringify({ action: "updateOrderQty", timestamp: ts, partNo: pn, newQty: nq, maker: MY_MAKER }) });
             const result = await res.json();
             if (!result.success) loadHistory();
-        } catch(e) { 
-            alert("通信エラーが発生しました"); 
-            loadHistory();
-        }
+        } catch(e) { alert("通信エラーが発生しました"); loadHistory(); }
     }
 
     async function execDelete(ts, pn) {
         if (!confirm("削除しますか？")) return;
-
         cachedHistory = cachedHistory.filter(item => !(item.timestamp === ts && item.partNo === pn));
         filterHistory();
-
         try {
             const res = await fetch(GAS_URL, { method: "POST", body: JSON.stringify({ action: "deleteOrderLine", timestamp: ts, partNo: pn, maker: MY_MAKER }) });
             const result = await res.json();
             if (!result.success) loadHistory();
-        } catch(e) { 
-            alert("通信エラーが発生しました"); 
-            loadHistory();
-        }
+        } catch(e) { alert("通信エラーが発生しました"); loadHistory(); }
     }
 </script>
 </body>
