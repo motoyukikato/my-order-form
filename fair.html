@@ -107,7 +107,7 @@
     <div id="cart-area" style="display:none;">
         <div id="cart-list" class="card" style="padding: 0 15px;"></div>
         <div class="total-box">合計: ¥<span id="cart-total">0</span></div>
-        <textarea id="common-note" placeholder="受注全体へのコメント（送り先指定など）"></textarea>
+        <textarea id="common-note" placeholder="受注全体へのコメント（送り先指定など）" oninput="saveDraftData()"></textarea>
         <div style="display:flex; gap:10px; margin-top:15px;">
             <button class="btn-main" style="background:#ffc107; color:#000; flex: 1;" onclick="holdOrder()"><i class="fas fa-pause"></i> 保留</button>
             <button class="btn-main" style="background:#d9534f; flex: 2;" id="submit-btn" onclick="submitFinalOrder()"><i class="fas fa-paper-plane"></i> 注文確定・送信</button>
@@ -199,6 +199,7 @@
     const urlParams = new URLSearchParams(window.location.search);
     const MY_MAKER = urlParams.get('m');
     const GAS_URL = "https://script.google.com/macros/s/AKfycbyICCUuqXRD8NyvwbwTes3uenXBxjzntVnTIAWpJs8QMZBUQryEiGQmzvAQyZT1fTM3/exec";
+    const DRAFT_KEY = "ORDER_APP_DRAFT_" + (MY_MAKER || "DEFAULT");
 
     let html5QrCode = null, customer = null, cart = [], tempProduct = null, isTelMode = false;
     let allProducts = [], allCustomers = [], pendingOrders = [];
@@ -207,13 +208,15 @@
     let isSubmitting = false;
 
     window.onload = () => {
-        // 顧客マスタはメーカーに関わらず初期ロード
         preloadAllCustomers();
 
         if (MY_MAKER) {
             document.getElementById("app-title").innerText = MY_MAKER + " 受注システム";
             preloadAllProducts();
         }
+
+        // 保存済み下書きの復元
+        restoreDraftData();
 
         document.getElementById("app-title").addEventListener('click', function() {
             headerTapCount++;
@@ -231,6 +234,60 @@
             }
         });
     };
+
+    // --- 下書きデータ保存・復元関数 ---
+    function saveDraftData() {
+        try {
+            const draft = {
+                customer: customer,
+                cart: cart,
+                pendingOrders: pendingOrders,
+                commonNote: document.getElementById("common-note")?.value || ""
+            };
+            localStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
+        } catch (e) {
+            console.error("下書き保存エラー:", e);
+        }
+    }
+
+    function restoreDraftData() {
+        try {
+            const saved = localStorage.getItem(DRAFT_KEY);
+            if (!saved) return;
+
+            const draft = JSON.parse(saved);
+            
+            if (draft.customer) {
+                customer = draft.customer;
+                updateCustomerDisplay();
+            }
+
+            if (Array.isArray(draft.cart)) {
+                cart = draft.cart;
+                renderCart();
+            }
+
+            if (Array.isArray(draft.pendingOrders)) {
+                pendingOrders = draft.pendingOrders;
+                renderPendingList();
+            }
+
+            if (draft.commonNote) {
+                const noteElem = document.getElementById("common-note");
+                if (noteElem) noteElem.value = draft.commonNote;
+            }
+        } catch (e) {
+            console.error("下書き復元エラー:", e);
+        }
+    }
+
+    function clearDraftData() {
+        try {
+            localStorage.removeItem(DRAFT_KEY);
+        } catch (e) {
+            console.error("下書き削除エラー:", e);
+        }
+    }
 
     function openTelModal() {
         openQtyModal();
@@ -428,6 +485,7 @@
         if (cart.length === 0) {
             list.innerHTML = "<p style='text-align:center; color:#ccc; padding:20px;'>カートは空です</p>";
             document.getElementById("cart-area").style.display = "none";
+            saveDraftData();
             return;
         }
         list.innerHTML = cart.map((item, i) => {
@@ -449,6 +507,7 @@
         }).join('');
         document.getElementById("cart-total").innerText = total.toLocaleString();
         document.getElementById("cart-area").style.display = "block";
+        saveDraftData();
     }
 
     function changeQty(index, diff) {
@@ -506,6 +565,7 @@
             
             if (result && result.success) { 
                 alert("完了！"); 
+                clearDraftData();
                 resetUI(); 
             } else {
                 alert("GASエラー: " + (result.error || "処理に失敗しました"));
@@ -556,7 +616,6 @@
 
         const searchVal = normalizeText(val);
         
-        // ローカルにキャッシュされた顧客データから高速検索
         let found = allCustomers.find(c => {
             const tel = normalizeText(c.tel || "");
             const name = normalizeText(c.customer || c.name || "");
@@ -567,6 +626,7 @@
         if (found) {
             customer = found;
             updateCustomerDisplay();
+            saveDraftData();
         } else {
             alert("該当する顧客が見つかりません: [" + val + "]");
         }
@@ -687,8 +747,6 @@
         if (!confirm(customerName + " 様を現在の注文の宛先に設定しますか？")) return;
         
         showPage('home');
-        
-        // 通信せずにローカルキャッシュから検索
         fetchCustomer(customerName);
     }
 
@@ -859,6 +917,7 @@
         pendingOrders.push(currentOrder);
         alert(`${currentOrder.customer.customer || currentOrder.customer.name} 様の注文を一時保留しました。次の注文を入力できます。`);
         resetUI();
+        saveDraftData();
     };
 
     window.resumeOrder = function(index) {
@@ -887,6 +946,7 @@
 
         pendingOrders.splice(index, 1);
         showPage('home');
+        saveDraftData();
         alert("注文を復元しました。");
     };
 </script>
