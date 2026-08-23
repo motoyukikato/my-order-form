@@ -99,50 +99,86 @@
     let currentCustomerId = ""; 
     let lastFetchedData = [];
 
-    async function startScan() {
+   async function startScan() {
         document.getElementById("button-group").style.display = "none";
         document.getElementById("stop-btn").style.display = "block";
         document.getElementById("reader").innerHTML = "";
 
+        // 前回のインスタンスが残っている場合は確実に停止・破棄
+        if (html5QrCode) {
+            await stopScan();
+        }
+
         try {
-            const devices = await Html5Qrcode.getCameras();
-            if (!devices || devices.length === 0) throw new Error("カメラが見つかりません");
-
-            const backCameras = devices.filter(d => 
-                d.label.toLowerCase().includes('back') || d.label.toLowerCase().includes('rear')
-            );
-            const targetId = backCameras.length > 0 
-                ? backCameras[backCameras.length - 1].id 
-                : devices[0].id;
-
             html5QrCode = new Html5Qrcode("reader");
+
+            // Android Chromeで最も成功率の高いfacingMode（背面カメラ指定）を第一優先にする
+            const cameraConfig = { facingMode: "environment" };
+            const scanConfig = { fps: 15, qrbox: { width: 250, height: 250 }, aspectRatio: 1.0 };
+
             await html5QrCode.start(
-                targetId, 
-                { fps: 15, qrbox: 250 },
+                cameraConfig, 
+                scanConfig,
                 async (text) => {
                     await stopScan();
                     currentCustomerId = text.trim();
                     document.getElementById("scan-view").style.display = "none";
                     document.getElementById("auth-view").style.display = "block";
                     
-                    // Androidでのフォーカス＆テンキー立ち上げ
                     setTimeout(() => {
                         const input = document.getElementById("auth-code");
                         input.focus();
                         input.click();
-                    }, 100);
-                }
+                    }, 200);
+                },
+                (errorMessage) => {} // 読み取り中のエラーは無視
             );
         } catch (err) {
-            alert("カメラ起動エラー: " + err);
-            stopScan();
+            // facingModeで失敗した場合は、従来通りのカメラID直接指定でリトライ（フォールバック）
+            try {
+                const devices = await Html5Qrcode.getCameras();
+                if (devices && devices.length > 0) {
+                    const targetId = devices[devices.length - 1].id;
+                    await html5QrCode.start(
+                        targetId,
+                        { fps: 15, qrbox: { width: 250, height: 250 } },
+                        async (text) => {
+                            await stopScan();
+                            currentCustomerId = text.trim();
+                            document.getElementById("scan-view").style.display = "none";
+                            document.getElementById("auth-view").style.display = "block";
+                            
+                            setTimeout(() => {
+                                const input = document.getElementById("auth-code");
+                                input.focus();
+                                input.click();
+                            }, 200);
+                        },
+                        (errorMessage) => {}
+                    );
+                } else {
+                    throw new Error("利用可能なカメラが見つかりません");
+                }
+            } catch (fallbackErr) {
+                alert("カメラ起動エラー: " + fallbackErr);
+                await stopScan();
+            }
         }
     }
 
     async function stopScan() {
         if (html5QrCode) {
-            try { await html5QrCode.stop(); await html5QrCode.clear(); } catch (e) {}
-            html5QrCode = null;
+            try {
+                // スキャン中の場合のみstopを実行し、ストリームを解放する
+                if (html5QrCode.isScanning) {
+                    await html5QrCode.stop();
+                }
+                await html5QrCode.clear();
+            } catch (e) {
+                console.error("Stop error:", e);
+            } finally {
+                html5QrCode = null;
+            }
         }
         document.getElementById("button-group").style.display = "block";
         document.getElementById("stop-btn").style.display = "none";
