@@ -693,44 +693,76 @@
     
     async function startCamera(mode) {
         if (mode === 'product' && !customer) return alert("先に顧客を選択してください");
-        
-        if (html5QrCode && html5QrCode.getState() !== 1) {
-            try { await html5QrCode.stop(); } catch (e) { console.log(e); }
-        }
 
         showPage('scanner-page');
         document.getElementById('camera-guide').style.display = 'block';
 
-        if (html5QrCode === null) html5QrCode = new Html5Qrcode("reader");
-
-        try {
-            await html5QrCode.start(
-                { facingMode: "environment" }, 
-                { fps: 20, qrbox: 250 }, 
-                (text) => {
-                    html5QrCode.stop().then(() => {
-                        document.getElementById('camera-guide').style.display = 'none';
-                        showPage('home');
-                        if (mode === 'customer') {
-                            fetchCustomer(text.trim());
-                        } else {
-                            fetchProduct(text.trim());
-                        }
-                    }).catch(err => console.error("Stop error", err));
+        // 1. 既存のカメラインスタンスを完全にクリア（Androidのセッション残り対策）
+        if (html5QrCode) {
+            try {
+                if (html5QrCode.isScanning) {
+                    await html5QrCode.stop();
                 }
-            );
-        } catch (err) { 
-            alert("カメラを起動できませんでした。ブラウザの再読み込みを試してください。"); 
+                await html5QrCode.clear();
+            } catch (e) {
+                console.log("Reset error:", e);
+            }
+            html5QrCode = null;
         }
+
+        // 2. DOMの描画完了を少し待ってからカメラを起動（300msの遅延処理）
+        setTimeout(async () => {
+            try {
+                html5QrCode = new Html5Qrcode("reader");
+
+                // Androidでエラーになりにくい設定（qrboxをオブジェクト化＋アスペクト比固定）
+                const config = { 
+                    fps: 15, 
+                    qrbox: { width: 250, height: 250 },
+                    aspectRatio: 1.0
+                };
+
+                await html5QrCode.start(
+                    { facingMode: "environment" }, 
+                    config, 
+                    (text) => {
+                        html5QrCode.stop().then(() => {
+                            html5QrCode.clear();
+                            document.getElementById('camera-guide').style.display = 'none';
+                            showPage('home');
+                            if (mode === 'customer') {
+                                fetchCustomer(text.trim());
+                            } else {
+                                fetchProduct(text.trim());
+                            }
+                        }).catch(err => console.error("Stop error", err));
+                    },
+                    (errorMessage) => {
+                        // フレームごとの読み取り失敗ログ（無視してOK）
+                    }
+                );
+            } catch (err) { 
+                console.error("Camera start error:", err);
+                alert("カメラを起動できませんでした。\nブラウザのカメラ権限が「許可」になっているか確認してください。"); 
+            }
+        }, 300);
     }
 
     function stopCamera() {
-        if (html5QrCode && html5QrCode.getState() !== 1) {
-            html5QrCode.stop().then(() => {
+        if (html5QrCode) {
+            const stopPromise = html5QrCode.isScanning ? html5QrCode.stop() : Promise.resolve();
+            stopPromise.then(() => {
+                html5QrCode.clear();
+                html5QrCode = null;
                 document.getElementById('camera-guide').style.display = 'none';
                 showPage('home');
+            }).catch(err => {
+                console.error("Stop camera error", err);
+                showPage('home');
             });
-        } else { showPage('home'); }
+        } else { 
+            showPage('home'); 
+        }
     }
 
     function renderPendingList() {
