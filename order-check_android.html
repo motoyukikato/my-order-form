@@ -99,12 +99,11 @@
     let currentCustomerId = ""; 
     let lastFetchedData = [];
 
-   async function startScan() {
+    async function startScan() {
         document.getElementById("button-group").style.display = "none";
         document.getElementById("stop-btn").style.display = "block";
         document.getElementById("reader").innerHTML = "";
 
-        // 前回のインスタンスが残っている場合は確実に停止・破棄
         if (html5QrCode) {
             await stopScan();
         }
@@ -112,7 +111,6 @@
         try {
             html5QrCode = new Html5Qrcode("reader");
 
-            // Android Chromeで最も成功率の高いfacingMode（背面カメラ指定）を第一優先にする
             const cameraConfig = { facingMode: "environment" };
             const scanConfig = { fps: 15, qrbox: { width: 250, height: 250 }, aspectRatio: 1.0 };
 
@@ -131,10 +129,9 @@
                         input.click();
                     }, 200);
                 },
-                (errorMessage) => {} // 読み取り中のエラーは無視
+                (errorMessage) => {}
             );
         } catch (err) {
-            // facingModeで失敗した場合は、従来通りのカメラID直接指定でリトライ（フォールバック）
             try {
                 const devices = await Html5Qrcode.getCameras();
                 if (devices && devices.length > 0) {
@@ -169,7 +166,6 @@
     async function stopScan() {
         if (html5QrCode) {
             try {
-                // スキャン中の場合のみstopを実行し、ストリームを解放する
                 if (html5QrCode.isScanning) {
                     await html5QrCode.stop();
                 }
@@ -198,7 +194,6 @@
 
         const action = "getCustomerSpecificHistory";
         
-        // JSONPタグ追加（キャッシュ防止用のタイムスタンプ付き）
         const script = document.createElement('script');
         script.id = 'fetch-script';
         script.src = `${GAS_URL}?action=${action}&val=${encodeURIComponent(currentCustomerId)}&auth=${authCode}&callback=onDataReceived&_=${Date.now()}`;
@@ -206,7 +201,6 @@
     }
 
     function onDataReceived(data) {
-        // 使用済みのscriptタグを削除してメモリを解放
         const script = document.getElementById('fetch-script');
         if (script) script.remove();
 
@@ -253,7 +247,8 @@
             }).join('');
             document.getElementById("total-amount").innerText = total.toLocaleString();
         } else {
-            const errorMsg = (data && data.error) ? data.error : "該当する注文履歴が見つかりません。<br><small style="color:#666;">（電話番号の下4桁が合っているかご確認ください）</small>";
+            // エラー表示処理のHTML崩れを防ぐためエスケープ修正
+            const errorMsg = (data && data.error) ? data.error : "該当する注文履歴が見つかりません。<br><small style='color:#666;'>（電話番号の下4桁が合っているかご確認ください）</small>";
             tableBody.innerHTML = `<tr><td colspan="2" style="text-align:center; padding:30px; color:#d9534f;">${errorMsg}</td></tr>`;
             document.getElementById("cust-name").innerText = "---";
             document.getElementById("email-btn").style.display = "none";
