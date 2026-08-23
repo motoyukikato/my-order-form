@@ -71,14 +71,19 @@
             background: #000;
             position: relative;
         }
-        #reader { 
+      #reader { 
             width: 100% !important; 
-            max-height: 100% !important;
+            max-width: 500px;
+            margin: 0 auto;
+            position: relative;
+            overflow: hidden;
             border: none !important;
         }
         #reader video {
-            max-height: 55vh !important;
-            object-fit: contain !important;
+            width: 100% !important;
+            height: 100% !important;
+            /* ⚠️ containからcoverに変更して内部解析座標のズレを解消 */
+            object-fit: cover !important; 
             margin: 0 auto;
         }
         #reader__scan_region { background: transparent !important; }
