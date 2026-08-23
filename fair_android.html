@@ -1,613 +1,634 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
+    <link rel="apple-touch-icon" href="https://lh3.googleusercontent.com/d/1DSkUsFODBJCNE-yaXEHEKKScuhVZ-qNh">
+    <link rel="icon" sizes="192x192" href="https://lh3.googleusercontent.com/d/1DSkUsFODBJCNE-yaXEHEKKScuhVZ-qNh">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="受注システム">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <meta name="mobile-web-app-capable" content="yes">
-    <meta name="theme-color" content="#3b5998">
-    <title>商事本部受注システム(Android)</title>
-    
+    <title>商事本部受注システム</title>
     <script src="https://unpkg.com/html5-qrcode"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-    
     <style>
         body { 
-            font-family: Roboto, sans-serif; 
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; 
             margin: 0; 
             padding-bottom: 90px; 
             background: #f4f7f9; 
-            user-select: none;
-            touch-action: manipulation; 
-            overscroll-behavior-y: contain;
+            -webkit-user-select: none; 
+            touch-action: manipulation;
         }
-        header { background: #3b5998; text-align: center; padding: 12px; color: white; font-weight: bold; position: sticky; top: 0; z-index: 100; box-shadow: 0 2px 4px rgba(0,0,0,0.2); }
+        header { 
+            background: #fff; 
+            text-align: center; 
+            padding: 12px; 
+            border-bottom: 3px solid #3b5998; 
+            font-weight: bold; 
+            position: sticky; 
+            top: 0; 
+            z-index: 100; 
+            touch-action: manipulation; 
+            user-select: none;
+        }
         .page-section { display: none; padding: 10px; }
         .active { display: block; }
-        .card { background: #fff; padding: 15px; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.12); margin-bottom: 10px; }
-        .btn-main { padding: 14px; border: none; border-radius: 4px; width: 100%; font-size: 1em; font-weight: bold; color: white; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; }
-        .btn-main:active { opacity: 0.7; transform: translateY(1px); }
-        .btn-main:disabled { background-color: #ccc !important; cursor: not-allowed; }
-        
-        #reader { width: 100% !important; background: #000; border-radius: 4px; }
-        .item-row { border-bottom: 1px solid #eee; padding: 12px 0; display: flex; justify-content: space-between; align-items: center; }
-        .qty-ctrl-btn { width: 44px; height: 44px; border-radius: 4px; border: 1px solid #ddd; background: #f8f9fa; font-size: 1.5em; display: flex; align-items: center; justify-content: center; }
-        .qty-num-box { min-width: 60px; height: 42px; line-height: 42px; text-align: center; background: #fff; border: 2px solid #3b5998; border-radius: 4px; font-weight: bold; font-size: 1.2em; color: #3b5998; }
-        
-        #common-note { width: 100%; height: 80px; margin-top: 10px; padding: 10px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; font-size: 16px; }
-        .total-box { text-align: right; padding: 15px; font-size: 1.3em; color: #d9534f; font-weight: bold; }
-        
-        nav { position: fixed; bottom: 0; width: 100%; display: flex; background: #fff; border-top: 1px solid #ddd; z-index: 100; height: 65px; }
-        nav button { flex: 1; background: none; border: none; color: #757575; font-size: 11px; padding: 8px 0; }
-        nav button.active-nav { color: #3b5998; border-top: 3px solid #3b5998; }
-
-        #qty-modal { display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); z-index:200; justify-content:center; align-items:center; }
-        .modal-content { background:#fff; width:90%; border-radius:4px; padding:20px; box-shadow: 0 19px 38px rgba(0,0,0,0.3); }
-        .qty-display { font-size: 2.5em; font-weight: bold; margin-bottom: 15px; text-align:center; border-bottom: 2px solid #3b5998; color: #3b5998; padding: 5px; min-height: 1.2em; word-break: break-all;}
-        .numpad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
-        .numpad button { height: 60px; font-size: 1.5em; border: 1px solid #eee; border-radius: 4px; background: #fdfdfd; }
+        .card { background: #fff; padding: 15px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); margin-bottom: 10px; }
+        .btn-main { padding: 15px; border: none; border-radius: 8px; width: 100%; font-size: 1.1em; font-weight: bold; color: white; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; }
+        #reader { width: 100% !important; border-radius: 12px; overflow: hidden; background: #000; }
+        .item-row { border-bottom: 1px solid #eee; padding: 15px 0; display: flex; justify-content: space-between; align-items: center; }
+        .qty-ctrl-btn { width: 40px; height: 40px; border-radius: 50%; border: 1px solid #ccc; background: #fff; font-size: 1.4em; color: #333; line-height: 1; display: flex; align-items: center; justify-content: center; cursor: pointer; }
+        .qty-num-box { min-width: 45px; height: 38px; line-height: 38px; text-align: center; background: #eef2f7; border: 2px solid #3b5998; border-radius: 8px; font-weight: bold; color: #3b5998; font-size: 1.2em; }
+        #common-note { width: 100%; height: 80px; margin-top: 10px; padding: 10px; border: 1px solid #ccc; border-radius: 8px; box-sizing: border-box; font-size: 16px; }
+        .total-box { text-align: right; padding: 15px; font-size: 1.3em; color: #d9534f; font-weight: bold; background: #fff; border-radius: 12px; margin-top: 10px; }
+        nav { position: fixed; bottom: 0; width: 100%; display: flex; background: #fff; border-top: 1px solid #ddd; padding: 10px 0; z-index: 100; padding-bottom: calc(10px + env(safe-area-inset-bottom)); }
+        nav button { flex: 1; background: none; border: none; color: #888; font-size: 12px; }
+        nav button.active-nav { color: #3b5998; font-weight: bold; }
+        #qty-modal { display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.7); z-index:200; justify-content:center; align-items:center; }
+        .modal-content { background:#fff; width:85%; border-radius:15px; padding:20px; text-align:center; box-shadow: 0 10px 25px rgba(0,0,0,0.2); }
+        .qty-display { font-size: 2.5em; font-weight: bold; margin-bottom: 15px; background: #f0f0f0; padding: 10px; border-radius: 8px; color: #333; min-height: 1.2em; }
+        .numpad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+        .numpad button { padding: 15px; font-size: 1.5em; border: 1px solid #ddd; border-radius: 8px; background: #f9f9f9; }
+        .del-btn { color: #d9534f; border: 1px solid #d9534f; padding: 4px 8px; border-radius: 4px; font-size: 0.8em; margin-left: 10px; }
     </style>
 </head>
 <body>
 
-<header id="app-title">受注システム (Android)</header>
+<header id="app-title">商事本部 受注システム</header>
 
-<!-- テンキー入力モーダル（顧客検索・数量入力共通） -->
 <div id="qty-modal">
     <div class="modal-content">
-        <div id="modal-p-name" style="font-weight:bold; margin-bottom:5px;">商品名</div>
-        <div id="modal-p-info" style="font-size:0.8em; color:#666; margin-bottom:15px;"></div>
+        <div id="modal-p-name" style="margin-bottom:5px; font-size:1.1em; font-weight:bold;">商品名</div>
+        <div id="modal-p-info" style="font-size:0.85em; color:#666; margin-bottom:10px; line-height:1.4;">
+            上代: ¥0 / 在庫: -- / ロット: --
+        </div>
         <div class="qty-display" id="qty-val">1</div>
         <div class="numpad">
             <button onclick="numIn('1')">1</button><button onclick="numIn('2')">2</button><button onclick="numIn('3')">3</button>
             <button onclick="numIn('4')">4</button><button onclick="numIn('5')">5</button><button onclick="numIn('6')">6</button>
             <button onclick="numIn('7')">7</button><button onclick="numIn('8')">8</button><button onclick="numIn('9')">9</button>
-            <button onclick="numIn('C')" style="color:#d9534f">C</button><button onclick="numIn('0')">0</button><button onclick="numIn('B')"><i class="fas fa-backspace"></i></button>
+            <button onclick="numIn('C')">C</button><button onclick="numIn('0')">0</button><button onclick="numIn('B')">BS</button>
         </div>
         <div style="display:flex; gap:10px; margin-top:20px;">
-            <button class="btn-main" style="background:#757575; flex:1;" onclick="closeQtyModal()">戻る</button>
-            <button id="confirm-btn" class="btn-main" style="background:#3b5998; flex:2;">確定</button>
+            <button class="btn-main" style="background:#6c757d; flex:1;" onclick="closeQtyModal()">戻る</button>
+            <button id="confirm-btn" class="btn-main" style="background:#3b5998; flex:2;">決定</button>
         </div>
     </div>
 </div>
 
 <section id="home" class="page-section active">
     <div class="card">
-        <div id="c-none" style="text-align:center; color:#999;">顧客を選択してください</div>
+        <div id="c-none" style="text-align:center; color:#999; padding: 10px;">顧客情報を選択してください</div>
         <div id="c-detail" style="display:none;">
-            <b id="r-name" style="color:#3b5998; font-size:1.1em;"></b><br>
-            <small id="r-addr1"></small><br>
+            <b id="r-name" style="color:#3b5998; font-size:1.2em;"></b><br>
+            <small id="r-addr1" style="color:#666;"></small><br>
             <small id="r-addr2" style="color:#666;"></small><br>
-            <small id="r-tel"></small>
+            <small id="r-tel" style="color:#666;"></small>
         </div>
     </div>
-
     <div style="display: flex; gap: 10px; margin-bottom:15px;">
-        <button class="btn-main" style="background:#2e7d32; flex: 2;" onclick="startCamera('customer')">
-            <i class="fas fa-qrcode"></i> 顧客スキャン
-        </button>
-        <button class="btn-main" style="background:#757575; flex: 1;" onclick="openTelModal()">手入力</button>
+        <button class="btn-main" style="background:#28a745; flex: 2;" onclick="startCamera('customer')"><i class="fas fa-qrcode"></i> 顧客スキャン</button>
+        <button class="btn-main" style="background:#6c757d; flex: 1;" onclick="openTelModal()">手入力</button>
     </div>
-
     <div id="product-input-area" style="display:none; margin-bottom: 15px;">
-        <div style="display: flex; gap: 8px;">
-            <input type="text" id="part-no-input" list="product-list" placeholder="品番・JAN入力" style="flex: 3; padding: 12px; border: 1px solid #ccc; border-radius: 4px; font-size: 16px;">
-            <button class="btn-main" style="background:#3b5998; flex: 1;" onclick="handleManualInput()">追加</button>
+        <div style="position: relative;">
+            <div style="display: flex; gap: 8px;">
+                <input type="text" id="part-no-input" autocomplete="off" 
+                       placeholder="データを読み込み中..." disabled
+                       oninput="showSuggestions(this.value)"
+                       style="flex: 3; padding: 12px; border: 1px solid #ccc; border-radius: 8px; font-size: 16px;">
+                <button class="btn-main" style="background:#3b5998; flex: 1;" onclick="handleManualInput()">追加</button>
+            </div>
+            <div id="autocomplete-list" style="display:none; position:absolute; top:52px; left:0; width:100%; max-height:250px; overflow-y:auto; background:#fff; border:1px solid #ccc; border-radius:8px; box-shadow:0 6px 12px rgba(0,0,0,0.15); z-index:1000;"></div>
         </div>
-        <datalist id="product-list"></datalist>
     </div>
-    
     <div id="cart-area" style="display:none;">
-        <div id="cart-list" class="card" style="padding: 0 10px;"></div>
+        <div id="cart-list" class="card" style="padding: 0 15px;"></div>
         <div class="total-box">合計: ¥<span id="cart-total">0</span></div>
-        <textarea id="common-note" placeholder="備考・送り先など" oninput="saveCartState()"></textarea>
+        <textarea id="common-note" placeholder="受注全体へのコメント（送り先指定など）" oninput="saveDraftData()"></textarea>
         <div style="display:flex; gap:10px; margin-top:15px;">
-            <button type="button" class="btn-main" style="background:#ffa000; color:#fff; flex: 1;" onclick="holdOrder()">
-                <i class="fas fa-pause"></i> 保留
-            </button>
-            <button type="button" class="btn-main" style="background:#d32f2f; flex: 2;" id="submit-btn" onclick="submitFinalOrder()">
-                <i class="fas fa-paper-plane"></i> 送信
-            </button>
+            <button class="btn-main" style="background:#ffc107; color:#000; flex: 1;" onclick="holdOrder()"><i class="fas fa-pause"></i> 保留</button>
+            <button class="btn-main" style="background:#d9534f; flex: 2;" id="submit-btn" onclick="submitFinalOrder()"><i class="fas fa-paper-plane"></i> 注文確定・送信</button>
         </div>
     </div>
 </section>
 
 <section id="scanner-page" class="page-section">
-    <div id="camera-guide" style="background:#fff3cd; color:#856404; padding:10px; text-align:center; font-size:14px;">
+    <div id="camera-guide" style="display:none; background:#fff3cd; color:#856404; padding:12px; text-align:center; font-size:14px; font-weight:bold; border-bottom:1px solid #ffeeba;">
         📸 ピントが合わない時は、一度離してからゆっくり近づけてください
     </div>
-    <div id="reader"></div>
-    <div style="padding:20px; text-align:center;">
-        <button class="btn-main" style="background:#424242;" onclick="stopCamera()">キャンセル</button>
+    <div id="reader" style="width:100% !important;"></div>
+    <div style="text-align:center; padding:20px; background:#fff;">
+        <button class="btn-main" style="background:#666;" onclick="stopCamera()">キャンセル</button>
     </div>
 </section>
 
 <section id="history" class="page-section">
+    <h3 style="text-align:center; color:#3b5998;"><i class="fas fa-history"></i> 保留・履歴</h3>
     <div id="pending-list-area"></div>
-    <hr>
-    
+    <hr style="border: 0; border-top: 1px solid #ddd; margin: 20px 0;">
     <div style="margin-bottom: 15px; padding: 0 10px;">
-        <input type="text" id="history-filter-input" placeholder="顧客名や品番で絞り込み..." 
+        <input type="text" id="history-filter-input" placeholder="顧客名や品番で履歴を絞り込み..." 
                oninput="filterHistory()" 
-               style="width: 100%; padding: 12px; border: 2px solid #3b5998; border-radius: 4px; font-size: 16px; box-sizing: border-box;">
+               style="width: 100%; padding: 12px; border: 2px solid #3b5998; border-radius: 8px; font-size: 16px; box-sizing: border-box;">
     </div>
     <div id="h-list"></div>
 </section>
 
+<section id="admin-page" class="page-section">
+    <div style="text-align:center; padding:20px; background:#fff; border-bottom: 2px solid #d9534f;">
+        <i class="fas fa-user-shield fa-2x" style="color:#d9534f;"></i>
+        <div style="font-weight:bold; margin-top:5px;">管理者メニュー</div>
+    </div>
+    
+    <div class="card" style="margin-top:20px;">
+        <h4 style="margin-top:0; color:#333;"><i class="fas fa-exchange-alt"></i> メーカー選択・切替</h4>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 20px;">
+            <button class="btn-main" style="background:#007bff; font-size:0.9em;" onclick="switchMaker('カルナック')">カルナック</button>
+            <button class="btn-main" style="background:#0056b3; font-size:0.9em;" onclick="switchMaker('星野㈱')">星野㈱</button>
+            <button class="btn-main" style="background:#28a745; font-size:0.9em;" onclick="switchMaker('YARD')">YARD</button>
+            <button class="btn-main" style="background:#218838; font-size:0.9em;" onclick="switchMaker('エルコミューン')">エルコミューン</button>
+            <button class="btn-main" style="background:#fd7e14; font-size:0.9em;" onclick="switchMaker('asca')">asca</button>
+            <button class="btn-main" style="background:#ffc107; color:#000; font-size:0.9em;" onclick="switchMaker('ネイチャーデザインズ')">ネイチャーデザインズ</button>
+            <button class="btn-main" style="background:#e83e8c; font-size:0.9em;" onclick="switchMaker('大地農園')">大地農園</button>
+            <button class="btn-main" style="background:#dc3545; font-size:0.9em;" onclick="switchMaker('フロールエバー')">フロールエバー</button>
+            <button class="btn-main" style="background:#8b4513; font-size:0.9em;" onclick="switchMaker('コアトレーディング')">コアトレーディング</button>
+            <button class="btn-main" style="background:#a0522d; font-size:0.9em;" onclick="switchMaker('ホワイエ')">ホワイエ</button>
+            <button class="btn-main" style="background:#6f42c1; font-size:0.9em;" onclick="switchMaker('ミュールミル')">ミュールミル</button>
+            <button class="btn-main" style="background:#5a32a3; font-size:0.9em;" onclick="switchMaker('ラライワント')">ラライワント</button>
+            <button class="btn-main" style="background:#17a2b8; font-size:0.9em;" onclick="switchMaker('友膳')">友膳</button>
+            <button class="btn-main" style="background:#6c757d; font-size:0.9em;" onclick="switchMaker('松村工芸・クレイ')">松村工芸・クレイ</button>
+            <button class="btn-main" style="background:#4b0082; font-size:0.9em;" onclick="switchMaker('ポッシュリビング')">ポッシュリビング</button>
+            <button class="btn-main" style="background:#2f4f4f; font-size:0.9em;" onclick="switchMaker('東京堂')">東京堂</button>
+            <button class="btn-main" style="background:#800000; font-size:0.9em;" onclick="switchMaker('マグネット')">マグネット</button>
+            <button class="btn-main" style="background:#556b2f; font-size:0.9em;" onclick="switchMaker('志成販売')">志成販売</button>
+            <button class="btn-main" style="background:#b8860b; font-size:0.9em;" onclick="switchMaker('コベントガーデン')">コベントガーデン</button>
+            <button class="btn-main" style="background:#20b2aa; font-size:0.9em;" onclick="switchMaker('坂源')">坂源</button>
+            <button class="btn-main" style="background:#4682b4; font-size:0.9em;" onclick="switchMaker('インターリンク')">インターリンク</button>
+            <button class="btn-main" style="background:#cd5c5c; font-size:0.9em;" onclick="switchMaker('三和トレーディング')">三和トレーディング</button>
+            <button class="btn-main" style="background:#483d8b; font-size:0.9em;" onclick="switchMaker('村田屋産業')">村田屋産業</button>
+        </div>
+    </div>
+
+    <hr style="border:0; border-top:1px solid #eee; margin:20px 0;">
+
+    <p style="font-size:0.9em; color:#666; text-align:center; margin-bottom:15px;">
+       <i class="fas fa-info-circle"></i> 商品・顧客情報を最新にします
+    </p>
+    <button class="btn-main" style="background:#333; margin-bottom:12px;" onclick="forceUpdateAllMasters()">
+        <i class="fas fa-sync-alt"></i> 全マスタを強制更新
+    </button>
+    
+    <button class="btn-main" style="background:#6c757d;" onclick="showPage('home')">
+        <i class="fas fa-chevron-left"></i> 戻る
+    </button>
+</section>
+
 <nav>
-    <button onclick="showPage('home')" id="n-home" class="active-nav"><i class="fas fa-shopping-cart fa-lg"></i><br>カート</button>
-    <button onclick="startCamera('product')"><i class="fas fa-barcode fa-lg"></i><br>スキャン</button>
-    <button onclick="showPage('history')"><i class="fas fa-list-ul fa-lg"></i><br>履歴</button>
+    <button onclick="showPage('home')" id="n-home" class="active-nav"><i class="fas fa-shopping-cart fa-2x"></i><br>カート</button>
+    <button onclick="startCamera('product')"><i class="fas fa-barcode fa-2x"></i><br>スキャン</button>
+    <button onclick="showPage('history')"><i class="fas fa-list-ul fa-2x"></i><br>保留/履歴</button>
 </nav>
 
 <script>
     const urlParams = new URLSearchParams(window.location.search);
     const MY_MAKER = urlParams.get('m');
-    const GAS_URL = "https://script.google.com/macros/s/AKfycbw2uj-DHEOSdfDzGviyQcJ0KeD-l5I73ckjJW0fWbk4A_zO_FZlyVJDUEEEfHEnqg7Etw/exec";
+    const GAS_URL = "https://script.google.com/macros/s/AKfycbyICCUuqXRD8NyvwbwTes3uenXBxjzntVnTIAWpJs8QMZBUQryEiGQmzvAQyZT1fTM3/exec";
+    const DRAFT_KEY = "ORDER_APP_DRAFT_" + (MY_MAKER || "DEFAULT");
 
     let html5QrCode = null, customer = null, cart = [], tempProduct = null, isTelMode = false;
-    let editContext = null; 
-    let allProducts = [];
-    let allCustomers = []; 
-    let cachedHistory = [];
+    let allProducts = [], allCustomers = [], pendingOrders = [];
+    let headerTapCount = 0;
+    let headerTapTimer;
     let isSubmitting = false;
 
-    // 高速検索用文字列標準化関数
-    function normalizeText(str) {
-        return String(str || "").trim().toLowerCase().replace(/[！-～]/g, s => String.fromCharCode(s.charCodeAt(0) - 0xFEE0)).replace(/[\s\-\(\)]+/g, "");
-    }
-
-    // カート状態の保存・復元
-    function saveCartState() {
-        const state = { customer: customer, cart: cart, note: document.getElementById('common-note').value || "" };
-        localStorage.setItem("activeCartState", JSON.stringify(state));
-    }
-
-    function restoreCartState() {
-        const saved = localStorage.getItem("activeCartState");
-        if (!saved) return;
-        try {
-            const state = JSON.parse(saved);
-            if (state.customer) { customer = state.customer; updateCustomerDisplay(); }
-            if (Array.isArray(state.cart) && state.cart.length > 0) { cart = state.cart; renderCart(); }
-            if (state.note) { document.getElementById('common-note').value = state.note; }
-        } catch (e) { console.error("カート状態の復元失敗", e); }
-    }
-
-    function clearCartState() { localStorage.removeItem("activeCartState"); }
-
-    window.addEventListener('popstate', function(e) {
-        if (document.getElementById('qty-modal').style.display === 'flex') {
-            closeQtyModal();
-            history.pushState(null, null, null);
-        } else if (document.getElementById('scanner-page').classList.contains('active')) {
-            stopCamera();
-            history.pushState(null, null, null);
-        }
-    });
-
     window.onload = () => {
-        history.pushState(null, null, null);
-        if (MY_MAKER) { document.getElementById("app-title").innerText = MY_MAKER + " 受注システム"; }
-        
-        // 端末のlocalStorageから爆速即時読み込み（0秒）
-        loadLocalCustomers();
-        
-        preloadMasterData();
-        restoreCartState();
+        preloadAllCustomers();
+
+        if (MY_MAKER) {
+            document.getElementById("app-title").innerText = MY_MAKER + " 受注システム";
+            preloadAllProducts();
+        }
+
+        restoreDraftData();
+
+        // iOS向け：ヘッダー5回タップで管理者ログイン画面を呼び出し
+        document.getElementById("app-title").addEventListener('click', function() {
+            headerTapCount++;
+            clearTimeout(headerTapTimer);
+            headerTapTimer = setTimeout(() => { headerTapCount = 0; }, 3000);
+
+            if (headerTapCount === 5) {
+                headerTapCount = 0;
+                const pass = prompt("管理者パスワードを入力してください");
+                if (pass === "7087") { 
+                    showPage('admin-page');
+                } else if (pass !== null) {
+                    alert("パスワードが違います");
+                }
+            }
+        });
     };
 
-    // ローカルキャッシュ読み込み処理
-    function loadLocalCustomers() {
-        const localData = localStorage.getItem("cachedCustomers");
-        if (localData) {
-            try {
-                allCustomers = JSON.parse(localData);
-                buildCustomerSearchIndex();
-            } catch(e) { console.error("キャッシュ読込失敗", e); }
+    function saveDraftData() {
+        try {
+            const draft = {
+                customer: customer,
+                cart: cart,
+                pendingOrders: pendingOrders,
+                commonNote: document.getElementById("common-note")?.value || ""
+            };
+            localStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
+        } catch (e) {
+            console.error("下書き保存エラー:", e);
         }
     }
 
-    // 高速検索用インデックス作成
-    function buildCustomerSearchIndex() {
-        allCustomers.forEach(c => {
-            c._idxName = normalizeText(c.customer);
-            c._idxTel = normalizeText(c.tel);
-            c._idxId = normalizeText(c.customerId);
-        });
+    function restoreDraftData() {
+        try {
+            const saved = localStorage.getItem(DRAFT_KEY);
+            if (!saved) return;
+
+            const draft = JSON.parse(saved);
+            if (draft.customer) { customer = draft.customer; updateCustomerDisplay(); }
+            if (Array.isArray(draft.cart)) { cart = draft.cart; renderCart(); }
+            if (Array.isArray(draft.pendingOrders)) { pendingOrders = draft.pendingOrders; renderPendingList(); }
+            if (draft.commonNote) {
+                const noteElem = document.getElementById("common-note");
+                if (noteElem) noteElem.value = draft.commonNote;
+            }
+        } catch (e) {
+            console.error("下書き復元エラー:", e);
+        }
     }
 
-    async function preloadMasterData() {
-        if (MY_MAKER) {
-            try {
-                const res = await fetch(GAS_URL, { method: "POST", body: JSON.stringify({ action: "getAllProducts", targetMaker: MY_MAKER }) });
-                allProducts = await res.json();
-                const list = document.getElementById("product-list");
-                list.innerHTML = ""; 
-                allProducts.forEach(p => {
-                    if (p.partNo) { const opt = document.createElement("option"); opt.value = p.partNo; opt.textContent = p.name; list.appendChild(opt); }
-                    if (p.name) { const opt = document.createElement("option"); opt.value = p.name; list.appendChild(opt); }
-                });
-            } catch (e) { console.error("商品データロード失敗", e); }
+    function clearDraftData() {
+        try { localStorage.removeItem(DRAFT_KEY); } catch (e) { console.error("下書き削除エラー:", e); }
+    }
+
+    function openTelModal() { openQtyModal(); }
+
+    async function preloadAllCustomers() {
+        const cacheKey = "CUSTOMERS_CACHE_ALL";
+        const cachedData = localStorage.getItem(cacheKey);
+        if (cachedData) {
+            try { allCustomers = JSON.parse(cachedData); } catch (e) { console.error("顧客キャッシュエラー", e); }
         }
 
         try {
-            const res = await fetch(GAS_URL, { method: "POST", body: JSON.stringify({ action: "getAllCustomers" }) });
+            const res = await fetch(GAS_URL, { 
+                method: "POST", 
+                headers: { "Content-Type": "text/plain;charset=utf-8" },
+                body: JSON.stringify({ action: "getAllCustomers", _ts: Date.now() }) 
+            });
+            if (!res.ok) throw new Error("HTTPエラー: " + res.status);
             const data = await res.json();
             if (Array.isArray(data) && data.length > 0) {
                 allCustomers = data;
-                buildCustomerSearchIndex();
-                // 端末に顧客マスターを保存
-                localStorage.setItem("cachedCustomers", JSON.stringify(data));
+                localStorage.setItem(cacheKey, JSON.stringify(data));
             }
-        } catch (e) { console.error("顧客データロード失敗", e); }
+        } catch (e) { console.error("顧客データ読み込み失敗:", e); }
+    }
+
+    async function preloadAllProducts() {
+        if (!MY_MAKER) return;
+        const cacheKey = "PRODUCTS_CACHE_" + MY_MAKER;
+        const cachedData = localStorage.getItem(cacheKey);
+        const inputElem = document.getElementById("part-no-input");
+
+        if (cachedData) {
+            try {
+                allProducts = JSON.parse(cachedData);
+                if (inputElem) {
+                    inputElem.placeholder = "品番・品名・JANを入力";
+                    inputElem.disabled = false;
+                }
+            } catch (e) { console.error("キャッシュ解析エラー", e); }
+        }
+
+        try {
+            const res = await fetch(GAS_URL, { 
+                method: "POST", 
+                headers: { "Content-Type": "text/plain;charset=utf-8" },
+                body: JSON.stringify({ action: "getAllProducts", targetMaker: MY_MAKER, _ts: Date.now() }) 
+            });
+            if (!res.ok) throw new Error("HTTPエラー: " + res.status);
+            const data = await res.json();
+            if (Array.isArray(data) && data.length > 0) {
+                allProducts = data;
+                localStorage.setItem(cacheKey, JSON.stringify(data));
+                if (inputElem) {
+                    inputElem.placeholder = "品番・品名・JANを入力";
+                    inputElem.disabled = false;
+                }
+            }
+        } catch (e) { 
+            console.error("商品データ読み込み失敗:", e);
+            if (!cachedData && inputElem) inputElem.placeholder = "通信エラー: " + e.message;
+        }
+    }
+
+    async function forceUpdateAllMasters() {
+        await preloadAllCustomers();
+        await preloadAllProducts();
+        alert("顧客マスタおよび商品マスタを最新化しました");
     }
 
     function numIn(n) {
         let v = document.getElementById("qty-val");
-        const defaultLot = String(tempProduct && tempProduct.lot ? String(tempProduct.lot).normalize("NFKC").replace(/[^0-9]/g, '') : "1") || "1";
-        
-        if (n === 'C') { 
-            v.innerText = isTelMode ? "" : defaultLot; 
+        if (n === 'C') {
+            v.innerText = (tempProduct && tempProduct.lot) ? tempProduct.lot : (isTelMode ? "" : "1");
             v.dataset.isFirstInput = "true";
-            return; 
+            return;
         }
-        if (n === 'B') { 
-            v.innerText = v.innerText.length > 1 ? v.innerText.slice(0, -1) : (isTelMode ? "" : "0"); 
+        if (n === 'B') {
+            v.innerText = v.innerText.length > 1 ? v.innerText.slice(0, -1) : (isTelMode ? "" : "0");
             v.dataset.isFirstInput = "false";
-            return; 
+            return;
         }
-        
         if (isTelMode) {
             v.innerText += n;
         } else {
-            if (v.dataset.isFirstInput === "true" || v.innerText === "0") {
+            if (v.dataset.isFirstInput === "true") {
                 v.innerText = n;
                 v.dataset.isFirstInput = "false";
             } else {
                 v.innerText += n;
+                if (v.innerText === "0" + n) v.innerText = n;
             }
         }
     }
 
-    function openQtyModal(p, context = null) {
-        isTelMode = !p;
-        tempProduct = p;
-        editContext = context; 
-        
-        const v = document.getElementById("qty-val");
-        const title = document.getElementById("modal-p-name");
-        const info = document.getElementById("modal-p-info");
+    function openQtyModal(p) {
+        const modalTitle = document.getElementById("modal-p-name");
+        const modalInfo = document.getElementById("modal-p-info");
+        const qtyDisplay = document.getElementById("qty-val");
+        qtyDisplay.dataset.isFirstInput = "true";
 
         if (p) {
-            title.innerText = (context ? "【数量変更】" : "") + p.name;
+            isTelMode = false;
+            tempProduct = p;
+            modalTitle.innerText = p.name;
             const price = p.listPrice ? p.listPrice.toLocaleString() : (p.price ? p.price.toLocaleString() : "0");
-            info.innerHTML = `価格: ¥${price} | ロット: ${p.lot || 1}`;
-            
+            modalInfo.innerHTML = `上代: ¥${price} / 在庫: ${p.stock || "--"} / ロット: ${p.lot || "1"}`;
             let cleanLot = p.lot ? String(p.lot).normalize("NFKC").replace(/[^0-9]/g, '') : "1";
-            v.innerText = context ? context.currentQty : (cleanLot || "1");
-            v.dataset.isFirstInput = "true";
+            qtyDisplay.innerText = cleanLot || "1";
         } else {
-            title.innerText = "電話番号・ID・顧客名入力";
-            info.innerText = "検索キーワード（番号等）を入力してください";
-            v.innerText = "";
-            v.dataset.isFirstInput = "false";
+            isTelMode = true;
+            tempProduct = null;
+            modalTitle.innerText = "電話番号を手入力";
+            modalInfo.innerHTML = "ハイフンなしで入力してください";
+            qtyDisplay.innerText = "";
+            qtyDisplay.dataset.isFirstInput = "false";
         }
-        
         document.getElementById("qty-modal").style.display = "flex";
         document.getElementById("confirm-btn").onclick = confirmQty;
-        history.pushState(null, null, null);
     }
 
-    function closeQtyModal() { 
-        document.getElementById("qty-modal").style.display = "none"; 
-        editContext = null;
-    }
-
-    // 超高速顧客検索（端末内インデックス一致確認）
-    function fetchCustomer(val) {
-        if (!val) return;
-        const query = normalizeText(val);
-
-        if (allCustomers.length > 0) {
-            const found = allCustomers.find(c => 
-                (c._idxId && c._idxId === query) ||
-                (c._idxTel && c._idxTel === query) ||
-                (c._idxName && c._idxName.includes(query))
-            );
-
-            if (found) {
-                customer = found;
-                updateCustomerDisplay();
-                saveCartState();
-                return;
+    function confirmQty() {
+        let val = document.getElementById("qty-val").innerText;
+        if (isTelMode) {
+            if (val.length < 9) return alert("番号が短いです");
+            closeQtyModal(); fetchCustomer(val);
+        } else {
+            let cleanVal = String(val).normalize("NFKC").replace(/[^0-9]/g, '');
+            let q = parseInt(cleanVal);
+            if (q > 0) { 
+                const productPrice = tempProduct.price || tempProduct.listPrice || 0;
+                cart.push({ ...tempProduct, price: productPrice, quantity: q }); 
+                renderCart(); 
             }
-        }
-
-        fetchCustomerFallback(val);
-    }
-
-    async function fetchCustomerFallback(val) {
-        document.getElementById("c-none").innerHTML = "<i class='fas fa-spinner fa-spin'></i> 検索中...";
-        try {
-            const res = await fetch(GAS_URL, { 
-                method: "POST",
-                body: JSON.stringify({ action: "customerSearch", val: val }) 
-            });
-            const d = await res.json();
-            if (d && d.customer) {
-                customer = d;
-                updateCustomerDisplay();
-                saveCartState();
-            } else {
-                alert("該当する顧客が見つかりません: " + val);
-                document.getElementById("c-none").innerHTML = "顧客を選択してください";
-            }
-        } catch(e) {
-            alert("通信エラーが発生しました");
-            document.getElementById("c-none").innerHTML = "顧客を選択してください";
+            closeQtyModal(); document.getElementById("part-no-input").value = ""; 
         }
     }
 
-    async function startCamera(mode) {
-        if (mode === 'product' && !customer) { return alert("先に顧客を選択してください"); }
-        showPage('scanner-page');
-        
-        if (html5QrCode) { try { await html5QrCode.stop(); } catch (e) {} html5QrCode = null; }
-        document.getElementById("reader").innerHTML = "";
-        
-        try {
-            const devices = await Html5Qrcode.getCameras();
-            if (!devices || devices.length === 0) return alert("カメラが見つかりません");
-            const backCameras = devices.filter(d => d.label && (d.label.toLowerCase().includes('back') || d.label.toLowerCase().includes('rear')));
-            const targetId = backCameras.length > 0 ? backCameras[backCameras.length - 1].id : devices[0].id;
-
-            html5QrCode = new Html5Qrcode("reader");
-            await html5QrCode.start(targetId, { fps: 10, qrbox: 250 }, (text) => {
-                html5QrCode.stop().then(() => {
-                    showPage('home');
-                    const scannedText = text.trim();
-                    if (mode === 'customer') fetchCustomer(scannedText);
-                    else fetchProduct(scannedText);
-                }).catch(err => console.error("カメラ停止エラー", err));
-            });
-        } catch (err) {
-            alert("カメラ起動エラー: " + (err.message || err));
-            showPage('home');
-        }
-    }
-
-    function stopCamera() { 
-        if (html5QrCode) {
-            html5QrCode.stop().then(() => { html5QrCode = null; showPage('home'); }).catch(() => showPage('home'));
-        } else { showPage('home'); }
-    }
-
-    function fetchProduct(code) {
-        const cleanCode = String(code).trim().toUpperCase();
-        if (!cleanCode) return;
-        let p = allProducts.find(item => String(item.partNo || "").toUpperCase() === cleanCode || String(item.jan || "").toUpperCase() === cleanCode);
-        if (!p) p = allProducts.find(item => String(item.name || "").toUpperCase().includes(cleanCode));
-
-        if (p) openQtyModal(p);
-        else alert("未登録: [" + cleanCode + "]");
-    }
-
-    function updateCustomerDisplay() {
-        document.getElementById("r-name").innerText = customer.customer;
-        document.getElementById("r-addr1").innerText = customer.address1 || "";
-        document.getElementById("r-addr2").innerText = customer.address2 || "";
-        document.getElementById("r-tel").innerText = "TEL: " + (customer.tel || "");
-        document.getElementById("c-none").style.display = "none";
-        document.getElementById("c-detail").style.display = "block";
-        document.getElementById("product-input-area").style.display = "block";
-    }
+    function closeQtyModal() { document.getElementById("qty-modal").style.display = "none"; }
 
     function renderCart() {
         const list = document.getElementById("cart-list");
         let total = 0;
         if (cart.length === 0) {
-            list.innerHTML = "<p style='text-align:center; color:#ccc; padding:20px;'>空です</p>";
+            list.innerHTML = "<p style='text-align:center; color:#ccc; padding:20px;'>カートは空です</p>";
             document.getElementById("cart-area").style.display = "none";
-            saveCartState();
+            saveDraftData();
             return;
         }
         list.innerHTML = cart.map((item, i) => {
-            const price = item.price || item.listPrice || 0;
-            total += (price * item.quantity);
-            return `<div class="item-row">
-                <div style="flex:1"><b>${item.name}</b><br><small>¥${price.toLocaleString()}</small></div>
-                <div style="display:flex; align-items:center; gap:10px;">
-                    <button class="qty-ctrl-btn" onclick="changeQty(${i},-1)">-</button>
-                    <div class="qty-num-box" onclick="openQtyEditDirect('cart', ${i})">${item.quantity}</div>
-                    <button class="qty-ctrl-btn" onclick="changeQty(${i},1)">+</button>
+            const itemPrice = item.price || 0;
+            total += (itemPrice * item.quantity);
+            return `
+            <div class="item-row">
+                <div style="flex: 1;">
+                    <b>${item.name}</b><br>
+                    <small>${item.partNo} / ¥${itemPrice.toLocaleString()}</small>
+                </div>
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <button class="qty-ctrl-btn" onclick="changeQty(${i}, -1)">−</button>
+                    <div class="qty-num-box" onclick="editCartQty(${i})">${item.quantity}</div>
+                    <button class="qty-ctrl-btn" onclick="changeQty(${i}, 1)">＋</button>
+                    <span class="del-btn" onclick="if(confirm('削除しますか？')){cart.splice(${i},1);renderCart();}">消す</span>
                 </div>
             </div>`;
         }).join('');
         document.getElementById("cart-total").innerText = total.toLocaleString();
         document.getElementById("cart-area").style.display = "block";
-        saveCartState();
+        saveDraftData();
     }
 
-    function openQtyEditDirect(type, idOrIdx, currentQty, ts = null, pn = null, name = "") {
-        if(type === 'cart') {
-            const item = cart[idOrIdx];
-            openQtyModal(item, { type: 'cart', index: idOrIdx, currentQty: item.quantity });
-        } else if (type === 'history') {
-            openQtyModal({ name: name, lot: "1" }, { type: 'history', timestamp: ts, partNo: pn, currentQty: currentQty });
-        }
+    function changeQty(index, diff) {
+        let newQty = cart[index].quantity + diff;
+        if (newQty > 0) { cart[index].quantity = newQty; renderCart(); }
+        else if (newQty === 0 && confirm("削除しますか？")) { cart.splice(index, 1); renderCart(); }
     }
 
-    function changeQty(i, d) { 
-        cart[i].quantity += d; 
-        if (cart[i].quantity <= 0) cart.splice(i, 1); 
-        renderCart(); 
+    function editCartQty(index) {
+        isTelMode = false;
+        const item = cart[index];
+        document.getElementById("qty-val").innerText = item.quantity;
+        document.getElementById("modal-p-name").innerHTML = `<span style="color:#d9534f">【数量変更】</span><br>${item.name}`;
+        document.getElementById("qty-modal").style.display = "flex";
+        document.getElementById("confirm-btn").onclick = function() {
+            const q = parseInt(document.getElementById("qty-val").innerText);
+            if (q > 0) { cart[index].quantity = q; renderCart(); }
+            closeQtyModal();
+        };
     }
 
-    function confirmQty() {
-        let val = document.getElementById("qty-val").innerText;
-        if (isTelMode) { 
-            if (val.length < 2) return alert("入力値が短すぎます"); 
-            closeQtyModal(); 
-            fetchCustomer(val); 
-        } else {
-            let cleanVal = String(val).normalize("NFKC").replace(/[^0-9]/g, '');
-            let q = parseInt(cleanVal);
-            if (isNaN(q)) q = 0;
-
-            if (editContext) {
-                if (editContext.type === 'cart') {
-                    if (q <= 0) cart.splice(editContext.index, 1);
-                    else cart[editContext.index].quantity = q;
-                    renderCart();
-                    closeQtyModal();
-                } else if (editContext.type === 'history') {
-                    let targetTs = editContext.timestamp;
-                    let targetPn = editContext.partNo;
-                    closeQtyModal();
-                    execUpdate(targetTs, targetPn, q);
-                }
+    async function submitFinalOrder() {
+        if (!customer || cart.length === 0) return;
+        if (isSubmitting) return;
+        if (!confirm("送信しますか？")) return;
+        
+        const btn = document.getElementById("submit-btn");
+        isSubmitting = true;
+        if (btn) { btn.disabled = true; btn.innerText = "送信中..."; }
+        
+        try {
+            const payload = { 
+                action: "orderSubmit", 
+                data: { 
+                    ...customer, 
+                    items: cart, 
+                    commonNote: document.getElementById("common-note")?.value || "", 
+                    maker: MY_MAKER,
+                    _ts: Date.now()
+                } 
+            };
+            
+            const res = await fetch(GAS_URL, { 
+                method: "POST", 
+                headers: { "Content-Type": "text/plain;charset=utf-8" },
+                body: JSON.stringify(payload) 
+            });
+            
+            if (!res.ok) throw new Error("HTTPエラー: " + res.status);
+            const result = await res.json();
+            
+            if (result && result.success) { 
+                alert("完了！"); 
+                clearDraftData();
+                resetUI(); 
             } else {
-                if (q > 0) {
-                    cart.push({ 
-                        name: tempProduct.name, 
-                        price: tempProduct.price || tempProduct.listPrice || 0, 
-                        listPrice: tempProduct.listPrice || 0, 
-                        quantity: q, 
-                        partNo: tempProduct.partNo, 
-                        jan: tempProduct.jan || "", 
-                        lot: tempProduct.lot || "1", 
-                        stock: tempProduct.stock || "--" 
-                    });
-                    renderCart();
-                }
-                closeQtyModal();
-                document.getElementById("part-no-input").value = "";
+                alert("エラー: " + (result.error || "送信処理に失敗しました"));
             }
+        } catch (e) { 
+            alert("通信エラーが発生しました: " + e.message); 
+        } finally { 
+            isSubmitting = false;
+            if (btn) { btn.disabled = false; btn.innerText = "注文確定・送信"; }
         }
+    }
+
+    function resetUI() {
+        customer = null; cart = [];
+        document.getElementById("common-note").value = "";
+        document.getElementById("c-none").style.display = "block";
+        document.getElementById("c-detail").style.display = "none";
+        document.getElementById("cart-area").style.display = "none";
+        document.getElementById("product-input-area").style.display = "none";
+        renderCart();
     }
 
     function showPage(id) {
         document.querySelectorAll('.page-section').forEach(p => p.classList.remove('active'));
         document.getElementById(id).classList.add('active');
         document.querySelectorAll('nav button').forEach(b => b.classList.remove('active-nav'));
-        const navId = (id === 'scanner-page') ? 'n-home' : 'n-' + id;
-        const navBtn = document.getElementById(navId);
-        if (navBtn) navBtn.classList.add('active-nav');
-        if (id === 'history') loadHistory();
+        document.getElementById('n-' + (id==='scanner-page'?'home':id))?.classList.add('active-nav');
+        if (id === 'history') { renderPendingList(); loadHistory(); }
     }
 
-    function openTelModal() { openQtyModal(null); }
-    function handleManualInput() { fetchProduct(document.getElementById("part-no-input").value); }
-
-    async function submitFinalOrder() {
-        if (isSubmitting) return;
-        if (!customer || cart.length === 0) return alert("顧客またはカートを確認してください");
-        if (!confirm("送信しますか？")) return;
-        
-        isSubmitting = true;
-        const btn = document.getElementById('submit-btn');
-        btn.disabled = true; 
-        btn.innerText = "送信中...";
-        
-        try {
-            const payload = { 
-                action: "orderSubmit", 
-                data: {
-                    customerId: customer.customerId || "",
-                    customer: customer.customer || "",
-                    zip: customer.zip || "",
-                    address1: customer.address1 || "",
-                    address2: customer.address2 || "",
-                    tel: customer.tel || "",
-                    email: customer.email || "",
-                    maker: MY_MAKER,
-                    commonNote: document.getElementById('common-note').value || "",
-                    items: cart
-                }
-            };
-            
-            const res = await fetch(GAS_URL, { method: "POST", body: JSON.stringify(payload) });
-            const resData = await res.json();
-
-            if (resData.success) { 
-                alert("送信完了！"); 
-                clearCartState();
-                location.reload(); 
-            } else {
-                throw new Error(resData.error || "送信処理失敗");
-            }
-        } catch (e) { 
-            alert("送信失敗: " + e.message); 
-            btn.disabled = false; 
-            btn.innerText = "送信"; 
-            isSubmitting = false;
+    function handleManualInput() {
+        let val = document.getElementById("part-no-input").value;
+        if (val) {
+            const partNoOnly = val.trim().split(" ")[0];
+            fetchProduct(partNoOnly);
+            document.getElementById("part-no-input").value = ""; 
         }
     }
 
-    function holdOrder() {
-        if (!customer || cart.length === 0) return alert("顧客と商品を選択してください");
-        const holdData = { customer: customer, cart: cart, note: document.getElementById('common-note').value, date: new Date().toLocaleString() };
-        let current = JSON.parse(localStorage.getItem("pendingOrders") || "[]");
-        current.push(holdData);
-        localStorage.setItem("pendingOrders", JSON.stringify(current));
-        alert("保留しました");
-        clearCartState();
-        location.reload();
+    let cachedHistory = []; 
+
+    function fetchCustomer(val) {
+        if (!val) return;
+        const searchVal = normalizeText(val);
+        let found = allCustomers.find(c => {
+            const tel = normalizeText(c.tel || "");
+            const name = normalizeText(c.customer || c.name || "");
+            const id = normalizeText(c.customerId || c.id || "");
+            return tel.includes(searchVal) || name.includes(searchVal) || id.includes(searchVal);
+        });
+
+        if (found) {
+            customer = found;
+            updateCustomerDisplay();
+            saveDraftData();
+        } else {
+            alert("該当する顧客が見つかりません: [" + val + "]");
+        }
+    }
+
+    function updateCustomerDisplay() {
+        if (!customer) return;
+        const elName = document.getElementById("r-name");
+        const elAddr1 = document.getElementById("r-addr1");
+        const elTel = document.getElementById("r-tel");
+        const elNone = document.getElementById("c-none");
+        const elDetail = document.getElementById("c-detail");
+        const elProdArea = document.getElementById("product-input-area");
+
+        if (elName) elName.innerText = customer.customer || customer.name || "";
+        if (elAddr1) {
+            const addr2 = customer.address2 ? " " + customer.address2 : "";
+            elAddr1.innerText = "〒" + (customer.zip || "") + " " + (customer.address1 || "") + addr2;
+        }
+        if (elTel) elTel.innerText = "TEL: " + (customer.tel || "");
+
+        if (elNone) elNone.style.display = "none";
+        if (elDetail) elDetail.style.display = "block";
+        if (elProdArea) elProdArea.style.display = "block";
+    }
+
+    function fetchProduct(code) {
+        if (!code) return;
+        const searchVal = normalizeText(code);
+        let p = allProducts.find(item => {
+            const targetPartNo = normalizeText(item.partNo);
+            const targetJan = normalizeText(item.jan || "");
+            const targetName = normalizeText(item.name);
+            return (targetPartNo.includes(searchVal) || targetJan.includes(searchVal) || targetName.includes(searchVal));
+        });
+        if (p) { 
+            openQtyModal(p); 
+        } else { 
+            alert("商品が見つかりません: [" + code + "]"); 
+        }
     }
 
     async function loadHistory() {
-        const pendingArea = document.getElementById("pending-list-area");
-        const listArea = document.getElementById("h-list");
-        const pending = JSON.parse(localStorage.getItem("pendingOrders") || "[]");
-        
-        pendingArea.innerHTML = pending.length ? "<h3>保留中</h3>" + pending.map((item, idx) => `
-            <div class="card" style="border-left:6px solid #ffa000;">
-                <b>${item.customer.customer} 様</b><br><small>${item.date}</small>
-                <div style="margin-top:10px; display:flex; gap:5px;">
-                    <button class="btn-main" style="background:#ffa000; padding:8px;" onclick="restoreOrder(${idx})">再開</button>
-                    <button class="btn-main" style="background:#ccc; padding:8px;" onclick="deletePending(${idx})">削除</button>
-                </div>
-            </div>`).join('') : "";
-
-        if (cachedHistory.length === 0) {
-            listArea.innerHTML = "<div style='text-align:center; padding:20px;'><i class='fas fa-spinner fa-spin'></i> 読み込み中...</div>";
-        }
-        
+        const list = document.getElementById("h-list");
+        if (list) list.innerHTML = "<div style='text-align:center; padding:20px;'><i class='fas fa-spinner fa-spin'></i> 読み込み中...</div>";
         try {
-            const res = await fetch(GAS_URL, { method: "POST", body: JSON.stringify({ action: "getOrderHistory", targetMaker: MY_MAKER }) });
-            const historyData = await res.json();
-            cachedHistory = historyData; 
-            filterHistory(); 
+            const res = await fetch(GAS_URL, { 
+                method: "POST", 
+                headers: { "Content-Type": "text/plain;charset=utf-8" },
+                body: JSON.stringify({ action: "getOrderHistory", targetMaker: MY_MAKER, _ts: Date.now() }) 
+            });
+            if (!res.ok) throw new Error("HTTP " + res.status);
+            const data = await res.json();
+            cachedHistory = Array.isArray(data) ? data : []; 
+            renderHistoryList(cachedHistory); 
         } catch (e) { 
-            if (cachedHistory.length === 0) { listArea.innerHTML = "<p style='text-align:center; color:#d32f2f;'>読込失敗</p>"; }
+            if (list) list.innerHTML = "<p style='text-align:center; color:#d9534f;'>読み込みに失敗しました (" + e.message + ")</p>"; 
         }
     }
 
     function renderHistoryList(data) {
-        const listArea = document.getElementById("h-list");
-        if (data.length === 0) {
-            listArea.innerHTML = "<p style='text-align:center; color:#999; padding:20px;'>履歴はありません</p>";
-            return;
+        const list = document.getElementById("h-list");
+        if (!list) return;
+        if (!data || data.length === 0) { 
+            list.innerHTML = "<p style='text-align:center; color:#999; padding:20px;'>履歴はありません</p>"; 
+            return; 
         }
-        
-        listArea.innerHTML = data.map(item => `
-            <div class="card" style="border-left:4px solid #3b5998;">
-                <small>${item.displayDate} / ${item.customerName}</small><br><b>${item.name}</b><br>
-                <div style="display:flex; justify-content:space-between; align-items:center; margin-top:5px;">
-                    <span>¥${(item.subtotal || 0).toLocaleString()}</span>
-                    <div style="display:flex; align-items:center; gap:8px;">
-                        <button onclick="execUpdate('${item.timestamp}','${item.partNo}',${item.qty-1})" class="qty-ctrl-btn" style="width:36px; height:36px;">-</button>
-                        <div class="qty-num-box" style="min-width:50px;" onclick="openQtyEditDirect('history', null, ${item.qty}, '${item.timestamp}', '${item.partNo}', '${item.name}')">${item.qty}</div>
-                        <button onclick="execUpdate('${item.timestamp}','${item.partNo}',${item.qty+1})" class="qty-ctrl-btn" style="width:36px; height:36px;">+</button>
-                        <button onclick="execDelete('${item.timestamp}','${item.partNo}')" style="border:none; background:none; color:#ccc; margin-left:5px;"><i class="fas fa-trash fa-lg"></i></button>
-                    </div>
+        list.innerHTML = '<h4>▼ 送信済み履歴</h4>' + data.map(item => {
+            const safeCustomerName = (item.customerName || '').replace(/'/g, "\\'");
+            return `
+            <div class="card" style="font-size:0.9em; border-left: 5px solid #3b5998; margin-bottom:10px;">
+                <b>${item.customerName} 様</b> <small>${item.displayDate}</small><br>
+                品番：${item.partNo} | ${item.name}<br>
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 5px;">
+                    <span>数量：<input type="number" value="${item.qty}" style="width:50px; padding:4px;" onchange="execDirectUpdate('${item.timestamp}', '${item.partNo}', this.value, ${item.qty})"></span>
+                    <span class="del-btn" style="cursor:pointer; font-size:1.1em; padding:4px 10px;" onclick="execDirectDelete('${item.timestamp}', '${item.partNo}')">
+                        <i class="fas fa-trash-alt"></i>
+                    </span>
                 </div>
                 <div style="margin-top: 12px; text-align: right;">
-                    <button class="btn-main" style="background:#2e7d32; font-size:0.85em; padding:8px 12px; width:auto; display:inline-block;" onclick="setCustomerFromHistory('${item.customerName}')">
+                    <button class="btn-main" style="background:#28a745; font-size:0.85em; padding:8px 12px; width:auto; display:inline-block;" onclick="setCustomerFromHistory('${safeCustomerName}')">
                         <i class="fas fa-user-check"></i> この顧客で新規注文
                     </button>
                 </div>
-            </div>`).join('');
+            </div>`;
+        }).join('');
     }
 
     function filterHistory() {
@@ -615,8 +636,7 @@
         if (!keyword) { renderHistoryList(cachedHistory); return; }
         const filtered = cachedHistory.filter(item => 
             (item.customerName && item.customerName.toLowerCase().includes(keyword)) ||
-            (item.partNo && item.partNo.toLowerCase().includes(keyword)) ||
-            (item.name && item.name.toLowerCase().includes(keyword))
+            (item.partNo && item.partNo.toLowerCase().includes(keyword))
         );
         renderHistoryList(filtered);
     }
@@ -627,54 +647,184 @@
         fetchCustomer(customerName);
     }
 
-    function restoreOrder(idx) {
-        const pending = JSON.parse(localStorage.getItem("pendingOrders") || "[]");
-        const t = pending[idx];
-        if (confirm("再開しますか？")) {
-            customer = t.customer; cart = t.cart;
-            document.getElementById('common-note').value = t.note || "";
-            deletePending(idx, false);
-            updateCustomerDisplay(); 
-            renderCart(); 
-            saveCartState();
-            showPage('home');
+    async function execDirectUpdate(ts, partNo, newQty, oldQty) {
+        if (newQty <= 0) return loadHistory();
+        try {
+            await fetch(GAS_URL, { 
+                method: "POST", 
+                headers: { "Content-Type": "text/plain;charset=utf-8" },
+                body: JSON.stringify({ action: "updateOrderQty", timestamp: ts, partNo: partNo, newQty: newQty, maker: MY_MAKER }) 
+            });
+            loadHistory();
+        } catch (e) { alert("通信エラー"); }
+    }
+
+    async function execDirectDelete(ts, partNo) {
+        if (!confirm("この注文履歴を削除しますか？\n（スプレッドシートからも完全に消去されます）")) return;
+        const list = document.getElementById("h-list");
+        if (list) list.innerHTML = "<div style='text-align:center; padding:20px;'><i class='fas fa-spinner fa-spin'></i> 削除中...</div>";
+        try {
+            await fetch(GAS_URL, { 
+                method: "POST", 
+                headers: { "Content-Type": "text/plain;charset=utf-8" },
+                body: JSON.stringify({ action: "deleteOrderLine", timestamp: ts, partNo: partNo, maker: MY_MAKER }) 
+            });
+            loadHistory();
+        } catch (e) { alert("通信エラー"); loadHistory(); }
+    }
+
+    function normalizeText(str) {
+        if (!str) return "";
+        return String(str)
+            .normalize("NFKC")
+            .replace(/[\u3041-\u3096]/g, match => String.fromCharCode(match.charCodeAt(0) + 0x60))
+            .toUpperCase()
+            .trim();
+    }
+
+    // iOS向け：メーカー切り替え処理
+    function switchMaker(makerName) {
+        if (confirm(makerName + " に切り替えますか？")) {
+            const url = new URL(window.location.href);
+            url.searchParams.set('m', makerName);
+            window.location.href = url.toString();
+        }
+    }
+    
+    async function startCamera(mode) {
+        if (mode === 'product' && !customer) return alert("先に顧客を選択してください");
+        
+        if (html5QrCode && html5QrCode.getState() !== 1) {
+            try { await html5QrCode.stop(); } catch (e) { console.log(e); }
+        }
+
+        showPage('scanner-page');
+        document.getElementById('camera-guide').style.display = 'block';
+
+        if (html5QrCode === null) html5QrCode = new Html5Qrcode("reader");
+
+        try {
+            await html5QrCode.start(
+                { facingMode: "environment" }, 
+                { fps: 20, qrbox: 250 }, 
+                (text) => {
+                    html5QrCode.stop().then(() => {
+                        document.getElementById('camera-guide').style.display = 'none';
+                        showPage('home');
+                        if (mode === 'customer') {
+                            fetchCustomer(text.trim());
+                        } else {
+                            fetchProduct(text.trim());
+                        }
+                    }).catch(err => console.error("Stop error", err));
+                }
+            );
+        } catch (err) { 
+            alert("カメラを起動できませんでした。ブラウザの再読み込みを試してください。"); 
         }
     }
 
-    function deletePending(idx, ask=true) {
-        if (ask && !confirm("削除しますか？")) return;
-        let p = JSON.parse(localStorage.getItem("pendingOrders") || "[]");
-        p.splice(idx, 1);
-        localStorage.setItem("pendingOrders", JSON.stringify(p));
-        loadHistory();
+    function stopCamera() {
+        if (html5QrCode && html5QrCode.getState() !== 1) {
+            html5QrCode.stop().then(() => {
+                document.getElementById('camera-guide').style.display = 'none';
+                showPage('home');
+            });
+        } else { showPage('home'); }
     }
 
-    async function execUpdate(ts, pn, nq) {
-        if (nq <= 0) return execDelete(ts, pn);
-        const target = cachedHistory.find(item => item.timestamp === ts && item.partNo === pn);
-        if (target) {
-            const unitPrice = target.qty > 0 ? (target.subtotal / target.qty) : 0;
-            target.qty = nq;
-            target.subtotal = unitPrice * nq;
-            filterHistory();
+    function renderPendingList() {
+        const area = document.getElementById("pending-list-area");
+        if (!area) return;
+        if (pendingOrders.length === 0) { area.innerHTML = ""; return; }
+        area.innerHTML = '<h4>▼ 保留中</h4>' + pendingOrders.map((ord, i) => `<div class="card" onclick="resumeOrder(${i})"><b>${ord.customer.customer || ord.customer.name} 様</b></div>`).join('');
+    }
+
+    function showSuggestions(val) {
+        const listDiv = document.getElementById("autocomplete-list");
+        if (!listDiv) return;
+        listDiv.innerHTML = "";
+        if (!val) { listDiv.style.display = "none"; return; }
+
+        const searchVal = normalizeText(val);
+        const matches = allProducts.filter(item => {
+            const targetPartNo = normalizeText(item.partNo);
+            const targetJan = normalizeText(item.jan || "");
+            const targetName = normalizeText(item.name);
+            return (targetPartNo.includes(searchVal) || targetJan.includes(searchVal) || targetName.includes(searchVal));
+        }).slice(0, 50);
+
+        if (matches.length === 0) { listDiv.style.display = "none"; return; }
+
+        matches.forEach(p => {
+            const itemDiv = document.createElement("div");
+            itemDiv.style.padding = "12px 15px";
+            itemDiv.style.borderBottom = "1px solid #eee";
+            itemDiv.style.cursor = "pointer";
+            itemDiv.innerHTML = `<b style="color:#3b5998;">${p.partNo || ""}</b> <span style="font-size:0.9em; color:#555; margin-left:8px;">${p.name || ""}</span>`;
+            
+            itemDiv.onclick = () => {
+                listDiv.style.display = "none";
+                document.getElementById("part-no-input").value = ""; 
+                openQtyModal(p); 
+            };
+            listDiv.appendChild(itemDiv);
+        });
+        
+        listDiv.style.display = "block";
+    }
+
+    document.addEventListener("click", function (e) {
+        if (e.target.id !== "part-no-input") {
+            const listDiv = document.getElementById("autocomplete-list");
+            if (listDiv) listDiv.style.display = "none";
         }
-        try {
-            const res = await fetch(GAS_URL, { method: "POST", body: JSON.stringify({ action: "updateOrderQty", timestamp: ts, partNo: pn, newQty: nq, maker: MY_MAKER }) });
-            const result = await res.json();
-            if (!result.success) loadHistory();
-        } catch(e) { alert("通信エラーが発生しました"); loadHistory(); }
-    }
+    });
 
-    async function execDelete(ts, pn) {
-        if (!confirm("削除しますか？")) return;
-        cachedHistory = cachedHistory.filter(item => !(item.timestamp === ts && item.partNo === pn));
-        filterHistory();
-        try {
-            const res = await fetch(GAS_URL, { method: "POST", body: JSON.stringify({ action: "deleteOrderLine", timestamp: ts, partNo: pn, maker: MY_MAKER }) });
-            const result = await res.json();
-            if (!result.success) loadHistory();
-        } catch(e) { alert("通信エラーが発生しました"); loadHistory(); }
-    }
+    window.holdOrder = function() {
+        if (!customer && cart.length === 0) {
+            alert("保留する注文データがありません。");
+            return;
+        }
+
+        const currentOrder = {
+            customer: customer || { customer: "顧客未選択" },
+            cart: [...cart],
+            commonNote: document.getElementById("common-note").value || ""
+        };
+
+        pendingOrders.push(currentOrder);
+        alert(`${currentOrder.customer.customer || currentOrder.customer.name} 様の注文を一時保留しました。`);
+        resetUI();
+        saveDraftData();
+    };
+
+    window.resumeOrder = function(index) {
+        const targetOrder = pendingOrders[index];
+        if (!targetOrder) return;
+        const custName = targetOrder.customer.customer || targetOrder.customer.name || "顧客未選択";
+
+        if (!confirm(`${custName} 様の注文をカートに復元しますか？`)) return;
+
+        if (targetOrder.customer && custName !== "顧客未選択") {
+            customer = targetOrder.customer;
+            updateCustomerDisplay();
+        } else {
+            customer = null;
+            document.getElementById("c-none").style.display = "block";
+            document.getElementById("c-detail").style.display = "none";
+            document.getElementById("product-input-area").style.display = "block";
+        }
+
+        cart = [...targetOrder.cart];
+        document.getElementById("common-note").value = targetOrder.commonNote;
+        renderCart();
+
+        pendingOrders.splice(index, 1);
+        showPage('home');
+        saveDraftData();
+        alert("注文を復元しました。");
+    };
 </script>
 </body>
 </html>
