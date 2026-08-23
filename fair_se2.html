@@ -757,7 +757,74 @@
         }
     }
     
-    /* 📸 iPhone SE2用に画角・位置調整したカメラ制御 */
+   /* 📸 iPhoneピント・画角最適化版 startCamera */
+    async function startCamera(mode) {
+        if (mode === 'product' && !customer) return alert("先に顧客を選択してください");
+        
+        showPage('scanner-page');
+        document.getElementById('camera-guide').style.display = 'block';
+
+        if (html5QrCode) { 
+            try { await html5QrCode.stop(); } catch (e) {} 
+            html5QrCode = null; 
+        }
+
+        document.getElementById("reader").innerHTML = "";
+
+        try {
+            const devices = await Html5Qrcode.getCameras();
+            if (!devices || devices.length === 0) return alert("カメラが見つかりません");
+
+            const backCameras = devices.filter(d => 
+                d.label && (d.label.toLowerCase().includes('back') || d.label.toLowerCase().includes('rear'))
+            );
+            const targetId = backCameras.length > 0 ? backCameras[backCameras.length - 1].id : devices[0].id;
+
+            const isCustomerMode = (mode === 'customer');
+            
+            const formatsToSupport = isCustomerMode 
+                ? [ Html5QrcodeSupportedFormats.QR_CODE ]
+                : [ 
+                    Html5QrcodeSupportedFormats.EAN_13, 
+                    Html5QrcodeSupportedFormats.EAN_8, 
+                    Html5QrcodeSupportedFormats.CODE_128, 
+                    Html5QrcodeSupportedFormats.UPC_A 
+                  ];
+
+            // 枠サイズを少し小さめ（200px前後）にして、カメラを少し離して撮影させる（近すぎてボケるのを防止）
+            const qrboxSize = isCustomerMode 
+                ? { width: 200, height: 200 } 
+                : { width: 240, height: 100 };
+
+            html5QrCode = new Html5Qrcode("reader", { formatsToSupport: formatsToSupport });
+
+            await html5QrCode.start(
+                targetId, 
+                { 
+                    fps: 20, // 処理フレーム数を増やしてフォーカス追従を高速化
+                    qrbox: qrboxSize,
+                    videoConstraints: {
+                        width: { ideal: 1920 }, // フルHD解像度にして細部のピントをくっきり合わせる
+                        height: { ideal: 1080 },
+                        facingMode: "environment",
+                        focusMode: "continuous" // オートフォーカスを強制ON
+                    }
+                }, 
+                (text) => {
+                    html5QrCode.stop().then(() => {
+                        document.getElementById('camera-guide').style.display = 'none';
+                        showPage('home');
+                        if (isCustomerMode) fetchCustomer(text.trim());
+                        else fetchProduct(text.trim());
+                    }).catch(err => console.error("Stop error", err));
+                }
+            );
+        } catch (err) { 
+            console.error(err);
+            alert("カメラを起動できませんでした。"); 
+            showPage('home');
+        }
+    } /* 📸 iPhone SE2用に画角・位置調整したカメラ制御 */
    async function startCamera(mode) {
     if (mode === 'product' && !customer) return alert("先に顧客を選択してください");
     
