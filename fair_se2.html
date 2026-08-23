@@ -596,14 +596,31 @@
 
     let cachedHistory = []; 
 
-    function fetchCustomer(val) {
+ function fetchCustomer(val) {
         if (!val) return;
-        const searchVal = normalizeText(val);
+
+        // 入力値の正規化と数字の抽出（ハイフンやURL等が含まれるQR対策）
+        const rawText = String(val).trim();
+        const searchVal = normalizeText(rawText);
+        const numericOnly = rawText.replace(/[^0-9]/g, '');
+
         let found = allCustomers.find(c => {
             const tel = normalizeText(c.tel || "");
             const name = normalizeText(c.customer || c.name || "");
             const id = normalizeText(c.customerId || c.id || "");
-            return tel.includes(searchVal) || name.includes(searchVal) || id.includes(searchVal);
+            const telNumeric = tel.replace(/[^0-9]/g, '');
+
+            // 1. 通常判定（テキストの完全・部分一致）
+            if (tel.includes(searchVal) || name.includes(searchVal) || id.includes(searchVal)) {
+                return true;
+            }
+            // 2. 表記揺れ判定（ハイフンの有無に関わらず数字部分で比較）
+            if (numericOnly.length >= 4 && telNumeric.length >= 4) {
+                if (telNumeric.includes(numericOnly) || numericOnly.includes(telNumeric)) {
+                    return true;
+                }
+            }
+            return false;
         });
 
         if (found) {
@@ -611,7 +628,7 @@
             updateCustomerDisplay();
             saveDraftData();
         } else {
-            alert("該当する顧客が見つかりません: [" + val + "]");
+            alert("該当する顧客が見つかりません:\n[" + val + "]");
         }
     }
 
@@ -741,55 +758,76 @@
     }
     
     /* 📸 iPhone SE2用に画角・位置調整したカメラ制御 */
-    async function startCamera(mode) {
-        if (mode === 'product' && !customer) return alert("先に顧客を選択してください");
-        
-        showPage('scanner-page');
-        document.getElementById('camera-guide').style.display = 'block';
+   async function startCamera(mode) {
+    if (mode === 'product' && !customer) return alert("先に顧客を選択してください");
+    
+    showPage('scanner-page');
+    document.getElementById('camera-guide').style.display = 'block';
 
-        if (html5QrCode) { 
-            try { await html5QrCode.stop(); } catch (e) {} 
-            html5QrCode = null; 
-        }
-
-        document.getElementById("reader").innerHTML = "";
-
-        try {
-            const devices = await Html5Qrcode.getCameras();
-            if (!devices || devices.length === 0) return alert("カメラが見つかりません");
-
-            const backCameras = devices.filter(d => 
-                d.label && (d.label.toLowerCase().includes('back') || d.label.toLowerCase().includes('rear'))
-            );
-            const targetId = backCameras.length > 0 ? backCameras[backCameras.length - 1].id : devices[0].id;
-
-            html5QrCode = new Html5Qrcode("reader");
-            await html5QrCode.start(
-                targetId, 
-                { 
-                    fps: 15, 
-                    qrbox: (mode === 'product') ? { width: 280, height: 120 } : { width: 250, height: 250 },
-                    videoConstraints: {
-                        width: { ideal: 1280 },
-                        height: { ideal: 720 },
-                        facingMode: "environment"
-                    }
-                }, 
-                (text) => {
-                    html5QrCode.stop().then(() => {
-                        document.getElementById('camera-guide').style.display = 'none';
-                        showPage('home');
-                        if (mode === 'customer') fetchCustomer(text.trim());
-                        else fetchProduct(text.trim());
-                    }).catch(err => console.error("Stop error", err));
-                }
-            );
-        } catch (err) { 
-            console.error(err);
-            alert("カメラを起動できませんでした。"); 
-            showPage('home');
-        }
+    if (html5QrCode) { 
+        try { await html5QrCode.stop(); } catch (e) {} 
+        html5QrCode = null; 
     }
+
+    document.getElementById("reader").innerHTML = "";
+
+    try {
+        const devices = await Html5Qrcode.getCameras();
+        if (!devices || devices.length === 0) return alert("カメラが見つかりません");
+
+        const backCameras = devices.filter(d => 
+            d.label && (d.label.toLowerCase().includes('back') || d.label.toLowerCase().includes('rear'))
+        );
+        const targetId = backCameras.length > 0 ? backCameras[backCameras.length - 1].id : devices[0].id;
+
+        // モードに応じたフォーマット絞り込みと枠サイズの設定
+        const isCustomerMode = (mode === 'customer');
+        
+        // 顧客＝QRコード指定 / 商品＝主要1次元バーコード指定
+        const formatsToSupport = isCustomerMode 
+            ? [ Html5QrcodeSupportedFormats.QR_CODE ]
+            : [ 
+                Html5QrcodeSupportedFormats.EAN_13, 
+                Html5QrcodeSupportedFormats.EAN_8, 
+                Html5QrcodeSupportedFormats.CODE_128, 
+                Html5QrcodeSupportedFormats.UPC_A 
+              ];
+
+        // 顧客＝正方形(250x250) / 商品＝横長(280x120)
+        const qrboxSize = isCustomerMode 
+            ? { width: 250, height: 250 } 
+            : { width: 280, height: 120 };
+
+        // フォーマットを指定してインスタンス化
+        html5QrCode = new Html5Qrcode("reader", { formatsToSupport: formatsToSupport });
+
+        await html5QrCode.start(
+            targetId, 
+            { 
+                fps: 15, 
+                qrbox: qrboxSize,
+                aspectRatio: 1.0, // アスペクト比を固定して画像の歪みを防止
+                videoConstraints: {
+                    width: { ideal: 1280 },
+                    height: { ideal: 720 },
+                    facingMode: "environment"
+                }
+            }, 
+            (text) => {
+                html5QrCode.stop().then(() => {
+                    document.getElementById('camera-guide').style.display = 'none';
+                    showPage('home');
+                    if (isCustomerMode) fetchCustomer(text.trim());
+                    else fetchProduct(text.trim());
+                }).catch(err => console.error("Stop error", err));
+            }
+        );
+    } catch (err) { 
+        console.error(err);
+        alert("カメラを起動できませんでした。"); 
+        showPage('home');
+    }
+}
 
     function stopCamera() {
         if (html5QrCode) {
