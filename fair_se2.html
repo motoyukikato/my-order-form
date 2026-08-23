@@ -757,7 +757,7 @@
         }
     }
     
-   /* 📸 iPhoneピント・画角最適化版 startCamera */
+   /* 📸 iPhone SE2完全最適化版 startCamera */
     async function startCamera(mode) {
         if (mode === 'product' && !customer) return alert("先に顧客を選択してください");
         
@@ -775,41 +775,31 @@
             const devices = await Html5Qrcode.getCameras();
             if (!devices || devices.length === 0) return alert("カメラが見つかりません");
 
+            // 背面カメラを確実に指定
             const backCameras = devices.filter(d => 
                 d.label && (d.label.toLowerCase().includes('back') || d.label.toLowerCase().includes('rear'))
             );
             const targetId = backCameras.length > 0 ? backCameras[backCameras.length - 1].id : devices[0].id;
 
             const isCustomerMode = (mode === 'customer');
-            
-            const formatsToSupport = isCustomerMode 
-                ? [ Html5QrcodeSupportedFormats.QR_CODE ]
-                : [ 
-                    Html5QrcodeSupportedFormats.EAN_13, 
-                    Html5QrcodeSupportedFormats.EAN_8, 
-                    Html5QrcodeSupportedFormats.CODE_128, 
-                    Html5QrcodeSupportedFormats.UPC_A 
-                  ];
 
-            // 枠サイズを少し小さめ（200px前後）にして、カメラを少し離して撮影させる（近すぎてボケるのを防止）
-            const qrboxSize = isCustomerMode 
-                ? { width: 200, height: 200 } 
-                : { width: 240, height: 100 };
+            // 安定動作のため標準インスタンス化
+            html5QrCode = new Html5Qrcode("reader");
 
-            html5QrCode = new Html5Qrcode("reader", { formatsToSupport: formatsToSupport });
+            // 近づけすぎによるボケを防ぐため、枠を小さく設定（少し離してかざすよう誘導）
+            const config = {
+                fps: 20,
+                qrbox: isCustomerMode ? { width: 180, height: 180 } : { width: 240, height: 90 },
+                videoConstraints: {
+                    facingMode: { exact: "environment" },
+                    width: { min: 640, ideal: 1280, max: 1920 },
+                    height: { min: 480, ideal: 720, max: 1080 }
+                }
+            };
 
             await html5QrCode.start(
                 targetId, 
-                { 
-                    fps: 20, // 処理フレーム数を増やしてフォーカス追従を高速化
-                    qrbox: qrboxSize,
-                    videoConstraints: {
-                        width: { ideal: 1920 }, // フルHD解像度にして細部のピントをくっきり合わせる
-                        height: { ideal: 1080 },
-                        facingMode: "environment",
-                        focusMode: "continuous" // オートフォーカスを強制ON
-                    }
-                }, 
+                config, 
                 (text) => {
                     html5QrCode.stop().then(() => {
                         document.getElementById('camera-guide').style.display = 'none';
@@ -820,10 +810,33 @@
                 }
             );
         } catch (err) { 
-            console.error(err);
-            alert("カメラを起動できませんでした。"); 
-            showPage('home');
+            // facingMode: { exact: "environment" } が失敗した場合のセーフティ（通常起動）
+            console.warn("Exact constraints failed, retrying with basic config...", err);
+            try {
+                const isCustomerMode = (mode === 'customer');
+                html5QrCode = new Html5Qrcode("reader");
+                await html5QrCode.start(
+                    { facingMode: "environment" },
+                    {
+                        fps: 15,
+                        qrbox: isCustomerMode ? { width: 180, height: 180 } : { width: 240, height: 90 }
+                    },
+                    (text) => {
+                        html5QrCode.stop().then(() => {
+                            document.getElementById('camera-guide').style.display = 'none';
+                            showPage('home');
+                            if (isCustomerMode) fetchCustomer(text.trim());
+                            else fetchProduct(text.trim());
+                        }).catch(e => console.error(e));
+                    }
+                );
+            } catch (retryErr) {
+                console.error(retryErr);
+                alert("カメラを起動できませんでした。ブラウザのカメラ権限を確認してください。");
+                showPage('home');
+            }
         }
+    }
     } /* 📸 iPhone SE2用に画角・位置調整したカメラ制御 */
    async function startCamera(mode) {
     if (mode === 'product' && !customer) return alert("先に顧客を選択してください");
