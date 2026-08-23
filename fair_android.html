@@ -691,31 +691,20 @@
         }
     }
     
-    async function startCamera(mode) {
+   async function startCamera(mode) {
         if (mode === 'product' && !customer) return alert("先に顧客を選択してください");
 
         showPage('scanner-page');
         document.getElementById('camera-guide').style.display = 'block';
 
-        // 1. 既存のカメラインスタンスを完全にクリア（Androidのセッション残り対策）
-        if (html5QrCode) {
-            try {
-                if (html5QrCode.isScanning) {
-                    await html5QrCode.stop();
-                }
-                await html5QrCode.clear();
-            } catch (e) {
-                console.log("Reset error:", e);
-            }
-            html5QrCode = null;
-        }
+        // 1. 既存のカメラインスタンスとメディアトラックを完全強制終了
+        await forceStopCameraTracks();
 
-        // 2. DOMの描画完了を少し待ってからカメラを起動（300msの遅延処理）
+        // 2. DOM描画を少し待ってからカメラ起動
         setTimeout(async () => {
             try {
                 html5QrCode = new Html5Qrcode("reader");
 
-                // Androidでエラーになりにくい設定（qrboxをオブジェクト化＋アスペクト比固定）
                 const config = { 
                     fps: 15, 
                     qrbox: { width: 250, height: 250 },
@@ -725,21 +714,18 @@
                 await html5QrCode.start(
                     { facingMode: "environment" }, 
                     config, 
-                    (text) => {
-                        html5QrCode.stop().then(() => {
-                            html5QrCode.clear();
-                            document.getElementById('camera-guide').style.display = 'none';
-                            showPage('home');
-                            if (mode === 'customer') {
-                                fetchCustomer(text.trim());
-                            } else {
-                                fetchProduct(text.trim());
-                            }
-                        }).catch(err => console.error("Stop error", err));
+                    async (text) => {
+                        // 読み取り成功時も完全にトラックを停止して切断
+                        await forceStopCameraTracks();
+                        document.getElementById('camera-guide').style.display = 'none';
+                        showPage('home');
+                        if (mode === 'customer') {
+                            fetchCustomer(text.trim());
+                        } else {
+                            fetchProduct(text.trim());
+                        }
                     },
-                    (errorMessage) => {
-                        // フレームごとの読み取り失敗ログ（無視してOK）
-                    }
+                    (errorMessage) => {}
                 );
             } catch (err) { 
                 console.error("Camera start error:", err);
@@ -748,20 +734,33 @@
         }, 300);
     }
 
-    function stopCamera() {
+    async function stopCamera() {
+        await forceStopCameraTracks();
+        document.getElementById('camera-guide').style.display = 'none';
+        showPage('home');
+    }
+
+    // ★追加：カメラのメディアストリームを直接停止・解放する関数
+    async function forceStopCameraTracks() {
         if (html5QrCode) {
-            const stopPromise = html5QrCode.isScanning ? html5QrCode.stop() : Promise.resolve();
-            stopPromise.then(() => {
-                html5QrCode.clear();
-                html5QrCode = null;
-                document.getElementById('camera-guide').style.display = 'none';
-                showPage('home');
-            }).catch(err => {
-                console.error("Stop camera error", err);
-                showPage('home');
-            });
-        } else { 
-            showPage('home'); 
+            try {
+                if (html5QrCode.isScanning) {
+                    await html5QrCode.stop();
+                }
+                await html5QrCode.clear();
+            } catch (e) {
+                console.log("Stop/Clear error:", e);
+            }
+            html5QrCode = null;
+        }
+
+        // DOM（#reader 内の video 要素）から直接カメラのトラックを取り出してストップする
+        const videoElem = document.querySelector("#reader video");
+        if (videoElem && videoElem.srcObject) {
+            const stream = videoElem.srcObject;
+            const tracks = stream.getTracks();
+            tracks.forEach(track => track.stop());
+            videoElem.srcObject = null;
         }
     }
 
