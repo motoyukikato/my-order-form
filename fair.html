@@ -563,8 +563,23 @@
 
             const result = await res.json();
             
-            if (result && result.success) { 
-                alert("完了！"); 
+          if (result && result.success) { 
+                // 1. カート内の合計金額（今回分）をフロントエンドで計算
+                let finalTotal = 0;
+                cart.forEach(item => {
+                    finalTotal += (item.price || 0) * item.quantity;
+                });
+
+                // 2. メッセージを組み立てる（今回の合計 ＋ GASから返ってきた累計）
+                let msg = `完了！\n今回の発注合計金額: ¥${finalTotal.toLocaleString()}`;
+                
+                if (result.makerGrandTotal) {
+                    msg += `\n${MY_MAKER}の累計受注金額: ¥${result.makerGrandTotal.toLocaleString()}`;
+                }
+
+                // 合計と累計を含めて完了メッセージを表示
+                alert(msg); 
+
                 clearDraftData();
                 resetUI(); 
             } else {
