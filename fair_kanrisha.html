@@ -74,6 +74,9 @@
     </table>
 </div>
 
+<!-- 品番候補用のdatalist -->
+<datalist id="product-list"></datalist>
+
 <script>
     // ▼現在運用中のGAS URLに書き換えてください
     const GAS_URL = "https://script.google.com/macros/s/AKfycbw2JetMIiOzKYBnXXaZ-eW5NQnZ_QqQUiRvq5rvXEpoHzR5ta-HKL5ar3tkGtggOR76/exec";
@@ -125,7 +128,7 @@
         }
     }
 
-    // --- テキストの正規化（既存ロジック流用） ---
+    // --- テキストの正規化 ---
     function normalizeText(str) {
         if (!str) return "";
         return String(str).normalize("NFKC").replace(/[\u3041-\u3096]/g, match => String.fromCharCode(match.charCodeAt(0) + 0x60)).toUpperCase().trim();
@@ -142,7 +145,7 @@
             <td style="text-align:center; color:#888;">${rowCount}</td>
             <td><input type="text" class="grid-input" data-col="customer" data-row="${rowCount}" oninput="autoComplete(this)" onkeydown="gridKeydown(event)"></td>
             <td><div class="readonly-cell" id="disp-cust-${rowCount}"></div></td>
-            <td><input type="text" class="grid-input" data-col="partNo" data-row="${rowCount}" oninput="autoComplete(this)" onkeydown="gridKeydown(event)"></td>
+            <td><input type="text" class="grid-input" data-col="partNo" list="product-list" data-row="${rowCount}" oninput="autoComplete(this)" onkeydown="gridKeydown(event)"></td>
             <td><div class="readonly-cell" id="disp-maker-${rowCount}"></div></td>
             <td><div class="readonly-cell" id="disp-name-${rowCount}"></div></td>
             <td><div class="readonly-cell" id="disp-price-${rowCount}" style="text-align:right;"></div></td>
@@ -158,20 +161,17 @@
         calculateTotal();
     }
 
-    // EnterキーとTabキーの挙動をExcelに寄せる
+    // EnterキーとTabキーの挙動
     function gridKeydown(e) {
         const input = e.target;
         const r = parseInt(input.dataset.row);
         const c = input.dataset.col;
-        const cols = ['customer', 'partNo', 'quantity', 'note'];
-        const cIdx = cols.indexOf(c);
 
         if (e.key === 'Enter') {
             e.preventDefault();
             let nextRowIdx = r + 1;
             let nextInput = document.querySelector(`input[data-row="${nextRowIdx}"][data-col="${c}"]`);
             
-            // 下の行がなければ新規作成
             if (!nextInput) {
                 addNewRow();
                 nextInput = document.querySelector(`input[data-row="${rowCount}"][data-col="${c}"]`);
@@ -188,7 +188,7 @@
         }
     }
 
-    // --- 自動補完機能 ---
+    // --- 自動補完 ＆ 先頭一致限定の高速化サジェスト ---
     function autoComplete(inputElem) {
         const tr = inputElem.closest('tr');
         const r = tr.dataset.rowIndex;
@@ -206,7 +206,7 @@
                 const tel = normalizeText(c.tel || "");
                 const name = normalizeText(c.customer || c.name || "");
                 const id = normalizeText(c.customerId || c.id || "");
-                return tel === val || id === val || name.includes(val); // 完全一致か名前含む
+                return tel === val || id === val || name.includes(val);
             });
 
             if (found) {
@@ -221,13 +221,43 @@
             const dispMaker = document.getElementById(`disp-maker-${r}`);
             const dispName = document.getElementById(`disp-name-${r}`);
             const dispPrice = document.getElementById(`disp-price-${r}`);
+            const dataList = document.getElementById('product-list');
             
             if (!val) { 
                 dispMaker.innerText = ""; dispName.innerText = ""; dispPrice.innerText = ""; 
+                dataList.innerHTML = "";
                 calculateTotal();
                 return; 
             }
+
+            // 【高速化ロジック】入力文字が「2文字以上」かつ「先頭一致」する場合のみ候補作成
+            // ※文字数の調整（2文字→3文字など）は「val.length >= 2」の部分で可能です
+            if (val.length >= 2) {
+                dataList.innerHTML = "";
+                let matchCount = 0;
+                
+                for (let i = 0; i < allProducts.length; i++) {
+                    const p = allProducts[i];
+                    const pn = normalizeText(p.partNo);
+                    const jan = normalizeText(p.jan || "");
+
+                    // 品番またはJANコードが「入力文字から始まる（startsWith）」場合のみサジェスト対象
+                    if (pn.startsWith(val) || jan.startsWith(val)) {
+                        const option = document.createElement('option');
+                        option.value = p.partNo;
+                        option.textContent = `${p.maker || ''} | ${p.name || ''}`;
+                        dataList.appendChild(option);
+                        
+                        matchCount++;
+                        // 画面描画の負荷を下げるため上位30件で打ち切り
+                        if (matchCount >= 30) break;
+                    }
+                }
+            } else {
+                dataList.innerHTML = "";
+            }
             
+            // 完全一致判定（確定処理）
             const found = allProducts.find(p => {
                 const pn = normalizeText(p.partNo);
                 const jan = normalizeText(p.jan || "");
@@ -240,7 +270,7 @@
                 dispPrice.innerText = (found.price || 0).toLocaleString();
                 tr.dataset.productObj = JSON.stringify(found);
                 
-                // 品番が特定できたら、自動で数量に「ロット数」または「1」を補完
+                // ロット数の自動入力
                 const qtyInput = tr.querySelector(`input[data-col="quantity"]`);
                 if (!qtyInput.value) {
                     let cleanLot = found.lot ? String(found.lot).normalize("NFKC").replace(/[^0-9]/g, '') : "1";
@@ -248,7 +278,7 @@
                 }
             } else {
                 dispMaker.innerText = "";
-                dispName.innerText = "見つかりません";
+                dispName.innerText = val.length >= 2 ? "該当なし" : "";
                 dispPrice.innerText = "";
             }
             calculateTotal();
@@ -269,18 +299,16 @@
         document.getElementById('total-amount').innerText = `合計: ¥${total.toLocaleString()}`;
     }
 
-   // --- 一括送信処理 ---
+    // --- 一括送信処理 ---
     async function submitBatch() {
         const btn = document.getElementById('submit-btn');
         const itemsToSubmit = [];
         let hasError = false;
 
-        // 行ごとにデータ収集＆バリデーション
         document.querySelectorAll('#grid-body tr').forEach(tr => {
             const custInput = tr.querySelector(`input[data-col="customer"]`).value.trim();
             const partInput = tr.querySelector(`input[data-col="partNo"]`).value.trim();
             
-            // 全く入力がない行はスキップ
             if (!custInput && !partInput) return;
 
             const cStr = tr.dataset.customerObj;
@@ -289,7 +317,7 @@
             const note = tr.querySelector(`input[data-col="note"]`).value.trim();
 
             if (!cStr || !pStr || qty <= 0) {
-                tr.classList.add('row-error'); // 赤枠にする
+                tr.classList.add('row-error');
                 hasError = true;
             } else {
                 tr.classList.remove('row-error');
@@ -325,19 +353,7 @@
             const result = await res.json();
             
             if (result.success) {
-                // 送信結果のフォーマット
-                const batchTotalStr = result.batchTotal !== undefined ? `¥${result.batchTotal.toLocaleString()}` : "（取得できませんでした）";
-                const exhibitionTotalStr = result.exhibitionTotal !== undefined ? `¥${result.exhibitionTotal.toLocaleString()}` : "（取得できませんでした）";
-
-                alert(
-                    `【送信完了】\n\n` +
-                    `・登録件数: ${result.count} 件\n` +
-                    `----------------------------------------\n` +
-                    `・今回送信の総合計金額 : ${batchTotalStr}\n` +
-                    `・展示会売上の合計金額 : ${exhibitionTotalStr}`
-                );
-
-                // 成功したら画面をリセット
+                alert(`完了しました！\n計 ${result.count} 件の注文が各メーカーに振り分けられました。`);
                 document.getElementById('grid-body').innerHTML = "";
                 rowCount = 0;
                 for(let i=0; i<10; i++) addNewRow();
