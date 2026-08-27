@@ -1,4 +1,4 @@
-﻿﻿﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="ja">
 <head>
   <meta charset="UTF-8">
@@ -17,29 +17,34 @@
       --card-bg: #FFFFFF;
       --text: #333333;
       --border: #E0E0E0;
+      --success: #2E7D32;
     }
 
     * { box-sizing: border-box; margin: 0; padding: 0; font-family: "Segoe UI", "Yu Gothic", sans-serif; }
     body { background-color: var(--bg); color: var(--text); padding: 20px; }
 
     header {
-      display: flex; justify-content: space-between; align-items: center;
+      display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;
       background: var(--card-bg); padding: 15px 25px; border-radius: 10px;
       box-shadow: 0 2px 8px rgba(0,0,0,0.05); margin-bottom: 20px;
     }
     header h1 { font-size: 20px; color: var(--primary); }
-    .btn-group { display: flex; gap: 10px; }
+    .btn-group { display: flex; gap: 8px; flex-wrap: wrap; }
 
     button {
-      padding: 8px 16px; border: none; border-radius: 6px; font-weight: bold;
-      cursor: pointer; transition: all 0.2s ease; font-size: 13px;
+      padding: 8px 14px; border: none; border-radius: 6px; font-weight: bold;
+      cursor: pointer; transition: all 0.2s ease; font-size: 13px; display: inline-flex; align-items: center; gap: 5px;
     }
     .btn-primary { background-color: var(--primary); color: white; }
     .btn-primary:hover { background-color: var(--secondary); }
     .btn-accent { background-color: var(--accent); color: white; }
     .btn-accent:hover { background-color: #a4480e; }
+    .btn-success { background-color: var(--success); color: white; }
+    .btn-success:hover { background-color: #1b5e20; }
     .btn-outline { background-color: transparent; border: 1px solid var(--border); color: var(--text); }
     .btn-outline:hover { background-color: var(--bg); }
+    .btn-danger { background-color: #d32f2f; color: white; }
+    .btn-danger:hover { background-color: #9a0007; }
 
     /* KPI Cards */
     .kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 20px; }
@@ -73,24 +78,34 @@
     td { padding: 10px; border-bottom: 1px solid var(--border); }
     tr:nth-child(even) { background-color: #FAFAFA; }
 
-    /* Import Drop Zone */
+    /* Drop Zone */
     .drop-zone {
-      border: 2px dashed var(--secondary); border-radius: 8px; padding: 25px;
+      border: 2px dashed var(--secondary); border-radius: 8px; padding: 20px;
       text-align: center; color: #666; cursor: pointer; transition: background 0.2s;
+      margin-bottom: 15px;
     }
     .drop-zone:hover { background-color: #EBF1F8; }
 
-    /* Modal (POPアップ) */
+    /* Quick Entry Form */
+    .entry-form {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 10px; font-size: 12px;
+    }
+    .entry-form label { font-weight: bold; color: #555; display: block; margin-bottom: 3px; }
+    .entry-form input, .entry-form select {
+      width: 100%; padding: 7px; border: 1px solid var(--border); border-radius: 4px;
+    }
+
+    /* Modals */
     .modal-overlay {
       position: fixed; top: 0; left: 0; width: 100%; height: 100%;
       background: rgba(0,0,0,0.5); display: none; justify-content: center; align-items: center;
       z-index: 1000;
     }
     .modal {
-      background: white; padding: 25px; border-radius: 12px; width: 450px;
+      background: white; padding: 25px; border-radius: 12px; width: 460px; max-width: 90%;
       box-shadow: 0 4px 20px rgba(0,0,0,0.15);
     }
-    .modal-title { font-size: 16px; font-weight: bold; color: var(--accent); margin-bottom: 15px; }
+    .modal-title { font-size: 16px; font-weight: bold; color: var(--primary); margin-bottom: 15px; }
     .setting-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
     .setting-row label { font-weight: bold; font-size: 13px; }
     .setting-inputs { display: flex; align-items: center; gap: 5px; }
@@ -101,14 +116,26 @@
     #dailyTable tbody tr:hover { background-color: #EBF1F8 !important; }
     #dailyTable tbody tr.selected-date-row { background-color: #D9E1F2 !important; font-weight: bold; }
 
-    /* Daily Detail Section */
+    /* Detail Card */
     .detail-card {
       border-left: 5px solid var(--accent);
       animation: fadeIn 0.3s ease;
     }
     @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
 
-</style>
+    .status-bar {
+      font-size: 11px; color: #2e7d32; background: #e8f5e9; padding: 6px 12px; border-radius: 4px; margin-bottom: 15px; display: flex; justify-content: space-between; align-items: center;
+    }
+
+    /* Filter Form specifically for Ranking */
+    .filter-form {
+      display: flex; gap: 15px; align-items: flex-end; margin-bottom: 15px; flex-wrap: wrap;
+      background: #F8F9FA; padding: 15px; border-radius: 8px;
+    }
+    .filter-form .field-group { display: flex; flex-direction: column; }
+    .filter-form label { font-weight: bold; color: #555; margin-bottom: 5px; font-size: 12px; }
+    .filter-form input { padding: 7px; border: 1px solid var(--border); border-radius: 4px; }
+  </style>
 </head>
 <body>
 
@@ -116,11 +143,18 @@
   <header>
     <h1>📊 売上・客単価・価格帯分析ダッシュボード</h1>
     <div class="btn-group">
-      <button class="btn-accent" onclick="openModal()">⚙️ 価格帯の境界設定 (POPアップ)</button>
-      <button class="btn-primary" onclick="document.getElementById('csvFileInput').click()">📁 CSVインポート</button>
+      <button class="btn-success" onclick="exportAccumulatedCSV()">📤 1か月分CSV保存</button>
+      <button class="btn-accent" onclick="openModal()">⚙️ 価格帯設定</button>
+      <button class="btn-primary" onclick="document.getElementById('csvFileInput').click()">📁 日別CSV追記</button>
+      <button class="btn-danger" onclick="clearAllData()">🗑️ データ初期化</button>
       <input type="file" id="csvFileInput" accept=".csv" style="display:none" onchange="handleCSVSelect(event)">
     </div>
   </header>
+
+  <div class="status-bar" id="statusBar">
+    <span>💾 ブラウザ内自動保存：有効（データを保持中）</span>
+    <span id="dataCountText">全 0 件の売上明細</span>
+  </div>
 
   <!-- KPI Cards -->
   <div class="kpi-grid">
@@ -176,78 +210,55 @@
       </div>
     </div>
 
-    
-      <!-- 日別詳細ドリルダウンカード -->
-      <div class="card detail-card" id="dayDetailCard" style="display: none;">
-        <div class="card-header">
-          <span class="card-title" id="detailTitle">🔍 日別詳細分析</span>
-          <span style="font-size: 12px; color: #666;" id="detailSubTitle"></span>
-        </div>
-        
-        <div style="display: flex; gap: 15px; margin-bottom: 15px; background: #F8F9FA; padding: 12px; border-radius: 8px;">
-          <div style="flex: 1; text-align: center;">
-            <div style="font-size: 11px; color: #666;">天候</div>
-            <div style="font-size: 16px; font-weight: bold;" id="detailWeather">-</div>
-          </div>
-          <div style="flex: 1; text-align: center;">
-            <div style="font-size: 11px; color: #666;">日売上高</div>
-            <div style="font-size: 16px; font-weight: bold; color: var(--primary);" id="detailSales">¥0</div>
-          </div>
-          <div style="flex: 1; text-align: center;">
-            <div style="font-size: 11px; color: #666;">平均販売単価</div>
-            <div style="font-size: 16px; font-weight: bold; color: var(--accent);" id="detailAvgPrice">¥0</div>
-          </div>
-          <div style="flex: 1; text-align: center;">
-            <div style="font-size: 11px; color: #666;">総販売点数</div>
-            <div style="font-size: 16px; font-weight: bold;" id="detailQty">0 点</div>
-          </div>
-        </div>
-
-        <!-- 日別の価格帯別売上高構成グラフ -->
-        <div style="margin-bottom: 20px;">
-          <h4 style="font-size: 14px; color: var(--primary); margin-bottom: 12px;">🏷️ 価格帯別 売上高構成 (選択日)</h4>
-          <div class="chart-container" style="height: 240px;">
-            <canvas id="detailDayChart"></canvas>
-          </div>
-          
-          <table style="margin-top: 15px;" id="detailPriceTable">
-            <thead>
-              <tr>
-                <th>区分</th>
-                <th>価格帯範囲</th>
-                <th style="text-align:right">売上</th>
-                <th style="text-align:right">構成比</th>
-              </tr>
-            </thead>
-            <tbody id="detailPriceTbody"></tbody>
-          </table>
-        </div>
-
-        <div style="margin-top: 25px;">
-          <h4 style="font-size: 14px; color: var(--primary); margin-bottom: 8px;">📦 明細データ（商品別販売内訳）</h4>
-          <table>
-            <thead>
-              <tr>
-                <th>商品名</th>
-                <th style="text-align:right">販売単価</th>
-                <th style="text-align:right">数量</th>
-                <th style="text-align:right">売上小計</th>
-                <th style="text-align:center">価格帯区分</th>
-              </tr>
-            </thead>
-            <tbody id="detailProductTbody"></tbody>
-          </table>
-        </div>
-
-      </div>
-
-    <!-- Right Column: Price Bracket Breakdown & Import -->
+    <!-- Right Column: Entry & Price Bracket -->
     <div>
       <div class="card">
         <div class="card-header">
-          <span class="card-title">🏷️ 価格帯別 売上高構成（自動可変）</span>
+          <span class="card-title">➕ 1日分の売上・天気データを追加</span>
         </div>
-        <div class="chart-container" style="height: 220px;">
+        <div class="entry-form">
+          <div>
+            <label>日付</label>
+            <input type="date" id="inputDate">
+          </div>
+          <div>
+            <label>天気</label>
+            <select id="inputWeather">
+              <option value="晴れ">☀️ 晴れ</option>
+              <option value="曇り">☁️ 曇り</option>
+              <option value="雨">🌧️ 雨</option>
+              <option value="雪">❄️ 雪</option>
+            </select>
+          </div>
+          <div style="grid-column: span 2;">
+            <label>商品名</label>
+            <input type="text" id="inputItem" placeholder="例: 陶器鉢（M）ホワイト">
+          </div>
+          <div>
+            <label>単価（円）</label>
+            <input type="number" id="inputPrice" placeholder="例: 1200">
+          </div>
+          <div>
+            <label>数量</label>
+            <input type="number" id="inputQty" value="1">
+          </div>
+        </div>
+        <button class="btn-primary" style="width: 100%; margin-top: 12px; justify-content: center;" onclick="addSingleRecord()">＋ 明細を追加して保存</button>
+        
+        <div style="margin-top: 15px; font-size: 11px; color: #666; border-top: 1px solid var(--border); padding-top: 10px;">
+          📁 <strong>日別CSVファイルでの一括追記:</strong><br>
+          下のエリアへファイルをドロップすると、選択した日の売上・天気をデータに追加できます。
+        </div>
+        <div class="drop-zone" style="margin-top: 10px;" onclick="document.getElementById('csvFileInput').click()">
+          ドラッグ＆ドロップ または CSV選択
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title">🏷️ 価格帯別 売上高構成（全期間合計）</span>
+        </div>
+        <div class="chart-container" style="height: 200px;">
           <canvas id="priceChart"></canvas>
         </div>
         <table id="priceTable" style="margin-top: 15px;">
@@ -262,19 +273,97 @@
           <tbody></tbody>
         </table>
       </div>
-
-      <div class="card">
-        <div class="card-header">
-          <span class="card-title">📥 売上データの取り込み</span>
-        </div>
-        <div class="drop-zone" onclick="document.getElementById('csvFileInput').click()">
-          <p>ここにCSVファイルをドラッグ＆ドロップ<br>または <strong>ファイルを選択</strong></p>
-        </div>
-      </div>
     </div>
   </div>
 
-  <!-- POPUP MODAL for Price Bracket Thresholds -->
+  <!-- ★ 追加：期間指定 商品別売上ランキング ★ -->
+  <div class="card" style="margin-bottom: 20px;">
+    <div class="card-header">
+      <span class="card-title">🛍️ 期間指定：商品別 売上数量・金額ランキング</span>
+    </div>
+    
+    <div class="filter-form">
+      <div class="field-group">
+        <label>開始日</label>
+        <input type="date" id="filterStartDate">
+      </div>
+      <div class="field-group">
+        <label>終了日</label>
+        <input type="date" id="filterEndDate">
+      </div>
+      <div style="display: flex; gap: 8px;">
+        <button class="btn-primary" onclick="analyzeProductRanking()">🔍 期間で集計する</button>
+        <button class="btn-outline" onclick="resetProductRanking()">全期間に戻す</button>
+      </div>
+    </div>
+
+    <table id="productRankingTable">
+      <thead>
+        <tr>
+          <th style="width: 50px;">順位</th>
+          <th>商品名</th>
+          <th style="text-align:right">販売数量</th>
+          <th style="text-align:right">売上金額</th>
+          <th style="text-align:right">平均単価</th>
+        </tr>
+      </thead>
+      <tbody>
+        <!-- JSで動的に追加されます -->
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Detail Card (日別) -->
+  <div class="card detail-card" id="dayDetailCard" style="display: none; margin-bottom: 20px;">
+    <div class="card-header">
+      <span class="card-title" id="detailTitle">🔍 日別詳細分析</span>
+      <span style="font-size: 12px; color: #666;" id="detailSubTitle"></span>
+    </div>
+    
+    <div style="display: flex; gap: 15px; margin-bottom: 15px; background: #F8F9FA; padding: 12px; border-radius: 8px; flex-wrap: wrap;">
+      <div style="flex: 1; text-align: center; min-width: 80px;">
+        <div style="font-size: 11px; color: #666;">天候</div>
+        <div style="font-size: 16px; font-weight: bold;" id="detailWeather">-</div>
+      </div>
+      <div style="flex: 1; text-align: center; min-width: 100px;">
+        <div style="font-size: 11px; color: #666;">日売上高</div>
+        <div style="font-size: 16px; font-weight: bold; color: var(--primary);" id="detailSales">¥0</div>
+      </div>
+      <div style="flex: 1; text-align: center; min-width: 100px;">
+        <div style="font-size: 11px; color: #666;">平均販売単価</div>
+        <div style="font-size: 16px; font-weight: bold; color: var(--accent);" id="detailAvgPrice">¥0</div>
+      </div>
+      <div style="flex: 1; text-align: center; min-width: 80px;">
+        <div style="font-size: 11px; color: #666;">総販売点数</div>
+        <div style="font-size: 16px; font-weight: bold;" id="detailQty">0 点</div>
+      </div>
+    </div>
+
+    <div>
+      <h4 style="font-size: 14px; color: var(--primary); margin-bottom: 12px;">🏷️ 価格帯別 売上高構成 (選択日)</h4>
+      <div class="chart-container" style="height: 200px;">
+        <canvas id="detailDayChart"></canvas>
+      </div>
+    </div>
+
+    <div style="margin-top: 20px;">
+      <h4 style="font-size: 14px; color: var(--primary); margin-bottom: 8px;">📦 明細データ（商品別販売内訳）</h4>
+      <table>
+        <thead>
+          <tr>
+            <th>商品名</th>
+            <th style="text-align:right">販売単価</th>
+            <th style="text-align:right">数量</th>
+            <th style="text-align:right">売上小計</th>
+            <th style="text-align:center">価格帯区分</th>
+          </tr>
+        </thead>
+        <tbody id="detailProductTbody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Modal for Thresholds -->
   <div class="modal-overlay" id="settingModal">
     <div class="modal">
       <div class="modal-title">⚙️ 価格帯のしきい値設定</div>
@@ -290,7 +379,7 @@
   </div>
 
   <script>
-    // --- Initial Default State ---
+    // Initial Price Brackets
     let priceBrackets = [
       { name: "低価格帯", min: 0, max: 1000 },
       { name: "中低価格帯", min: 1000, max: 3000 },
@@ -299,8 +388,8 @@
       { name: "高価格帯", min: 10000, max: 999999 }
     ];
 
-    // Sample Raw Data
-    let salesData = [
+    // Default Sample Sales Data
+    const defaultSalesData = [
       { id: "S-1001", date: "2026-08-01", item: "陶器鉢（M）ホワイト", price: 1200, qty: 10, weather: "晴れ" },
       { id: "S-1002", date: "2026-08-01", item: "ガラスベース L", price: 3500, qty: 4, weather: "晴れ" },
       { id: "S-1003", date: "2026-08-01", item: "アートフラワーハンギング", price: 8500, qty: 2, weather: "晴れ" },
@@ -308,142 +397,43 @@
       { id: "S-1005", date: "2026-08-02", item: "高級セラミック花瓶", price: 15000, qty: 1, weather: "雨" },
       { id: "S-1006", date: "2026-08-02", item: "和風陶器鉢（黒）", price: 2800, qty: 5, weather: "雨" },
       { id: "S-1007", date: "2026-08-03", item: "大型テラコッタ鉢", price: 12000, qty: 3, weather: "曇り" },
-      { id: "S-1008", date: "2026-08-03", item: "陶器鉢（S）セット", price: 1500, qty: 8, weather: "曇り" },
-      { id: "S-1009", date: "2026-08-03", item: "水耕栽培用ガラス器", price: 2200, qty: 10, weather: "曇り" },
-      { id: "S-1010", date: "2026-08-04", item: "卓上ミニ鉢カバー", price: 650, qty: 20, weather: "晴れ" },
-      { id: "S-1011", date: "2026-08-04", item: "ガラスベース L", price: 3500, qty: 6, weather: "晴れ" },
-      { id: "S-1012", date: "2026-08-05", item: "陶器鉢（M）ホワイト", price: 1200, qty: 25, weather: "晴れ" },
-      { id: "S-1013", date: "2026-08-05", item: "高級セラミック花瓶", price: 15000, qty: 1, weather: "晴れ" },
-      { id: "S-1014", date: "2026-08-05", item: "デザイナーズ花器", price: 25000, qty: 2, weather: "晴れ" },
-      { id: "S-1015", date: "2026-08-06", item: "和風陶器鉢（黒）", price: 2800, qty: 8, weather: "雨" },
-      { id: "S-1016", date: "2026-08-06", item: "プラスチック鉢 10個", price: 800, qty: 30, weather: "雨" },
-      { id: "S-1017", date: "2026-08-07", item: "アートフラワーハンギング", price: 8500, qty: 3, weather: "曇り" },
-      { id: "S-1018", date: "2026-08-07", item: "卓上ミニ鉢カバー", price: 650, qty: 5, weather: "曇り" }
+      { id: "S-1008", date: "2026-08-03", item: "陶器鉢（S）セット", price: 1500, qty: 8, weather: "曇り" }
     ];
 
+    let salesData = [];
     let dailyChartInstance = null;
     let priceChartInstance = null;
     let detailChartInstance = null;
-
-    
     let selectedDate = null;
 
-        function selectDate(dateStr) {
-      selectedDate = dateStr;
-      
-      // Highlight selected row in table
-      document.querySelectorAll("#dailyTable tbody tr").forEach(tr => {
-        if (tr.getAttribute("data-date") === dateStr) {
-          tr.classList.add("selected-date-row");
-        } else {
-          tr.classList.remove("selected-date-row");
+    // Load Data from LocalStorage on Startup
+    function initData() {
+      const storedData = localStorage.getItem("monthly_sales_data_v1");
+      if (storedData) {
+        try {
+          salesData = JSON.parse(storedData);
+        } catch(e) {
+          salesData = [...defaultSalesData];
         }
-      });
+      } else {
+        salesData = [...defaultSalesData];
+        saveDataToStorage();
+      }
 
-      // Filter rows for this date
-      const dayRows = salesData.filter(d => d.date === dateStr);
-      if (dayRows.length === 0) return;
+      // Set today's date in quick input
+      document.getElementById("inputDate").value = new Date().toISOString().split('T')[0];
 
-      const dayWeather = dayRows[0].weather || "-";
-      let daySalesSum = 0;
-      let dayQtySum = 0;
-
-      dayRows.forEach(r => {
-        daySalesSum += r.price * r.qty;
-        dayQtySum += r.qty;
-      });
-
-      const dayAvgPrice = dayQtySum ? daySalesSum / dayQtySum : 0;
-
-      // Update Card Info
-      document.getElementById("detailTitle").innerText = `🔍 【${dateStr}】 の売上・価格帯分析`;
-      document.getElementById("detailSubTitle").innerText = `全 ${dayRows.length} 件の取引データ`;
-      document.getElementById("detailWeather").innerText = getWeatherBadge(dayWeather);
-      document.getElementById("detailSales").innerText = fmtYen(daySalesSum);
-      document.getElementById("detailAvgPrice").innerText = fmtYen(dayAvgPrice);
-      document.getElementById("detailQty").innerText = dayQtySum + " 点";
-
-      // 1. Calculate Daily Price Bracket Totals
-      const dayBracketResults = priceBrackets.map(b => ({ ...b, total: 0, qty: 0 }));
-      dayRows.forEach(row => {
-        const itemAmount = row.price * row.qty;
-        const bracket = dayBracketResults.find(b => row.price >= b.min && row.price < b.max);
-        if (bracket) {
-          bracket.total += itemAmount;
-          bracket.qty += row.qty;
-        }
-      });
-
-      // Render Price Bracket Table for Selected Day
-      const priceTbody = document.getElementById("detailPriceTbody");
-      priceTbody.innerHTML = "";
-      dayBracketResults.forEach(b => {
-        const ratio = daySalesSum ? ((b.total / daySalesSum) * 100).toFixed(1) : 0;
-        const rangeText = b.max >= 999999 ? `${b.min.toLocaleString()}円〜` : `${b.min.toLocaleString()}円〜${b.max.toLocaleString()}円`;
-        priceTbody.innerHTML += `
-          <tr>
-            <td><strong>${b.name}</strong></td>
-            <td>${rangeText}</td>
-            <td style="text-align:right; font-weight:bold;">${fmtYen(b.total)}</td>
-            <td style="text-align:right">${ratio}%</td>
-          </tr>
-        `;
-      });
-
-      // Render Daily Price Bracket Chart (Matching the global Price Bracket chart layout)
-      if (detailChartInstance) detailChartInstance.destroy();
-      const ctxDetail = document.getElementById("detailDayChart").getContext("2d");
-
-      detailChartInstance = new Chart(ctxDetail, {
-        type: 'bar',
-        data: {
-          labels: dayBracketResults.map(b => b.name),
-          datasets: [{
-            label: '売上高',
-            data: dayBracketResults.map(b => b.total),
-            backgroundColor: '#1F497D'
-          }]
-        },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          plugins: { legend: { display: false } },
-          scales: {
-            y: {
-              beginAtZero: true,
-              ticks: { callback: v => '¥' + v.toLocaleString() }
-            }
-          }
-        }
-      });
-
-      // 2. Populate Product Details Table
-      const tbody = document.getElementById("detailProductTbody");
-      tbody.innerHTML = "";
-
-      dayRows.forEach(r => {
-        const itemTotal = r.price * r.qty;
-        const bracket = priceBrackets.find(b => r.price >= b.min && r.price < b.max);
-        const bracketName = bracket ? bracket.name : "その他";
-
-        tbody.innerHTML += `
-          <tr>
-            <td><strong>${r.item}</strong></td>
-            <td style="text-align:right; font-weight:bold; color:var(--accent);">${fmtYen(r.price)}</td>
-            <td style="text-align:right">${r.qty} 点</td>
-            <td style="text-align:right; font-weight:bold;">${fmtYen(itemTotal)}</td>
-            <td style="text-align:center"><span style="background:#EBF1F8; color:var(--primary); padding:2px 6px; border-radius:4px; font-size:11px;">${bracketName}</span></td>
-          </tr>
-        `;
-      });
-
-      document.getElementById("dayDetailCard").style.display = "block";
-      document.getElementById("dayDetailCard").scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      renderDashboard();
+      analyzeProductRanking(); // 初回ロード時に全期間でランキング表示
     }
 
-    // --- Format Helper ---
-    const fmtYen = num => "¥" + Math.round(num).toLocaleString();
+    function saveDataToStorage() {
+      localStorage.setItem("monthly_sales_data_v1", JSON.stringify(salesData));
+      document.getElementById("dataCountText").innerText = `全 ${salesData.length} 件の売上明細`;
+    }
 
+    // Formatters
+    const fmtYen = num => "¥" + Math.round(num).toLocaleString();
     const getWeatherBadge = (w) => {
       if (!w || w === "-") return "-";
       if (w.includes("晴")) return "☀️ 晴れ";
@@ -453,43 +443,85 @@
       return w;
     };
 
+    // Manual Entry of Single Record
+    function addSingleRecord() {
+      const date = document.getElementById("inputDate").value;
+      const weather = document.getElementById("inputWeather").value;
+      const item = document.getElementById("inputItem").value.trim() || "商品名未設定";
+      const price = parseFloat(document.getElementById("inputPrice").value) || 0;
+      const qty = parseInt(document.getElementById("inputQty").value) || 1;
 
-    // --- Modal Functions ---
-    function openModal() {
-      const container = document.getElementById("modalBracketInputs");
-      container.innerHTML = "";
-      priceBrackets.forEach((b, i) => {
-        container.innerHTML += `
-          <div class="setting-row">
-            <label>${b.name}</label>
-            <div class="setting-inputs">
-              <input type="number" id="min_${i}" value="${b.min}"> 円 〜
-              <input type="number" id="max_${i}" value="${b.max}"> 円
-            </div>
-          </div>
-        `;
-      });
-      document.getElementById("settingModal").style.display = "flex";
-    }
+      if (!date) {
+        alert("日付を選択してください。");
+        return;
+      }
+      if (price <= 0) {
+        alert("有効な単価を入力してください。");
+        return;
+      }
 
-    function closeModal() {
-      document.getElementById("settingModal").style.display = "none";
-    }
+      const newRec = {
+        id: "S-" + Date.now().toString().slice(-6),
+        date: date,
+        item: item,
+        price: price,
+        qty: qty,
+        weather: weather
+      };
 
-        function applySettings() {
-      priceBrackets.forEach((b, i) => {
-        b.min = Number(document.getElementById(`min_${i}`).value);
-        b.max = Number(document.getElementById(`max_${i}`).value);
-      });
-      closeModal();
+      salesData.push(newRec);
+      saveDataToStorage();
       renderDashboard();
-      if (selectedDate) {
-        selectDate(selectedDate);
+      analyzeProductRanking(); // ランキング更新
+
+      if (selectedDate === date) {
+        selectDate(date);
+      }
+
+      // Reset item inputs
+      document.getElementById("inputItem").value = "";
+      document.getElementById("inputPrice").value = "";
+      document.getElementById("inputQty").value = "1";
+
+      alert(`✅ ${date} に「${item}」を追加して自動保存しました！`);
+    }
+
+    // Export Accumulated Month CSV
+    function exportAccumulatedCSV() {
+      if (salesData.length === 0) {
+        alert("出力するデータがありません。");
+        return;
+      }
+
+      let csvStr = "\uFEFF日付,天気,商品名,単価,数量,売上金額\n";
+      salesData.forEach(r => {
+        const amt = r.price * r.qty;
+        csvStr += `"${r.date}","${r.weather || ''}","${r.item.replace(/"/g, '""')}",${r.price},${r.qty},${amt}\n`;
+      });
+
+      const blob = new Blob([csvStr], { type: 'text/csv;charset=utf-8;' });
+      const link = document.createElement('a');
+      const url = URL.createObjectURL(blob);
+      link.setAttribute('href', url);
+      link.setAttribute('download', `1か月売上集計データ_${new Date().toISOString().split('T')[0]}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
+
+    // Clear All Data
+    function clearAllData() {
+      if (confirm("⚠️ 保存されている全売上データを消去しますか？\n※この操作は取り消せません。事前にCSV保存をおすすめします。")) {
+        salesData = [];
+        saveDataToStorage();
+        renderDashboard();
+        analyzeProductRanking();
+        document.getElementById("dayDetailCard").style.display = "none";
+        alert("データを初期化しました。");
       }
     }
 
-    // --- CSV Import ---
-        
+    // Handle CSV Selection & Parsing
     function handleCSVSelect(e) {
       const file = e.target.files[0];
       if (!file) return;
@@ -499,24 +531,21 @@
         const buffer = evt.target.result;
         let text = "";
         
-        // Try decoding as Shift_JIS (CP932) first
         try {
           const sjisDecoder = new TextDecoder("shift-jis");
           text = sjisDecoder.decode(buffer);
-          // Check if key Japanese headers exist or if corrupted
           if (text.includes("日付") || text.includes("売上") || text.includes("単価") || text.includes("商品")) {
             parseCSVText(text);
             return;
           }
         } catch (err) {}
 
-        // Fallback to UTF-8
         try {
           const utf8Decoder = new TextDecoder("utf-8");
           text = utf8Decoder.decode(buffer);
           parseCSVText(text);
         } catch (err) {
-          alert("CSVファイルの読み込みに失敗しました。文字コードをご確認ください。");
+          alert("CSVの読み込みに失敗しました。");
         }
       };
       reader.readAsArrayBuffer(file);
@@ -555,9 +584,7 @@
         return str;
       };
 
-      const toHalfWidthNum = (str) => {
-        return String(str).replace(/[０-９]/g, s => String.fromCharCode(s.charCodeAt(0) - 0xfee0));
-      };
+      const toHalfWidthNum = (str) => String(str).replace(/[０-９]/g, s => String.fromCharCode(s.charCodeAt(0) - 0xfee0));
 
       const parseNumExtended = (val) => {
         if (val === null || val === undefined || val === '') return 0;
@@ -567,19 +594,16 @@
         return isNaN(parsed) ? 0 : parsed;
       };
 
-      salesData = results.data.map((rawR, idx) => {
+      const importedData = results.data.map((rawR, idx) => {
         const r = cleanRow(rawR);
         const keys = Object.keys(r);
         const vals = Object.values(r);
 
-        // Header pattern matching
         const getKey = (patterns) => {
           const key = keys.find(k => patterns.some(p => k.includes(p)));
           return key ? r[key] : null;
         };
 
-        // Fallback by position if headers are not recognized:
-        // Col 0: ID, Col 1: Date, Col 2: Item, Col 3: Price, Col 4: Qty
         const idVal = getKey(["売上ID", "ID", "伝票"]) || vals[0] || `S-${idx+1}`;
         const dateVal = getKey(["日付", "売上日", "Date", "date"]) || vals[1];
         const itemVal = getKey(["商品", "品名", "Item", "name"]) || vals[2] || "商品";
@@ -592,15 +616,10 @@
         if (!qtyVal) qtyVal = 1;
 
         const amountVal = parseNumExtended(getKey(["売上金額", "売上高", "金額", "売上", "Amount", "total"]));
-        if (priceVal === 0 && amountVal > 0) {
-          priceVal = amountVal / qtyVal;
-        }
+        if (priceVal === 0 && amountVal > 0) priceVal = amountVal / qtyVal;
 
         let weatherVal = getKey(["天気", "天候", "Weather", "weather", "気象"]);
-        if (!weatherVal && vals[5] !== undefined) {
-          weatherVal = vals[5];
-        }
-        // Fallback search across all cell values in row if weather keyword is found
+        if (!weatherVal && vals[5] !== undefined) weatherVal = vals[5];
         if (!weatherVal) {
           const wMatch = vals.find(v => typeof v === 'string' && (v.includes("晴") || v.includes("雨") || v.includes("曇") || v.includes("雪")));
           if (wMatch) weatherVal = wMatch;
@@ -616,18 +635,192 @@
         };
       }).filter(row => row.price > 0 || row.qty > 0);
 
-      renderDashboard();
-
-      if (salesData.length === 0) {
-        alert("⚠️ データの読み込みに失敗しました。CSVの1行目に「日付」「単価」「数量」が含まれているかご確認ください。");
-      } else {
-        alert(`✅ ${salesData.length} 件の売上データを読み込みました！`);
+      if (importedData.length === 0) {
+        alert("⚠️ 有効な売上データが見つかりませんでした。");
+        return;
       }
+
+      // Ask user to append or replace
+      const append = confirm(`現在蓄積されているデータに、読み込んだ ${importedData.length} 件のデータを「追加（追記）」しますか？\n\n[OK]: 既存データに追加・追記する\n[キャンセル]: 既存データを置き換える`);
+
+      if (append) {
+        salesData = salesData.concat(importedData);
+      } else {
+        salesData = importedData;
+      }
+
+      saveDataToStorage();
+      renderDashboard();
+      analyzeProductRanking();
+      alert(`✅ ${importedData.length} 件のデータを取り込んで保存しました！`);
     }
 
-    // --- Aggregation & Render Core ---
+    // Modal Handlers
+    function openModal() {
+      const container = document.getElementById("modalBracketInputs");
+      container.innerHTML = "";
+      priceBrackets.forEach((b, i) => {
+        container.innerHTML += `
+          <div class="setting-row">
+            <label>${b.name}</label>
+            <div class="setting-inputs">
+              <input type="number" id="min_${i}" value="${b.min}"> 円 〜
+              <input type="number" id="max_${i}" value="${b.max}"> 円
+            </div>
+          </div>
+        `;
+      });
+      document.getElementById("settingModal").style.display = "flex";
+    }
+
+    function closeModal() { document.getElementById("settingModal").style.display = "none"; }
+
+    function applySettings() {
+      priceBrackets.forEach((b, i) => {
+        b.min = Number(document.getElementById(`min_${i}`).value);
+        b.max = Number(document.getElementById(`max_${i}`).value);
+      });
+      closeModal();
+      renderDashboard();
+      if (selectedDate) selectDate(selectedDate);
+    }
+
+    // ★ 追加：期間指定による商品別の集計・ランキング ★
+    function analyzeProductRanking() {
+      const startDate = document.getElementById("filterStartDate").value;
+      const endDate = document.getElementById("filterEndDate").value;
+      const tbody = document.querySelector("#productRankingTable tbody");
+
+      let filteredData = salesData;
+
+      // 日付によるフィルタリング
+      if (startDate) {
+        filteredData = filteredData.filter(d => d.date >= startDate);
+      }
+      if (endDate) {
+        filteredData = filteredData.filter(d => d.date <= endDate);
+      }
+
+      // データがない場合
+      if (filteredData.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding: 20px; color:#666;">指定された期間の売上データがありません。</td></tr>';
+        return;
+      }
+
+      // 商品ごとに集計
+      const productMap = {};
+      filteredData.forEach(row => {
+        if (!productMap[row.item]) {
+          productMap[row.item] = { name: row.item, qty: 0, sales: 0 };
+        }
+        productMap[row.item].qty += row.qty;
+        productMap[row.item].sales += (row.price * row.qty);
+      });
+
+      // 配列に変換して「販売数量」の降順（多い順）で並び替え
+      const rankedProducts = Object.values(productMap).sort((a, b) => b.qty - a.qty);
+
+      // テーブルに描画
+      tbody.innerHTML = "";
+      rankedProducts.forEach((p, index) => {
+        const avgPrice = p.qty > 0 ? p.sales / p.qty : 0;
+        tbody.innerHTML += `
+          <tr>
+            <td style="text-align:center; font-weight:bold; color:#666;">${index + 1}</td>
+            <td><strong>${p.name}</strong></td>
+            <td style="text-align:right">${p.qty.toLocaleString()} 点</td>
+            <td style="text-align:right; font-weight:bold; color:var(--primary);">${fmtYen(p.sales)}</td>
+            <td style="text-align:right">${fmtYen(avgPrice)}</td>
+          </tr>
+        `;
+      });
+    }
+
+    function resetProductRanking() {
+      document.getElementById("filterStartDate").value = "";
+      document.getElementById("filterEndDate").value = "";
+      analyzeProductRanking(); // 全期間で再集計
+    }
+
+    // Select Date Drill-down
+    function selectDate(dateStr) {
+      selectedDate = dateStr;
+      
+      document.querySelectorAll("#dailyTable tbody tr").forEach(tr => {
+        if (tr.getAttribute("data-date") === dateStr) {
+          tr.classList.add("selected-date-row");
+        } else {
+          tr.classList.remove("selected-date-row");
+        }
+      });
+
+      const dayRows = salesData.filter(d => d.date === dateStr);
+      if (dayRows.length === 0) return;
+
+      const dayWeather = dayRows.find(r => r.weather)?.weather || "-";
+      let daySalesSum = 0;
+      let dayQtySum = 0;
+
+      dayRows.forEach(r => {
+        daySalesSum += r.price * r.qty;
+        dayQtySum += r.qty;
+      });
+
+      const dayAvgPrice = dayQtySum ? daySalesSum / dayQtySum : 0;
+
+      document.getElementById("detailTitle").innerText = `🔍 【${dateStr}】 の売上・価格帯分析`;
+      document.getElementById("detailSubTitle").innerText = `全 ${dayRows.length} 件の取引データ`;
+      document.getElementById("detailWeather").innerText = getWeatherBadge(dayWeather);
+      document.getElementById("detailSales").innerText = fmtYen(daySalesSum);
+      document.getElementById("detailAvgPrice").innerText = fmtYen(dayAvgPrice);
+      document.getElementById("detailQty").innerText = dayQtySum + " 点";
+
+      // Daily Price Brackets
+      const dayBracketResults = priceBrackets.map(b => ({ ...b, total: 0 }));
+      dayRows.forEach(row => {
+        const itemAmount = row.price * row.qty;
+        const bracket = dayBracketResults.find(b => row.price >= b.min && row.price < b.max);
+        if (bracket) bracket.total += itemAmount;
+      });
+
+      if (detailChartInstance) detailChartInstance.destroy();
+      const ctxDetail = document.getElementById("detailDayChart").getContext("2d");
+      detailChartInstance = new Chart(ctxDetail, {
+        type: 'bar',
+        data: {
+          labels: dayBracketResults.map(b => b.name),
+          datasets: [{ label: '売上高', data: dayBracketResults.map(b => b.total), backgroundColor: '#1F497D' }]
+        },
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          plugins: { legend: { display: false } },
+          scales: { y: { beginAtZero: true, ticks: { callback: v => '¥' + v.toLocaleString() } } }
+        }
+      });
+
+      // Product Table
+      const tbody = document.getElementById("detailProductTbody");
+      tbody.innerHTML = "";
+      dayRows.forEach(r => {
+        const itemTotal = r.price * r.qty;
+        const bracket = priceBrackets.find(b => r.price >= b.min && r.price < b.max);
+        tbody.innerHTML += `
+          <tr>
+            <td><strong>${r.item}</strong></td>
+            <td style="text-align:right; font-weight:bold; color:var(--accent);">${fmtYen(r.price)}</td>
+            <td style="text-align:right">${r.qty} 点</td>
+            <td style="text-align:right; font-weight:bold;">${fmtYen(itemTotal)}</td>
+            <td style="text-align:center"><span style="background:#EBF1F8; color:var(--primary); padding:2px 6px; border-radius:4px; font-size:11px;">${bracket ? bracket.name : "その他"}</span></td>
+          </tr>
+        `;
+      });
+
+      document.getElementById("dayDetailCard").style.display = "block";
+      document.getElementById("dayDetailCard").scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+
+    // Render Main Dashboard
     function renderDashboard() {
-      // 1. Calculate Daily Totals
       const dailyMap = {};
       let totalSalesSum = 0;
       let totalOrdersCount = salesData.length;
@@ -641,7 +834,7 @@
         if (!dailyMap[row.date]) {
           dailyMap[row.date] = { date: row.date, sales: 0, orders: 0, qty: 0, weather: row.weather || "-" };
         }
-        if (row.weather && !dailyMap[row.date].weather) {
+        if (row.weather && (!dailyMap[row.date].weather || dailyMap[row.date].weather === "-")) {
           dailyMap[row.date].weather = row.weather;
         }
         dailyMap[row.date].sales += amount;
@@ -651,20 +844,19 @@
 
       const dailyList = Object.values(dailyMap).sort((a,b) => a.date.localeCompare(b.date));
 
-      // 2. KPIs
       document.getElementById("kpiTotalSales").innerText = fmtYen(totalSalesSum);
       document.getElementById("kpiTotalOrders").innerText = totalOrdersCount + " 件";
       document.getElementById("kpiATV").innerText = fmtYen(totalOrdersCount ? totalSalesSum / totalOrdersCount : 0);
       document.getElementById("kpiAvgPrice").innerText = fmtYen(totalQtySum ? totalSalesSum / totalQtySum : 0);
 
-      // 3. Daily Table Render
+      // Render Table
       const dailyTbody = document.querySelector("#dailyTable tbody");
       dailyTbody.innerHTML = "";
       dailyList.forEach(d => {
         const atv = d.orders ? d.sales / d.orders : 0;
         const avgItemP = d.qty ? d.sales / d.qty : 0;
         dailyTbody.innerHTML += `
-          <tr data-date="${d.date}" onclick="selectDate('${d.date}')" title="クリックして ${d.date} の商品別単価内訳を分析">
+          <tr data-date="${d.date}" onclick="selectDate('${d.date}')" title="クリックして ${d.date} の商品詳細を分析">
             <td><strong style="color:var(--primary); text-decoration:underline;">${d.date} 👆</strong></td>
             <td style="text-align:center">${getWeatherBadge(d.weather)}</td>
             <td style="text-align:right; font-weight:bold;">${fmtYen(d.sales)}</td>
@@ -676,38 +868,20 @@
         `;
       });
 
-      // 4. Daily Combo Chart Render
-      const dates = dailyList.map(d => d.date);
-      const salesArr = dailyList.map(d => d.sales);
-      const atvArr = dailyList.map(d => d.orders ? d.sales / d.orders : 0);
-
+      // Daily Chart
       if (dailyChartInstance) dailyChartInstance.destroy();
       const ctxDaily = document.getElementById("dailyChart").getContext("2d");
       dailyChartInstance = new Chart(ctxDaily, {
         type: 'bar',
         data: {
-          labels: dates,
+          labels: dailyList.map(d => d.date),
           datasets: [
-            {
-              label: '売上高 (円)',
-              data: salesArr,
-              backgroundColor: '#2F5597',
-              yAxisID: 'ySales'
-            },
-            {
-              label: '客単価 (円)',
-              data: atvArr,
-              type: 'line',
-              borderColor: '#C65911',
-              backgroundColor: '#C65911',
-              borderWidth: 2,
-              yAxisID: 'yATV'
-            }
+            { label: '売上高 (円)', data: dailyList.map(d => d.sales), backgroundColor: '#2F5597', yAxisID: 'ySales' },
+            { label: '客単価 (円)', data: dailyList.map(d => d.orders ? d.sales / d.orders : 0), type: 'line', borderColor: '#C65911', backgroundColor: '#C65911', borderWidth: 2, yAxisID: 'yATV' }
           ]
         },
         options: {
-          responsive: true,
-          maintainAspectRatio: false,
+          responsive: true, maintainAspectRatio: false,
           scales: {
             ySales: { type: 'linear', position: 'left', title: { display: true, text: '売上高' } },
             yATV: { type: 'linear', position: 'right', title: { display: true, text: '客単価' }, grid: { drawOnChartArea: false } }
@@ -715,18 +889,14 @@
         }
       });
 
-      // 5. Dynamic Price Bracket Calculation
-      const bracketResults = priceBrackets.map(b => ({ ...b, total: 0, qty: 0 }));
+      // Price Bracket Chart & Table
+      const bracketResults = priceBrackets.map(b => ({ ...b, total: 0 }));
       salesData.forEach(row => {
         const itemAmount = row.price * row.qty;
         const bracket = bracketResults.find(b => row.price >= b.min && row.price < b.max);
-        if (bracket) {
-          bracket.total += itemAmount;
-          bracket.qty += row.qty;
-        }
+        if (bracket) bracket.total += itemAmount;
       });
 
-      // Price Table Render
       const priceTbody = document.querySelector("#priceTable tbody");
       priceTbody.innerHTML = "";
       bracketResults.forEach(b => {
@@ -742,29 +912,22 @@
         `;
       });
 
-      // Price Chart Render
       if (priceChartInstance) priceChartInstance.destroy();
       const ctxPrice = document.getElementById("priceChart").getContext("2d");
       priceChartInstance = new Chart(ctxPrice, {
         type: 'bar',
         data: {
           labels: bracketResults.map(b => b.name),
-          datasets: [{
-            label: '売上高',
-            data: bracketResults.map(b => b.total),
-            backgroundColor: '#1F497D'
-          }]
+          datasets: [{ label: '売上高', data: bracketResults.map(b => b.total), backgroundColor: '#1F497D' }]
         },
         options: {
-          responsive: true,
-          maintainAspectRatio: false,
+          responsive: true, maintainAspectRatio: false,
           plugins: { legend: { display: false } }
         }
       });
     }
 
-    // Initial Load
-    window.onload = renderDashboard;
+    window.onload = initData;
   </script>
 </body>
 </html>
