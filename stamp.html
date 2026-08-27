@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>展示会スタンプラリー</title>
+  <script src="https://unpkg.com/html5-qrcode"></script>
+  <style>
+    body {
+      font-family: sans-serif;
+      text-align: center;
+      margin: 0;
+      padding: 16px;
+      background-color: #f4f4f9;
+    }
+    h1 { font-size: 1.4rem; }
+    #reader {
+      width: 100%;
+      max-width: 400px;
+      margin: 10px auto;
+    }
+    .stamp-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      max-width: 400px;
+      margin: 20px auto;
+    }
+    .stamp-card {
+      background: #fff;
+      border: 2px dashed #ccc;
+      border-radius: 8px;
+      padding: 16px;
+      font-weight: bold;
+    }
+    .stamp-card.stamped {
+      border: 2px solid #28a745;
+      background-color: #e8f5e9;
+      color: #28a745;
+    }
+    .complete-screen {
+      display: none;
+      background: #fff3cd;
+      border: 2px solid #ffeba2;
+      padding: 20px;
+      border-radius: 8px;
+      max-width: 400px;
+      margin: 20px auto;
+    }
+    .complete-screen.show {
+      display: block;
+    }
+    button {
+      padding: 8px 16px;
+      margin-top: 15px;
+      background: #6c757d;
+      color: #fff;
+      border: none;
+      border-radius: 4px;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>展示会スタンプラリー</h1>
+
+  <div id="complete-screen" class="complete-screen">
+    <h2>🎉 おめでとうございます！ 🎉</h2>
+    <p>すべてのスタンプを獲得しました！</p>
+    <p style="font-size: 1.2rem; font-weight: bold; color: #d9534f;">
+      この画面を受付に見せて特典をお受け取りください。
+    </p>
+  </div>
+
+  <div id="reader"></div>
+
+  <div class="stamp-grid">
+    <div id="spot-1" class="stamp-card">第6倉庫 1F</div>
+    <div id="spot-2" class="stamp-card">第6倉庫 2F</div>
+    <div id="spot-3" class="stamp-card">第5倉庫 2F</div>
+    <div id="spot-4" class="stamp-card">第5倉庫 3F</div>
+  </div>
+
+  <button onclick="resetStamps()">データをリセット（テスト用）</button>
+
+  <script>
+    // 対象スポットの定義
+    const SPOTS = {
+      'STAMP_6F1': { id: 'spot-1', name: '第6倉庫 1F' },
+      'STAMP_6F2': { id: 'spot-2', name: '第6倉庫 2F' },
+      'STAMP_5F2': { id: 'spot-3', name: '第5倉庫 2F' },
+      'STAMP_5F3': { id: 'spot-4', name: '第5倉庫 3F' }
+    };
+
+    // localStorageから既存のスタンプ状態を取得（リロード対策）
+    let stamps = JSON.parse(localStorage.getItem('exhibition_stamps')) || {};
+
+    // 画面初期化
+    function updateUI() {
+      let count = 0;
+      Object.keys(SPOTS).forEach(key => {
+        const element = document.getElementById(SPOTS[key].id);
+        if (stamps[key]) {
+          element.classList.add('stamped');
+          element.textContent = SPOTS[key].name + ' 済';
+          count++;
+        }
+      });
+
+      // 4か所すべて揃ったらコンプリート表示
+      if (count === Object.keys(SPOTS).length) {
+        document.getElementById('complete-screen').classList.add('show');
+      }
+    }
+
+    // QRコード読み取り時の成功ハンドラ
+    function onScanSuccess(decodedText) {
+      if (SPOTS[decodedText]) {
+        if (!stamps[decodedText]) {
+          stamps[decodedText] = true;
+          localStorage.setItem('exhibition_stamps', JSON.stringify(stamps));
+          alert(`${SPOTS[decodedText].name} のスタンプを獲得しました！`);
+          updateUI();
+        } else {
+          alert('すでに獲得済みのスタンプです。');
+        }
+      } else {
+        alert('無効なQRコードです。');
+      }
+    }
+
+    // カメラ起動処理
+    const html5QrcodeScanner = new Html5QrcodeScanner(
+      "reader", { fps: 10, qrbox: { width: 250, height: 250 } }, false
+    );
+    html5QrcodeScanner.render(onScanSuccess);
+
+    // 初期化実行
+    updateUI();
+
+    // テスト用リセット機能
+    function resetStamps() {
+      if (confirm('スタンプ情報をリセットしますか？')) {
+        localStorage.removeItem('exhibition_stamps');
+        stamps = {};
+        location.reload();
+      }
+    }
+  </script>
+</body>
+</html>
