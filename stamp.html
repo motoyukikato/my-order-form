@@ -7,30 +7,56 @@
   <script src="https://unpkg.com/html5-qrcode"></script>
   <style>
     body {
-      font-family: sans-serif;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
       text-align: center;
       margin: 0;
       padding: 16px;
       background-color: #f4f4f9;
     }
-    h1 { font-size: 1.4rem; }
+    h1 { font-size: 1.3rem; margin-bottom: 5px; }
+    p.guide { font-size: 0.85rem; color: #666; margin-top: 0; }
+    
     #reader {
       width: 100%;
-      max-width: 400px;
+      max-width: 360px;
       margin: 10px auto;
+      background: #000;
+      border-radius: 8px;
+      overflow: hidden;
+      min-height: 250px;
     }
+    
+    .camera-btn-group {
+      margin: 10px 0;
+      display: flex;
+      justify-content: center;
+      gap: 10px;
+    }
+    
+    .btn {
+      padding: 10px 16px;
+      font-size: 0.9rem;
+      font-weight: bold;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+    .btn-camera { background: #007aff; color: #fff; }
+    .btn-reset { background: #6c757d; color: #fff; margin-top: 20px; font-size: 0.8rem; }
+    
     .stamp-grid {
       display: grid;
       grid-template-columns: 1fr 1fr;
-      gap: 12px;
-      max-width: 400px;
+      gap: 10px;
+      max-width: 360px;
       margin: 20px auto;
     }
     .stamp-card {
       background: #fff;
       border: 2px dashed #ccc;
       border-radius: 8px;
-      padding: 16px;
+      padding: 14px 8px;
+      font-size: 0.9rem;
       font-weight: bold;
     }
     .stamp-card.stamped {
@@ -42,38 +68,37 @@
       display: none;
       background: #fff3cd;
       border: 2px solid #ffeba2;
-      padding: 20px;
+      padding: 15px;
       border-radius: 8px;
-      max-width: 400px;
-      margin: 20px auto;
+      max-width: 360px;
+      margin: 15px auto;
     }
-    .complete-screen.show {
-      display: block;
-    }
-    button {
-      padding: 8px 16px;
-      margin-top: 15px;
-      background: #6c757d;
-      color: #fff;
-      border: none;
-      border-radius: 4px;
-    }
+    .complete-screen.show { display: block; }
   </style>
 </head>
 <body>
 
   <h1>展示会スタンプラリー</h1>
+  <p class="guide">iPhone / Android / iPhone SE 対応</p>
 
+  <!-- コンプリート画面 -->
   <div id="complete-screen" class="complete-screen">
-    <h2>🎉 おめでとうございます！ 🎉</h2>
-    <p>すべてのスタンプを獲得しました！</p>
-    <p style="font-size: 1.2rem; font-weight: bold; color: #d9534f;">
+    <h2 style="margin: 5px 0;">🎉 コンプリート！ 🎉</h2>
+    <p style="margin: 5px 0;">すべてのスタンプを獲得しました！</p>
+    <p style="font-weight: bold; color: #d9534f; margin: 10px 0 0 0;">
       この画面を受付に見せて特典をお受け取りください。
     </p>
   </div>
 
+  <!-- QRカメラ表示エリア -->
   <div id="reader"></div>
 
+  <!-- カメラ切り替え用の簡単なボタン -->
+  <div class="camera-btn-group">
+    <button class="btn btn-camera" onclick="switchCamera()">📷 カメラを切り替える</button>
+  </div>
+
+  <!-- スタンプ一覧 -->
   <div class="stamp-grid">
     <div id="spot-1" class="stamp-card">第6倉庫 1F</div>
     <div id="spot-2" class="stamp-card">第6倉庫 2F</div>
@@ -81,81 +106,108 @@
     <div id="spot-4" class="stamp-card">第5倉庫 3F</div>
   </div>
 
-  <button onclick="resetStamps()">データをリセット（テスト用）</button>
+  <button class="btn btn-reset" onclick="resetStamps()">スタンプをリセット（テスト用）</button>
 
   <script>
-  // 対象スポットの定義
-  const SPOTS = {
-    'STAMP_6F1': { id: 'spot-1', name: '第6倉庫 1F' },
-    'STAMP_6F2': { id: 'spot-2', name: '第6倉庫 2F' },
-    'STAMP_5F2': { id: 'spot-3', name: '第5倉庫 2F' },
-    'STAMP_5F3': { id: 'spot-4', name: '第5倉庫 3F' }
-  };
+    const SPOTS = {
+      'STAMP_6F1': { id: 'spot-1', name: '第6倉庫 1F' },
+      'STAMP_6F2': { id: 'spot-2', name: '第6倉庫 2F' },
+      'STAMP_5F2': { id: 'spot-3', name: '第5倉庫 2F' },
+      'STAMP_5F3': { id: 'spot-4', name: '第5倉庫 3F' }
+    };
 
-  // localStorageから既存のスタンプ状態を取得
-  let stamps = JSON.parse(localStorage.getItem('exhibition_stamps')) || {};
+    let stamps = JSON.parse(localStorage.getItem('exhibition_stamps')) || {};
+    let html5QrCode = null;
+    let currentFacingMode = "environment"; // デフォルトは外カメラ（背面）
+    let isProcessing = false;
 
-  // スキャナーインスタンスの準備
-  const html5QrcodeScanner = new Html5QrcodeScanner(
-    "reader", { fps: 10, qrbox: { width: 250, height: 250 } }, false
-  );
+    function updateUI() {
+      let count = 0;
+      Object.keys(SPOTS).forEach(key => {
+        const element = document.getElementById(SPOTS[key].id);
+        if (stamps[key]) {
+          element.classList.add('stamped');
+          element.textContent = SPOTS[key].name + ' 済';
+          count++;
+        }
+      });
 
-  // 画面初期化
-  function updateUI() {
-    let count = 0;
-    Object.keys(SPOTS).forEach(key => {
-      const element = document.getElementById(SPOTS[key].id);
-      if (stamps[key]) {
-        element.classList.add('stamped');
-        element.textContent = SPOTS[key].name + ' 済';
-        count++;
+      if (count === Object.keys(SPOTS).length) {
+        document.getElementById('complete-screen').classList.add('show');
       }
+    }
+
+    // カメラの起動処理
+    function startCamera(facingMode) {
+      if (html5QrCode) {
+        html5QrCode.stop().then(() => {
+          initScanner(facingMode);
+        }).catch(() => {
+          initScanner(facingMode);
+        });
+      } else {
+        html5QrCode = new Html5Qrcode("reader");
+        initScanner(facingMode);
+      }
+    }
+
+    function initScanner(facingMode) {
+      html5QrCode.start(
+        { facingMode: facingMode },
+        { fps: 10, qrbox: { width: 220, height: 220 } },
+        onScanSuccess
+      ).catch(err => {
+        console.error("カメラ起動エラー:", err);
+      });
+    }
+
+    // カメラ切り替え（外カメラ ↔ 内カメラ）
+    function switchCamera() {
+      currentFacingMode = (currentFacingMode === "environment") ? "user" : "environment";
+      startCamera(currentFacingMode);
+    }
+
+    // スキャン成功時
+    function onScanSuccess(decodedText) {
+      if (isProcessing) return;
+      isProcessing = true;
+
+      // 読取時に一時停止
+      html5QrCode.pause();
+
+      if (SPOTS[decodedText]) {
+        if (!stamps[decodedText]) {
+          stamps[decodedText] = true;
+          localStorage.setItem('exhibition_stamps', JSON.stringify(stamps));
+          alert(`${SPOTS[decodedText].name} のスタンプを獲得しました！`);
+          updateUI();
+        } else {
+          alert('すでに獲得済みのスタンプです。');
+        }
+      } else {
+        alert('該当しないQRコードです。');
+      }
+
+      // アラート閉じ後にスキャン再開
+      setTimeout(() => {
+        html5QrCode.resume();
+        isProcessing = false;
+      }, 1000);
+    }
+
+    // ページ読み込み時に背面カメラで自動スタート
+    window.addEventListener('DOMContentLoaded', () => {
+      updateUI();
+      startCamera("environment");
     });
 
-    // 4か所すべて揃ったらコンプリート表示
-    if (count === Object.keys(SPOTS).length) {
-      document.getElementById('complete-screen').classList.add('show');
-    }
-  }
-
-  // QRコード読み取り成功時の処理
-  function onScanSuccess(decodedText) {
-    // 連続読み取りを防ぐため、スキャナーを即座に一時停止
-    html5QrcodeScanner.pause(true);
-
-    if (SPOTS[decodedText]) {
-      if (!stamps[decodedText]) {
-        stamps[decodedText] = true;
-        localStorage.setItem('exhibition_stamps', JSON.stringify(stamps));
-        alert(`${SPOTS[decodedText].name} のスタンプを獲得しました！`);
-        updateUI();
-      } else {
-        alert('すでに獲得済みのスタンプです。');
+    function resetStamps() {
+      if (confirm('スタンプ情報をリセットしますか？')) {
+        localStorage.removeItem('exhibition_stamps');
+        stamps = {};
+        location.reload();
       }
-    } else {
-      alert('該当しないQRコードです。');
     }
-
-    // アラート確認後、少し間を置いてスキャナーを再開（または手動再開用の案内）
-    setTimeout(() => {
-      html5QrcodeScanner.resume();
-    }, 1000);
-  }
-
-  // カメラ起動
-  html5QrcodeScanner.render(onScanSuccess);
-
-  // 初期化実行
-  updateUI();
-
-  // テスト用リセット機能
-  function resetStamps() {
-    if (confirm('スタンプ情報をリセットしますか？')) {
-      localStorage.removeItem('exhibition_stamps');
-      stamps = {};
-      location.reload();
-    }
-  }
-</script>
+  </script>
 </body>
 </html>
