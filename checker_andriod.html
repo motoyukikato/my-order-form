@@ -97,7 +97,7 @@
 </div>
 
 <script>
-    // 【重要】新しいデプロイURLに差し替えてください
+    // 【重要】ご自身のGASウェブアプリURLを指定してください
     const GAS_URL = "https://script.google.com/macros/s/AKfycbwwWew158iAJ54RJilVAWA0QpcZlh_-3EY14NMIHRX6Ny_hNc-qokM6uF1YJ0_cN74vaA/exec"; 
 
     let html5QrCode = null;
@@ -127,7 +127,7 @@
                 { fps: 15, qrbox: 250 },
                 async (text) => {
                     await stopScan();
-                    currentVal = text.trim();
+                    currentVal = String(text || "").trim(); // 強制文字列化＆トリム
                     currentType = "id";
                     showAuth();
                 }
@@ -150,12 +150,17 @@
     function inputTel() {
         const tel = window.prompt("検索する電話番号を入力してください\n(ハイフンなし)");
         if (!tel || tel.trim() === "") return;
-        currentVal = tel.trim();
+        currentVal = String(tel).trim();
         currentType = "tel";
         showAuth();
     }
 
     function showAuth() {
+        if (!currentVal) {
+            alert("識別情報（IDまたは電話番号）の取得に失敗しました。もう一度スキャンまたは手入力を行ってください。");
+            location.reload();
+            return;
+        }
         document.getElementById("scan-view").style.display = "none";
         document.getElementById("auth-view").style.display = "block";
         setTimeout(() => { document.getElementById("auth-code").focus(); }, 300);
@@ -170,8 +175,16 @@
 
         const action = (currentType === "tel") ? "getHistoryByTel" : "getCustomerSpecificHistory";
         
+        // 【重要】ブラウザキャッシュ対策としてタイムスタンプ (_ts) を末尾に付与
+        const timestamp = new Date().getTime();
         const script = document.createElement('script');
-        script.src = `${GAS_URL}?action=${action}&val=${encodeURIComponent(currentVal)}&auth=${auth}&callback=onDataReceived`;
+        script.src = `${GAS_URL}?action=${action}&val=${encodeURIComponent(currentVal)}&auth=${encodeURIComponent(auth)}&callback=onDataReceived&_ts=${timestamp}`;
+        
+        // 古いJSONPタグがあれば削除してから追加
+        const oldScript = document.getElementById("jsonp-request");
+        if (oldScript) oldScript.remove();
+        script.id = "jsonp-request";
+        
         document.body.appendChild(script);
     }
 
@@ -182,12 +195,16 @@
         let total = 0; 
         lastFetchedData = data; 
 
-        if (data && data.length > 0 && !data.error) {
+        // 配列で返ってきた場合（正常時）
+        if (Array.isArray(data) && data.length > 0) {
             document.getElementById("email-btn").style.display = "block";
             const firstItem = data[0];
             document.getElementById("cust-name").innerText = (firstItem.customerName || "お客様") + " 様";
-            // 顧客IDを上書き保持（メール送信時に必要）
-            currentVal = firstItem.customerId || currentVal;
+            
+            // 顧客IDを送信用に更新
+            if (firstItem.customerId) {
+                currentVal = firstItem.customerId;
+            }
 
             tableBody.innerHTML = data.map(item => {
                 const p = Number(String(item.price || "0").replace(/[^0-9.-]/g, ''));
@@ -208,8 +225,18 @@
                     </tr>`;
             }).join('');
             document.getElementById("total-amount").innerText = total.toLocaleString();
+            
         } else {
-            tableBody.innerHTML = '<tr><td colspan="2" style="text-align:center; padding:30px; color:#999;">データが見つからないか、認証に失敗しました。</td></tr>';
+            // エラーオブジェクトが返ってきた場合、その理由を画面に具体的に表示
+            document.getElementById("email-btn").style.display = "none";
+            document.getElementById("cust-name").innerText = "エラー";
+            
+            let errMsg = "データが見つからないか、認証に失敗しました。";
+            if (data && data.error) {
+                errMsg = data.error; // GAS側のエラーメッセージ（「電話番号の下4桁が一致しません」等）を表示
+            }
+            
+            tableBody.innerHTML = `<tr><td colspan="2" style="text-align:center; padding:30px; color:#d9534f; font-weight:bold;">${errMsg}</td></tr>`;
         }
     }
 
@@ -226,8 +253,9 @@
         btn.disabled = true;
         btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> 送信中...';
 
+        const timestamp = new Date().getTime();
         const script = document.createElement('script');
-        script.src = `${GAS_URL}?action=sendEmail&val=${encodeURIComponent(currentVal)}&email=${encodeURIComponent(newEmail.trim())}&callback=onEmailSent`;
+        script.src = `${GAS_URL}?action=sendEmail&val=${encodeURIComponent(currentVal)}&email=${encodeURIComponent(newEmail.trim())}&callback=onEmailSent&_ts=${timestamp}`;
         document.body.appendChild(script);
     }
 
