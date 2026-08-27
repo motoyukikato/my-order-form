@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <title>【管理者】一括注文入力システム</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f4f7f9; margin: 0; padding: 20px; }
+        header { display: flex; justify-content: space-between; align-items: center; background: #fff; padding: 15px 25px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); margin-bottom: 20px; border-left: 5px solid #d9534f; }
+        h1 { margin: 0; font-size: 1.5em; color: #333; }
+        
+        #loading-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255,255,255,0.9); z-index: 1000; display: flex; flex-direction: column; justify-content: center; align-items: center; }
+        .spinner { border: 5px solid #f3f3f3; border-top: 5px solid #d9534f; border-radius: 50%; width: 50px; height: 50px; animation: spin 1s linear infinite; margin-bottom: 15px; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+        .table-container { background: #fff; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); overflow-x: auto; padding: 15px; }
+        table { width: 100%; border-collapse: collapse; min-width: 1000px; }
+        th { background: #eef2f7; color: #333; padding: 10px; text-align: left; font-size: 0.9em; border: 1px solid #ccc; position: sticky; top: 0; }
+        td { border: 1px solid #ccc; padding: 0; position: relative; }
+        
+        /* スプレッドシートライクな入力枠 */
+        input.grid-input { width: 100%; height: 100%; box-sizing: border-box; padding: 10px; border: none; outline: none; font-size: 1em; }
+        input.grid-input:focus { background-color: #e8f0fe; box-shadow: inset 0 0 0 2px #4285f4; }
+        
+        .readonly-cell { background-color: #f9f9f9; color: #555; padding: 10px; font-size: 0.9em; min-height: 20px; }
+        .row-error { outline: 2px solid #d9534f; outline-offset: -2px; }
+        .row-error .readonly-cell { background-color: #fde8e8; color: #d9534f; font-weight: bold; }
+        
+        .btn { padding: 12px 25px; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 1em; transition: 0.2s; }
+        .btn-primary { background: #3b5998; color: white; }
+        .btn-primary:hover { background: #2d4373; }
+        .btn-success { background: #28a745; color: white; padding: 15px 40px; font-size: 1.1em; }
+        .btn-success:hover { background: #218838; }
+        
+        .del-btn { color: #d9534f; cursor: pointer; text-align: center; display: block; width: 100%; padding: 10px 0; }
+        .del-btn:hover { background: #fde8e8; }
+    </style>
+</head>
+<body>
+
+<div id="loading-overlay">
+    <div class="spinner"></div>
+    <h3 id="loading-text" style="color:#555;">システム起動中...</h3>
+    <p id="loading-detail" style="color:#888; font-size:0.9em;">マスタデータを取得しています</p>
+</div>
+
+<header>
+    <h1>管理者用 一括受注入力</h1>
+    <div style="display:flex; gap:15px; align-items:center;">
+        <span id="total-amount" style="font-size: 1.2em; font-weight: bold; color: #d9534f;">合計: ¥0</span>
+        <button class="btn btn-primary" onclick="addNewRow()">＋ 行を追加</button>
+        <button class="btn btn-success" id="submit-btn" onclick="submitBatch()">一括送信</button>
+    </div>
+</header>
+
+<div class="table-container">
+    <table id="grid-table">
+        <thead>
+            <tr>
+                <th style="width: 50px; text-align:center;">#</th>
+                <th style="width: 140px;">顧客(TEL/ID/名)</th>
+                <th style="width: 150px;">顧客名 (自動)</th>
+                <th style="width: 140px;">品番/JAN</th>
+                <th style="width: 100px;">メーカー (自動)</th>
+                <th style="width: 200px;">品名 (自動)</th>
+                <th style="width: 80px; text-align:right;">単価</th>
+                <th style="width: 80px;">数量</th>
+                <th style="width: 180px;">備考</th>
+                <th style="width: 50px;">操作</th>
+            </tr>
+        </thead>
+        <tbody id="grid-body">
+            <!-- JavaScriptで生成 -->
+        </tbody>
+    </table>
+</div>
+
+<script>
+    // ▼現在運用中のGAS URLに書き換えてください
+    const GAS_URL = "https://script.google.com/macros/s/AKfycbw2JetMIiOzKYBnXXaZ-eW5NQnZ_QqQUiRvq5rvXEpoHzR5ta-HKL5ar3tkGtggOR76/exec";
+    
+    // 全メーカーリスト
+    const MAKER_LIST = [
+        'カルナック', '星野㈱', 'YARD', 'エルコミューン', 'asca', 'ネイチャーデザインズ',
+        '大地農園', 'フロールエバー', 'コアトレーディング', 'ホワイエ', 'ミュールミル',
+        'ラライワント', '友膳', '松村工芸・クレイ', 'ポッシュリビング', '東京堂',
+        'マグネット', '志成販売', 'コベントガーデン', '坂源', 'インターリンク',
+        '三和トレーディング', '村田屋産業'
+    ];
+
+    let allCustomers = [];
+    let allProducts = [];
+    let rowCount = 0;
+
+    window.onload = async () => {
+        await preloadAllMasters();
+        // 初期状態として10行表示
+        for(let i=0; i<10; i++) addNewRow();
+        document.getElementById('loading-overlay').style.display = 'none';
+        document.querySelector('input[data-col="customer"]').focus();
+    };
+
+    // --- 高速マスタ読み込み（Promise.allによる並列処理） ---
+    async function preloadAllMasters() {
+        const detailTxt = document.getElementById('loading-detail');
+        try {
+            // 顧客マスタ
+            detailTxt.innerText = "顧客データを取得中...";
+            const resCust = await fetch(GAS_URL, { method: "POST", body: JSON.stringify({ action: "getAllCustomers" }) });
+            allCustomers = await resCust.json();
+
+            // 商品マスタ（GASに負荷をかけないよう5並列ずつチャンク処理）
+            const chunkSize = 5;
+            for (let i = 0; i < MAKER_LIST.length; i += chunkSize) {
+                const chunk = MAKER_LIST.slice(i, i + chunkSize);
+                detailTxt.innerText = `商品データを取得中... (${i + chunk.length}/${MAKER_LIST.length}社)`;
+                
+                const promises = chunk.map(maker => 
+                    fetch(GAS_URL, { method: "POST", body: JSON.stringify({ action: "getAllProducts", targetMaker: maker }) }).then(r=>r.json())
+                );
+                const results = await Promise.all(promises);
+                results.forEach(res => { if(Array.isArray(res)) allProducts.push(...res); });
+            }
+        } catch (e) {
+            alert("マスタデータの読み込みに失敗しました。再読み込みしてください。\n" + e.message);
+        }
+    }
+
+    // --- テキストの正規化（既存ロジック流用） ---
+    function normalizeText(str) {
+        if (!str) return "";
+        return String(str).normalize("NFKC").replace(/[\u3041-\u3096]/g, match => String.fromCharCode(match.charCodeAt(0) + 0x60)).toUpperCase().trim();
+    }
+
+    // --- UI・グリッド制御 ---
+    function addNewRow() {
+        rowCount++;
+        const tr = document.createElement('tr');
+        tr.id = 'row-' + rowCount;
+        tr.dataset.rowIndex = rowCount;
+        
+        tr.innerHTML = `
+            <td style="text-align:center; color:#888;">${rowCount}</td>
+            <td><input type="text" class="grid-input" data-col="customer" data-row="${rowCount}" oninput="autoComplete(this)" onkeydown="gridKeydown(event)"></td>
+            <td><div class="readonly-cell" id="disp-cust-${rowCount}"></div></td>
+            <td><input type="text" class="grid-input" data-col="partNo" data-row="${rowCount}" oninput="autoComplete(this)" onkeydown="gridKeydown(event)"></td>
+            <td><div class="readonly-cell" id="disp-maker-${rowCount}"></div></td>
+            <td><div class="readonly-cell" id="disp-name-${rowCount}"></div></td>
+            <td><div class="readonly-cell" id="disp-price-${rowCount}" style="text-align:right;"></div></td>
+            <td><input type="number" class="grid-input" data-col="quantity" data-row="${rowCount}" min="1" oninput="calculateTotal()" onkeydown="gridKeydown(event)"></td>
+            <td><input type="text" class="grid-input" data-col="note" data-row="${rowCount}" onkeydown="gridKeydown(event)"></td>
+            <td><span class="del-btn" onclick="deleteRow('${tr.id}')">✖</span></td>
+        `;
+        document.getElementById('grid-body').appendChild(tr);
+    }
+
+    function deleteRow(rowId) {
+        document.getElementById(rowId).remove();
+        calculateTotal();
+    }
+
+    // EnterキーとTabキーの挙動をExcelに寄せる
+    function gridKeydown(e) {
+        const input = e.target;
+        const r = parseInt(input.dataset.row);
+        const c = input.dataset.col;
+        const cols = ['customer', 'partNo', 'quantity', 'note'];
+        const cIdx = cols.indexOf(c);
+
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            let nextRowIdx = r + 1;
+            let nextInput = document.querySelector(`input[data-row="${nextRowIdx}"][data-col="${c}"]`);
+            
+            // 下の行がなければ新規作成
+            if (!nextInput) {
+                addNewRow();
+                nextInput = document.querySelector(`input[data-row="${rowCount}"][data-col="${c}"]`);
+            }
+            if (nextInput) nextInput.focus();
+        } 
+        else if (e.key === 'ArrowDown') {
+            const nextInput = document.querySelector(`input[data-row="${r+1}"][data-col="${c}"]`);
+            if (nextInput) nextInput.focus();
+        }
+        else if (e.key === 'ArrowUp') {
+            const prevInput = document.querySelector(`input[data-row="${r-1}"][data-col="${c}"]`);
+            if (prevInput) prevInput.focus();
+        }
+    }
+
+    // --- 自動補完機能 ---
+    function autoComplete(inputElem) {
+        const tr = inputElem.closest('tr');
+        const r = tr.dataset.rowIndex;
+        const val = normalizeText(inputElem.value);
+        const col = inputElem.dataset.col;
+        
+        tr.classList.remove('row-error');
+
+        if (col === 'customer') {
+            tr.dataset.customerObj = "";
+            const disp = document.getElementById(`disp-cust-${r}`);
+            if (!val) { disp.innerText = ""; return; }
+            
+            const found = allCustomers.find(c => {
+                const tel = normalizeText(c.tel || "");
+                const name = normalizeText(c.customer || c.name || "");
+                const id = normalizeText(c.customerId || c.id || "");
+                return tel === val || id === val || name.includes(val); // 完全一致か名前含む
+            });
+
+            if (found) {
+                disp.innerText = found.customer || found.name;
+                tr.dataset.customerObj = JSON.stringify(found);
+            } else {
+                disp.innerText = "見つかりません";
+            }
+        } 
+        else if (col === 'partNo') {
+            tr.dataset.productObj = "";
+            const dispMaker = document.getElementById(`disp-maker-${r}`);
+            const dispName = document.getElementById(`disp-name-${r}`);
+            const dispPrice = document.getElementById(`disp-price-${r}`);
+            
+            if (!val) { 
+                dispMaker.innerText = ""; dispName.innerText = ""; dispPrice.innerText = ""; 
+                calculateTotal();
+                return; 
+            }
+            
+            const found = allProducts.find(p => {
+                const pn = normalizeText(p.partNo);
+                const jan = normalizeText(p.jan || "");
+                return pn === val || jan === val;
+            });
+
+            if (found) {
+                dispMaker.innerText = found.maker;
+                dispName.innerText = found.name;
+                dispPrice.innerText = (found.price || 0).toLocaleString();
+                tr.dataset.productObj = JSON.stringify(found);
+                
+                // 品番が特定できたら、自動で数量に「ロット数」または「1」を補完
+                const qtyInput = tr.querySelector(`input[data-col="quantity"]`);
+                if (!qtyInput.value) {
+                    let cleanLot = found.lot ? String(found.lot).normalize("NFKC").replace(/[^0-9]/g, '') : "1";
+                    qtyInput.value = cleanLot || "1";
+                }
+            } else {
+                dispMaker.innerText = "";
+                dispName.innerText = "見つかりません";
+                dispPrice.innerText = "";
+            }
+            calculateTotal();
+        }
+    }
+
+    function calculateTotal() {
+        let total = 0;
+        document.querySelectorAll('#grid-body tr').forEach(tr => {
+            const pStr = tr.dataset.productObj;
+            const qStr = tr.querySelector(`input[data-col="quantity"]`).value;
+            if (pStr && qStr) {
+                const p = JSON.parse(pStr);
+                const q = parseInt(qStr) || 0;
+                total += (p.price || 0) * q;
+            }
+        });
+        document.getElementById('total-amount').innerText = `合計: ¥${total.toLocaleString()}`;
+    }
+
+    // --- 一括送信処理 ---
+    async function submitBatch() {
+        const btn = document.getElementById('submit-btn');
+        const itemsToSubmit = [];
+        let hasError = false;
+
+        // 行ごとにデータ収集＆バリデーション
+        document.querySelectorAll('#grid-body tr').forEach(tr => {
+            const custInput = tr.querySelector(`input[data-col="customer"]`).value.trim();
+            const partInput = tr.querySelector(`input[data-col="partNo"]`).value.trim();
+            
+            // 全く入力がない行はスキップ
+            if (!custInput && !partInput) return;
+
+            const cStr = tr.dataset.customerObj;
+            const pStr = tr.dataset.productObj;
+            const qty = parseInt(tr.querySelector(`input[data-col="quantity"]`).value) || 0;
+            const note = tr.querySelector(`input[data-col="note"]`).value.trim();
+
+            if (!cStr || !pStr || qty <= 0) {
+                tr.classList.add('row-error'); // 赤枠にする
+                hasError = true;
+            } else {
+                tr.classList.remove('row-error');
+                itemsToSubmit.push({
+                    customer: JSON.parse(cStr),
+                    product: JSON.parse(pStr),
+                    quantity: qty,
+                    note: note
+                });
+            }
+        });
+
+        if (hasError) {
+            return alert("赤枠の行にエラーがあります。（顧客不明、品番不明、または数量が0）\n修正して再度送信してください。");
+        }
+        if (itemsToSubmit.length === 0) {
+            return alert("送信するデータがありません。");
+        }
+        
+        if (!confirm(`${itemsToSubmit.length} 件の注文を一括送信します。よろしいですか？`)) return;
+
+        btn.disabled = true;
+        btn.innerText = "送信中...";
+
+        try {
+            const res = await fetch(GAS_URL, {
+                method: "POST",
+                body: JSON.stringify({
+                    action: "batchOrderSubmitMixed",
+                    data: { items: itemsToSubmit }
+                })
+            });
+            const result = await res.json();
+            
+            if (result.success) {
+                alert(`完了しました！\n計 ${result.count} 件の注文が各メーカーに振り分けられました。`);
+                // 成功したら画面をリセット
+                document.getElementById('grid-body').innerHTML = "";
+                rowCount = 0;
+                for(let i=0; i<10; i++) addNewRow();
+                calculateTotal();
+            } else {
+                alert("送信エラー: " + result.error);
+            }
+        } catch (e) {
+            alert("通信エラーが発生しました: " + e.message);
+        } finally {
+            btn.disabled = false;
+            btn.innerText = "一括送信";
+        }
+    }
+</script>
+</body>
+</html>
