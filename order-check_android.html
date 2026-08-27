@@ -23,6 +23,8 @@
         .btn-scan { background: #28a745; color: white; }
         .btn-email { background: #007bff; color: white; display: none; }
         .loading { text-align: center; padding: 40px; display: none; color: #4267B2; }
+        /* ★メーカー表示用のスタイル */
+        .maker-badge { background-color: #e9ecef; color: #495057; padding: 2px 6px; border-radius: 4px; font-size: 0.85em; font-weight: bold; margin-bottom: 4px; display: inline-block; }
     </style>
 </head>
 <body>
@@ -228,12 +230,16 @@
                 total += subtotal; 
 
                 const stockDisplay = item.stock ? `【在庫：${item.stock}】` : "【在庫：未確認】";
-                const janDisplay = item.jan ? `品番：${item.jan}` : "";
+                const janDisplay = (item.partNo || item.jan) ? `品番：${item.partNo || item.jan}` : "";
+
+                // ★修正箇所: メーカー名が存在する場合はバッジ表示する処理を追加
+                const makerDisplay = item.maker ? `<span class="maker-badge">${item.maker}</span><br>` : "";
 
                 return `
                     <tr>
                         <td style="font-size: 0.85em; padding: 12px 10px;">
                             <span style="color:#888;">${item.displayDate || ''}</span><br>
+                            ${makerDisplay}
                             <strong style="font-size: 1.1em; display: block; margin: 3px 0;">${item.name || '---'}</strong>
                             <div style="font-size: 0.9em; margin-bottom: 4px;">
                                 <span style="color:#666; margin-right: 8px;">${janDisplay}</span>
@@ -248,11 +254,10 @@
             }).join('');
             document.getElementById("total-amount").innerText = total.toLocaleString();
         } else {
-            // 【重要】GASから返ってきた本当のエラーメッセージ（data.error）を画面にダイレクト表示
             let errorMsg = "該当する注文履歴が見つかりませんでした。";
             
             if (data && data.error) {
-                errorMsg = data.error; // 例：「下4桁不一致 (スプレッドシート側の末尾: 1234 / 入力値: 8730)」など
+                errorMsg = data.error;
             } else if (typeof data === "string") {
                 errorMsg = data;
             }
@@ -303,4 +308,5 @@
     }
 </script>
 </body>
+</html>
 </html>
