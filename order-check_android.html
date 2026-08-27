@@ -211,6 +211,7 @@
         let total = 0; 
         lastFetchedData = data; 
 
+        // 配列かつエラーがない正常データの場合
         if (data && Array.isArray(data) && data.length > 0 && !data.error) {
             document.getElementById("email-btn").style.display = "block";
             const firstItem = data[0];
@@ -247,9 +248,16 @@
             }).join('');
             document.getElementById("total-amount").innerText = total.toLocaleString();
         } else {
-            // エラー表示処理のHTML崩れを防ぐためエスケープ修正
-            const errorMsg = (data && data.error) ? data.error : "該当する注文履歴が見つかりません。<br><small style='color:#666;'>（電話番号の下4桁が合っているかご確認ください）</small>";
-            tableBody.innerHTML = `<tr><td colspan="2" style="text-align:center; padding:30px; color:#d9534f;">${errorMsg}</td></tr>`;
+            // 【重要】GASから返ってきた本当のエラーメッセージ（data.error）を画面にダイレクト表示
+            let errorMsg = "該当する注文履歴が見つかりませんでした。";
+            
+            if (data && data.error) {
+                errorMsg = data.error; // 例：「下4桁不一致 (スプレッドシート側の末尾: 1234 / 入力値: 8730)」など
+            } else if (typeof data === "string") {
+                errorMsg = data;
+            }
+
+            tableBody.innerHTML = `<tr><td colspan="2" style="text-align:center; padding:30px; color:#d9534f; font-weight:bold; line-height:1.6;">${errorMsg}</td></tr>`;
             document.getElementById("cust-name").innerText = "---";
             document.getElementById("email-btn").style.display = "none";
         }
