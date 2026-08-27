@@ -84,68 +84,78 @@
   <button onclick="resetStamps()">データをリセット（テスト用）</button>
 
   <script>
-    // 対象スポットの定義
-    const SPOTS = {
-      'STAMP_6F1': { id: 'spot-1', name: '第6倉庫 1F' },
-      'STAMP_6F2': { id: 'spot-2', name: '第6倉庫 2F' },
-      'STAMP_5F2': { id: 'spot-3', name: '第5倉庫 2F' },
-      'STAMP_5F3': { id: 'spot-4', name: '第5倉庫 3F' }
-    };
+  // 対象スポットの定義
+  const SPOTS = {
+    'STAMP_6F1': { id: 'spot-1', name: '第6倉庫 1F' },
+    'STAMP_6F2': { id: 'spot-2', name: '第6倉庫 2F' },
+    'STAMP_5F2': { id: 'spot-3', name: '第5倉庫 2F' },
+    'STAMP_5F3': { id: 'spot-4', name: '第5倉庫 3F' }
+  };
 
-    // localStorageから既存のスタンプ状態を取得（リロード対策）
-    let stamps = JSON.parse(localStorage.getItem('exhibition_stamps')) || {};
+  // localStorageから既存のスタンプ状態を取得
+  let stamps = JSON.parse(localStorage.getItem('exhibition_stamps')) || {};
 
-    // 画面初期化
-    function updateUI() {
-      let count = 0;
-      Object.keys(SPOTS).forEach(key => {
-        const element = document.getElementById(SPOTS[key].id);
-        if (stamps[key]) {
-          element.classList.add('stamped');
-          element.textContent = SPOTS[key].name + ' 済';
-          count++;
-        }
-      });
+  // スキャナーインスタンスの準備
+  const html5QrcodeScanner = new Html5QrcodeScanner(
+    "reader", { fps: 10, qrbox: { width: 250, height: 250 } }, false
+  );
 
-      // 4か所すべて揃ったらコンプリート表示
-      if (count === Object.keys(SPOTS).length) {
-        document.getElementById('complete-screen').classList.add('show');
+  // 画面初期化
+  function updateUI() {
+    let count = 0;
+    Object.keys(SPOTS).forEach(key => {
+      const element = document.getElementById(SPOTS[key].id);
+      if (stamps[key]) {
+        element.classList.add('stamped');
+        element.textContent = SPOTS[key].name + ' 済';
+        count++;
       }
-    }
+    });
 
-    // QRコード読み取り時の成功ハンドラ
-    function onScanSuccess(decodedText) {
-      if (SPOTS[decodedText]) {
-        if (!stamps[decodedText]) {
-          stamps[decodedText] = true;
-          localStorage.setItem('exhibition_stamps', JSON.stringify(stamps));
-          alert(`${SPOTS[decodedText].name} のスタンプを獲得しました！`);
-          updateUI();
-        } else {
-          alert('すでに獲得済みのスタンプです。');
-        }
+    // 4か所すべて揃ったらコンプリート表示
+    if (count === Object.keys(SPOTS).length) {
+      document.getElementById('complete-screen').classList.add('show');
+    }
+  }
+
+  // QRコード読み取り成功時の処理
+  function onScanSuccess(decodedText) {
+    // 連続読み取りを防ぐため、スキャナーを即座に一時停止
+    html5QrcodeScanner.pause(true);
+
+    if (SPOTS[decodedText]) {
+      if (!stamps[decodedText]) {
+        stamps[decodedText] = true;
+        localStorage.setItem('exhibition_stamps', JSON.stringify(stamps));
+        alert(`${SPOTS[decodedText].name} のスタンプを獲得しました！`);
+        updateUI();
       } else {
-        alert('無効なQRコードです。');
+        alert('すでに獲得済みのスタンプです。');
       }
+    } else {
+      alert('該当しないQRコードです。');
     }
 
-    // カメラ起動処理
-    const html5QrcodeScanner = new Html5QrcodeScanner(
-      "reader", { fps: 10, qrbox: { width: 250, height: 250 } }, false
-    );
-    html5QrcodeScanner.render(onScanSuccess);
+    // アラート確認後、少し間を置いてスキャナーを再開（または手動再開用の案内）
+    setTimeout(() => {
+      html5QrcodeScanner.resume();
+    }, 1000);
+  }
 
-    // 初期化実行
-    updateUI();
+  // カメラ起動
+  html5QrcodeScanner.render(onScanSuccess);
 
-    // テスト用リセット機能
-    function resetStamps() {
-      if (confirm('スタンプ情報をリセットしますか？')) {
-        localStorage.removeItem('exhibition_stamps');
-        stamps = {};
-        location.reload();
-      }
+  // 初期化実行
+  updateUI();
+
+  // テスト用リセット機能
+  function resetStamps() {
+    if (confirm('スタンプ情報をリセットしますか？')) {
+      localStorage.removeItem('exhibition_stamps');
+      stamps = {};
+      location.reload();
     }
-  </script>
+  }
+</script>
 </body>
 </html>
