@@ -2,100 +2,100 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>展示会オーダーシステム</title>
-    <!-- QRコード読み込み用ライブラリ -->
-    <script src="https://unpkg.com/html5-qrcode"></script>
+    <title>【お客様用】一括オーダーシステム</title>
     <style>
-        body { font-family: sans-serif; background: #f4f7f9; margin: 0; padding: 0; padding-bottom: 80px; }
-        header { background: #fff; padding: 15px; text-align: center; border-bottom: 3px solid #3b5998; position: sticky; top: 0; z-index: 100; font-weight: bold; }
-        .container { padding: 15px; }
-        .card { background: #fff; padding: 20px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); margin-bottom: 15px; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f4f7f9; margin: 0; padding: 20px; }
+        header { display: flex; justify-content: space-between; align-items: center; background: #fff; padding: 15px 25px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); margin-bottom: 20px; border-left: 5px solid #3b5998; }
+        h1 { margin: 0; font-size: 1.5em; color: #333; }
         
-        h2 { font-size: 1.2em; color: #333; margin-top: 0; border-bottom: 2px solid #eee; padding-bottom: 10px; }
-        .input-box { width: 100%; padding: 12px; border: 2px solid #ccc; border-radius: 8px; font-size: 16px; box-sizing: border-box; margin-bottom: 10px; }
-        .input-box:focus { border-color: #3b5998; outline: none; }
-        
-        .btn { width: 100%; padding: 15px; border: none; border-radius: 8px; font-size: 1.1em; font-weight: bold; cursor: pointer; color: white; margin-top: 10px; }
-        .btn-primary { background: #3b5998; }
-        .btn-success { background: #28a745; }
-        
-        /* カートUI */
-        .cart-item { border-bottom: 1px solid #eee; padding: 15px 0; display: flex; justify-content: space-between; align-items: center; }
-        .qty-ctrl { display: flex; align-items: center; gap: 10px; }
-        .qty-btn { width: 35px; height: 35px; border-radius: 50%; border: 1px solid #ccc; background: #fff; font-size: 1.2em; cursor: pointer; }
-        .qty-num { font-size: 1.2em; font-weight: bold; min-width: 30px; text-align: center; color: #3b5998; }
-        
-        #loading { display: none; position: fixed; top:0; left:0; width:100%; height:100%; background:rgba(255,255,255,0.9); z-index: 200; justify-content: center; align-items: center; flex-direction: column; }
-        .spinner { border: 4px solid #f3f3f3; border-top: 4px solid #3b5998; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; }
+        #loading-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255,255,255,0.9); z-index: 1000; display: flex; flex-direction: column; justify-content: center; align-items: center; }
+        .spinner { border: 5px solid #f3f3f3; border-top: 5px solid #3b5998; border-radius: 50%; width: 50px; height: 50px; animation: spin 1s linear infinite; margin-bottom: 15px; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+        /* ログイン画面 */
+        #login-section { max-width: 500px; margin: 50px auto; background: #fff; padding: 30px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); text-align: center; }
+        .input-box { width: 100%; padding: 15px; border: 2px solid #ccc; border-radius: 8px; font-size: 1.1em; box-sizing: border-box; margin-bottom: 20px; }
+        .input-box:focus { border-color: #3b5998; outline: none; }
+
+        /* テーブル */
+        .table-container { background: #fff; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); overflow-x: auto; padding: 15px; }
+        table { width: 100%; border-collapse: collapse; min-width: 900px; }
+        th { background: #eef2f7; color: #333; padding: 10px; text-align: left; font-size: 0.9em; border: 1px solid #ccc; position: sticky; top: 0; }
+        td { border: 1px solid #ccc; padding: 0; position: relative; }
         
-        /* QRリーダー用のスタイル */
-        #qr-reader { width: 100%; border-radius: 8px; overflow: hidden; display: none; margin-bottom: 15px; background: #000; }
+        input.grid-input { width: 100%; height: 100%; box-sizing: border-box; padding: 12px; border: none; outline: none; font-size: 1em; }
+        input.grid-input:focus { background-color: #e8f0fe; box-shadow: inset 0 0 0 2px #4285f4; }
+        
+        .readonly-cell { background-color: #f9f9f9; color: #555; padding: 12px; font-size: 0.9em; min-height: 20px; }
+        .row-error { outline: 2px solid #d9534f; outline-offset: -2px; }
+        .row-error .readonly-cell { background-color: #fde8e8; color: #d9534f; font-weight: bold; }
+        
+        .btn { padding: 12px 25px; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 1em; transition: 0.2s; color: white; }
+        .btn-primary { background: #3b5998; }
+        .btn-primary:hover { background: #2d4373; }
+        .btn-success { background: #28a745; padding: 15px 40px; font-size: 1.1em; }
+        .btn-success:hover { background: #218838; }
+        
+        .del-btn { color: #d9534f; cursor: pointer; text-align: center; display: block; width: 100%; padding: 12px 0; }
+        .del-btn:hover { background: #fde8e8; }
     </style>
 </head>
 <body>
 
-<header>展示会 オーダーフォーム</header>
-
-<div id="loading">
+<div id="loading-overlay" style="display: none;">
     <div class="spinner"></div>
-    <p style="color:#555; font-weight:bold; margin-top:10px;" id="loading-msg">通信中...</p>
+    <h3 id="loading-text" style="color:#555;">通信中...</h3>
+    <p id="loading-detail" style="color:#888; font-size:0.9em;"></p>
 </div>
 
-<div class="container">
-    <!-- 1. ログイン画面（QR特化） -->
-    <div id="login-section" class="card" style="text-align: center;">
-        <h2>QRコードでログイン</h2>
-        <p style="font-size: 0.9em; color: #666; margin-bottom: 20px;">お渡ししたQRコード（会員ID）をスキャンしてご注文を開始してください。</p>
-        
-        <!-- カメラ枠 -->
-        <div id="qr-reader"></div>
-        
-        <button id="camera-btn" class="btn btn-success" onclick="startQRScanner()" style="padding: 20px; font-size: 1.2em;">📷 カメラを起動する</button>
-        
-        <!-- カメラが使えない場合の予備（初期非表示） -->
-        <div id="manual-input-area" style="display: none; margin-top: 30px; text-align: left; border-top: 1px dashed #ccc; padding-top: 20px;">
-            <div style="text-align:center; margin-bottom: 15px; color:#d9534f; font-size: 0.9em; font-weight:bold;">カメラが起動できない場合</div>
-            <input type="text" id="login-id" class="input-box" placeholder="会員IDをご入力ください">
-            <button class="btn btn-primary" onclick="verifyCustomer()">ログイン</button>
+<!-- 1. ログインセクション -->
+<div id="login-section">
+    <h2 style="color: #3b5998; margin-top: 0;">一括オーダーシステム</h2>
+    <p style="color: #666; font-size: 0.95em; margin-bottom: 25px;">会員ID または ご登録の電話番号を入力してログインしてください。</p>
+    <input type="text" id="login-id" class="input-box" placeholder="会員ID / 電話番号" onkeydown="if(event.key==='Enter') verifyCustomer()">
+    <button class="btn btn-primary" style="width: 100%; padding: 15px; font-size: 1.1em;" onclick="verifyCustomer()">ログイン</button>
+</div>
+
+<!-- 2. オーダーセクション（初期非表示） -->
+<div id="order-section" style="display: none;">
+    <header>
+        <div>
+            <h1>一括オーダー入力</h1>
+            <div style="color: #666; margin-top: 5px;">ログイン中: <b id="cust-name" style="color: #3b5998;"></b> 様</div>
         </div>
-        <button id="show-manual-btn" class="btn" style="background: none; color: #888; font-size: 0.85em; margin-top: 20px; text-decoration: underline;" onclick="showManualInput()">カメラが使えない場合はこちら</button>
+        <div style="display:flex; gap:15px; align-items:center;">
+            <span id="total-amount" style="font-size: 1.2em; font-weight: bold; color: #d9534f;">合計: ¥0</span>
+            <button class="btn btn-primary" onclick="addNewRow()">＋ 行を追加</button>
+            <button class="btn btn-success" id="submit-btn" onclick="submitBatch()">注文を送信する</button>
+        </div>
+    </header>
+
+    <div class="table-container">
+        <table id="grid-table">
+            <thead>
+                <tr>
+                    <th style="width: 50px; text-align:center;">#</th>
+                    <th style="width: 150px;">品番/JAN</th>
+                    <th style="width: 120px;">メーカー (自動)</th>
+                    <th style="width: 250px;">品名 (自動)</th>
+                    <th style="width: 90px; text-align:right;">単価</th>
+                    <th style="width: 90px;">数量</th>
+                    <th style="width: 200px;">備考</th>
+                    <th style="width: 50px; text-align:center;">削除</th>
+                </tr>
+            </thead>
+            <tbody id="grid-body">
+                <!-- JavaScriptで生成 -->
+            </tbody>
+        </table>
     </div>
-
-    <!-- 2. 注文画面（初期非表示） -->
-    <div id="order-section" style="display: none;">
-        <div class="card" style="background:#e8f0fe; border: 1px solid #b6d4fe;">
-            <b id="cust-name" style="color:#084298; font-size:1.1em;"></b> 様<br>
-            <small style="color:#666;">カタログの品番を入力して注文を作成してください。</small>
-        </div>
-
-        <div class="card">
-            <h2>商品の追加</h2>
-            <div style="display:flex; gap:10px;">
-                <input type="text" id="part-input" class="input-box" style="margin:0; flex:2;" placeholder="品番を入力" list="product-list" oninput="suggestProduct(this.value)">
-                <button class="btn btn-primary" style="margin:0; flex:1;" onclick="addCurrentProduct()">追加</button>
-            </div>
-            <datalist id="product-list"></datalist>
-            <div id="product-preview" style="margin-top:10px; font-size:0.9em; color:#d9534f; font-weight:bold;"></div>
-        </div>
-
-        <div class="card">
-            <h2>カート内容</h2>
-            <div id="cart-area">
-                <p style="color:#999; text-align:center;">商品がありません</p>
-            </div>
-            <div style="text-align: right; font-size: 1.2em; font-weight: bold; margin-top: 15px; color: #d9534f;">
-                合計: ¥<span id="cart-total">0</span>
-            </div>
-            <input type="text" id="order-note" class="input-box" style="margin-top:15px;" placeholder="備考・ご要望があればご記入ください">
-            <button class="btn btn-success" onclick="submitCustomerOrder()">注文を確定する</button>
-        </div>
-    </div>
+    
+    <!-- 品番候補用 -->
+    <datalist id="product-list"></datalist>
 </div>
 
 <script>
-    // ▼ ここに最新の兼用GASのURLを入れてください
+    // ▼ 現在の兼用GAS URLをそのままご利用ください
     const GAS_URL = "https://script.google.com/macros/s/AKfycbw2JetMIiOzKYBnXXaZ-eW5NQnZ_QqQUiRvq5rvXEpoHzR5ta-HKL5ar3tkGtggOR76/exec";
     
     const MAKER_LIST = [
@@ -108,60 +108,23 @@
 
     let currentCustomer = null;
     let allProducts = [];
-    let cart = [];
-    let tempSelectedProduct = null;
-    let html5QrCode = null;
+    let rowCount = 0;
 
-    function showLoading(msg) {
-        document.getElementById('loading-msg').innerText = msg;
-        document.getElementById('loading').style.display = 'flex';
+    function showLoading(msg, detail = "") {
+        document.getElementById('loading-text').innerText = msg;
+        document.getElementById('loading-detail').innerText = detail;
+        document.getElementById('loading-overlay').style.display = 'flex';
     }
     function hideLoading() {
-        document.getElementById('loading').style.display = 'none';
+        document.getElementById('loading-overlay').style.display = 'none';
     }
 
-    function showManualInput() {
-        document.getElementById('manual-input-area').style.display = 'block';
-        document.getElementById('show-manual-btn').style.display = 'none';
-    }
-
-    // --- 0. QRコードスキャナー制御 ---
-    async function startQRScanner() {
-        const reader = document.getElementById('qr-reader');
-        const btn = document.getElementById('camera-btn');
-        
-        reader.style.display = 'block';
-        btn.style.display = 'none';
-
-        if (!html5QrCode) html5QrCode = new Html5Qrcode("qr-reader");
-
-        try {
-            await html5QrCode.start(
-                { facingMode: "environment" }, 
-                { fps: 10, qrbox: 250 }, 
-                (decodedText) => {
-                    html5QrCode.stop().then(() => {
-                        reader.style.display = 'none';
-                        btn.style.display = 'block';
-                        document.getElementById('login-id').value = decodedText;
-                        verifyCustomer(); // 自動で検索へ進む
-                    }).catch(err => console.error("Stop error", err));
-                }
-            );
-        } catch (err) { 
-            alert("カメラを起動できませんでした。ブラウザの設定をご確認いただくか、手入力をご利用ください。"); 
-            reader.style.display = 'none';
-            btn.style.display = 'block';
-            showManualInput();
-        }
-    }
-
-    // --- 1. 顧客認証 ---
+    // --- 1. ログイン処理 ---
     async function verifyCustomer() {
         const loginId = document.getElementById('login-id').value.trim();
-        if (!loginId) return alert("会員IDが読み取れませんでした。");
+        if (!loginId) return alert("会員ID または 電話番号を入力してください。");
 
-        showLoading("お客様情報を確認中...");
+        showLoading("ログイン情報を確認中...");
         try {
             const res = await fetch(GAS_URL, {
                 method: "POST",
@@ -170,35 +133,45 @@
             const data = await res.json();
 
             if (data.error) {
-                alert("登録が見つかりません。スタッフにお声がけください。");
+                alert("登録が見つかりません。入力内容をご確認ください。");
+                hideLoading();
             } else {
                 currentCustomer = data;
                 document.getElementById('cust-name').innerText = data.customer || data.name;
                 document.getElementById('login-section').style.display = 'none';
-                document.getElementById('order-section').style.display = 'block';
                 
-                preloadProductsBackground();
+                // 認証成功後、商品マスタを読み込み
+                await preloadAllMasters();
+                
+                document.getElementById('order-section').style.display = 'block';
+                for(let i=0; i<10; i++) addNewRow(); // 初期10行
+                hideLoading();
+                document.querySelector('input[data-col="partNo"]').focus(); // 最初のセルにフォーカス
             }
         } catch (e) {
-            alert("通信エラーが発生しました");
-        } finally {
+            alert("通信エラーが発生しました: " + e.message);
             hideLoading();
         }
     }
 
-    // --- 2. 商品マスタの裏側取得（チャンク処理） ---
-    async function preloadProductsBackground() {
+    // --- 2. 商品マスタの高速取得 ---
+    async function preloadAllMasters() {
+        showLoading("商品データを読み込み中...", "※初回のみ数秒かかります");
         try {
             const chunkSize = 5;
             for (let i = 0; i < MAKER_LIST.length; i += chunkSize) {
                 const chunk = MAKER_LIST.slice(i, i + chunkSize);
+                document.getElementById('loading-detail').innerText = `データ取得中... (${i + chunk.length}/${MAKER_LIST.length}社)`;
+                
                 const promises = chunk.map(maker => 
                     fetch(GAS_URL, { method: "POST", body: JSON.stringify({ action: "getAllProducts", targetMaker: maker }) }).then(r=>r.json())
                 );
                 const results = await Promise.all(promises);
                 results.forEach(res => { if(Array.isArray(res)) allProducts.push(...res); });
             }
-        } catch(e) { console.error("マスタ取得エラー", e); }
+        } catch (e) {
+            alert("マスタデータの読み込みに失敗しました。\n" + e.message);
+        }
     }
 
     function normalizeText(str) {
@@ -206,126 +179,177 @@
         return String(str).normalize("NFKC").replace(/[\u3041-\u3096]/g, match => String.fromCharCode(match.charCodeAt(0) + 0x60)).toUpperCase().trim();
     }
 
-    // --- 3. 品番サジェスト機能 ---
-    function suggestProduct(val) {
-        val = normalizeText(val);
-        const dataList = document.getElementById('product-list');
-        const preview = document.getElementById('product-preview');
-        tempSelectedProduct = null;
+    // --- 3. UI・グリッド制御 ---
+    function addNewRow() {
+        rowCount++;
+        const tr = document.createElement('tr');
+        tr.id = 'row-' + rowCount;
+        tr.dataset.rowIndex = rowCount;
+        
+        tr.innerHTML = `
+            <td style="text-align:center; color:#888;">${rowCount}</td>
+            <td><input type="text" class="grid-input" data-col="partNo" list="product-list" data-row="${rowCount}" oninput="autoComplete(this)" onkeydown="gridKeydown(event)"></td>
+            <td><div class="readonly-cell" id="disp-maker-${rowCount}"></div></td>
+            <td><div class="readonly-cell" id="disp-name-${rowCount}"></div></td>
+            <td><div class="readonly-cell" id="disp-price-${rowCount}" style="text-align:right;"></div></td>
+            <td><input type="number" class="grid-input" data-col="quantity" data-row="${rowCount}" min="1" oninput="calculateTotal()" onkeydown="gridKeydown(event)"></td>
+            <td><input type="text" class="grid-input" data-col="note" data-row="${rowCount}" onkeydown="gridKeydown(event)"></td>
+            <td><span class="del-btn" onclick="deleteRow('${tr.id}')">✖</span></td>
+        `;
+        document.getElementById('grid-body').appendChild(tr);
+    }
 
-        if (val.length < 2) { 
-            dataList.innerHTML = ""; 
-            preview.innerText = "";
-            return; 
-        }
+    function deleteRow(rowId) {
+        document.getElementById(rowId).remove();
+        calculateTotal();
+    }
 
-        dataList.innerHTML = "";
-        let matchCount = 0;
-        let exactMatch = null;
+    // Excel風のキーボード移動（Enter / Tab / 矢印キー）
+    function gridKeydown(e) {
+        const input = e.target;
+        const r = parseInt(input.dataset.row);
+        const c = input.dataset.col;
+        const cols = ['partNo', 'quantity', 'note'];
+        const cIdx = cols.indexOf(c);
 
-        for (let i = 0; i < allProducts.length; i++) {
-            const p = allProducts[i];
-            const pn = normalizeText(p.partNo);
-            const jan = normalizeText(p.jan || "");
-
-            if (pn === val || jan === val) exactMatch = p;
-
-            if (pn.startsWith(val) || jan.startsWith(val)) {
-                const option = document.createElement('option');
-                option.value = p.partNo;
-                option.textContent = p.name;
-                dataList.appendChild(option);
-                if (++matchCount >= 20) break;
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            let nextRowIdx = r + 1;
+            let nextInput = document.querySelector(`input[data-row="${nextRowIdx}"][data-col="${c}"]`);
+            
+            // 下の行がなければ自動で新規作成
+            if (!nextInput) {
+                addNewRow();
+                nextInput = document.querySelector(`input[data-row="${rowCount}"][data-col="${c}"]`);
             }
+            if (nextInput) nextInput.focus();
+        } 
+        else if (e.key === 'ArrowDown') {
+            const nextInput = document.querySelector(`input[data-row="${r+1}"][data-col="${c}"]`);
+            if (nextInput) nextInput.focus();
         }
-
-        if (exactMatch) {
-            tempSelectedProduct = exactMatch;
-            preview.innerHTML = `【選択中】 ${exactMatch.maker} / ${exactMatch.name} (¥${(exactMatch.price || 0).toLocaleString()})`;
-        } else {
-            preview.innerText = "";
+        else if (e.key === 'ArrowUp') {
+            const prevInput = document.querySelector(`input[data-row="${r-1}"][data-col="${c}"]`);
+            if (prevInput) prevInput.focus();
         }
     }
 
-    // --- 4. カート追加・操作 ---
-    function addCurrentProduct() {
-        if (!tempSelectedProduct) {
-            return alert("品番を正しく入力または選択してください");
+    // --- 4. 自動補完機能 ---
+    function autoComplete(inputElem) {
+        const tr = inputElem.closest('tr');
+        const r = tr.dataset.rowIndex;
+        const val = normalizeText(inputElem.value);
+        
+        tr.classList.remove('row-error');
+        tr.dataset.productObj = "";
+        const dispMaker = document.getElementById(`disp-maker-${r}`);
+        const dispName = document.getElementById(`disp-name-${r}`);
+        const dispPrice = document.getElementById(`disp-price-${r}`);
+        const dataList = document.getElementById('product-list');
+        
+        if (!val) { 
+            dispMaker.innerText = ""; dispName.innerText = ""; dispPrice.innerText = ""; 
+            dataList.innerHTML = "";
+            calculateTotal(); return; 
+        }
+
+        // サジェスト（2文字以上）
+        if (val.length >= 2) {
+            dataList.innerHTML = "";
+            let matchCount = 0;
+            for (let i = 0; i < allProducts.length; i++) {
+                const p = allProducts[i];
+                const pn = normalizeText(p.partNo);
+                const jan = normalizeText(p.jan || "");
+                if (pn.startsWith(val) || jan.startsWith(val)) {
+                    const option = document.createElement('option');
+                    option.value = p.partNo;
+                    option.textContent = `${p.maker || ''} | ${p.name || ''}`;
+                    dataList.appendChild(option);
+                    if (++matchCount >= 20) break;
+                }
+            }
+        } else {
+            dataList.innerHTML = "";
         }
         
-        let cleanLot = tempSelectedProduct.lot ? String(tempSelectedProduct.lot).normalize("NFKC").replace(/[^0-9]/g, '') : "1";
-        let defaultQty = parseInt(cleanLot) || 1;
+        // 完全一致判定
+        const found = allProducts.find(p => {
+            const pn = normalizeText(p.partNo);
+            const jan = normalizeText(p.jan || "");
+            return pn === val || jan === val;
+        });
 
-        const existingIdx = cart.findIndex(c => c.partNo === tempSelectedProduct.partNo);
-        if (existingIdx >= 0) {
-            cart[existingIdx].quantity += defaultQty;
-        } else {
-            cart.push({ ...tempSelectedProduct, quantity: defaultQty });
-        }
-
-        document.getElementById('part-input').value = "";
-        document.getElementById('product-preview').innerText = "";
-        tempSelectedProduct = null;
-        renderCart();
-    }
-
-    function changeQty(index, diff) {
-        let newQty = cart[index].quantity + diff;
-        if (newQty > 0) {
-            cart[index].quantity = newQty;
-            renderCart();
-        } else if (newQty === 0) {
-            if (confirm("この商品を削除しますか？")) {
-                cart.splice(index, 1);
-                renderCart();
+        if (found) {
+            dispMaker.innerText = found.maker;
+            dispName.innerText = found.name;
+            dispPrice.innerText = (found.price || 0).toLocaleString();
+            tr.dataset.productObj = JSON.stringify(found);
+            
+            // ロット自動入力
+            const qtyInput = tr.querySelector(`input[data-col="quantity"]`);
+            if (!qtyInput.value) {
+                let cleanLot = found.lot ? String(found.lot).normalize("NFKC").replace(/[^0-9]/g, '') : "1";
+                qtyInput.value = cleanLot || "1";
             }
+        } else {
+            dispMaker.innerText = "";
+            dispName.innerText = val.length >= 2 ? "該当なし" : "";
+            dispPrice.innerText = "";
         }
+        calculateTotal();
     }
 
-    function renderCart() {
-        const area = document.getElementById('cart-area');
+    function calculateTotal() {
         let total = 0;
-
-        if (cart.length === 0) {
-            area.innerHTML = '<p style="color:#999; text-align:center;">商品がありません</p>';
-            document.getElementById('cart-total').innerText = "0";
-            return;
-        }
-
-        area.innerHTML = cart.map((item, i) => {
-            const itemPrice = item.price || 0;
-            total += itemPrice * item.quantity;
-            return `
-            <div class="cart-item">
-                <div style="flex: 1; padding-right:10px;">
-                    <div style="font-size:0.8em; color:#666;">${item.maker} | ${item.partNo}</div>
-                    <div style="font-weight:bold;">${item.name}</div>
-                    <div style="color:#d9534f;">¥${itemPrice.toLocaleString()}</div>
-                </div>
-                <div class="qty-ctrl">
-                    <button class="qty-btn" onclick="changeQty(${i}, -1)">-</button>
-                    <div class="qty-num">${item.quantity}</div>
-                    <button class="qty-btn" onclick="changeQty(${i}, 1)">+</button>
-                </div>
-            </div>`;
-        }).join('');
-
-        document.getElementById('cart-total').innerText = total.toLocaleString();
+        document.querySelectorAll('#grid-body tr').forEach(tr => {
+            const pStr = tr.dataset.productObj;
+            const qStr = tr.querySelector(`input[data-col="quantity"]`).value;
+            if (pStr && qStr) {
+                const p = JSON.parse(pStr);
+                const q = parseInt(qStr) || 0;
+                total += (p.price || 0) * q;
+            }
+        });
+        document.getElementById('total-amount').innerText = `合計: ¥${total.toLocaleString()}`;
     }
 
-    // --- 5. 注文送信 ---
-    async function submitCustomerOrder() {
-        if (cart.length === 0) return alert("カートが空です");
-        if (!confirm("注文を確定して送信しますか？")) return;
+    // --- 5. 一括送信 ---
+    async function submitBatch() {
+        const btn = document.getElementById('submit-btn');
+        const itemsToSubmit = [];
+        let hasError = false;
 
+        document.querySelectorAll('#grid-body tr').forEach(tr => {
+            const partInput = tr.querySelector(`input[data-col="partNo"]`).value.trim();
+            if (!partInput) return; // 空行はスキップ
+
+            const pStr = tr.dataset.productObj;
+            const qty = parseInt(tr.querySelector(`input[data-col="quantity"]`).value) || 0;
+            const note = tr.querySelector(`input[data-col="note"]`).value.trim();
+
+            if (!pStr || qty <= 0) {
+                tr.classList.add('row-error');
+                hasError = true;
+            } else {
+                tr.classList.remove('row-error');
+                itemsToSubmit.push({
+                    customer: currentCustomer, // ログイン済みの顧客情報を全行に紐付ける
+                    product: JSON.parse(pStr),
+                    quantity: qty,
+                    note: note
+                });
+            }
+        });
+
+        if (hasError) return alert("赤枠の行にエラーがあります（品番間違い、または数量0）。\n修正してください。");
+        if (itemsToSubmit.length === 0) return alert("送信するデータがありません。");
+        
+        if (!confirm(`${itemsToSubmit.length} 件の注文を一括送信します。よろしいですか？`)) return;
+
+        btn.disabled = true;
+        btn.innerText = "送信中...";
         showLoading("注文を送信中...");
-
-        const itemsToSubmit = cart.map(item => ({
-            customer: currentCustomer,
-            product: item,
-            quantity: item.quantity,
-            note: document.getElementById('order-note').value.trim()
-        }));
 
         try {
             const res = await fetch(GAS_URL, {
@@ -338,16 +362,20 @@
             const result = await res.json();
             
             if (result.success) {
-                alert(`ご注文ありがとうございました！\n送信が完了しました。`);
-                cart = [];
-                document.getElementById('order-note').value = "";
-                renderCart();
+                alert(`ご注文ありがとうございました！\n計 ${result.count} 件の注文が完了しました。`);
+                // 送信後は表をリセット
+                document.getElementById('grid-body').innerHTML = "";
+                rowCount = 0;
+                for(let i=0; i<10; i++) addNewRow();
+                calculateTotal();
             } else {
                 alert("送信エラー: " + result.error);
             }
         } catch (e) {
             alert("通信エラーが発生しました: " + e.message);
         } finally {
+            btn.disabled = false;
+            btn.innerText = "注文を送信する";
             hideLoading();
         }
     }
