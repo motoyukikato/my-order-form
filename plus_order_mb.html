@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>展示会オーダーシステム</title>
+    <!-- QRコード読み込み用ライブラリ -->
+    <script src="https://unpkg.com/html5-qrcode"></script>
+    <style>
+        body { font-family: sans-serif; background: #f4f7f9; margin: 0; padding: 0; padding-bottom: 80px; }
+        header { background: #fff; padding: 15px; text-align: center; border-bottom: 3px solid #3b5998; position: sticky; top: 0; z-index: 100; font-weight: bold; }
+        .container { padding: 15px; }
+        .card { background: #fff; padding: 20px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); margin-bottom: 15px; }
+        
+        h2 { font-size: 1.2em; color: #333; margin-top: 0; border-bottom: 2px solid #eee; padding-bottom: 10px; }
+        .input-box { width: 100%; padding: 12px; border: 2px solid #ccc; border-radius: 8px; font-size: 16px; box-sizing: border-box; margin-bottom: 10px; }
+        .input-box:focus { border-color: #3b5998; outline: none; }
+        
+        .btn { width: 100%; padding: 15px; border: none; border-radius: 8px; font-size: 1.1em; font-weight: bold; cursor: pointer; color: white; margin-top: 10px; }
+        .btn-primary { background: #3b5998; }
+        .btn-success { background: #28a745; }
+        
+        /* カートUI */
+        .cart-item { border-bottom: 1px solid #eee; padding: 15px 0; display: flex; justify-content: space-between; align-items: center; }
+        .qty-ctrl { display: flex; align-items: center; gap: 10px; }
+        .qty-btn { width: 35px; height: 35px; border-radius: 50%; border: 1px solid #ccc; background: #fff; font-size: 1.2em; cursor: pointer; }
+        .qty-num { font-size: 1.2em; font-weight: bold; min-width: 30px; text-align: center; color: #3b5998; }
+        
+        #loading { display: none; position: fixed; top:0; left:0; width:100%; height:100%; background:rgba(255,255,255,0.9); z-index: 200; justify-content: center; align-items: center; flex-direction: column; }
+        .spinner { border: 4px solid #f3f3f3; border-top: 4px solid #3b5998; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        
+        /* QRリーダー用のスタイル */
+        #qr-reader { width: 100%; border-radius: 8px; overflow: hidden; display: none; margin-bottom: 15px; background: #000; }
+    </style>
+</head>
+<body>
+
+<header>展示会 オーダーフォーム</header>
+
+<div id="loading">
+    <div class="spinner"></div>
+    <p style="color:#555; font-weight:bold; margin-top:10px;" id="loading-msg">通信中...</p>
+</div>
+
+<div class="container">
+    <!-- 1. ログイン画面（QR特化） -->
+    <div id="login-section" class="card" style="text-align: center;">
+        <h2>QRコードでログイン</h2>
+        <p style="font-size: 0.9em; color: #666; margin-bottom: 20px;">お渡ししたQRコード（会員ID）をスキャンしてご注文を開始してください。</p>
+        
+        <!-- カメラ枠 -->
+        <div id="qr-reader"></div>
+        
+        <button id="camera-btn" class="btn btn-success" onclick="startQRScanner()" style="padding: 20px; font-size: 1.2em;">📷 カメラを起動する</button>
+        
+        <!-- カメラが使えない場合の予備（初期非表示） -->
+        <div id="manual-input-area" style="display: none; margin-top: 30px; text-align: left; border-top: 1px dashed #ccc; padding-top: 20px;">
+            <div style="text-align:center; margin-bottom: 15px; color:#d9534f; font-size: 0.9em; font-weight:bold;">カメラが起動できない場合</div>
+            <input type="text" id="login-id" class="input-box" placeholder="会員IDをご入力ください">
+            <button class="btn btn-primary" onclick="verifyCustomer()">ログイン</button>
+        </div>
+        <button id="show-manual-btn" class="btn" style="background: none; color: #888; font-size: 0.85em; margin-top: 20px; text-decoration: underline;" onclick="showManualInput()">カメラが使えない場合はこちら</button>
+    </div>
+
+    <!-- 2. 注文画面（初期非表示） -->
+    <div id="order-section" style="display: none;">
+        <div class="card" style="background:#e8f0fe; border: 1px solid #b6d4fe;">
+            <b id="cust-name" style="color:#084298; font-size:1.1em;"></b> 様<br>
+            <small style="color:#666;">カタログの品番を入力して注文を作成してください。</small>
+        </div>
+
+        <div class="card">
+            <h2>商品の追加</h2>
+            <div style="display:flex; gap:10px;">
+                <input type="text" id="part-input" class="input-box" style="margin:0; flex:2;" placeholder="品番を入力" list="product-list" oninput="suggestProduct(this.value)">
+                <button class="btn btn-primary" style="margin:0; flex:1;" onclick="addCurrentProduct()">追加</button>
+            </div>
+            <datalist id="product-list"></datalist>
+            <div id="product-preview" style="margin-top:10px; font-size:0.9em; color:#d9534f; font-weight:bold;"></div>
+        </div>
+
+        <div class="card">
+            <h2>カート内容</h2>
+            <div id="cart-area">
+                <p style="color:#999; text-align:center;">商品がありません</p>
+            </div>
+            <div style="text-align: right; font-size: 1.2em; font-weight: bold; margin-top: 15px; color: #d9534f;">
+                合計: ¥<span id="cart-total">0</span>
+            </div>
+            <input type="text" id="order-note" class="input-box" style="margin-top:15px;" placeholder="備考・ご要望があればご記入ください">
+            <button class="btn btn-success" onclick="submitCustomerOrder()">注文を確定する</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    // ▼ 現在の兼用GAS URL
+    const GAS_URL = "https://script.google.com/macros/s/AKfycbw2JetMIiOzKYBnXXaZ-eW5NQnZ_QqQUiRvq5rvXEpoHzR5ta-HKL5ar3tkGtggOR76/exec";
+    
+    const MAKER_LIST = [
+        'カルナック', '星野㈱', 'YARD', 'エルコミューン', 'asca', 'ネイチャーデザインズ',
+        '大地農園', 'フロールエバー', 'コアトレーディング', 'ホワイエ', 'ミュールミル',
+        'ラライワント', '友膳', '松村工芸・クレイ', 'ポッシュリビング', '東京堂',
+        'マグネット', '志成販売', 'コベントガーデン', '坂源', 'インターリンク',
+        '三和トレーディング', '村田屋産業'
+    ];
+
+    let currentCustomer = null;
+    let allProducts = [];
+    let cart = [];
+    let tempSelectedProduct = null;
+    let html5QrCode = null;
+
+    function showLoading(msg) {
+        document.getElementById('loading-msg').innerText = msg;
+        document.getElementById('loading').style.display = 'flex';
+    }
+    function hideLoading() {
+        document.getElementById('loading').style.display = 'none';
+    }
+
+    function showManualInput() {
+        document.getElementById('manual-input-area').style.display = 'block';
+        document.getElementById('show-manual-btn').style.display = 'none';
+    }
+
+    // --- 0. QRコードスキャナー制御 ---
+    async function startQRScanner() {
+        const reader = document.getElementById('qr-reader');
+        const btn = document.getElementById('camera-btn');
+        
+        reader.style.display = 'block';
+        btn.style.display = 'none';
+
+        if (!html5QrCode) html5QrCode = new Html5Qrcode("qr-reader");
+
+        try {
+            await html5QrCode.start(
+                { facingMode: "environment" }, 
+                { fps: 10, qrbox: 250 }, 
+                (decodedText) => {
+                    html5QrCode.stop().then(() => {
+                        reader.style.display = 'none';
+                        btn.style.display = 'block';
+                        document.getElementById('login-id').value = decodedText;
+                        verifyCustomer(); // 自動で検索へ進む
+                    }).catch(err => console.error("Stop error", err));
+                }
+            );
+        } catch (err) { 
+            alert("カメラを起動できませんでした。ブラウザの設定をご確認いただくか、手入力をご利用ください。"); 
+            reader.style.display = 'none';
+            btn.style.display = 'block';
+            showManualInput();
+        }
+    }
+
+    // --- 1. 顧客認証 ---
+    async function verifyCustomer() {
+        const loginId = document.getElementById('login-id').value.trim();
+        if (!loginId) return alert("会員IDが読み取れませんでした。");
+
+        showLoading("お客様情報を確認中...");
+        try {
+            const res = await fetch(GAS_URL, {
+                method: "POST",
+                body: JSON.stringify({ action: "customerSearch", val: loginId })
+            });
+            const data = await res.json();
+
+            if (data.error) {
+                alert("登録が見つかりません。スタッフにお声がけください。");
+            } else {
+                currentCustomer = data;
+                document.getElementById('cust-name').innerText = data.customer || data.name;
+                document.getElementById('login-section').style.display = 'none';
+                document.getElementById('order-section').style.display = 'block';
+                
+                preloadProductsBackground();
+            }
+        } catch (e) {
+            alert("通信エラーが発生しました");
+        } finally {
+            hideLoading();
+        }
+    }
+
+    // --- 2. 商品マスタの裏側取得（チャンク処理） ---
+    async function preloadProductsBackground() {
+        try {
+            const chunkSize = 5;
+            for (let i = 0; i < MAKER_LIST.length; i += chunkSize) {
+                const chunk = MAKER_LIST.slice(i, i + chunkSize);
+                const promises = chunk.map(maker => 
+                    fetch(GAS_URL, { method: "POST", body: JSON.stringify({ action: "getAllProducts", targetMaker: maker }) }).then(r=>r.json())
+                );
+                const results = await Promise.all(promises);
+                results.forEach(res => { if(Array.isArray(res)) allProducts.push(...res); });
+            }
+        } catch(e) { console.error("マスタ取得エラー", e); }
+    }
+
+    function normalizeText(str) {
+        if (!str) return "";
+        return String(str).normalize("NFKC").replace(/[\u3041-\u3096]/g, match => String.fromCharCode(match.charCodeAt(0) + 0x60)).toUpperCase().trim();
+    }
+
+    // --- 3. 品番サジェスト機能 ---
+    function suggestProduct(val) {
+        val = normalizeText(val);
+        const dataList = document.getElementById('product-list');
+        const preview = document.getElementById('product-preview');
+        tempSelectedProduct = null;
+
+        if (val.length < 2) { 
+            dataList.innerHTML = ""; 
+            preview.innerText = "";
+            return; 
+        }
+
+        dataList.innerHTML = "";
+        let matchCount = 0;
+        let exactMatch = null;
+
+        for (let i = 0; i < allProducts.length; i++) {
+            const p = allProducts[i];
+            const pn = normalizeText(p.partNo);
+            const jan = normalizeText(p.jan || "");
+
+            if (pn === val || jan === val) exactMatch = p;
+
+            if (pn.startsWith(val) || jan.startsWith(val)) {
+                const option = document.createElement('option');
+                option.value = p.partNo;
+                option.textContent = p.name;
+                dataList.appendChild(option);
+                if (++matchCount >= 20) break;
+            }
+        }
+
+        if (exactMatch) {
+            tempSelectedProduct = exactMatch;
+            preview.innerHTML = `【選択中】 ${exactMatch.maker} / ${exactMatch.name} (¥${(exactMatch.price || 0).toLocaleString()})`;
+        } else {
+            preview.innerText = "";
+        }
+    }
+
+    // --- 4. カート追加・操作 ---
+    function addCurrentProduct() {
+        if (!tempSelectedProduct) {
+            return alert("品番を正しく入力または選択してください");
+        }
+        
+        let cleanLot = tempSelectedProduct.lot ? String(tempSelectedProduct.lot).normalize("NFKC").replace(/[^0-9]/g, '') : "1";
+        let defaultQty = parseInt(cleanLot) || 1;
+
+        const existingIdx = cart.findIndex(c => c.partNo === tempSelectedProduct.partNo);
+        if (existingIdx >= 0) {
+            cart[existingIdx].quantity += defaultQty;
+        } else {
+            cart.push({ ...tempSelectedProduct, quantity: defaultQty });
+        }
+
+        document.getElementById('part-input').value = "";
+        document.getElementById('product-preview').innerText = "";
+        tempSelectedProduct = null;
+        renderCart();
+    }
+
+    function changeQty(index, diff) {
+        let newQty = cart[index].quantity + diff;
+        if (newQty > 0) {
+            cart[index].quantity = newQty;
+            renderCart();
+        } else if (newQty === 0) {
+            if (confirm("この商品を削除しますか？")) {
+                cart.splice(index, 1);
+                renderCart();
+            }
+        }
+    }
+
+    function renderCart() {
+        const area = document.getElementById('cart-area');
+        let total = 0;
+
+        if (cart.length === 0) {
+            area.innerHTML = '<p style="color:#999; text-align:center;">商品がありません</p>';
+            document.getElementById('cart-total').innerText = "0";
+            return;
+        }
+
+        area.innerHTML = cart.map((item, i) => {
+            const itemPrice = item.price || 0;
+            total += itemPrice * item.quantity;
+            return `
+            <div class="cart-item">
+                <div style="flex: 1; padding-right:10px;">
+                    <div style="font-size:0.8em; color:#666;">${item.maker} | ${item.partNo}</div>
+                    <div style="font-weight:bold;">${item.name}</div>
+                    <div style="color:#d9534f;">¥${itemPrice.toLocaleString()}</div>
+                </div>
+                <div class="qty-ctrl">
+                    <button class="qty-btn" onclick="changeQty(${i}, -1)">-</button>
+                    <div class="qty-num">${item.quantity}</div>
+                    <button class="qty-btn" onclick="changeQty(${i}, 1)">+</button>
+                </div>
+            </div>`;
+        }).join('');
+
+        document.getElementById('cart-total').innerText = total.toLocaleString();
+    }
+
+    // --- 5. 注文送信 ---
+    async function submitCustomerOrder() {
+        if (cart.length === 0) return alert("カートが空です");
+        if (!confirm("注文を確定して送信しますか？")) return;
+
+        showLoading("注文を送信中...");
+
+        const itemsToSubmit = cart.map(item => ({
+            customer: currentCustomer,
+            product: item,
+            quantity: item.quantity,
+            note: document.getElementById('order-note').value.trim()
+        }));
+
+        try {
+            const res = await fetch(GAS_URL, {
+                method: "POST",
+                body: JSON.stringify({
+                    action: "batchOrderSubmitMixed",
+                    data: { items: itemsToSubmit }
+                })
+            });
+            const result = await res.json();
+            
+            if (result.success) {
+                alert(`ご注文ありがとうございました！\n送信が完了しました。`);
+                cart = [];
+                document.getElementById('order-note').value = "";
+                renderCart();
+            } else {
+                alert("送信エラー: " + result.error);
+            }
+        } catch (e) {
+            alert("通信エラーが発生しました: " + e.message);
+        } finally {
+            hideLoading();
+        }
+    }
+</script>
+</body>
+</html>
