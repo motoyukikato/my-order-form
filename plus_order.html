@@ -4,6 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>展示会オーダーシステム</title>
+    <!-- QRコード読み込み用ライブラリ -->
+    <script src="https://unpkg.com/html5-qrcode"></script>
     <style>
         body { font-family: sans-serif; background: #f4f7f9; margin: 0; padding: 0; padding-bottom: 80px; }
         header { background: #fff; padding: 15px; text-align: center; border-bottom: 3px solid #3b5998; position: sticky; top: 0; z-index: 100; font-weight: bold; }
@@ -27,6 +29,9 @@
         #loading { display: none; position: fixed; top:0; left:0; width:100%; height:100%; background:rgba(255,255,255,0.9); z-index: 200; justify-content: center; align-items: center; flex-direction: column; }
         .spinner { border: 4px solid #f3f3f3; border-top: 4px solid #3b5998; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        
+        /* QRリーダー用のスタイル */
+        #qr-reader { width: 100%; border-radius: 8px; overflow: hidden; display: none; margin-bottom: 15px; background: #000; }
     </style>
 </head>
 <body>
@@ -39,19 +44,30 @@
 </div>
 
 <div class="container">
-    <!-- 1. ログイン画面 -->
-    <div id="login-section" class="card">
-        <h2>お客様情報の確認</h2>
-        <p style="font-size: 0.9em; color: #666;">ご登録の電話番号（ハイフンなし）を入力してください。</p>
-        <input type="tel" id="login-phone" class="input-box" placeholder="例: 09012345678">
-        <button class="btn btn-primary" onclick="verifyCustomer()">次へ進む</button>
+    <!-- 1. ログイン画面（QR特化） -->
+    <div id="login-section" class="card" style="text-align: center;">
+        <h2>QRコードでログイン</h2>
+        <p style="font-size: 0.9em; color: #666; margin-bottom: 20px;">お渡ししたQRコード（会員ID）をスキャンしてご注文を開始してください。</p>
+        
+        <!-- カメラ枠 -->
+        <div id="qr-reader"></div>
+        
+        <button id="camera-btn" class="btn btn-success" onclick="startQRScanner()" style="padding: 20px; font-size: 1.2em;">📷 カメラを起動する</button>
+        
+        <!-- カメラが使えない場合の予備（初期非表示） -->
+        <div id="manual-input-area" style="display: none; margin-top: 30px; text-align: left; border-top: 1px dashed #ccc; padding-top: 20px;">
+            <div style="text-align:center; margin-bottom: 15px; color:#d9534f; font-size: 0.9em; font-weight:bold;">カメラが起動できない場合</div>
+            <input type="text" id="login-id" class="input-box" placeholder="会員IDをご入力ください">
+            <button class="btn btn-primary" onclick="verifyCustomer()">ログイン</button>
+        </div>
+        <button id="show-manual-btn" class="btn" style="background: none; color: #888; font-size: 0.85em; margin-top: 20px; text-decoration: underline;" onclick="showManualInput()">カメラが使えない場合はこちら</button>
     </div>
 
     <!-- 2. 注文画面（初期非表示） -->
     <div id="order-section" style="display: none;">
         <div class="card" style="background:#e8f0fe; border: 1px solid #b6d4fe;">
             <b id="cust-name" style="color:#084298; font-size:1.1em;"></b> 様<br>
-            <small style="color:#666;">このままカタログの品番を入力して注文を作成してください。</small>
+            <small style="color:#666;">カタログの品番を入力して注文を作成してください。</small>
         </div>
 
         <div class="card">
@@ -60,9 +76,7 @@
                 <input type="text" id="part-input" class="input-box" style="margin:0; flex:2;" placeholder="品番を入力" list="product-list" oninput="suggestProduct(this.value)">
                 <button class="btn btn-primary" style="margin:0; flex:1;" onclick="addCurrentProduct()">追加</button>
             </div>
-            <!-- 品番入力時の候補表示用 -->
             <datalist id="product-list"></datalist>
-            
             <div id="product-preview" style="margin-top:10px; font-size:0.9em; color:#d9534f; font-weight:bold;"></div>
         </div>
 
@@ -81,9 +95,9 @@
 </div>
 
 <script>
+    // ▼ ここに最新の兼用GASのURLを入れてください
     const GAS_URL = "https://script.google.com/macros/s/AKfycbw2JetMIiOzKYBnXXaZ-eW5NQnZ_QqQUiRvq5rvXEpoHzR5ta-HKL5ar3tkGtggOR76/exec";
     
-    // 全メーカーリスト
     const MAKER_LIST = [
         'カルナック', '星野㈱', 'YARD', 'エルコミューン', 'asca', 'ネイチャーデザインズ',
         '大地農園', 'フロールエバー', 'コアトレーディング', 'ホワイエ', 'ミュールミル',
@@ -96,6 +110,7 @@
     let allProducts = [];
     let cart = [];
     let tempSelectedProduct = null;
+    let html5QrCode = null;
 
     function showLoading(msg) {
         document.getElementById('loading-msg').innerText = msg;
@@ -105,16 +120,52 @@
         document.getElementById('loading').style.display = 'none';
     }
 
+    function showManualInput() {
+        document.getElementById('manual-input-area').style.display = 'block';
+        document.getElementById('show-manual-btn').style.display = 'none';
+    }
+
+    // --- 0. QRコードスキャナー制御 ---
+    async function startQRScanner() {
+        const reader = document.getElementById('qr-reader');
+        const btn = document.getElementById('camera-btn');
+        
+        reader.style.display = 'block';
+        btn.style.display = 'none';
+
+        if (!html5QrCode) html5QrCode = new Html5Qrcode("qr-reader");
+
+        try {
+            await html5QrCode.start(
+                { facingMode: "environment" }, 
+                { fps: 10, qrbox: 250 }, 
+                (decodedText) => {
+                    html5QrCode.stop().then(() => {
+                        reader.style.display = 'none';
+                        btn.style.display = 'block';
+                        document.getElementById('login-id').value = decodedText;
+                        verifyCustomer(); // 自動で検索へ進む
+                    }).catch(err => console.error("Stop error", err));
+                }
+            );
+        } catch (err) { 
+            alert("カメラを起動できませんでした。ブラウザの設定をご確認いただくか、手入力をご利用ください。"); 
+            reader.style.display = 'none';
+            btn.style.display = 'block';
+            showManualInput();
+        }
+    }
+
     // --- 1. 顧客認証 ---
     async function verifyCustomer() {
-        const phone = document.getElementById('login-phone').value.trim();
-        if (!phone) return alert("電話番号を入力してください");
+        const loginId = document.getElementById('login-id').value.trim();
+        if (!loginId) return alert("会員IDが読み取れませんでした。");
 
         showLoading("お客様情報を確認中...");
         try {
             const res = await fetch(GAS_URL, {
                 method: "POST",
-                body: JSON.stringify({ action: "customerSearch", val: phone })
+                body: JSON.stringify({ action: "customerSearch", val: loginId })
             });
             const data = await res.json();
 
@@ -126,7 +177,6 @@
                 document.getElementById('login-section').style.display = 'none';
                 document.getElementById('order-section').style.display = 'block';
                 
-                // 認証成功後、裏側で商品マスタを非同期ダウンロード開始
                 preloadProductsBackground();
             }
         } catch (e) {
@@ -148,10 +198,7 @@
                 const results = await Promise.all(promises);
                 results.forEach(res => { if(Array.isArray(res)) allProducts.push(...res); });
             }
-            console.log("商品マスタ読み込み完了");
-        } catch(e) {
-            console.error("マスタ取得エラー", e);
-        }
+        } catch(e) { console.error("マスタ取得エラー", e); }
     }
 
     function normalizeText(str) {
@@ -209,7 +256,6 @@
         let cleanLot = tempSelectedProduct.lot ? String(tempSelectedProduct.lot).normalize("NFKC").replace(/[^0-9]/g, '') : "1";
         let defaultQty = parseInt(cleanLot) || 1;
 
-        // すでにカートにある場合は数量追加
         const existingIdx = cart.findIndex(c => c.partNo === tempSelectedProduct.partNo);
         if (existingIdx >= 0) {
             cart[existingIdx].quantity += defaultQty;
@@ -267,14 +313,13 @@
         document.getElementById('cart-total').innerText = total.toLocaleString();
     }
 
-    // --- 5. 注文送信（一括処理GASへのマッピング） ---
+    // --- 5. 注文送信 ---
     async function submitCustomerOrder() {
         if (cart.length === 0) return alert("カートが空です");
         if (!confirm("注文を確定して送信しますか？")) return;
 
         showLoading("注文を送信中...");
 
-        // 管理者用GASの一括処理エンドポイント(batchOrderSubmitMixed)に合わせたデータ構造を作成
         const itemsToSubmit = cart.map(item => ({
             customer: currentCustomer,
             product: item,
@@ -294,7 +339,6 @@
             
             if (result.success) {
                 alert(`ご注文ありがとうございました！\n送信が完了しました。`);
-                // カートリセット
                 cart = [];
                 document.getElementById('order-note').value = "";
                 renderCart();
