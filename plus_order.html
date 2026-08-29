@@ -118,47 +118,50 @@
     function hideLoading() {
         document.getElementById('loading-overlay').style.display = 'none';
     }
+// --- 1. ログイン処理 ---
+async function verifyCustomer() {
+    const loginId = document.getElementById('login-id').value.trim();
+    if (!loginId) return alert("会員IDを入力してください。");
 
-    // --- 1. ログイン処理 ---
-    async function verifyCustomer() {
-        const loginId = document.getElementById('login-id').value.trim();
-        if (!loginId) return alert("会員IDを入力してください。");
+    /* 
+       電話番号でのログインを許可するため、以下の電話番号ブロック処理を削除（コメントアウト）しました。
+       
+       const numberOnly = loginId.replace(/[^0-9]/g, '');
+       if (numberOnly.startsWith('0') && (numberOnly.length === 10 || numberOnly.length === 11)) {
+           return alert("電話番号でのログインはできません。会員IDをご入力ください。");
+       }
+    */
 
-        // ★追加: 電話番号（0から始まる10〜11桁の数字）が入力されたら弾く
-        const numberOnly = loginId.replace(/[^0-9]/g, '');
-        if (numberOnly.startsWith('0') && (numberOnly.length === 10 || numberOnly.length === 11)) {
-            return alert("電話番号でのログインはできません。会員IDをご入力ください。");
-        }
+    showLoading("ログイン情報を確認中...");
+    try {
+        const res = await fetch(GAS_URL, {
+            method: "POST",
+            body: JSON.stringify({ action: "customerSearch", val: loginId })
+        });
+        const data = await res.json();
 
-        showLoading("ログイン情報を確認中...");
-        try {
-            const res = await fetch(GAS_URL, {
-                method: "POST",
-                body: JSON.stringify({ action: "customerSearch", val: loginId })
-            });
-            const data = await res.json();
-
-            if (data.error) {
-                alert("登録が見つかりません。入力内容をご確認ください。");
-                hideLoading();
-            } else {
-                currentCustomer = data;
-                document.getElementById('cust-name').innerText = data.customer || data.name;
-                document.getElementById('login-section').style.display = 'none';
-                
-                // 認証成功後、商品マスタを読み込み
-                await preloadAllMasters();
-                
-                document.getElementById('order-section').style.display = 'block';
-                for(let i=0; i<10; i++) addNewRow(); // 初期10行
-                hideLoading();
-                document.querySelector('input[data-col="partNo"]').focus(); // 最初のセルにフォーカス
-            }
-        } catch (e) {
-            alert("通信エラーが発生しました: " + e.message);
+        if (data.error) {
+            alert("登録が見つかりません。入力内容をご確認ください。");
             hideLoading();
+        } else {
+            currentCustomer = data;
+            document.getElementById('cust-name').innerText = data.customer || data.name;
+            document.getElementById('login-section').style.display = 'none';
+            
+            // 認証成功後、商品マスタを読み込み
+            await preloadAllMasters();
+            
+            document.getElementById('order-section').style.display = 'block';
+            for(let i=0; i<10; i++) addNewRow(); // 初期10行
+            hideLoading();
+            document.querySelector('input[data-col="partNo"]').focus(); // 最初のセルにフォーカス
         }
+    } catch (e) {
+        alert("通信エラーが発生しました: " + e.message);
+        hideLoading();
     }
+}
+  
 
     // --- 2. 商品マスタの高速取得 ---
     async function preloadAllMasters() {
