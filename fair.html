@@ -938,18 +938,21 @@ function isVipCustomer(c) {
 }
 
 // トップ画面に優良顧客ボタンを描画する関数
+// トップ画面に優良顧客ボタンを描画する関数（スマホ表示強化版）
 function renderVipList() {
     const vipSection = document.getElementById("vip-section");
     const vipList = document.getElementById("vip-list");
     if (!vipSection || !vipList) return;
 
+    // データがまだ読み込まれていない場合は少し待って再実行
     if (!allCustomers || allCustomers.length === 0) {
-        vipSection.style.display = "none";
+        setTimeout(renderVipList, 500); // 0.5秒後に再試行
         return;
     }
 
-    // 選択中メーカーのVIPのみを抽出
+    // VIP顧客を抽出（メーカー判定が不十分な場合も全共通VIPを確実に拾う）
     const vips = allCustomers.filter(c => isVipCustomer(c));
+    
     if (vips.length === 0) {
         vipSection.style.display = "none";
         return;
@@ -961,7 +964,8 @@ function renderVipList() {
         return `<button type="button" class="vip-customer-btn" onclick="fetchCustomer('${id}')"><i class="fas fa-star" style="color:#ffc107;"></i> ${name}</button>`;
     }).join('');
 
-    vipSection.style.display = "block";
+    // スマホでも確実に目立つようにスタイルを強制指定して表示
+    vipSection.style.setProperty('display', 'block', 'important');
 }
 
 // 顧客データ読み込み関数（キャッシュ優先でGAS通信を抑制）
@@ -989,10 +993,11 @@ async function preloadAllCustomers() {
         });
         if (!res.ok) throw new Error("HTTPエラー: " + res.status);
         const data = await res.json();
+        // 顧客データ読み込み成功時の処理部分（623行目付近）
         if (Array.isArray(data) && data.length > 0) {
             allCustomers = data;
             localStorage.setItem(cacheKey, JSON.stringify(data));
-            renderVipList(); 
+            renderVipList(); // ★ここでも呼び出して描画を補償する
         }
     } catch (e) { 
         console.error("顧客データ読み込み失敗:", e); 
