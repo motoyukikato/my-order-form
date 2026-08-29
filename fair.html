@@ -13,7 +13,7 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
         body { 
-            font-family: sans-serif; 
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; 
             margin: 0; 
             padding-bottom: 90px; 
             background: #f4f7f9; 
@@ -51,9 +51,13 @@
         .numpad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
         .numpad button { padding: 15px; font-size: 1.5em; border: 1px solid #ddd; border-radius: 8px; background: #f9f9f9; }
         .del-btn { color: #d9534f; border: 1px solid #d9534f; padding: 4px 8px; border-radius: 4px; font-size: 0.8em; margin-left: 10px; }
-        .hold-card { border-left: 8px solid #ffc107; margin-bottom: 10px; position: relative; }
+
+        /* ★優良顧客（VIP）用のスタイルを追加 */
+        .vip-badge { display: inline-block; background: #fff3cd; color: #856404; font-size: 0.8em; font-weight: bold; padding: 2px 8px; border-radius: 12px; border: 1px solid #ffeeba; margin-bottom: 4px; }
+        .vip-card { background: #fff8e1; border: 2px solid #ffc107; border-radius: 12px; padding: 12px; margin-bottom: 12px; }
+        .vip-customer-btn { background: #fff; border: 1px solid #ffc107; color: #333; font-weight: bold; padding: 8px 12px; border-radius: 20px; cursor: pointer; font-size: 0.9em; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+        .vip-customer-btn:active { background: #ffe082; }
     </style>
-</head>
 <body>
 
 <header id="app-title">商事本部 受注システム</header>
@@ -79,13 +83,31 @@
 </div>
 
 <section id="home" class="page-section active">
+
+    <!-- ★追加：トップ画面に表示する優良顧客クイック選択エリア -->
+    <div id="vip-section" class="vip-card" style="display:none;">
+        <div class="vip-badge"><i class="fas fa-crown"></i> 本日の優良顧客 / お得意様</div>
+        <div id="vip-list" style="display:flex; flex-wrap:wrap; gap:5px; margin-top:5px;"></div>
+    </div>
+
+    <!-- ★ここを書き換え：クリアボタンとVIPバッジを追加した顧客情報カード -->
     <div class="card">
         <div id="c-none" style="text-align:center; color:#999; padding: 10px;">顧客情報を選択してください</div>
         <div id="c-detail" style="display:none;">
-            <b id="r-name" style="color:#3b5998; font-size:1.2em;"></b><br>
-            <small id="r-addr1" style="color:#666;"></small><br>
-            <small id="r-addr2" style="color:#666;"></small><br>
-            <small id="r-tel" style="color:#666;"></small>
+            <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                <div>
+                    <!-- 優良顧客バッジ -->
+                    <span id="r-vip-badge" class="vip-badge" style="display:none;"><i class="fas fa-crown"></i> 優良顧客</span><br>
+                    <b id="r-name" style="color:#3b5998; font-size:1.2em;"></b><br>
+                    <small id="r-addr1" style="color:#666;"></small><br>
+                    <small id="r-addr2" style="color:#666;"></small><br>
+                    <small id="r-tel" style="color:#666;"></small>
+                </div>
+                <!-- クリアボタン -->
+                <button type="button" class="del-btn" style="padding: 6px 12px; font-size: 0.85em; font-weight: bold; background: #fff; cursor: pointer; flex-shrink: 0;" onclick="clearCurrentCustomer()">
+                    <i class="fas fa-times-circle"></i> クリア
+                </button>
+            </div>
         </div>
     </div>
     <div style="display: flex; gap: 10px; margin-bottom:15px;">
@@ -117,11 +139,9 @@
 
 <section id="scanner-page" class="page-section">
     <div id="camera-guide" style="display:none; background:#fff3cd; color:#856404; padding:12px; text-align:center; font-size:14px; font-weight:bold; border-bottom:1px solid #ffeeba;">
-        📸 ピントが合わない時は、一度離してから<br>ゆっくり近づけてください
+        📸 ピントが合わない時は、一度離してからゆっくり近づけてください
     </div>
-
     <div id="reader" style="width:100% !important;"></div>
-
     <div style="text-align:center; padding:20px; background:#fff;">
         <button class="btn-main" style="background:#666;" onclick="stopCamera()">キャンセル</button>
     </div>
@@ -131,7 +151,6 @@
     <h3 style="text-align:center; color:#3b5998;"><i class="fas fa-history"></i> 保留・履歴</h3>
     <div id="pending-list-area"></div>
     <hr style="border: 0; border-top: 1px solid #ddd; margin: 20px 0;">
-    
     <div style="margin-bottom: 15px; padding: 0 10px;">
         <input type="text" id="history-filter-input" placeholder="顧客名や品番で履歴を絞り込み..." 
                oninput="filterHistory()" 
@@ -147,7 +166,7 @@
     </div>
     
     <div class="card" style="margin-top:20px;">
-        <h4 style="margin-top:0; color:#333;"><i class="fas fa-exchange-alt"></i> メーカー切替</h4>
+        <h4 style="margin-top:0; color:#333;"><i class="fas fa-exchange-alt"></i> メーカー選択・切替</h4>
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 20px;">
             <button class="btn-main" style="background:#007bff; font-size:0.9em;" onclick="switchMaker('カルナック')">カルナック</button>
             <button class="btn-main" style="background:#0056b3; font-size:0.9em;" onclick="switchMaker('星野㈱')">星野㈱</button>
@@ -215,9 +234,9 @@
             preloadAllProducts();
         }
 
-        // 保存済み下書きの復元
         restoreDraftData();
 
+        // iOS向け：ヘッダー5回タップで管理者ログイン画面を呼び出し
         document.getElementById("app-title").addEventListener('click', function() {
             headerTapCount++;
             clearTimeout(headerTapTimer);
@@ -235,7 +254,6 @@
         });
     };
 
-    // --- 下書きデータ保存・復元関数 ---
     function saveDraftData() {
         try {
             const draft = {
@@ -256,22 +274,9 @@
             if (!saved) return;
 
             const draft = JSON.parse(saved);
-            
-            if (draft.customer) {
-                customer = draft.customer;
-                updateCustomerDisplay();
-            }
-
-            if (Array.isArray(draft.cart)) {
-                cart = draft.cart;
-                renderCart();
-            }
-
-            if (Array.isArray(draft.pendingOrders)) {
-                pendingOrders = draft.pendingOrders;
-                renderPendingList();
-            }
-
+            if (draft.customer) { customer = draft.customer; updateCustomerDisplay(); }
+            if (Array.isArray(draft.cart)) { cart = draft.cart; renderCart(); }
+            if (Array.isArray(draft.pendingOrders)) { pendingOrders = draft.pendingOrders; renderPendingList(); }
             if (draft.commonNote) {
                 const noteElem = document.getElementById("common-note");
                 if (noteElem) noteElem.value = draft.commonNote;
@@ -282,62 +287,35 @@
     }
 
     function clearDraftData() {
-        try {
-            localStorage.removeItem(DRAFT_KEY);
-        } catch (e) {
-            console.error("下書き削除エラー:", e);
-        }
+        try { localStorage.removeItem(DRAFT_KEY); } catch (e) { console.error("下書き削除エラー:", e); }
     }
 
-    function openTelModal() {
-        openQtyModal();
-    }
+    function openTelModal() { openQtyModal(); }
 
     async function preloadAllCustomers() {
         const cacheKey = "CUSTOMERS_CACHE_ALL";
         const cachedData = localStorage.getItem(cacheKey);
-
         if (cachedData) {
-            try {
-                allCustomers = JSON.parse(cachedData);
-                console.log("ローカルキャッシュから顧客データをロードしました");
-            } catch (e) {
-                console.error("顧客キャッシュ解析エラー", e);
-            }
+            try { allCustomers = JSON.parse(cachedData); } catch (e) { console.error("顧客キャッシュエラー", e); }
         }
 
         try {
             const res = await fetch(GAS_URL, { 
                 method: "POST", 
                 headers: { "Content-Type": "text/plain;charset=utf-8" },
-                body: JSON.stringify({ 
-                    action: "getAllCustomers", 
-                    _ts: Date.now()
-                }) 
+                body: JSON.stringify({ action: "getAllCustomers", _ts: Date.now() }) 
             });
-            
             if (!res.ok) throw new Error("HTTPエラー: " + res.status);
-
             const data = await res.json();
-
-            if (data && data.error) {
-                console.error("GASからの顧客取得エラー:", data.error);
-                return;
-            }
-
             if (Array.isArray(data) && data.length > 0) {
                 allCustomers = data;
                 localStorage.setItem(cacheKey, JSON.stringify(data));
-                console.log("GASから最新の顧客データを取得・更新しました");
             }
-        } catch (e) { 
-            console.error("顧客データの読み込み失敗:", e);
-        }
+        } catch (e) { console.error("顧客データ読み込み失敗:", e); }
     }
 
     async function preloadAllProducts() {
         if (!MY_MAKER) return;
-        
         const cacheKey = "PRODUCTS_CACHE_" + MY_MAKER;
         const cachedData = localStorage.getItem(cacheKey);
         const inputElem = document.getElementById("part-no-input");
@@ -349,54 +327,28 @@
                     inputElem.placeholder = "品番・品名・JANを入力";
                     inputElem.disabled = false;
                 }
-                console.log("ローカルキャッシュから商品データをロードしました");
-            } catch (e) {
-                console.error("キャッシュ解析エラー", e);
-            }
+            } catch (e) { console.error("キャッシュ解析エラー", e); }
         }
 
         try {
             const res = await fetch(GAS_URL, { 
                 method: "POST", 
                 headers: { "Content-Type": "text/plain;charset=utf-8" },
-                body: JSON.stringify({ 
-                    action: "getAllProducts", 
-                    targetMaker: MY_MAKER,
-                    _ts: Date.now()
-                }) 
+                body: JSON.stringify({ action: "getAllProducts", targetMaker: MY_MAKER, _ts: Date.now() }) 
             });
-            
             if (!res.ok) throw new Error("HTTPエラー: " + res.status);
-
             const data = await res.json();
-
-            if (data && data.error) {
-                console.error("GASからのエラー:", data.error);
-                if (!cachedData && inputElem) {
-                    inputElem.placeholder = "エラー: " + data.error;
-                }
-                return;
-            }
-
             if (Array.isArray(data) && data.length > 0) {
                 allProducts = data;
                 localStorage.setItem(cacheKey, JSON.stringify(data));
-                
                 if (inputElem) {
                     inputElem.placeholder = "品番・品名・JANを入力";
                     inputElem.disabled = false;
                 }
-                console.log("GASから最新の商品データを取得・更新しました");
-            } else if (Array.isArray(data) && data.length === 0) {
-                if (!cachedData && inputElem) {
-                    inputElem.placeholder = "商品データが0件です";
-                }
             }
         } catch (e) { 
-            console.error("Load failed:", e);
-            if (!cachedData && inputElem) {
-                inputElem.placeholder = "通信エラー: " + e.message;
-            }
+            console.error("商品データ読み込み失敗:", e);
+            if (!cachedData && inputElem) inputElem.placeholder = "通信エラー: " + e.message;
         }
     }
 
@@ -443,10 +395,8 @@
             modalTitle.innerText = p.name;
             const price = p.listPrice ? p.listPrice.toLocaleString() : (p.price ? p.price.toLocaleString() : "0");
             modalInfo.innerHTML = `上代: ¥${price} / 在庫: ${p.stock || "--"} / ロット: ${p.lot || "1"}`;
-            
             let cleanLot = p.lot ? String(p.lot).normalize("NFKC").replace(/[^0-9]/g, '') : "1";
             qtyDisplay.innerText = cleanLot || "1";
-
         } else {
             isTelMode = true;
             tempProduct = null;
@@ -467,7 +417,6 @@
         } else {
             let cleanVal = String(val).normalize("NFKC").replace(/[^0-9]/g, '');
             let q = parseInt(cleanVal);
-            
             if (q > 0) { 
                 const productPrice = tempProduct.price || tempProduct.listPrice || 0;
                 cart.push({ ...tempProduct, price: productPrice, quantity: q }); 
@@ -536,10 +485,7 @@
         
         const btn = document.getElementById("submit-btn");
         isSubmitting = true;
-        if (btn) {
-            btn.disabled = true; 
-            btn.innerText = "送信中...";
-        }
+        if (btn) { btn.disabled = true; btn.innerText = "送信中..."; }
         
         try {
             const payload = { 
@@ -560,40 +506,20 @@
             });
             
             if (!res.ok) throw new Error("HTTPエラー: " + res.status);
-
             const result = await res.json();
             
-          if (result && result.success) { 
-                // 1. カート内の合計金額（今回分）をフロントエンドで計算
-                let finalTotal = 0;
-                cart.forEach(item => {
-                    finalTotal += (item.price || 0) * item.quantity;
-                });
-
-                // 2. メッセージを組み立てる（今回の合計 ＋ GASから返ってきた累計）
-                let msg = `完了！\n今回の発注合計金額: ¥${finalTotal.toLocaleString()}`;
-                
-                if (result.makerGrandTotal) {
-                    msg += `\n${MY_MAKER}の累計受注金額: ¥${result.makerGrandTotal.toLocaleString()}`;
-                }
-
-                // 合計と累計を含めて完了メッセージを表示
-                alert(msg); 
-
+            if (result && result.success) { 
+                alert("完了！"); 
                 clearDraftData();
                 resetUI(); 
             } else {
-                alert("GASエラー: " + (result.error || "処理に失敗しました"));
+                alert("エラー: " + (result.error || "送信処理に失敗しました"));
             }
         } catch (e) { 
-            console.error("注文送信エラー詳細:", e);
             alert("通信エラーが発生しました: " + e.message); 
         } finally { 
             isSubmitting = false;
-            if (btn) {
-                btn.disabled = false; 
-                btn.innerText = "注文確定・送信"; 
-            }
+            if (btn) { btn.disabled = false; btn.innerText = "注文確定・送信"; }
         }
     }
 
@@ -628,9 +554,7 @@
 
     function fetchCustomer(val) {
         if (!val) return;
-
         const searchVal = normalizeText(val);
-        
         let found = allCustomers.find(c => {
             const tel = normalizeText(c.tel || "");
             const name = normalizeText(c.customer || c.name || "");
@@ -647,15 +571,15 @@
         }
     }
 
-    function updateCustomerDisplay() {
+   function updateCustomerDisplay() {
         if (!customer) return;
-
         const elName = document.getElementById("r-name");
         const elAddr1 = document.getElementById("r-addr1");
         const elTel = document.getElementById("r-tel");
         const elNone = document.getElementById("c-none");
         const elDetail = document.getElementById("c-detail");
         const elProdArea = document.getElementById("product-input-area");
+        const elVipBadge = document.getElementById("r-vip-badge");
 
         if (elName) elName.innerText = customer.customer || customer.name || "";
         if (elAddr1) {
@@ -664,9 +588,22 @@
         }
         if (elTel) elTel.innerText = "TEL: " + (customer.tel || "");
 
+        // ★追加: VIPバッジの表示制御
+        const isVip = isVipCustomer(customer);
+        if (elVipBadge) {
+            elVipBadge.style.display = isVip ? "inline-block" : "none";
+        }
+
         if (elNone) elNone.style.display = "none";
         if (elDetail) elDetail.style.display = "block";
         if (elProdArea) elProdArea.style.display = "block";
+
+        // ★追加: 顧客選択時・スキャン時の優良顧客アラートポップアップ
+        if (isVip) {
+            setTimeout(() => {
+                alert("【★優良顧客アラート】\n" + (customer.customer || customer.name) + " 様は優良顧客です！\n特別なご対応・確認をお願いします。");
+            }, 150);
+        }
     }
 
     function fetchProduct(code) {
@@ -687,43 +624,29 @@
 
     async function loadHistory() {
         const list = document.getElementById("h-list");
-        if (list) {
-            list.innerHTML = "<div style='text-align:center; padding:20px;'><i class='fas fa-spinner fa-spin'></i> 読み込み中...</div>";
-        }
+        if (list) list.innerHTML = "<div style='text-align:center; padding:20px;'><i class='fas fa-spinner fa-spin'></i> 読み込み中...</div>";
         try {
             const res = await fetch(GAS_URL, { 
                 method: "POST", 
                 headers: { "Content-Type": "text/plain;charset=utf-8" },
                 body: JSON.stringify({ action: "getOrderHistory", targetMaker: MY_MAKER, _ts: Date.now() }) 
             });
-
             if (!res.ok) throw new Error("HTTP " + res.status);
             const data = await res.json();
-
-            if (data && data.error) {
-                if (list) list.innerHTML = `<p style='text-align:center; color:#d9534f;'>エラー: ${data.error}</p>`;
-                return;
-            }
-
             cachedHistory = Array.isArray(data) ? data : []; 
             renderHistoryList(cachedHistory); 
         } catch (e) { 
-            console.error("履歴読み込みエラー:", e);
-            if (list) {
-                list.innerHTML = "<p style='text-align:center; color:#d9534f;'>読み込みに失敗しました (" + e.message + ")</p>"; 
-            }
+            if (list) list.innerHTML = "<p style='text-align:center; color:#d9534f;'>読み込みに失敗しました (" + e.message + ")</p>"; 
         }
     }
 
     function renderHistoryList(data) {
         const list = document.getElementById("h-list");
         if (!list) return;
-
         if (!data || data.length === 0) { 
             list.innerHTML = "<p style='text-align:center; color:#999; padding:20px;'>履歴はありません</p>"; 
             return; 
         }
-
         list.innerHTML = '<h4>▼ 送信済み履歴</h4>' + data.map(item => {
             const safeCustomerName = (item.customerName || '').replace(/'/g, "\\'");
             return `
@@ -747,10 +670,7 @@
 
     function filterHistory() {
         const keyword = document.getElementById("history-filter-input").value.trim().toLowerCase();
-        if (!keyword) {
-            renderHistoryList(cachedHistory);
-            return;
-        }
+        if (!keyword) { renderHistoryList(cachedHistory); return; }
         const filtered = cachedHistory.filter(item => 
             (item.customerName && item.customerName.toLowerCase().includes(keyword)) ||
             (item.partNo && item.partNo.toLowerCase().includes(keyword))
@@ -760,7 +680,6 @@
 
     function setCustomerFromHistory(customerName) {
         if (!confirm(customerName + " 様を現在の注文の宛先に設定しますか？")) return;
-        
         showPage('home');
         fetchCustomer(customerName);
     }
@@ -779,10 +698,8 @@
 
     async function execDirectDelete(ts, partNo) {
         if (!confirm("この注文履歴を削除しますか？\n（スプレッドシートからも完全に消去されます）")) return;
-        
         const list = document.getElementById("h-list");
         if (list) list.innerHTML = "<div style='text-align:center; padding:20px;'><i class='fas fa-spinner fa-spin'></i> 削除中...</div>";
-        
         try {
             await fetch(GAS_URL, { 
                 method: "POST", 
@@ -790,10 +707,7 @@
                 body: JSON.stringify({ action: "deleteOrderLine", timestamp: ts, partNo: partNo, maker: MY_MAKER }) 
             });
             loadHistory();
-        } catch (e) { 
-            alert("通信エラー"); 
-            loadHistory();
-        }
+        } catch (e) { alert("通信エラー"); loadHistory(); }
     }
 
     function normalizeText(str) {
@@ -805,6 +719,7 @@
             .trim();
     }
 
+    // iOS向け：メーカー切り替え処理
     function switchMaker(makerName) {
         if (confirm(makerName + " に切り替えますか？")) {
             const url = new URL(window.location.href);
@@ -813,28 +728,32 @@
         }
     }
     
-    async function startCamera(mode) {
+   async function startCamera(mode) {
         if (mode === 'product' && !customer) return alert("先に顧客を選択してください");
-        
-        if (html5QrCode && html5QrCode.getState() !== 1) {
-            try {
-                await html5QrCode.stop();
-            } catch (e) {
-                console.log("Stop failed, but continuing...");
-            }
-        }
 
         showPage('scanner-page');
         document.getElementById('camera-guide').style.display = 'block';
 
-        if (html5QrCode === null) html5QrCode = new Html5Qrcode("reader");
+        // 1. 既存のカメラインスタンスとメディアトラックを完全強制終了
+        await forceStopCameraTracks();
 
-        try {
-            await html5QrCode.start(
-                { facingMode: "environment" }, 
-                { fps: 20, qrbox: 250 }, 
-                (text) => {
-                    html5QrCode.stop().then(() => {
+        // 2. DOM描画を少し待ってからカメラ起動
+        setTimeout(async () => {
+            try {
+                html5QrCode = new Html5Qrcode("reader");
+
+                const config = { 
+                    fps: 15, 
+                    qrbox: { width: 250, height: 250 },
+                    aspectRatio: 1.0
+                };
+
+                await html5QrCode.start(
+                    { facingMode: "environment" }, 
+                    config, 
+                    async (text) => {
+                        // 読み取り成功時も完全にトラックを停止して切断
+                        await forceStopCameraTracks();
                         document.getElementById('camera-guide').style.display = 'none';
                         showPage('home');
                         if (mode === 'customer') {
@@ -842,22 +761,44 @@
                         } else {
                             fetchProduct(text.trim());
                         }
-                    }).catch(err => console.error("Stop error", err));
-                }
-            );
-        } catch (err) { 
-            console.error(err);
-            alert("カメラを起動できませんでした。ブラウザの再読み込みを試してください。"); 
-        }
+                    },
+                    (errorMessage) => {}
+                );
+            } catch (err) { 
+                console.error("Camera start error:", err);
+                alert("カメラを起動できませんでした。\nブラウザのカメラ権限が「許可」になっているか確認してください。"); 
+            }
+        }, 300);
     }
 
-    function stopCamera() {
-        if (html5QrCode && html5QrCode.getState() !== 1) {
-            html5QrCode.stop().then(() => {
-                document.getElementById('camera-guide').style.display = 'none';
-                showPage('home');
-            });
-        } else { showPage('home'); }
+    async function stopCamera() {
+        await forceStopCameraTracks();
+        document.getElementById('camera-guide').style.display = 'none';
+        showPage('home');
+    }
+
+    // ★追加：カメラのメディアストリームを直接停止・解放する関数
+    async function forceStopCameraTracks() {
+        if (html5QrCode) {
+            try {
+                if (html5QrCode.isScanning) {
+                    await html5QrCode.stop();
+                }
+                await html5QrCode.clear();
+            } catch (e) {
+                console.log("Stop/Clear error:", e);
+            }
+            html5QrCode = null;
+        }
+
+        // DOM（#reader 内の video 要素）から直接カメラのトラックを取り出してストップする
+        const videoElem = document.querySelector("#reader video");
+        if (videoElem && videoElem.srcObject) {
+            const stream = videoElem.srcObject;
+            const tracks = stream.getTracks();
+            tracks.forEach(track => track.stop());
+            videoElem.srcObject = null;
+        }
     }
 
     function renderPendingList() {
@@ -870,16 +811,10 @@
     function showSuggestions(val) {
         const listDiv = document.getElementById("autocomplete-list");
         if (!listDiv) return;
-        
         listDiv.innerHTML = "";
-        
-        if (!val) {
-            listDiv.style.display = "none";
-            return;
-        }
+        if (!val) { listDiv.style.display = "none"; return; }
 
         const searchVal = normalizeText(val);
-
         const matches = allProducts.filter(item => {
             const targetPartNo = normalizeText(item.partNo);
             const targetJan = normalizeText(item.jan || "");
@@ -887,10 +822,7 @@
             return (targetPartNo.includes(searchVal) || targetJan.includes(searchVal) || targetName.includes(searchVal));
         }).slice(0, 50);
 
-        if (matches.length === 0) {
-            listDiv.style.display = "none";
-            return;
-        }
+        if (matches.length === 0) { listDiv.style.display = "none"; return; }
 
         matches.forEach(p => {
             const itemDiv = document.createElement("div");
@@ -930,7 +862,7 @@
         };
 
         pendingOrders.push(currentOrder);
-        alert(`${currentOrder.customer.customer || currentOrder.customer.name} 様の注文を一時保留しました。次の注文を入力できます。`);
+        alert(`${currentOrder.customer.customer || currentOrder.customer.name} 様の注文を一時保留しました。`);
         resetUI();
         saveDraftData();
     };
@@ -938,12 +870,9 @@
     window.resumeOrder = function(index) {
         const targetOrder = pendingOrders[index];
         if (!targetOrder) return;
-
         const custName = targetOrder.customer.customer || targetOrder.customer.name || "顧客未選択";
 
-        if (!confirm(`${custName} 様の注文をカートに復元しますか？\n（現在カートにある内容は上書きされます）`)) {
-            return;
-        }
+        if (!confirm(`${custName} 様の注文をカートに復元しますか？`)) return;
 
         if (targetOrder.customer && custName !== "顧客未選択") {
             customer = targetOrder.customer;
@@ -964,7 +893,122 @@
         saveDraftData();
         alert("注文を復元しました。");
     };
-</script>
+// 選択中の顧客およびカート情報をクリアする関数
+function clearCurrentCustomer() {
+    const hasCartItems = cart && cart.length > 0;
+    const msg = hasCartItems 
+        ? "選択中の顧客情報をクリアしますか？\n（カートに入っている商品もリセットされます）" 
+        : "選択中の顧客情報をクリアしますか？";
 
+    if (confirm(msg)) {
+        clearDraftData(); // ローカルストレージの下書きデータ消去
+        resetUI();        // UIと内部変数を初期状態にリセット
+    }
+}
+
+/// ----------------------------------------------------
+// VIP・優良顧客関連の関数（メーカー別対応版）
+// ----------------------------------------------------
+
+// 優良顧客判定関数（現在の選択メーカーに対応しているかチェック）
+function isVipCustomer(c) {
+    if (!c) return false;
+    
+    // 1. メーカー別の設定がある場合（例: c.vipMakers が "YARD,asca" や ["YARD", "asca"] の形式）
+    if (c.vipMakers && MY_MAKER) {
+        if (Array.isArray(c.vipMakers)) {
+            if (c.vipMakers.includes(MY_MAKER)) return true;
+        } else if (typeof c.vipMakers === "string") {
+            const makers = c.vipMakers.split(",").map(m => m.trim());
+            if (makers.includes(MY_MAKER)) return true;
+        }
+    }
+
+    // 2. メーカー指定の列がある場合（例: c.vip_YARD や c["vip_星野㈱"] など）
+    if (MY_MAKER) {
+        const makerVipKey = "vip_" + MY_MAKER;
+        if (c[makerVipKey] === true || c[makerVipKey] === "true" || c[makerVipKey] === "1" || c[makerVipKey] === "○") {
+            return true;
+        }
+    }
+
+    // 3. 従来通りの一律指定（全メーカー共通VIPの場合）
+    return c.isVip === true || c.isVip === "true" || c.isVip === "1" || c.rank === "VIP" || c.vip === "○";
+}
+
+// トップ画面に優良顧客ボタンを描画する関数
+function renderVipList() {
+    const vipSection = document.getElementById("vip-section");
+    const vipList = document.getElementById("vip-list");
+    if (!vipSection || !vipList) return;
+
+    if (!allCustomers || allCustomers.length === 0) {
+        vipSection.style.display = "none";
+        return;
+    }
+
+    // 選択中メーカーのVIPのみを抽出
+    const vips = allCustomers.filter(c => isVipCustomer(c));
+    if (vips.length === 0) {
+        vipSection.style.display = "none";
+        return;
+    }
+
+    vipList.innerHTML = vips.map(c => {
+        const name = c.customer || c.name || "";
+        const id = c.customerId || c.id || c.tel || "";
+        return `<button type="button" class="vip-customer-btn" onclick="fetchCustomer('${id}')"><i class="fas fa-star" style="color:#ffc107;"></i> ${name}</button>`;
+    }).join('');
+
+    vipSection.style.display = "block";
+}
+
+// 顧客データ読み込み関数（キャッシュ優先でGAS通信を抑制）
+async function preloadAllCustomers() {
+    const cacheKey = "CUSTOMERS_CACHE_ALL";
+    const cachedData = localStorage.getItem(cacheKey);
+
+    // 1. キャッシュが存在すればGASへアクセスせずに終了
+    if (cachedData) {
+        try { 
+            allCustomers = JSON.parse(cachedData); 
+            renderVipList(); 
+            return; 
+        } catch (e) { 
+            console.error("顧客キャッシュエラー", e); 
+        }
+    }
+
+    // 2. キャッシュがない場合のみGASから取得
+    try {
+        const res = await fetch(GAS_URL, { 
+            method: "POST", 
+            headers: { "Content-Type": "text/plain;charset=utf-8" },
+            body: JSON.stringify({ action: "getAllCustomers", _ts: Date.now() }) 
+        });
+        if (!res.ok) throw new Error("HTTPエラー: " + res.status);
+        const data = await res.json();
+        if (Array.isArray(data) && data.length > 0) {
+            allCustomers = data;
+            localStorage.setItem(cacheKey, JSON.stringify(data));
+            renderVipList(); 
+        }
+    } catch (e) { 
+        console.error("顧客データ読み込み失敗:", e); 
+    }
+}
+
+// 管理者メニューの「全マスタを強制更新」関数
+async function forceUpdateAllMasters() {
+    localStorage.removeItem("CUSTOMERS_CACHE_ALL");
+    if (MY_MAKER) {
+        localStorage.removeItem("PRODUCTS_CACHE_" + MY_MAKER);
+    }
+    
+    await preloadAllCustomers();
+    await preloadAllProducts();
+    alert("最新の優良顧客リストおよび商品マスタを読み込みました");
+}
+</script>
 </body>
 </html>
