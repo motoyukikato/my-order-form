@@ -228,6 +228,7 @@
 
     window.onload = () => {
         preloadAllCustomers();
+        renderVipList(); // ★この1行を追加してください！
 
         if (MY_MAKER) {
             document.getElementById("app-title").innerText = MY_MAKER + " 受注システム";
