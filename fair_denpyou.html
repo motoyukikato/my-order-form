@@ -148,23 +148,72 @@
     }
 
     /* 印刷時のスタイル設定 */
+    /* 印刷時のスタイル設定 */
     @media print {
+      /* 用紙設定: A4縦・余白10mm */
+      @page {
+        size: A4 portrait;
+        margin: 10mm;
+      }
+
+      body {
+        background: #fff;
+        margin: 0;
+        padding: 0;
+      }
+
+      /* 画面用の不要な要素をすべて非表示 */
       body * {
         visibility: hidden;
       }
+
+      /* 伝票エリアとその子要素だけを表示 */
       .slip-container, .slip-container * {
         visibility: visible;
       }
+
       .slip-container {
         display: block !important;
         position: absolute;
         left: 0;
         top: 0;
-        width: 100%;
-        border: none;
+        width: 100% !important;
+        max-width: 100% !important;
+        box-sizing: border-box;
+        border: none !important;
+        padding: 0 !important;
+        margin: 0 !important;
       }
-      .btn-print {
-        display: none;
+
+      /* テーブルが右端からはみ出ないように設定 */
+      table {
+        width: 100% !important;
+        table-layout: fixed;
+      }
+
+      th, td {
+        word-wrap: break-word;
+        padding: 6px 6px !important; /* 余白を少し詰めてA4に納める */
+        font-size: 12px !important;  /* 文字サイズを印刷用に最適化 */
+      }
+
+      /* 印刷ボタン等を非表示 */
+      .btn-print, .btn {
+        display: none !important;
+      }
+
+      /* 合計金額エリアの配置固定 */
+      .summary-box {
+        width: 320px !important;
+        float: right;
+        page-break-inside: avoid;
+      }
+
+      /* QRコードのサイズを枠内に収める */
+      .qr-box canvas, .qr-box img,
+      #slipTableBody canvas, #slipTableBody img {
+        max-width: 100% !important;
+        height: auto !important;
       }
     }
   </style>
