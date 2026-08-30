@@ -147,73 +147,100 @@
       display: table;
     }
 
-    /* 印刷時のスタイル設定 */
-    /* 印刷時のスタイル設定 */
+  /* 印刷時のスタイル設定 */
     @media print {
-      /* 用紙設定: A4縦・余白10mm */
+      /* 用紙設定: A4縦・余白8mm */
       @page {
         size: A4 portrait;
-        margin: 10mm;
+        margin: 8mm;
       }
 
+      /* 不要な画面要素を完全に消去 */
       body {
-        background: #fff;
-        margin: 0;
-        padding: 0;
-      }
-
-      /* 画面用の不要な要素をすべて非表示 */
-      body * {
-        visibility: hidden;
-      }
-
-      /* 伝票エリアとその子要素だけを表示 */
-      .slip-container, .slip-container * {
-        visibility: visible;
-      }
-
-      .slip-container {
-        display: block !important;
-        position: absolute;
-        left: 0;
-        top: 0;
+        background: #fff !important;
+        margin: 0 !important;
+        padding: 0 !important;
         width: 100% !important;
+      }
+
+      .container {
         max-width: 100% !important;
-        box-sizing: border-box;
-        border: none !important;
+        width: 100% !important;
         padding: 0 !important;
         margin: 0 !important;
+        box-shadow: none !important;
+        background: transparent !important;
       }
 
-      /* テーブルが右端からはみ出ないように設定 */
-      table {
-        width: 100% !important;
-        table-layout: fixed;
-      }
-
-      th, td {
-        word-wrap: break-word;
-        padding: 6px 6px !important; /* 余白を少し詰めてA4に納める */
-        font-size: 12px !important;  /* 文字サイズを印刷用に最適化 */
-      }
-
-      /* 印刷ボタン等を非表示 */
-      .btn-print, .btn {
+      h1, .filter-section, #orderSection, #loadingStatus, .btn-print, .btn {
         display: none !important;
       }
 
-      /* 合計金額エリアの配置固定 */
-      .summary-box {
-        width: 320px !important;
-        float: right;
-        page-break-inside: avoid;
+      /* 伝票エリアの幅を強制固定 */
+      .slip-container {
+        display: block !important;
+        position: relative !important; /* absoluteをやめてレイアウト崩れを防止 */
+        width: 100% !important;
+        max-width: 100% !important;
+        box-sizing: border-box !important;
+        border: none !important;
+        padding: 0 !important;
+        margin: 0 !important;
+        visibility: visible !important;
       }
 
-      /* QRコードのサイズを枠内に収める */
+      .slip-container * {
+        visibility: visible !important;
+        box-sizing: border-box !important;
+      }
+
+      /* テーブル全体の幅を強制固定 */
+      table {
+        width: 100% !important;
+        max-width: 100% !important;
+        table-layout: fixed !important; /* 列幅の固定 */
+        border-collapse: collapse !important;
+      }
+
+      th, td {
+        word-break: break-all !important; /* 長いテキストでセルが広がるのを防止 */
+        padding: 4px 4px !important;     /* 余白を削減 */
+        font-size: 11px !important;      /* 文字サイズ調整 */
+      }
+
+      /* 入荷商品一覧テーブルの各列幅を固定指定（合計100%） */
+      #slipContainer table:not(.summary-box table) colgroup,
+      #slipTableBody {
+        width: 100% !important;
+      }
+      
+      /* 商品テーブルの各列の横幅バランスを制御 */
+      #slipContainer table:not(.summary-box table) th:nth-child(1) { width: 15%; } /* 品番 */
+      #slipContainer table:not(.summary-box table) th:nth-child(2) { width: 25%; } /* 品名 */
+      #slipContainer table:not(.summary-box table) th:nth-child(3) { width: 18%; } /* JAN */
+      #slipContainer table:not(.summary-box table) th:nth-child(4) { width: 8%; }  /* 数量 */
+      #slipContainer table:not(.summary-box table) th:nth-child(5) { width: 12%; } /* 単価 */
+      #slipContainer table:not(.summary-box table) th:nth-child(6) { width: 12%; } /* 小計 */
+      #slipContainer table:not(.summary-box table) th:nth-child(7) { width: 10%; } /* QR */
+
+      /* QRコード画像・Canvasがテーブルからはみ出るのを強力に防止 */
       .qr-box canvas, .qr-box img,
       #slipTableBody canvas, #slipTableBody img {
-        max-width: 100% !important;
+        max-width: 50px !important; /* QRコード自体を小さく収める */
         height: auto !important;
+        margin: 0 auto !important;
+      }
+
+      /* 合計金額ボックスの調整 */
+      .summary-box {
+        width: 280px !important;
+        float: right !important;
+        margin-top: 10px !important;
+      }
+
+      .summary-box table th, .summary-box table td {
+        font-size: 11px !important;
+        padding: 4px !important;
       }
     }
   </style>
