@@ -1,0 +1,507 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>入荷伝票作成システム</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  <style>
+    body {
+      font-family: "Helvetica Neue", Arial, "Hiragino Kaku Gothic ProN", "Hiragino Sans", Meiryo, sans-serif;
+      margin: 20px;
+      color: #333;
+      background-color: #f4f6f8;
+    }
+    h1, h2 {
+      color: #2c3e50;
+    }
+    .container {
+      max-width: 1000px;
+      margin: 0 auto;
+      background: #fff;
+      padding: 20px 30px;
+      border-radius: 8px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    }
+    .filter-section {
+      display: flex;
+      gap: 20px;
+      background: #eef2f5;
+      padding: 15px;
+      border-radius: 6px;
+      margin-bottom: 20px;
+      align-items: flex-end;
+    }
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      flex: 1;
+    }
+    .checkbox-group {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding-bottom: 8px;
+    }
+    .checkbox-group input {
+      width: 18px;
+      height: 18px;
+      cursor: pointer;
+    }
+    label {
+      font-weight: bold;
+      margin-bottom: 5px;
+    }
+    select {
+      padding: 8px;
+      font-size: 14px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 10px;
+      margin-bottom: 20px;
+    }
+    th, td {
+      border: 1px solid #ddd;
+      padding: 10px;
+      text-align: left;
+      font-size: 14px;
+    }
+    th {
+      background-color: #f8f9fa;
+    }
+    .btn {
+      background-color: #007bff;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 15px;
+    }
+    .btn:hover {
+      background-color: #0056b3;
+    }
+    .btn-print {
+      background-color: #28a745;
+      margin-top: 15px;
+    }
+    .btn-print:hover {
+      background-color: #218838;
+    }
+    .loading-msg {
+      color: #007bff;
+      font-weight: bold;
+      margin-bottom: 10px;
+    }
+    /* 伝票表示用スタイル */
+    .slip-container {
+      display: none;
+      border: 2px solid #333;
+      padding: 20px;
+      margin-top: 30px;
+      background: #fff;
+    }
+    .slip-header {
+      display: flex;
+      justify-content: space-between;
+      border-bottom: 2px solid #333;
+      padding-bottom: 15px;
+      margin-bottom: 15px;
+    }
+    .qr-box {
+      text-align: center;
+      font-size: 12px;
+    }
+    .qr-box div {
+      margin-top: 5px;
+    }
+    .summary-box {
+      margin-top: 20px;
+      float: right;
+      width: 450px;
+    }
+    .summary-box table {
+      margin-top: 0;
+    }
+    .summary-box th {
+      text-align: right;
+      width: 60%;
+    }
+    .summary-box td {
+      text-align: right;
+      font-weight: bold;
+    }
+    .text-discount {
+      color: #d9534f;
+    }
+    .grand-total {
+      font-size: 16px;
+      background-color: #eef2f5;
+    }
+    .clearfix::after {
+      content: "";
+      clear: both;
+      display: table;
+    }
+
+    /* 印刷時のスタイル設定 */
+    @media print {
+      body * {
+        visibility: hidden;
+      }
+      .slip-container, .slip-container * {
+        visibility: visible;
+      }
+      .slip-container {
+        display: block !important;
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 100%;
+        border: none;
+      }
+      .btn-print {
+        display: none;
+      }
+    }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <h1>入荷伝票作成</h1>
+
+  <!-- 状態表示エリア -->
+  <div id="loadingStatus" class="loading-msg">データを読み込んでいます...</div>
+
+  <div class="filter-section">
+    <div class="form-group">
+      <label for="makerSelect">① メーカー選択:</label>
+      <select id="makerSelect" onchange="onMakerChange()" disabled>
+        <option value="">-- データ読み込み中 --</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label for="customerSelect">② 顧客選択:</label>
+      <select id="customerSelect" onchange="onCustomerChange()" disabled>
+        <option value="">-- 顧客を選択してください --</option>
+      </select>
+    </div>
+    <div class="form-group checkbox-group">
+      <input type="checkbox" id="isPremium">
+      <label for="isPremium" style="cursor:pointer; margin-bottom:0;">プレミアム会員</label>
+    </div>
+  </div>
+
+  <div id="orderSection" style="display:none;">
+    <h2>③ 注文一覧（④ 入荷する商品にチェックを入れてください）</h2>
+    <table id="orderTable">
+      <thead>
+        <tr>
+          <th>選択</th>
+          <th>日時</th>
+          <th>品番</th>
+          <th>品名</th>
+          <th>JAN</th>
+          <th>数量</th>
+          <th>単価</th>
+          <th>小計</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+    <button class="btn" onclick="generateSlip()">入荷伝票を作成する</button>
+  </div>
+
+  <div id="slipContainer" class="slip-container clearfix">
+    <div class="slip-header">
+      <div>
+        <h2>入荷伝票</h2>
+        <p><strong>顧客ID:</strong> <span id="slipCustId"></span></p>
+        <p><strong>顧客名:</strong> <span id="slipCustName"></span> 様 <span id="premiumBadge" style="display:none; color: #d9534f; font-weight: bold;">【プレミアム会員】</span></p>
+        <p><strong>住所:</strong> <span id="slipAddress"></span></p>
+        <p><strong>TEL:</strong> <span id="slipTel"></span></p>
+      </div>
+      <div class="qr-box">
+        <p><strong>顧客ID QR</strong></p>
+        <div id="custQr"></div>
+      </div>
+    </div>
+
+    <h3>⑤ 入荷商品一覧</h3>
+    <table>
+      <thead>
+        <tr>
+          <th>品番</th>
+          <th>品名</th>
+          <th>JAN</th>
+          <th>数量</th>
+          <th>展示会単価</th>
+          <th>小計</th>
+          <th>商品情報QR</th>
+        </tr>
+      </thead>
+      <tbody id="slipTableBody"></tbody>
+    </table>
+
+    <!-- 金額計算・割引額表示エリア -->
+    <div class="summary-box">
+      <table>
+        <tr>
+          <th>通常定価合計:</th>
+          <td id="slipNormalTotal">0円</td>
+        </tr>
+        <tr id="rowPremiumTotal" style="display:none;">
+          <th>プレミアム価格合計 (5% OFF):</th>
+          <td id="slipPremiumTotal">0円</td>
+        </tr>
+        <tr id="rowDiscount">
+          <th id="lblDiscount" class="text-discount">展示会特別割引 (10% OFF):</th>
+          <td id="slipDiscountAmount" class="text-discount">-0円</td>
+        </tr>
+        <tr class="grand-total">
+          <th>ご請求金額 (展示会価格):</th>
+          <td id="slipGrandTotal">0円</td>
+        </tr>
+      </table>
+    </div>
+
+    <div style="clear:both;"></div>
+    <button class="btn btn-print" onclick="window.print()">この伝票を印刷・PDF保存</button>
+  </div>
+</div>
+
+<script>
+  // ★ ここにご自身のGASのウェブアプリURLを貼り付けます
+  const GAS_API_URL = "https://script.google.com/macros/s/AKfycbyhAgz3d26eB_K2piP3FuvaU2nduQWytzbTVp9ycHd9Tt5QF59qlcBR6MzmLTQVWzJn/exec";
+
+  let sampleData = [];
+  let currentFilteredOrders = [];
+
+  // 初期化：ページ読み込み時にGASからデータを取得
+  window.onload = function() {
+    fetch(GAS_API_URL, {
+      method: 'GET',
+      redirect: 'follow'
+    })
+      .then(response => {
+        if (!response.ok) {
+          throw new Error('ネットワークレスポンスエラー');
+        }
+        return response.json();
+      })
+      .then(data => {
+        sampleData = data;
+        initMakerSelect();
+      })
+      .catch(error => {
+        const loadingDiv = document.getElementById('loadingStatus');
+        loadingDiv.textContent = 'データの読み込みに失敗しました: ' + error.message;
+        loadingDiv.style.color = 'red';
+      });
+  };
+
+  // メーカー一覧の選択肢を生成
+  function initMakerSelect() {
+    document.getElementById('loadingStatus').style.display = 'none';
+
+    const makerSelect = document.getElementById('makerSelect');
+    makerSelect.innerHTML = '<option value="">-- メーカーを選択してください --</option>';
+
+    const makers = [...new Set(sampleData.map(item => item.maker))].filter(Boolean);
+    makers.forEach(maker => {
+      const opt = document.createElement('option');
+      opt.value = maker;
+      opt.textContent = maker;
+      makerSelect.appendChild(opt);
+    });
+
+    makerSelect.disabled = false;
+  }
+
+  // ❶ メーカー選択時
+  function onMakerChange() {
+    const selectedMaker = document.getElementById('makerSelect').value;
+    const customerSelect = document.getElementById('customerSelect');
+    
+    customerSelect.innerHTML = '<option value="">-- 顧客を選択してください --</option>';
+    document.getElementById('orderSection').style.display = 'none';
+    document.getElementById('slipContainer').style.display = 'none';
+
+    if (!selectedMaker) {
+      customerSelect.disabled = true;
+      return;
+    }
+
+    // 該当メーカーの顧客を抽出
+    const customers = sampleData.filter(item => item.maker === selectedMaker);
+    const uniqueCustomers = [];
+    const map = new Map();
+
+    for (const item of customers) {
+      if(item.custId && !map.has(item.custId)){
+        map.set(item.custId, true);
+        uniqueCustomers.push({ id: item.custId, name: item.custName });
+      }
+    }
+
+    uniqueCustomers.forEach(cust => {
+      const opt = document.createElement('option');
+      opt.value = cust.id;
+      opt.textContent = `${cust.name} (${cust.id})`;
+      customerSelect.appendChild(opt);
+    });
+
+    customerSelect.disabled = false;
+  }
+
+  // ❷ 顧客選択時 ➡ ❸ 注文一覧の表示
+  function onCustomerChange() {
+    const selectedMaker = document.getElementById('makerSelect').value;
+    const selectedCustId = document.getElementById('customerSelect').value;
+    const orderSection = document.getElementById('orderSection');
+    const tbody = document.querySelector('#orderTable tbody');
+
+    tbody.innerHTML = '';
+    document.getElementById('slipContainer').style.display = 'none';
+
+    if (!selectedCustId) {
+      orderSection.style.display = 'none';
+      return;
+    }
+
+    currentFilteredOrders = sampleData.filter(item => 
+      item.maker === selectedMaker && item.custId === selectedCustId
+    );
+
+    currentFilteredOrders.forEach((item, index) => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td><input type="checkbox" class="item-checkbox" data-index="${index}" checked></td>
+        <td>${item.date}</td>
+        <td>${item.hinban}</td>
+        <td>${item.hinmei}</td>
+        <td>${item.jan}</td>
+        <td>${item.qty}</td>
+        <td>${item.price.toLocaleString()}円</td>
+        <td>${item.subtotal.toLocaleString()}円</td>
+      `;
+      tbody.appendChild(tr);
+    });
+
+    orderSection.style.display = 'block';
+  }
+
+  // ❹ 選択した入荷商品から ❺ 伝票作成 ＆ ❻ QRコード表示
+  function generateSlip() {
+    const checkboxes = document.querySelectorAll('.item-checkbox:checked');
+    if (checkboxes.length === 0) {
+      alert('入荷する商品を1つ以上選択してください。');
+      return;
+    }
+
+    const selectedItems = [];
+    checkboxes.forEach(cb => {
+      const idx = cb.getAttribute('data-index');
+      selectedItems.push(currentFilteredOrders[idx]);
+    });
+
+    const firstItem = selectedItems[0];
+    const isPremium = document.getElementById('isPremium').checked;
+
+    // 顧客情報の表示
+    document.getElementById('slipCustId').textContent = firstItem.custId;
+    document.getElementById('slipCustName').textContent = firstItem.custName;
+    document.getElementById('slipAddress').textContent = `〒${firstItem.zip} ${firstItem.addr1} ${firstItem.addr2}`.trim();
+    document.getElementById('slipTel').textContent = firstItem.tel;
+
+    // プレミアム会員バッジ切り替え
+    const premiumBadge = document.getElementById('premiumBadge');
+    if (isPremium) {
+      premiumBadge.style.display = 'inline';
+    } else {
+      premiumBadge.style.display = 'none';
+    }
+
+// 顧客ID QRコードの生成
+    document.getElementById('custQr').innerHTML = '';
+    new QRCode(document.getElementById('custQr'), {
+      text: `${firstItem.custId}\r\n1\r\n`,
+      width: 80,
+      height: 80
+    });
+    // ❺ 入荷商品一覧テーブル作成（スプレッドシートの展示会価格の合計計算）
+    const slipTbody = document.getElementById('slipTableBody');
+    slipTbody.innerHTML = '';
+    let exhibitionTotal = 0; // 展示会価格（10% OFF）の合計
+
+    selectedItems.forEach((item, i) => {
+      exhibitionTotal += item.subtotal;
+      
+      const tr = document.createElement('tr');
+      const qrTdId = `item-qr-${i}`;
+      
+      tr.innerHTML = `
+        <td>${item.hinban}</td>
+        <td>${item.hinmei}</td>
+        <td>${item.jan}</td>
+        <td>${item.qty}</td>
+        <td>${item.price.toLocaleString()}円</td>
+        <td>${item.subtotal.toLocaleString()}円</td>
+        <td><div id="${qrTdId}"></div></td>
+      `;
+      slipTbody.appendChild(tr);
+
+   // JANコード -> エンター1回 -> 数量 -> エンター8回
+const qrData = `${item.jan}\r\n${item.qty}\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n`;
+
+      new QRCode(document.getElementById(qrTdId), {
+        text: qrData,
+        width: 70,
+        height: 70
+      });
+    });
+
+    // ★ 1. スプレッドシートの金額（展示会価格 10% OFF）から通常定価を逆算
+    const normalTotal = Math.round(exhibitionTotal / 0.90);
+
+    let discountAmount = 0;
+    const rowPremiumTotal = document.getElementById('rowPremiumTotal');
+    const lblDiscount = document.getElementById('lblDiscount');
+
+    if (isPremium) {
+      // ★ 2. プレミアム会員の場合（定価の 5% OFF 価格を算出）
+      const premiumTotal = Math.round(normalTotal * 0.95);
+
+      // ★ 3. 差額マイナス処理（展示会価格 10% OFF − プレミアム価格 5% OFF）
+      discountAmount = exhibitionTotal - premiumTotal;
+
+      // 表示切り替え
+      rowPremiumTotal.style.display = 'table-row';
+      document.getElementById('slipPremiumTotal').textContent = `${premiumTotal.toLocaleString()}円`;
+      lblDiscount.textContent = '展示会特別調整額 (追加5% OFF):';
+
+    } else {
+      // ★ 一般会員の場合
+      // 割引額（展示会価格 10% OFF − 通常定価）
+      discountAmount = exhibitionTotal - normalTotal;
+
+      // 表示切り替え
+      rowPremiumTotal.style.display = 'none';
+      lblDiscount.textContent = '展示会特別割引 (10% OFF):';
+    }
+
+    // 各サマリーエリアの表示更新
+    document.getElementById('slipNormalTotal').textContent = `${normalTotal.toLocaleString()}円`;
+    document.getElementById('slipDiscountAmount').textContent = `${discountAmount.toLocaleString()}円`;
+    document.getElementById('slipGrandTotal').textContent = `${exhibitionTotal.toLocaleString()}円`;
+
+    document.getElementById('slipContainer').style.display = 'block';
+  }
+</script>
+
+</body>
+</html>
