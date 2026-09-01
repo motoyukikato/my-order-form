@@ -51,6 +51,12 @@
         .numpad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
         .numpad button { padding: 15px; font-size: 1.5em; border: 1px solid #ddd; border-radius: 8px; background: #f9f9f9; }
         .del-btn { color: #d9534f; border: 1px solid #d9534f; padding: 4px 8px; border-radius: 4px; font-size: 0.8em; margin-left: 10px; }
+
+        /* ★優良顧客（VIP）用のスタイルを追加 */
+        .vip-badge { display: inline-block; background: #fff3cd; color: #856404; font-size: 0.8em; font-weight: bold; padding: 2px 8px; border-radius: 12px; border: 1px solid #ffeeba; margin-bottom: 4px; }
+        .vip-card { background: #fff8e1; border: 2px solid #ffc107; border-radius: 12px; padding: 12px; margin-bottom: 12px; }
+        .vip-customer-btn { background: #fff; border: 1px solid #ffc107; color: #333; font-weight: bold; padding: 8px 12px; border-radius: 20px; cursor: pointer; font-size: 0.9em; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+        .vip-customer-btn:active { background: #ffe082; }
     </style>
 </head>
 <body>
@@ -78,13 +84,31 @@
 </div>
 
 <section id="home" class="page-section active">
+
+    <!-- ★追加：トップ画面に表示する優良顧客クイック選択エリア -->
+    <div id="vip-section" class="vip-card" style="display:none;">
+        <div class="vip-badge"><i class="fas fa-crown"></i> 本日の優良顧客 / お得意様</div>
+        <div id="vip-list" style="display:flex; flex-wrap:wrap; gap:5px; margin-top:5px;"></div>
+    </div>
+
+    <!-- ★書き換え：クリアボタンとVIPバッジを追加した顧客情報カード -->
     <div class="card">
         <div id="c-none" style="text-align:center; color:#999; padding: 10px;">顧客情報を選択してください</div>
         <div id="c-detail" style="display:none;">
-            <b id="r-name" style="color:#3b5998; font-size:1.2em;"></b><br>
-            <small id="r-addr1" style="color:#666;"></small><br>
-            <small id="r-addr2" style="color:#666;"></small><br>
-            <small id="r-tel" style="color:#666;"></small>
+            <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                <div>
+                    <!-- 優良顧客バッジ -->
+                    <span id="r-vip-badge" class="vip-badge" style="display:none;"><i class="fas fa-crown"></i> 優良顧客</span><br>
+                    <b id="r-name" style="color:#3b5998; font-size:1.2em;"></b><br>
+                    <small id="r-addr1" style="color:#666;"></small><br>
+                    <small id="r-addr2" style="color:#666;"></small><br>
+                    <small id="r-tel" style="color:#666;"></small>
+                </div>
+                <!-- クリアボタン -->
+                <button type="button" class="del-btn" style="padding: 6px 12px; font-size: 0.85em; font-weight: bold; background: #fff; cursor: pointer; flex-shrink: 0;" onclick="clearCurrentCustomer()">
+                    <i class="fas fa-times-circle"></i> クリア
+                </button>
+            </div>
         </div>
     </div>
     <div style="display: flex; gap: 10px; margin-bottom:15px;">
@@ -205,6 +229,7 @@
 
     window.onload = () => {
         preloadAllCustomers();
+        renderVipList(); // ★追加：VIPリストの描画
 
         if (MY_MAKER) {
             document.getElementById("app-title").innerText = MY_MAKER + " 受注システム";
@@ -213,7 +238,7 @@
 
         restoreDraftData();
 
-        // iOS向け：ヘッダー5回タップで管理者ログイン画面を呼び出し
+        // 管理者ログイン用隠しコマンド（ヘッダー5回タップ）
         document.getElementById("app-title").addEventListener('click', function() {
             headerTapCount++;
             clearTimeout(headerTapTimer);
@@ -272,8 +297,14 @@
     async function preloadAllCustomers() {
         const cacheKey = "CUSTOMERS_CACHE_ALL";
         const cachedData = localStorage.getItem(cacheKey);
+        
+        // ★変更：キャッシュがあれば即座にVIPリスト等を描画
         if (cachedData) {
-            try { allCustomers = JSON.parse(cachedData); } catch (e) { console.error("顧客キャッシュエラー", e); }
+            try { 
+                allCustomers = JSON.parse(cachedData); 
+                renderVipList();
+                return;
+            } catch (e) { console.error("顧客キャッシュエラー", e); }
         }
 
         try {
@@ -287,6 +318,7 @@
             if (Array.isArray(data) && data.length > 0) {
                 allCustomers = data;
                 localStorage.setItem(cacheKey, JSON.stringify(data));
+                renderVipList(); // ★追加：データ取得後にVIPリスト描画
             }
         } catch (e) { console.error("顧客データ読み込み失敗:", e); }
     }
@@ -330,6 +362,10 @@
     }
 
     async function forceUpdateAllMasters() {
+        localStorage.removeItem("CUSTOMERS_CACHE_ALL"); // ★追加：キャッシュクリア
+        if (MY_MAKER) {
+            localStorage.removeItem("PRODUCTS_CACHE_" + MY_MAKER);
+        }
         await preloadAllCustomers();
         await preloadAllProducts();
         alert("顧客マスタおよび商品マスタを最新化しました");
@@ -548,6 +584,7 @@
         }
     }
 
+    // ★書き換え：VIPバッジ・VIPアラートの表示制御を追加
     function updateCustomerDisplay() {
         if (!customer) return;
         const elName = document.getElementById("r-name");
@@ -556,6 +593,7 @@
         const elNone = document.getElementById("c-none");
         const elDetail = document.getElementById("c-detail");
         const elProdArea = document.getElementById("product-input-area");
+        const elVipBadge = document.getElementById("r-vip-badge");
 
         if (elName) elName.innerText = customer.customer || customer.name || "";
         if (elAddr1) {
@@ -564,9 +602,20 @@
         }
         if (elTel) elTel.innerText = "TEL: " + (customer.tel || "");
 
+        const isVip = isVipCustomer(customer);
+        if (elVipBadge) {
+            elVipBadge.style.display = isVip ? "inline-block" : "none";
+        }
+
         if (elNone) elNone.style.display = "none";
         if (elDetail) elDetail.style.display = "block";
         if (elProdArea) elProdArea.style.display = "block";
+
+        if (isVip) {
+            setTimeout(() => {
+                alert("【★優良顧客アラート】\n" + (customer.customer || customer.name) + " 様は優良顧客です！\n特別なご対応・確認をお願いします。");
+            }, 150);
+        }
     }
 
     function fetchProduct(code) {
@@ -603,6 +652,7 @@
         }
     }
 
+    // ★書き換え：変更・削除のリクエストを timestamp から lineId（UUID）優先に変更
     function renderHistoryList(data) {
         const list = document.getElementById("h-list");
         if (!list) return;
@@ -617,8 +667,8 @@
                 <b>${item.customerName} 様</b> <small>${item.displayDate}</small><br>
                 品番：${item.partNo} | ${item.name}<br>
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 5px;">
-                    <span>数量：<input type="number" value="${item.qty}" style="width:50px; padding:4px;" onchange="execDirectUpdate('${item.timestamp}', '${item.partNo}', this.value, ${item.qty})"></span>
-                    <span class="del-btn" style="cursor:pointer; font-size:1.1em; padding:4px 10px;" onclick="execDirectDelete('${item.timestamp}', '${item.partNo}')">
+                    <span>数量：<input type="number" value="${item.qty}" style="width:50px; padding:4px;" onchange="execDirectUpdate('${item.lineId || item.timestamp}', '${item.partNo}', this.value, ${item.qty})"></span>
+                    <span class="del-btn" style="cursor:pointer; font-size:1.1em; padding:4px 10px;" onclick="execDirectDelete('${item.lineId || item.timestamp}', '${item.partNo}')">
                         <i class="fas fa-trash-alt"></i>
                     </span>
                 </div>
@@ -682,7 +732,6 @@
             .trim();
     }
 
-    // iOS向け：メーカー切り替え処理
     function switchMaker(makerName) {
         if (confirm(makerName + " に切り替えますか？")) {
             const url = new URL(window.location.href);
@@ -697,10 +746,8 @@
         showPage('scanner-page');
         document.getElementById('camera-guide').style.display = 'block';
 
-        // 1. 既存のカメラインスタンスとメディアトラックを完全強制終了
         await forceStopCameraTracks();
 
-        // 2. DOM描画を少し待ってからカメラ起動
         setTimeout(async () => {
             try {
                 html5QrCode = new Html5Qrcode("reader");
@@ -715,7 +762,6 @@
                     { facingMode: "environment" }, 
                     config, 
                     async (text) => {
-                        // 読み取り成功時も完全にトラックを停止して切断
                         await forceStopCameraTracks();
                         document.getElementById('camera-guide').style.display = 'none';
                         showPage('home');
@@ -740,7 +786,6 @@
         showPage('home');
     }
 
-    // ★追加：カメラのメディアストリームを直接停止・解放する関数
     async function forceStopCameraTracks() {
         if (html5QrCode) {
             try {
@@ -754,7 +799,6 @@
             html5QrCode = null;
         }
 
-        // DOM（#reader 内の video 要素）から直接カメラのトラックを取り出してストップする
         const videoElem = document.querySelector("#reader video");
         if (videoElem && videoElem.srcObject) {
             const stream = videoElem.srcObject;
@@ -856,6 +900,68 @@
         saveDraftData();
         alert("注文を復元しました。");
     };
+
+    // ★追加：選択中の顧客およびカート情報をクリアする関数
+    function clearCurrentCustomer() {
+        const hasCartItems = cart && cart.length > 0;
+        const msg = hasCartItems 
+            ? "選択中の顧客情報をクリアしますか？\n（カートに入っている商品もリセットされます）" 
+            : "選択中の顧客情報をクリアしますか？";
+
+        if (confirm(msg)) {
+            clearDraftData();
+            resetUI();
+        }
+    }
+
+    // ★追加：VIP（優良顧客）関連の関数
+    function isVipCustomer(c) {
+        if (!c) return false;
+        
+        if (c.vipMakers && MY_MAKER) {
+            if (Array.isArray(c.vipMakers)) {
+                if (c.vipMakers.includes(MY_MAKER)) return true;
+            } else if (typeof c.vipMakers === "string") {
+                const makers = c.vipMakers.split(",").map(m => m.trim());
+                if (makers.includes(MY_MAKER)) return true;
+            }
+        }
+
+        if (MY_MAKER) {
+            const makerVipKey = "vip_" + MY_MAKER;
+            if (c[makerVipKey] === true || c[makerVipKey] === "true" || c[makerVipKey] === "1" || c[makerVipKey] === "○") {
+                return true;
+            }
+        }
+
+        return c.isVip === true || c.isVip === "true" || c.isVip === "1" || c.rank === "VIP" || c.vip === "○";
+    }
+
+    function renderVipList() {
+        const vipSection = document.getElementById("vip-section");
+        const vipList = document.getElementById("vip-list");
+        if (!vipSection || !vipList) return;
+
+        if (!allCustomers || allCustomers.length === 0) {
+            setTimeout(renderVipList, 500); 
+            return;
+        }
+
+        const vips = allCustomers.filter(c => isVipCustomer(c));
+        
+        if (vips.length === 0) {
+            vipSection.style.display = "none";
+            return;
+        }
+
+        vipList.innerHTML = vips.map(c => {
+            const name = c.customer || c.name || "";
+            const id = c.customerId || c.id || c.tel || "";
+            return `<button type="button" class="vip-customer-btn" onclick="fetchCustomer('${id}')"><i class="fas fa-star" style="color:#ffc107;"></i> ${name}</button>`;
+        }).join('');
+
+        vipSection.style.setProperty('display', 'block', 'important');
+    }
 </script>
 </body>
 </html>
