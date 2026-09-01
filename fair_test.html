@@ -57,7 +57,6 @@
         .vip-customer-btn { background: #fff; border: 1px solid #ffc107; color: #333; font-weight: bold; padding: 8px 12px; border-radius: 20px; cursor: pointer; font-size: 0.9em; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
         .vip-customer-btn:active { background: #ffe082; }
 
-        /* 追加：カメラ選択エリア用のスタイル */
         .camera-select-box { padding: 10px 15px; background: #eef2f7; text-align: center; border-bottom: 1px solid #ddd; }
         .camera-select-box select { width: 100%; padding: 10px; font-size: 14px; font-weight: bold; border-radius: 6px; border: 1px solid #ccc; background: #fff; }
     </style>
@@ -143,7 +142,6 @@
             <option value="">カメラを読み込み中...</option>
         </select>
     </div>
-    <!-- ★修正：ガイド文を強調し、距離を取るよう明確に指示 -->
     <div id="camera-guide" style="display:none; background:#fff3cd; color:#856404; padding:12px; text-align:center; font-size:14px; font-weight:bold; border-bottom:1px solid #ffeeba; line-height:1.5;">
         📸 ピントが合わない場合<br>
         <span style="color:#d9534f; font-size:1.1em;">端末を 10〜15cm ほど離して</span><br>画面の枠内に収めてください
@@ -206,7 +204,6 @@
     <p style="font-size:0.9em; color:#666; text-align:center; margin-bottom:15px;">
        <i class="fas fa-info-circle"></i> 商品・顧客情報を最新にします
     </p>
-    <!-- ★修正：id="update-masters-btn" を追加 -->
     <button id="update-masters-btn" class="btn-main" style="background:#333; margin-bottom:12px;" onclick="forceUpdateAllMasters()">
         <i class="fas fa-sync-alt"></i> 全マスタを強制更新
     </button>
@@ -227,17 +224,18 @@
     const MY_MAKER = urlParams.get('m');
     const GAS_URL = "https://script.google.com/macros/s/AKfycbyICCUuqXRD8NyvwbwTes3uenXBxjzntVnTIAWpJs8QMZBUQryEiGQmzvAQyZT1fTM3/exec";
     const DRAFT_KEY = "ORDER_APP_DRAFT_" + (MY_MAKER || "DEFAULT");
+    const CAMERA_PREF_KEY = "ORDER_APP_CAMERA_PREF";
 
     let html5QrCode = null, customer = null, cart = [], tempProduct = null, isTelMode = false;
     let allProducts = [], allCustomers = [], pendingOrders = [];
     let headerTapCount = 0;
     let headerTapTimer;
     let isSubmitting = false;
-    let currentScanMode = 'customer'; // カメラ起動モード保持用
+    let currentScanMode = 'customer'; 
 
     window.onload = () => {
         preloadAllCustomers();
-        renderVipList();
+        renderVipList(); 
 
         if (MY_MAKER) {
             document.getElementById("app-title").innerText = MY_MAKER + " 受注システム";
@@ -302,36 +300,36 @@
     function openTelModal() { openQtyModal(); }
 
     async function preloadAllCustomers() {
-    const cacheKey = "CUSTOMERS_CACHE_ALL";
-    const cachedData = localStorage.getItem(cacheKey);
+        const cacheKey = "CUSTOMERS_CACHE_ALL";
+        const cachedData = localStorage.getItem(cacheKey);
 
-    if (cachedData) {
-        try { 
-            allCustomers = JSON.parse(cachedData); 
-            renderVipList(); 
-            // ※ここで return しないことで、裏で最新データを取得し直して再描画させます
+        if (cachedData) {
+            try { 
+                allCustomers = JSON.parse(cachedData); 
+                renderVipList(); 
+            } catch (e) { 
+                console.error("顧客キャッシュエラー", e); 
+            }
+        }
+
+        try {
+            const res = await fetch(GAS_URL, { 
+                method: "POST", 
+                headers: { "Content-Type": "text/plain;charset=utf-8" },
+                body: JSON.stringify({ action: "getAllCustomers", _ts: Date.now() }) 
+            });
+            if (!res.ok) throw new Error("HTTPエラー: " + res.status);
+            const data = await res.json();
+            if (Array.isArray(data) && data.length > 0) {
+                allCustomers = data;
+                localStorage.setItem(cacheKey, JSON.stringify(data));
+                renderVipList(); 
+            }
         } catch (e) { 
-            console.error("顧客キャッシュエラー", e); 
+            console.error("顧客データ読み込み失敗:", e); 
         }
     }
 
-    try {
-        const res = await fetch(GAS_URL, { 
-            method: "POST", 
-            headers: { "Content-Type": "text/plain;charset=utf-8" },
-            body: JSON.stringify({ action: "getAllCustomers", _ts: Date.now() }) 
-        });
-        if (!res.ok) throw new Error("HTTPエラー: " + res.status);
-        const data = await res.json();
-        if (Array.isArray(data) && data.length > 0) {
-            allCustomers = data;
-            localStorage.setItem(cacheKey, JSON.stringify(data));
-            renderVipList(); // 最新データ取得後に確実にVIP一覧を更新
-        }
-    } catch (e) { 
-        console.error("顧客データ読み込み失敗:", e); 
-    }
-}
     async function preloadAllProducts() {
         if (!MY_MAKER) return;
         const cacheKey = "PRODUCTS_CACHE_" + MY_MAKER;
@@ -371,7 +369,6 @@
     }
 
     async function forceUpdateAllMasters() {
-        // ★改善：ボタンの表示を「更新中」に変更し、連打を防止する
         const btn = document.getElementById("update-masters-btn");
         if (btn) {
             btn.disabled = true;
@@ -390,7 +387,6 @@
         } catch (e) {
             alert("更新中にエラーが発生しました: " + e.message);
         } finally {
-            // ★改善：処理が終わったらボタンを元の状態に戻す
             if (btn) {
                 btn.disabled = false;
                 btn.innerHTML = '<i class="fas fa-sync-alt"></i> 全マスタを強制更新';
@@ -693,8 +689,8 @@
                 <b>${item.customerName} 様</b> <small>${item.displayDate}</small><br>
                 品番：${item.partNo} | ${item.name}<br>
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 5px;">
-                    <span>数量：<input type="number" value="${item.qty}" style="width:50px; padding:4px;" onchange="execDirectUpdate('${item.timestamp}', '${item.partNo}', this.value, ${item.qty})"></span>
-                    <span class="del-btn" style="cursor:pointer; font-size:1.1em; padding:4px 10px;" onclick="execDirectDelete('${item.timestamp}', '${item.partNo}')">
+                    <span>数量：<input type="number" value="${item.qty}" style="width:50px; padding:4px;" onchange="execDirectUpdate('${item.lineId || item.timestamp}', '${item.partNo}', this.value, ${item.qty})"></span>
+                    <span class="del-btn" style="cursor:pointer; font-size:1.1em; padding:4px 10px;" onclick="execDirectDelete('${item.lineId || item.timestamp}', '${item.partNo}')">
                         <i class="fas fa-trash-alt"></i>
                     </span>
                 </div>
@@ -765,37 +761,12 @@
             window.location.href = url.toString();
         }
     }
-    
-   // ★改善：カメラ設定を保存するためのキーを定義
-    const CAMERA_PREF_KEY = "ORDER_APP_CAMERA_PREF";
 
-    // ★復活：消えてしまったカメラ起動関数
-    async function startCamera(mode) {
-        if (mode === 'product' && !customer) return alert("先に顧客を選択してください");
-
-        currentScanMode = mode;
-        showPage('scanner-page');
-        document.getElementById('camera-guide').style.display = 'block';
-
-        await forceStopCameraTracks();
-        await loadCameraDevices();
-
-        const select = document.getElementById("camera-select");
-        const selectedDeviceId = select ? select.value : null;
-
-        setTimeout(() => {
-            runCameraInstance(selectedDeviceId, mode);
-        }, 300);
-    }
-
-    // ★最終対応版：iOSバグ回避のためのOS判定付きカメラリスト取得
+    // ★カメラ起動リストの読み込み（iPhoneフロントカメラバグ対策・記憶機能あり）
     async function loadCameraDevices() {
         const select = document.getElementById("camera-select");
         if (!select) return;
         select.innerHTML = "";
-
-        // ① 端末がiPhone/iPad(iOS)かどうかを判定
-        const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 
         try {
             const autoOpt = document.createElement("option");
@@ -803,19 +774,12 @@
             autoOpt.text = "標準背面カメラ (推奨)";
             select.appendChild(autoOpt);
 
-            // ② iPhoneの場合はバグを避けるため、個別のカメラIDは取得・表示しない
-            if (isIOS) {
-                select.value = "auto_environment";
-                return;
-            }
-
-            // ③ AndroidやPCの場合は従来通り個別カメラを選択可能にする
             const devices = await Html5Qrcode.getCameras();
             if (devices && devices.length > 0) {
                 const savedCameraId = localStorage.getItem(CAMERA_PREF_KEY);
                 devices.forEach((device, index) => {
                     const opt = document.createElement("option");
-                    opt.value = device.id; // 文字列のID
+                    opt.value = device.id;
                     
                     const label = (device.label || "").toLowerCase();
                     if (label.includes("back") || label.includes("rear") || label.includes("背面") || label.includes("アウト") || label.includes("環境")) {
@@ -840,9 +804,38 @@
         }
     }
 
-    // （※ onCameraSelectChange 関数はそのまま変更なしで大丈夫です）
+    async function onCameraSelectChange() {
+        const select = document.getElementById("camera-select");
+        const selectedDeviceId = select.value;
+        if (!selectedDeviceId) return;
 
-    // ★最終対応版：背面カメラの強制指定とリトライ
+        localStorage.setItem(CAMERA_PREF_KEY, selectedDeviceId);
+
+        await forceStopCameraTracks();
+        setTimeout(() => {
+            runCameraInstance(selectedDeviceId, currentScanMode);
+        }, 200);
+    }
+
+    async function startCamera(mode) {
+        if (mode === 'product' && !customer) return alert("先に顧客を選択してください");
+
+        currentScanMode = mode;
+        showPage('scanner-page');
+        document.getElementById('camera-guide').style.display = 'block';
+
+        await forceStopCameraTracks();
+        await loadCameraDevices();
+
+        const select = document.getElementById("camera-select");
+        const selectedDeviceId = select ? select.value : null;
+
+        setTimeout(() => {
+            runCameraInstance(selectedDeviceId, mode);
+        }, 300);
+    }
+
+    // ★カメラ起動処理（iPhone 16バグ対策 ＆ SEピント枠縮小サイズ）
     async function runCameraInstance(deviceId, mode) {
         try {
             html5QrCode = new Html5Qrcode("reader");
@@ -851,6 +844,7 @@
                 fps: 10, 
                 qrbox: function(viewfinderWidth, viewfinderHeight) {
                     const minEdge = Math.min(viewfinderWidth, viewfinderHeight);
+                    // iPhone SEでもピントが合うように枠を小さく調整
                     const size = Math.min(Math.floor(minEdge * 0.6), 250); 
                     return { width: size, height: size };
                 },
@@ -868,41 +862,44 @@
                 }
             };
 
-            // ④ 起動制約の決定
+            // ★iOS 16バグ対応：指定されたカメラIDを厳格に指定するか、背面カメラを試す
             let cameraConstraint;
             if (!deviceId || deviceId === "auto_environment") {
-                // iOSなどで背面を指定する場合、「絶対に背面」という強い命令を出す
-                cameraConstraint = { facingMode: { exact: "environment" } };
+                cameraConstraint = { facingMode: "environment" };
             } else {
-                // 個別IDを指定する場合、オブジェクトではなく「文字列」を直接渡すのがライブラリの正しい仕様
-                cameraConstraint = deviceId; 
+                cameraConstraint = { deviceId: { exact: deviceId } };
             }
 
             try {
+                // まずは選択されたカメラで起動を試行
                 await html5QrCode.start(cameraConstraint, config, successCallback, () => {});
-            } catch (firstErr) {
-                console.warn("第1起動に失敗しました。フォールバック処理を実行します", firstErr);
-                
-                // ⑤ exact指定が厳格すぎて弾かれた場合（一部の古いAndroid等）は、緩い指定でリトライ
+            } catch (err1) {
+                console.warn("カメラ起動エラー (リトライします):", err1);
                 try {
+                    // 失敗した場合は、最も安全な「背面カメラ」の設定でリトライ
                     await html5QrCode.start({ facingMode: "environment" }, config, successCallback, () => {});
-                } catch (secondErr) {
-                    // それでもダメなら前面でも何でもいいから起動させる最終手段
-                    console.error("背面カメラでの起動に完全失敗", secondErr);
+                } catch (err2) {
+                    // それでもダメなら前面カメラで強制起動
                     await html5QrCode.start({ facingMode: "user" }, config, successCallback, () => {});
                 }
                 
-                // セレクトボックスの表示をリセット
+                // エラーでフォールバックした場合はセレクトボックスをリセット
                 const select = document.getElementById("camera-select");
                 if (select) select.value = "auto_environment";
                 localStorage.setItem(CAMERA_PREF_KEY, "auto_environment");
             }
-
         } catch (err) { 
             console.error("Camera start error:", err);
             alert("カメラを起動できませんでした。\nブラウザのカメラ権限が「許可」になっているか確認してください。"); 
         }
     }
+
+    async function stopCamera() {
+        await forceStopCameraTracks();
+        document.getElementById('camera-guide').style.display = 'none';
+        showPage('home');
+    }
+
     async function forceStopCameraTracks() {
         if (html5QrCode) {
             try {
