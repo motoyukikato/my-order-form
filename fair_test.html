@@ -769,6 +769,25 @@
    // ★改善：カメラ設定を保存するためのキーを定義
     const CAMERA_PREF_KEY = "ORDER_APP_CAMERA_PREF";
 
+    // ★復活：消えてしまったカメラ起動関数
+    async function startCamera(mode) {
+        if (mode === 'product' && !customer) return alert("先に顧客を選択してください");
+
+        currentScanMode = mode;
+        showPage('scanner-page');
+        document.getElementById('camera-guide').style.display = 'block';
+
+        await forceStopCameraTracks();
+        await loadCameraDevices();
+
+        const select = document.getElementById("camera-select");
+        const selectedDeviceId = select ? select.value : null;
+
+        setTimeout(() => {
+            runCameraInstance(selectedDeviceId, mode);
+        }, 300);
+    }
+
     async function loadCameraDevices() {
         const select = document.getElementById("camera-select");
         if (!select) return;
@@ -778,7 +797,6 @@
             const devices = await Html5Qrcode.getCameras();
             if (devices && devices.length > 0) {
                 let defaultDeviceId = null;
-                // ★改善：前回保存されたカメラIDを読み込む
                 const savedCameraId = localStorage.getItem(CAMERA_PREF_KEY);
 
                 devices.forEach((device, index) => {
@@ -797,7 +815,6 @@
                     select.appendChild(opt);
                 });
 
-                // ★改善：保存されたカメラが存在すればそれを初期選択、なければ背面カメラ
                 if (savedCameraId && devices.find(d => d.id === savedCameraId)) {
                     select.value = savedCameraId;
                 } else {
@@ -817,7 +834,6 @@
         const selectedDeviceId = select.value;
         if (!selectedDeviceId) return;
 
-        // ★改善：ユーザーがカメラを変更したら、その設定を保存する
         localStorage.setItem(CAMERA_PREF_KEY, selectedDeviceId);
 
         await forceStopCameraTracks();
@@ -825,15 +841,26 @@
             runCameraInstance(selectedDeviceId, currentScanMode);
         }, 200);
     }
-    // ★機能拡張：選択されたカメラID（またはfacingMode）で実際にスキャンを開始する共通関数
+
     async function runCameraInstance(deviceId, mode) {
         try {
             html5QrCode = new Html5Qrcode("reader");
 
+            // ★iPhone SE対応：枠を画面サイズに合わせて縮小し、ピント距離を確保させる
             const config = { 
-                fps: 15, 
-                qrbox: { width: 250, height: 250 },
-                aspectRatio: 1.0
+                fps: 10, 
+                qrbox: function(viewfinderWidth, viewfinderHeight) {
+                    const minEdge = Math.min(viewfinderWidth, viewfinderHeight);
+                    const size = Math.min(Math.floor(minEdge * 0.6), 250); 
+                    return { width: size, height: size };
+                },
+                aspectRatio: 1.0,
+                // ★iPhone SE対応：高画質＆オートフォーカス要求
+                videoConstraints: {
+                    width: { ideal: 1280 },
+                    height: { ideal: 720 },
+                    advanced: [{ focusMode: "continuous" }]
+                }
             };
 
             const cameraConstraint = deviceId ? deviceId : { facingMode: "environment" };
@@ -858,13 +885,6 @@
             alert("カメラを起動できませんでした。\nブラウザのカメラ権限が「許可」になっているか確認してください。"); 
         }
     }
-
-    async function stopCamera() {
-        await forceStopCameraTracks();
-        document.getElementById('camera-guide').style.display = 'none';
-        showPage('home');
-    }
-
     async function forceStopCameraTracks() {
         if (html5QrCode) {
             try {
