@@ -641,6 +641,7 @@
         }
     }
 
+    // HTMLファイル内の renderHistoryList 関数のみを差し替え
     function renderHistoryList(data) {
         const list = document.getElementById("h-list");
         if (!list) return;
@@ -655,8 +656,9 @@
                 <b>${item.customerName} 様</b> <small>${item.displayDate}</small><br>
                 品番：${item.partNo} | ${item.name}<br>
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 5px;">
-                    <span>数量：<input type="number" value="${item.qty}" style="width:50px; padding:4px;" onchange="execDirectUpdate('${item.timestamp}', '${item.partNo}', this.value, ${item.qty})"></span>
-                    <span class="del-btn" style="cursor:pointer; font-size:1.1em; padding:4px 10px;" onclick="execDirectDelete('${item.timestamp}', '${item.partNo}')">
+                    <!-- ★変更：引数に item.lineId || item.timestamp を使用 -->
+                    <span>数量：<input type="number" value="${item.qty}" style="width:50px; padding:4px;" onchange="execDirectUpdate('${item.lineId || item.timestamp}', '${item.partNo}', this.value, ${item.qty})"></span>
+                    <span class="del-btn" style="cursor:pointer; font-size:1.1em; padding:4px 10px;" onclick="execDirectDelete('${item.lineId || item.timestamp}', '${item.partNo}')">
                         <i class="fas fa-trash-alt"></i>
                     </span>
                 </div>
