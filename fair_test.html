@@ -788,15 +788,21 @@
         }, 300);
     }
 
+    // ★全端末対応版：カメラリスト取得
     async function loadCameraDevices() {
         const select = document.getElementById("camera-select");
         if (!select) return;
         select.innerHTML = "";
 
         try {
+            // 最も安全で確実な「標準背面カメラ」をトップに配置
+            const autoOpt = document.createElement("option");
+            autoOpt.value = "auto_environment";
+            autoOpt.text = "標準背面カメラ (推奨・全端末対応)";
+            select.appendChild(autoOpt);
+
             const devices = await Html5Qrcode.getCameras();
             if (devices && devices.length > 0) {
-                let defaultDeviceId = null;
                 const savedCameraId = localStorage.getItem(CAMERA_PREF_KEY);
 
                 devices.forEach((device, index) => {
@@ -804,10 +810,9 @@
                     opt.value = device.id;
                     
                     const label = (device.label || "").toLowerCase();
-                    if (label.includes("back") || label.includes("rear") || label.includes("背面") || label.includes("環境")) {
+                    if (label.includes("back") || label.includes("rear") || label.includes("背面") || label.includes("アウト") || label.includes("環境")) {
                         opt.text = device.label || `背面カメラ (${index + 1})`;
-                        if (!defaultDeviceId) defaultDeviceId = device.id; 
-                    } else if (label.includes("front") || label.includes("前面") || label.includes("自撮り")) {
+                    } else if (label.includes("front") || label.includes("前面") || label.includes("イン") || label.includes("自撮り")) {
                         opt.text = device.label || `前面カメラ (${index + 1})`;
                     } else {
                         opt.text = device.label || `カメラ ${index + 1}`;
@@ -815,71 +820,68 @@
                     select.appendChild(opt);
                 });
 
-                if (savedCameraId && devices.find(d => d.id === savedCameraId)) {
+                if (savedCameraId && (savedCameraId === "auto_environment" || devices.find(d => d.id === savedCameraId))) {
                     select.value = savedCameraId;
                 } else {
-                    select.value = defaultDeviceId || devices[devices.length - 1].id;
+                    select.value = "auto_environment";
                 }
-            } else {
-                select.innerHTML = '<option value="">標準環境カメラ (自動判定)</option>';
             }
         } catch (err) {
             console.log("カメラリスト取得スキップ:", err);
-            select.innerHTML = '<option value="">標準アウトカメラ (自動判定)</option>';
+            select.innerHTML = '<option value="auto_environment">標準背面カメラ (推奨・全端末対応)</option>';
         }
     }
 
-    async function onCameraSelectChange() {
-        const select = document.getElementById("camera-select");
-        const selectedDeviceId = select.value;
-        if (!selectedDeviceId) return;
+    // （※ onCameraSelectChange 関数はそのまま変更なしで大丈夫です）
 
-        localStorage.setItem(CAMERA_PREF_KEY, selectedDeviceId);
-
-        await forceStopCameraTracks();
-        setTimeout(() => {
-            runCameraInstance(selectedDeviceId, currentScanMode);
-        }, 200);
-    }
-
+    // ★全端末対応版：自動リトライ機構付きのカメラ起動
     async function runCameraInstance(deviceId, mode) {
         try {
             html5QrCode = new Html5Qrcode("reader");
 
-            // ★iPhone SE対応：枠を画面サイズに合わせて縮小し、ピント距離を確保させる
+            // iPhone SE等のピント対策（枠の動的縮小）のみを残し、エラーの元になる画質・AF制約を排除
             const config = { 
                 fps: 10, 
                 qrbox: function(viewfinderWidth, viewfinderHeight) {
                     const minEdge = Math.min(viewfinderWidth, viewfinderHeight);
+                    // 画面幅の60%（最大250px）に枠を絞り、自然と距離を取らせる
                     const size = Math.min(Math.floor(minEdge * 0.6), 250); 
                     return { width: size, height: size };
                 },
-                aspectRatio: 1.0,
-                // ★iPhone SE対応：高画質＆オートフォーカス要求
-                videoConstraints: {
-                    width: { ideal: 1280 },
-                    height: { ideal: 720 },
-                    advanced: [{ focusMode: "continuous" }]
+                aspectRatio: 1.0
+            };
+
+            const successCallback = async (text) => {
+                await forceStopCameraTracks();
+                document.getElementById('camera-guide').style.display = 'none';
+                showPage('home');
+                if (mode === 'customer') {
+                    fetchCustomer(text.trim());
+                } else {
+                    fetchProduct(text.trim());
                 }
             };
 
-            const cameraConstraint = deviceId ? deviceId : { facingMode: "environment" };
+            // まずは要求されたカメラ設定を作成
+            let cameraConstraint = (!deviceId || deviceId === "auto_environment") 
+                ? { facingMode: "environment" } 
+                : { deviceId: deviceId }; // exactはエラーの元になるため外す
 
-            await html5QrCode.start(
-                cameraConstraint, 
-                config, 
-                async (text) => {
-                    await forceStopCameraTracks();
-                    document.getElementById('camera-guide').style.display = 'none';
-                    showPage('home');
-                    if (mode === 'customer') {
-                        fetchCustomer(text.trim());
-                    } else {
-                        fetchProduct(text.trim());
-                    }
-                },
-                (errorMessage) => {}
-            );
+            try {
+                // ① まずは指定されたカメラで起動を試みる
+                await html5QrCode.start(cameraConstraint, config, successCallback, () => {});
+            } catch (firstErr) {
+                console.warn("指定カメラでの起動に失敗。標準背面カメラで自動リトライします", firstErr);
+                
+                // ② 失敗した場合は、絶対に起動する「標準背面カメラ」で強制リトライ（全端末対応の要）
+                await html5QrCode.start({ facingMode: "environment" }, config, successCallback, () => {});
+                
+                // セレクトボックスと保存データも安全な設定にリセットしておく
+                const select = document.getElementById("camera-select");
+                if (select) select.value = "auto_environment";
+                localStorage.setItem(CAMERA_PREF_KEY, "auto_environment");
+            }
+
         } catch (err) { 
             console.error("Camera start error:", err);
             alert("カメラを起動できませんでした。\nブラウザのカメラ権限が「許可」になっているか確認してください。"); 
