@@ -138,14 +138,15 @@
 </section>
 
 <section id="scanner-page" class="page-section">
-    <!-- ★追加：カメラ切り替え用セレクトボックス -->
     <div class="camera-select-box">
         <select id="camera-select" onchange="onCameraSelectChange()">
             <option value="">カメラを読み込み中...</option>
         </select>
     </div>
-    <div id="camera-guide" style="display:none; background:#fff3cd; color:#856404; padding:12px; text-align:center; font-size:14px; font-weight:bold; border-bottom:1px solid #ffeeba;">
-        📸 ピントが合わない時は、一度離してからゆっくり近づけてください
+    <!-- ★修正：ガイド文を強調し、距離を取るよう明確に指示 -->
+    <div id="camera-guide" style="display:none; background:#fff3cd; color:#856404; padding:12px; text-align:center; font-size:14px; font-weight:bold; border-bottom:1px solid #ffeeba; line-height:1.5;">
+        📸 ピントが合わない場合<br>
+        <span style="color:#d9534f; font-size:1.1em;">端末を 10〜15cm ほど離して</span><br>画面の枠内に収めてください
     </div>
     <div id="reader" style="width:100% !important;"></div>
     <div style="text-align:center; padding:20px; background:#fff;">
