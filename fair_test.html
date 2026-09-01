@@ -589,14 +589,33 @@
 
     let cachedHistory = []; 
 
+    // ★強化版：ハイフンや記号の違いを無視して確実に顧客を見つけ出す
     function fetchCustomer(val) {
         if (!val) return;
-        const searchVal = normalizeText(val);
+        
+        // 読み取った元の値（アラート表示用）
+        const rawVal = String(val).trim();
+        // 通常の検索値
+        const searchVal = normalizeText(rawVal);
+        // ★追加：記号をすべて抜いた純粋な「英数字のみ」の検索値
+        const cleanSearchVal = searchVal.replace(/[^0-9A-Z]/g, "");
+
         let found = allCustomers.find(c => {
             const tel = normalizeText(c.tel || "");
             const name = normalizeText(c.customer || c.name || "");
             const id = normalizeText(c.customerId || c.id || "");
-            return tel.includes(searchVal) || name.includes(searchVal) || id.includes(searchVal);
+            
+            // ★追加：マスター側も記号をすべて抜いた純粋な英数字にする
+            const cleanTel = tel.replace(/[^0-9A-Z]/g, "");
+            const cleanId = id.replace(/[^0-9A-Z]/g, "");
+
+            // パターン1：通常の部分一致検索（名前検索など）
+            if (tel.includes(searchVal) || name.includes(searchVal) || id.includes(searchVal)) return true;
+            
+            // パターン2：記号抜きの完全一致（ハイフン揺れを完全に吸収）
+            if (cleanSearchVal && (cleanTel === cleanSearchVal || cleanId === cleanSearchVal)) return true;
+
+            return false;
         });
 
         if (found) {
@@ -604,7 +623,8 @@
             updateCustomerDisplay();
             saveDraftData();
         } else {
-            alert("該当する顧客が見つかりません: [" + val + "]");
+            // エラー時に実際に読み取った「生の値」を表示させて原因を特定しやすくする
+            alert("該当する顧客が見つかりません: [" + rawVal + "]\n※読み取った値が登録データと一致するか確認してください。");
         }
     }
 
@@ -745,10 +765,13 @@
         } catch (e) { alert("通信エラー"); loadHistory(); }
     }
 
+    f// ★強化版：余計なスペースや見えない制御文字を完全に消し去る
     function normalizeText(str) {
         if (!str) return "";
         return String(str)
             .normalize("NFKC")
+            .replace(/[\x00-\x1F\x7F-\x9F]/g, "") // 制御文字を削除
+            .replace(/\s+/g, "") // ★追加：全角・半角スペースを完全に削除
             .replace(/[\u3041-\u3096]/g, match => String.fromCharCode(match.charCodeAt(0) + 0x60))
             .toUpperCase()
             .trim();
