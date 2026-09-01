@@ -206,7 +206,8 @@
     <p style="font-size:0.9em; color:#666; text-align:center; margin-bottom:15px;">
        <i class="fas fa-info-circle"></i> 商品・顧客情報を最新にします
     </p>
-    <button class="btn-main" style="background:#333; margin-bottom:12px;" onclick="forceUpdateAllMasters()">
+    <!-- ★修正：id="update-masters-btn" を追加 -->
+    <button id="update-masters-btn" class="btn-main" style="background:#333; margin-bottom:12px;" onclick="forceUpdateAllMasters()">
         <i class="fas fa-sync-alt"></i> 全マスタを強制更新
     </button>
     
@@ -370,13 +371,32 @@
     }
 
     async function forceUpdateAllMasters() {
-        localStorage.removeItem("CUSTOMERS_CACHE_ALL");
-        if (MY_MAKER) {
-            localStorage.removeItem("PRODUCTS_CACHE_" + MY_MAKER);
+        // ★改善：ボタンの表示を「更新中」に変更し、連打を防止する
+        const btn = document.getElementById("update-masters-btn");
+        if (btn) {
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 更新中... (数秒お待ちください)';
+            btn.style.background = "#666";
         }
-        await preloadAllCustomers();
-        await preloadAllProducts();
-        alert("最新の優良顧客リストおよび商品マスタを読み込みました");
+
+        try {
+            localStorage.removeItem("CUSTOMERS_CACHE_ALL");
+            if (MY_MAKER) {
+                localStorage.removeItem("PRODUCTS_CACHE_" + MY_MAKER);
+            }
+            await preloadAllCustomers();
+            await preloadAllProducts();
+            alert("最新の優良顧客リストおよび商品マスタを読み込みました");
+        } catch (e) {
+            alert("更新中にエラーが発生しました: " + e.message);
+        } finally {
+            // ★改善：処理が終わったらボタンを元の状態に戻す
+            if (btn) {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fas fa-sync-alt"></i> 全マスタを強制更新';
+                btn.style.background = "#333";
+            }
+        }
     }
 
     function numIn(n) {
@@ -746,7 +766,9 @@
         }
     }
     
-    // ★機能拡張：全利用可能カメラを列挙してドロップダウンに読み込む
+   // ★改善：カメラ設定を保存するためのキーを定義
+    const CAMERA_PREF_KEY = "ORDER_APP_CAMERA_PREF";
+
     async function loadCameraDevices() {
         const select = document.getElementById("camera-select");
         if (!select) return;
@@ -755,27 +777,34 @@
         try {
             const devices = await Html5Qrcode.getCameras();
             if (devices && devices.length > 0) {
+                let defaultDeviceId = null;
+                // ★改善：前回保存されたカメラIDを読み込む
+                const savedCameraId = localStorage.getItem(CAMERA_PREF_KEY);
+
                 devices.forEach((device, index) => {
                     const opt = document.createElement("option");
                     opt.value = device.id;
                     
-                    let label = device.label || `カメラ ${index + 1}`;
-                    if (label.includes("back") || label.includes("rear") || label.includes("環境")) {
-                        label = `背面白み・メインカメラ (${index + 1})`;
-                    } else if (label.includes("front") || label.includes("自撮り")) {
-                        label = `前面・インカメラ (${index + 1})`;
+                    const label = (device.label || "").toLowerCase();
+                    if (label.includes("back") || label.includes("rear") || label.includes("背面") || label.includes("環境")) {
+                        opt.text = device.label || `背面カメラ (${index + 1})`;
+                        if (!defaultDeviceId) defaultDeviceId = device.id; 
+                    } else if (label.includes("front") || label.includes("前面") || label.includes("自撮り")) {
+                        opt.text = device.label || `前面カメラ (${index + 1})`;
+                    } else {
+                        opt.text = device.label || `カメラ ${index + 1}`;
                     }
-                    
-                    opt.text = label;
                     select.appendChild(opt);
                 });
 
-                // デフォルトは背面カメラ（または1つ目のカメラ）を選択状態にする
-                if (!select.value && devices.length > 0) {
-                    select.value = devices[devices.length - 1].id; 
+                // ★改善：保存されたカメラが存在すればそれを初期選択、なければ背面カメラ
+                if (savedCameraId && devices.find(d => d.id === savedCameraId)) {
+                    select.value = savedCameraId;
+                } else {
+                    select.value = defaultDeviceId || devices[devices.length - 1].id;
                 }
             } else {
-                select.innerHTML = '<option value="">標準環境カメラ (環境判定)</option>';
+                select.innerHTML = '<option value="">標準環境カメラ (自動判定)</option>';
             }
         } catch (err) {
             console.log("カメラリスト取得スキップ:", err);
@@ -783,36 +812,19 @@
         }
     }
 
-    // ★機能拡張：ドロップダウンでカメラが変更された時の再起動処理
     async function onCameraSelectChange() {
         const select = document.getElementById("camera-select");
         const selectedDeviceId = select.value;
         if (!selectedDeviceId) return;
+
+        // ★改善：ユーザーがカメラを変更したら、その設定を保存する
+        localStorage.setItem(CAMERA_PREF_KEY, selectedDeviceId);
 
         await forceStopCameraTracks();
         setTimeout(() => {
             runCameraInstance(selectedDeviceId, currentScanMode);
         }, 200);
     }
-
-    async function startCamera(mode) {
-        if (mode === 'product' && !customer) return alert("先に顧客を選択してください");
-
-        currentScanMode = mode;
-        showPage('scanner-page');
-        document.getElementById('camera-guide').style.display = 'block';
-
-        await forceStopCameraTracks();
-        await loadCameraDevices();
-
-        const select = document.getElementById("camera-select");
-        const selectedDeviceId = select ? select.value : null;
-
-        setTimeout(() => {
-            runCameraInstance(selectedDeviceId, mode);
-        }, 300);
-    }
-
     // ★機能拡張：選択されたカメラID（またはfacingMode）で実際にスキャンを開始する共通関数
     async function runCameraInstance(deviceId, mode) {
         try {
