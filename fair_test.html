@@ -788,26 +788,34 @@
         }, 300);
     }
 
-    // ★全端末対応版：カメラリスト取得
+    // ★最終対応版：iOSバグ回避のためのOS判定付きカメラリスト取得
     async function loadCameraDevices() {
         const select = document.getElementById("camera-select");
         if (!select) return;
         select.innerHTML = "";
 
+        // ① 端末がiPhone/iPad(iOS)かどうかを判定
+        const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+
         try {
-            // 最も安全で確実な「標準背面カメラ」をトップに配置
             const autoOpt = document.createElement("option");
             autoOpt.value = "auto_environment";
-            autoOpt.text = "標準背面カメラ (推奨・全端末対応)";
+            autoOpt.text = "標準背面カメラ (推奨)";
             select.appendChild(autoOpt);
 
+            // ② iPhoneの場合はバグを避けるため、個別のカメラIDは取得・表示しない
+            if (isIOS) {
+                select.value = "auto_environment";
+                return;
+            }
+
+            // ③ AndroidやPCの場合は従来通り個別カメラを選択可能にする
             const devices = await Html5Qrcode.getCameras();
             if (devices && devices.length > 0) {
                 const savedCameraId = localStorage.getItem(CAMERA_PREF_KEY);
-
                 devices.forEach((device, index) => {
                     const opt = document.createElement("option");
-                    opt.value = device.id;
+                    opt.value = device.id; // 文字列のID
                     
                     const label = (device.label || "").toLowerCase();
                     if (label.includes("back") || label.includes("rear") || label.includes("背面") || label.includes("アウト") || label.includes("環境")) {
@@ -828,23 +836,21 @@
             }
         } catch (err) {
             console.log("カメラリスト取得スキップ:", err);
-            select.innerHTML = '<option value="auto_environment">標準背面カメラ (推奨・全端末対応)</option>';
+            select.innerHTML = '<option value="auto_environment">標準背面カメラ (推奨)</option>';
         }
     }
 
     // （※ onCameraSelectChange 関数はそのまま変更なしで大丈夫です）
 
-    // ★全端末対応版：自動リトライ機構付きのカメラ起動
+    // ★最終対応版：背面カメラの強制指定とリトライ
     async function runCameraInstance(deviceId, mode) {
         try {
             html5QrCode = new Html5Qrcode("reader");
 
-            // iPhone SE等のピント対策（枠の動的縮小）のみを残し、エラーの元になる画質・AF制約を排除
             const config = { 
                 fps: 10, 
                 qrbox: function(viewfinderWidth, viewfinderHeight) {
                     const minEdge = Math.min(viewfinderWidth, viewfinderHeight);
-                    // 画面幅の60%（最大250px）に枠を絞り、自然と距離を取らせる
                     const size = Math.min(Math.floor(minEdge * 0.6), 250); 
                     return { width: size, height: size };
                 },
@@ -862,21 +868,31 @@
                 }
             };
 
-            // まずは要求されたカメラ設定を作成
-            let cameraConstraint = (!deviceId || deviceId === "auto_environment") 
-                ? { facingMode: "environment" } 
-                : { deviceId: deviceId }; // exactはエラーの元になるため外す
+            // ④ 起動制約の決定
+            let cameraConstraint;
+            if (!deviceId || deviceId === "auto_environment") {
+                // iOSなどで背面を指定する場合、「絶対に背面」という強い命令を出す
+                cameraConstraint = { facingMode: { exact: "environment" } };
+            } else {
+                // 個別IDを指定する場合、オブジェクトではなく「文字列」を直接渡すのがライブラリの正しい仕様
+                cameraConstraint = deviceId; 
+            }
 
             try {
-                // ① まずは指定されたカメラで起動を試みる
                 await html5QrCode.start(cameraConstraint, config, successCallback, () => {});
             } catch (firstErr) {
-                console.warn("指定カメラでの起動に失敗。標準背面カメラで自動リトライします", firstErr);
+                console.warn("第1起動に失敗しました。フォールバック処理を実行します", firstErr);
                 
-                // ② 失敗した場合は、絶対に起動する「標準背面カメラ」で強制リトライ（全端末対応の要）
-                await html5QrCode.start({ facingMode: "environment" }, config, successCallback, () => {});
+                // ⑤ exact指定が厳格すぎて弾かれた場合（一部の古いAndroid等）は、緩い指定でリトライ
+                try {
+                    await html5QrCode.start({ facingMode: "environment" }, config, successCallback, () => {});
+                } catch (secondErr) {
+                    // それでもダメなら前面でも何でもいいから起動させる最終手段
+                    console.error("背面カメラでの起動に完全失敗", secondErr);
+                    await html5QrCode.start({ facingMode: "user" }, config, successCallback, () => {});
+                }
                 
-                // セレクトボックスと保存データも安全な設定にリセットしておく
+                // セレクトボックスの表示をリセット
                 const select = document.getElementById("camera-select");
                 if (select) select.value = "auto_environment";
                 localStorage.setItem(CAMERA_PREF_KEY, "auto_environment");
