@@ -6,7 +6,6 @@
     <title>商品スキャン＆価格チェック</title>
     <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
     <style>
-        /* モダンでクリーンなUI設計 */
         body { font-family: 'Helvetica Neue', Arial, sans-serif; padding: 15px 10px; background-color: #f0f2f5; color: #333; margin: 0; }
         .container { max-width: 500px; margin: 0 auto; background: #fff; padding: 20px; border-radius: 12px; box-shadow: 0 8px 20px rgba(0,0,0,0.08); box-sizing: border-box;}
         h1 { font-size: 1.2em; text-align: center; margin: 0 0 15px 0; color: #2c3e50; }
@@ -27,7 +26,6 @@
 
         #reader { width: 100%; border-radius: 12px; overflow: hidden; margin-bottom: 20px; background-color: #1e293b; min-height: 220px; display: flex; align-items: center; justify-content: center; color: #94a3b8; border: 2px dashed #cbd5e1; }
         
-        /* 結果表示エリアの調整 */
         .result-box { display: none; padding: 20px; background: #f0fdf4; border-radius: 12px; border: 1px solid #bbf7d0; animation: fadeIn 0.2s ease; text-align: center;}
         
         .product-hinban { font-size: 0.9em; color: #64748b; margin-bottom: 4px; font-weight: bold; }
@@ -36,7 +34,10 @@
         .price-row { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px dashed #cbd5e1;}
         .price-row:last-child { border-bottom: none; }
         .price-label { color: #64748b; font-size: 0.95em; }
-        .price-normal { font-size: 1.2em; color: #334155; font-weight: bold; text-decoration: line-through; /* 通常下代は取り消し線を入れると割引感がでます */ }
+        
+        /* 上代・下代・プレミアムのスタイル分け */
+        .price-joudai { font-size: 1.1em; color: #64748b; }
+        .price-normal { font-size: 1.2em; color: #334155; font-weight: bold; text-decoration: line-through; }
         .price-premium { font-size: 1.4em; color: #e11d48; font-weight: 900; }
 
         .result-badge { display: inline-block; padding: 6px 12px; border-radius: 20px; font-size: 0.85em; font-weight: bold; margin-bottom: 15px; }
@@ -65,10 +66,14 @@
         <div id="result-box" class="result-box">
             <div id="result-badge" class="result-badge"></div>
             
-            <!-- 品番表示を追加 -->
             <div class="product-hinban" id="res-hinban">品番: ---</div>
             <div class="product-name" id="res-name">品名</div>
             
+            <!-- 上代を追加 -->
+            <div class="price-row">
+                <span class="price-label">上代</span>
+                <span class="price-joudai" id="res-price-joudai">¥0</span>
+            </div>
             <div class="price-row">
                 <span class="price-label">通常下代</span>
                 <span class="price-normal" id="res-price-normal">¥0</span>
@@ -100,6 +105,7 @@
         resBadge: document.getElementById('result-badge'),
         resHinban: document.getElementById('res-hinban'),
         resName: document.getElementById('res-name'),
+        resPriceJoudai: document.getElementById('res-price-joudai'), // 上代の要素を追加
         resPriceNormal: document.getElementById('res-price-normal'),
         resPricePremium: document.getElementById('res-price-premium')
     };
@@ -232,7 +238,8 @@
         const productInfo = localProductData[decodedText];
 
         if (productInfo) {
-            // 品番・品名・価格の表示
+            // 品番・品名・価格（上代・下代・プレミアム）の計算と表示
+            const joudaiPrice = parseInt(productInfo.joudai, 10);
             const normalPrice = parseInt(productInfo.price, 10);
             const premiumPrice = Math.floor(normalPrice * 0.95);
             
@@ -241,6 +248,9 @@
             
             elements.resHinban.textContent = `品番: ${productInfo.hinban}`;
             elements.resName.textContent = productInfo.name;
+            
+            // 上代が空欄（数値でない）場合の処理も追加
+            elements.resPriceJoudai.textContent = isNaN(joudaiPrice) ? "¥---" : `¥${joudaiPrice.toLocaleString()}`;
             elements.resPriceNormal.textContent = `¥${normalPrice.toLocaleString()}`;
             elements.resPricePremium.textContent = `¥${premiumPrice.toLocaleString()}`;
         } else {
@@ -249,6 +259,7 @@
             
             elements.resHinban.textContent = `JAN: ${decodedText}`;
             elements.resName.textContent = "---";
+            elements.resPriceJoudai.textContent = "¥---";
             elements.resPriceNormal.textContent = "¥---";
             elements.resPricePremium.textContent = "¥---";
         }
