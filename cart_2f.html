@@ -3,77 +3,176 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>商品スキャン＆価格チェック(爆速版)</title>
+    <title>商品スキャン＆価格チェック</title>
     <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
     <style>
-        body { font-family: sans-serif; padding: 10px; background-color: #f7f9fc; color: #333; margin: 0; }
-        .container { max-width: 500px; margin: 0 auto; background: #fff; padding: 15px; border-radius: 10px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); box-sizing: border-box;}
-        h1 { font-size: 1.1em; text-align: center; margin-top: 0; }
-        .data-sync-area { background: #eef2f5; padding: 10px; border-radius: 8px; margin-bottom: 15px; text-align: center; border: 1px solid #dcdde1; }
-        .sync-status { font-size: 0.85em; color: #555; margin-bottom: 8px; }
-        .btn-sync { background-color: #2c3e50; color: white; border: none; padding: 8px 15px; border-radius: 5px; cursor: pointer; font-size: 0.9em; }
-        .controls { margin-bottom: 15px; display: flex; flex-direction: column; gap: 8px; }
-        select { padding: 12px; font-size: 1em; border-radius: 8px; border: 1px solid #ccc; background-color: #fff; }
-        .btn-scan { padding: 12px; font-size: 1.1em; border-radius: 8px; border: 1px solid #ccc; background-color: #3498db; color: white; cursor: pointer; font-weight: bold; }
-        #reader { width: 100%; border-radius: 8px; overflow: hidden; margin-bottom: 20px; background-color: #eee; min-height: 200px; display: flex; align-items: center; justify-content: center; color: #999; }
-        .result-box { display: none; padding: 15px; background: #e8f6f3; border-radius: 8px; border: 1px solid #16a085; }
-        .product-name { font-size: 1.1em; font-weight: bold; margin-bottom: 10px; word-break: break-all; }
-        .price-normal { font-size: 1em; color: #555; }
-        .price-premium { font-size: 1.3em; color: #e74c3c; font-weight: bold; margin-top: 5px; }
+        /* モダンでクリーンなUI設計 */
+        body { font-family: 'Helvetica Neue', Arial, sans-serif; padding: 15px 10px; background-color: #f0f2f5; color: #333; margin: 0; }
+        .container { max-width: 500px; margin: 0 auto; background: #fff; padding: 20px; border-radius: 12px; box-shadow: 0 8px 20px rgba(0,0,0,0.08); box-sizing: border-box;}
+        h1 { font-size: 1.2em; text-align: center; margin: 0 0 15px 0; color: #2c3e50; }
+        
+        /* システムステータス表示（上部に小さく表示） */
+        .system-status { text-align: center; font-size: 0.8em; margin-bottom: 20px; padding: 6px; border-radius: 6px; background-color: #f1f5f9; color: #64748b; font-weight: bold; transition: all 0.3s ease; }
+        .status-syncing { background-color: #e0f2fe; color: #0369a1; }
+        .status-ready { background-color: #dcfce7; color: #15803d; }
+        .status-error { background-color: #fee2e2; color: #b91c1c; }
+
+        /* コントロールパネル */
+        .controls { display: flex; flex-direction: column; gap: 12px; margin-bottom: 20px; }
+        select { padding: 14px; font-size: 1em; border-radius: 8px; border: 1px solid #cbd5e1; background-color: #f8fafc; color: #334155; outline: none; }
+        
+        .btn { padding: 14px; font-size: 1.1em; border-radius: 8px; border: none; font-weight: bold; cursor: pointer; transition: transform 0.1s; }
+        .btn:active { transform: scale(0.98); }
+        .btn-primary { background-color: #3b82f6; color: white; }
+        .btn-danger { background-color: #ef4444; color: white; }
+        .btn-secondary { background-color: #10b981; color: white; width: 100%; margin-top: 15px;}
+
+        /* カメラエリア */
+        #reader { width: 100%; border-radius: 12px; overflow: hidden; margin-bottom: 20px; background-color: #1e293b; min-height: 220px; display: flex; align-items: center; justify-content: center; color: #94a3b8; border: 2px dashed #cbd5e1; }
+        
+        /* 結果表示エリア */
+        .result-box { display: none; padding: 20px; background: #f0fdf4; border-radius: 12px; border: 1px solid #bbf7d0; animation: fadeIn 0.2s ease; text-align: center;}
+        .product-name { font-size: 1.2em; font-weight: bold; margin-bottom: 15px; color: #0f172a; word-break: break-all; }
+        .price-row { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px dashed #cbd5e1;}
+        .price-row:last-child { border-bottom: none; }
+        .price-label { color: #64748b; font-size: 0.95em; }
+        .price-normal { font-size: 1.2em; color: #334155; font-weight: bold; }
+        .price-premium { font-size: 1.4em; color: #e11d48; font-weight: 900; }
+
+        /* 結果バッジ */
+        .result-badge { display: inline-block; padding: 6px 12px; border-radius: 20px; font-size: 0.85em; font-weight: bold; margin-bottom: 15px; }
+        .badge-success { background-color: #bbf7d0; color: #166534; }
+        .badge-error { background-color: #fecdd3; color: #9f1239; }
+        
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(-5px); } to { opacity: 1; transform: translateY(0); } }
     </style>
 </head>
 <body>
 
     <div class="container">
-        <h1>商品スキャン(爆速版)</h1>
+        <h1>商品スキャン</h1>
         
-        <div class="data-sync-area">
-            <div class="sync-status" id="sync-status">商品データ: 確認中...</div>
-            <button class="btn-sync" onclick="fetchProductData()" id="sync-btn">最新データに更新</button>
-        </div>
+        <!-- 自動更新のステータス（お客様にはさりげなく見せる） -->
+        <div id="system-status" class="system-status">データを準備中...</div>
         
-        <div class="controls">
+        <div class="controls" id="controls">
             <select id="camera-select"><option value="">カメラを準備中...</option></select>
-            <button class="btn-scan" id="start-btn" onclick="startScannerAction()">スキャン開始</button>
-            <button class="btn-scan" id="stop-btn" onclick="stopScanner()" style="display:none; background-color:#95a5a6;">スキャン停止</button>
+            <button class="btn btn-primary" id="start-btn" onclick="startScannerAction()">スキャン開始</button>
+            <button class="btn btn-danger" id="stop-btn" onclick="stopScanner()" style="display:none;">スキャン停止</button>
         </div>
 
-        <div id="reader">カメラ映像がここに表示されます</div>
+        <div id="reader">カメラを許可して開始してください</div>
 
+        <!-- 読み取り結果エリア -->
         <div id="result-box" class="result-box">
+            <div id="result-badge" class="result-badge"></div>
             <div class="product-name" id="res-name">商品名</div>
-            <div class="price-normal">通常価格: <span id="res-price-normal">¥0</span></div>
-            <div class="price-premium">プレミアム会員 (5%OFF): <span id="res-price-premium">¥0</span></div>
+            
+            <div class="price-row">
+                <span class="price-label">通常価格</span>
+                <span class="price-normal" id="res-price-normal">¥0</span>
+            </div>
+            <div class="price-row">
+                <span class="price-label">プレミアム会員 (5%OFF)</span>
+                <span class="price-premium" id="res-price-premium">¥0</span>
+            </div>
+
+            <!-- 次の操作への導線 -->
+            <button class="btn btn-secondary" id="next-btn" onclick="resetAndStartScanner()">次の商品をスキャン</button>
         </div>
     </div>
 
     <script>
-    // ★★★ここにGASのURLを貼り付けてください★★★
+    // ▼ GASのURL（全件取得用）
     const GAS_WEB_APP_URL = "https://script.google.com/macros/s/AKfycbxZCsMear3DtUYc19OAc7iKPVZqsLOfPtqAZSrF00J_ORtZ-rPuVH4kfpirc30tSWLb/exec";
+    const SCANNER_CONFIG = { fps: 10, qrbox: { width: 260, height: 130 } };
 
+    // ▼ 状態管理
     let html5QrCode = null;
-    const cameraSelect = document.getElementById('camera-select');
-    const scannerConfig = { fps: 10, qrbox: { width: 250, height: 150 } };
+    let localProductData = {}; // スマホのメモリに保持する商品データ
+    let isProcessing = false;
 
+    // ▼ DOM要素
+    const elements = {
+        sysStatus: document.getElementById('system-status'),
+        cameraSelect: document.getElementById('camera-select'),
+        startBtn: document.getElementById('start-btn'),
+        stopBtn: document.getElementById('stop-btn'),
+        reader: document.getElementById('reader'),
+        resultBox: document.getElementById('result-box'),
+        resBadge: document.getElementById('result-badge'),
+        resName: document.getElementById('res-name'),
+        resPriceNormal: document.getElementById('res-price-normal'),
+        resPricePremium: document.getElementById('res-price-premium')
+    };
+
+    // ページ読み込み時の処理（自動データ取得）
     window.onload = () => {
         html5QrCode = new Html5Qrcode("reader");
         
-        // ストレージのステータス表示を変更
-        document.getElementById('sync-status').textContent = "システム準備完了（オンライン検索モード）";
-        
+        // 1. まずはスマホに保存されている前回のデータを一瞬で読み込む
+        const cachedData = localStorage.getItem('autoCachedProductData');
+        if (cachedData) {
+            localProductData = JSON.parse(cachedData);
+            updateSystemStatus(`準備完了（${Object.keys(localProductData).length}件）`, 'status-ready');
+        }
+
+        // 2. 裏側でこっそり最新データをダウンロードして上書きする（自動同期）
+        fetchLatestDataInBackground();
+
+        // 3. カメラの準備
         Html5Qrcode.getCameras().then(populateCameraDropdown).catch(e => {
-            cameraSelect.innerHTML = '<option value="">カメラを許可してください</option>';
+            elements.cameraSelect.innerHTML = '<option value="">カメラがブロックされています</option>';
         });
     };
 
-    // データの事前ダウンロードは不要になるためボタンの役割を変更、またはそのままでもOK
-    function fetchProductData() {
-        alert("このバージョンでは、スキャン時に自動でスプレッドシートから最新価格を取得します。「最新データに更新」ボタンを押す必要はありません！");
+    // 【重要】裏側でデータを自動取得する処理
+    async function fetchLatestDataInBackground() {
+        // すでにデータがある場合は「更新中」、ない場合は「ダウンロード中」
+        if (Object.keys(localProductData).length === 0) {
+            updateSystemStatus("初回データをダウンロード中...", "status-syncing");
+        } else {
+            updateSystemStatus("裏側で最新価格に同期中...", "status-syncing");
+        }
+
+        try {
+            const url = `${GAS_WEB_APP_URL}?t=${new Date().getTime()}`;
+            const response = await fetch(url);
+            
+            if (!response.ok) throw new Error("Network response was not ok");
+            
+            const data = await response.json();
+            
+            // 取得成功したらデータを上書きし、スマホに保存する
+            localProductData = data;
+            localStorage.setItem('autoCachedProductData', JSON.stringify(localProductData));
+            
+            updateSystemStatus(`最新データに自動更新済み（${Object.keys(localProductData).length}件）`, 'status-ready');
+        } catch (error) {
+            console.error("バックグラウンド更新失敗:", error);
+            if (Object.keys(localProductData).length > 0) {
+                // 前回保存したデータがあるならそのまま使えるので警告レベル
+                updateSystemStatus("オフライン（保存済みデータで動作中）", "status-error");
+            } else {
+                // データが空で失敗した場合は致命的
+                updateSystemStatus("データ取得失敗。電波の良い所で開き直してください", "status-error");
+            }
+        }
     }
 
+    function updateSystemStatus(text, className) {
+        elements.sysStatus.textContent = text;
+        elements.sysStatus.className = `system-status ${className}`;
+    }
+
+    // ▼ カメラ関連の処理
     function populateCameraDropdown(devices) {
-        if (!devices || devices.length === 0) return;
-        cameraSelect.innerHTML = '';
+        if (!devices || devices.length === 0) {
+            elements.cameraSelect.innerHTML = '<option value="">カメラが見つかりません</option>';
+            return;
+        }
+        
+        elements.cameraSelect.innerHTML = '';
         const savedCameraId = localStorage.getItem('preferredCameraId');
         let selectedIndex = 0;
         let backIndex = -1;
@@ -82,88 +181,103 @@
             const opt = document.createElement('option');
             opt.value = device.id;
             opt.text = device.label || `カメラ ${i + 1}`;
-            cameraSelect.appendChild(opt);
+            elements.cameraSelect.appendChild(opt);
+            
             if (savedCameraId === device.id) selectedIndex = i;
             if (opt.text.toLowerCase().match(/back|rear|背面|アウト/)) backIndex = i;
         });
 
         if (!savedCameraId && backIndex !== -1) selectedIndex = backIndex;
-        cameraSelect.selectedIndex = selectedIndex;
+        elements.cameraSelect.selectedIndex = selectedIndex;
     }
 
-    cameraSelect.addEventListener('change', () => {
-        localStorage.setItem('preferredCameraId', cameraSelect.value);
+    elements.cameraSelect.addEventListener('change', () => {
+        localStorage.setItem('preferredCameraId', elements.cameraSelect.value);
         if (html5QrCode?.isScanning) {
             stopScanner().then(startScannerWithSelectedId);
         }
     });
 
     async function startScannerAction() {
-        if (!cameraSelect.value) {
-            try {
-                const devices = await Html5Qrcode.getCameras();
-                populateCameraDropdown(devices);
-            } catch(e) {
-                alert("カメラを許可してください");
-                return;
-            }
+        if (Object.keys(localProductData).length === 0) {
+            alert("商品データをダウンロード中です。数秒待ってからもう一度押してください。");
+            return;
+        }
+        if (!elements.cameraSelect.value) {
+            alert("カメラを許可してください。");
+            return;
         }
         startScannerWithSelectedId();
     }
 
     function startScannerWithSelectedId() {
-        if (!cameraSelect.value) return;
-        localStorage.setItem('preferredCameraId', cameraSelect.value);
-        document.getElementById('reader').innerHTML = ""; 
+        const cameraId = elements.cameraSelect.value;
+        if (!cameraId) return;
+        
+        localStorage.setItem('preferredCameraId', cameraId);
+        elements.reader.innerHTML = ""; 
+        elements.resultBox.style.display = 'none';
+        isProcessing = false; 
 
-        html5QrCode.start(cameraSelect.value, scannerConfig, onScanSuccess)
+        html5QrCode.start(cameraId, SCANNER_CONFIG, onScanSuccess)
             .then(() => {
-                document.getElementById('start-btn').style.display = 'none';
-                document.getElementById('stop-btn').style.display = 'block';
-                document.getElementById('result-box').style.display = 'none';
-            }).catch(e => alert("カメラが起動できませんでした"));
+                elements.startBtn.style.display = 'none';
+                elements.stopBtn.style.display = 'block';
+                elements.cameraSelect.style.display = 'none'; 
+            }).catch(e => {
+                alert("カメラの起動に失敗しました。");
+            });
     }
 
     async function stopScanner() {
         if (html5QrCode?.isScanning) {
             await html5QrCode.stop();
-            document.getElementById('start-btn').style.display = 'block';
-            document.getElementById('stop-btn').style.display = 'none';
+            elements.startBtn.style.display = 'block';
+            elements.stopBtn.style.display = 'none';
+            elements.cameraSelect.style.display = 'block';
         }
     }
 
-    // バーコードを読み取った瞬間、そのJANコードをGASに問い合わせる
-    async function onScanSuccess(decodedText) {
-        stopScanner();
-        document.getElementById('result-box').style.display = 'none';
-        
-        // 読み取り中の表示
-        document.getElementById('res-name').textContent = `検索中... (${decodedText})`;
-        document.getElementById('res-price-normal').textContent = "¥...";
-        document.getElementById('res-price-premium').textContent = "¥...";
-        document.getElementById('result-box').style.display = 'block';
+    function resetAndStartScanner() {
+        elements.resultBox.style.display = 'none';
+        startScannerWithSelectedId();
+    }
 
-        try {
-            const response = await fetch(`${GAS_WEB_APP_URL}?jan=${decodedText}&t=${new Date().getTime()}`);
-            if (!response.ok) throw new Error("サーバーエラー");
+    // ▼ コアロジック：スキャン成功時の処理（通信しないから爆速！）
+    function onScanSuccess(decodedText) {
+        if (isProcessing) return;
+        isProcessing = true;
+
+        // スキャンしたらすぐにカメラを止める
+        stopScanner(); 
+
+        // 通信せず、スマホ内に保存した変数(localProductData)から一瞬で探す
+        const productInfo = localProductData[decodedText];
+
+        if (productInfo) {
+            // 見つかった場合
+            const normalPrice = parseInt(productInfo.price, 10);
+            const premiumPrice = Math.floor(normalPrice * 0.95);
             
-            const product = await response.json();
-
-            if (product && product.name) {
-                const normalPrice = parseInt(product.price, 10);
-                const premiumPrice = Math.floor(normalPrice * 0.95);
-                document.getElementById('res-name').textContent = `${product.name} (${decodedText})`;
-                document.getElementById('res-price-normal').textContent = `¥${normalPrice.toLocaleString()}`;
-                document.getElementById('res-price-premium').textContent = `¥${premiumPrice.toLocaleString()}`;
-            } else {
-                alert(`JANコード [${decodedText}] は未登録です。`);
-                document.getElementById('result-box').style.display = 'none';
-            }
-        } catch (error) {
-            alert("商品の取得に失敗しました。電波状況を確認してください。");
-            document.getElementById('result-box').style.display = 'none';
+            elements.resBadge.className = "result-badge badge-success";
+            elements.resBadge.textContent = "検索成功！";
+            
+            elements.resName.textContent = productInfo.name;
+            elements.resPriceNormal.textContent = `¥${normalPrice.toLocaleString()}`;
+            elements.resPricePremium.textContent = `¥${premiumPrice.toLocaleString()}`;
+        } else {
+            // 見つからなかった場合
+            elements.resBadge.className = "result-badge badge-error";
+            elements.resBadge.textContent = "未登録の商品です";
+            
+            elements.resName.textContent = `JAN: ${decodedText}`;
+            elements.resPriceNormal.textContent = "¥---";
+            elements.resPricePremium.textContent = "¥---";
         }
+
+        // 結果を即座に表示
+        elements.resultBox.style.display = 'block';
     }
-</script>
+    </script>
 </body>
 </html>
