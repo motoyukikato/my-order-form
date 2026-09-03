@@ -48,144 +48,122 @@
     </div>
 
     <script>
-        // ★★★ここにGASのURLを貼り付けてください（前後の " " を消さないように注意！）★★★
-        const GAS_WEB_APP_URL = "https://script.google.com/macros/s/AKfycbxZCsMear3DtUYc19OAc7iKPVZqsLOfPtqAZSrF00J_ORtZ-rPuVH4kfpirc30tSWLb/exec";
+    // ★★★ここにGASのURLを貼り付けてください★★★
+    const GAS_WEB_APP_URL = "https://script.google.com/macros/s/AKfycbxZCsMear3DtUYc19OAc7iKPVZqsLOfPtqAZSrF00J_ORtZ-rPuVH4kfpirc30tSWLb/exec";
 
-        let localProductData = {}; 
-        let html5QrCode = null;
-        const cameraSelect = document.getElementById('camera-select');
-        const scannerConfig = { fps: 10, qrbox: { width: 250, height: 150 } };
+    let html5QrCode = null;
+    const cameraSelect = document.getElementById('camera-select');
+    const scannerConfig = { fps: 10, qrbox: { width: 250, height: 150 } };
 
-        window.onload = () => {
-            html5QrCode = new Html5Qrcode("reader");
-            const savedData = localStorage.getItem('localProductData');
-            if (savedData) {
-                localProductData = JSON.parse(savedData);
-                document.getElementById('sync-status').textContent = `商品データ: 保存済み (${Object.keys(localProductData).length}件)`;
-            } else {
-                document.getElementById('sync-status').textContent = `商品データがありません。更新を押してください`;
-                document.getElementById('sync-status').style.color = 'red';
-            }
-            Html5Qrcode.getCameras().then(populateCameraDropdown).catch(e => {
-                cameraSelect.innerHTML = '<option value="">カメラを許可してください</option>';
-            });
-        };
+    window.onload = () => {
+        html5QrCode = new Html5Qrcode("reader");
+        
+        // ストレージのステータス表示を変更
+        document.getElementById('sync-status').textContent = "システム準備完了（オンライン検索モード）";
+        
+        Html5Qrcode.getCameras().then(populateCameraDropdown).catch(e => {
+            cameraSelect.innerHTML = '<option value="">カメラを許可してください</option>';
+        });
+    };
 
-        function fetchProductData() {
-            const btn = document.getElementById('sync-btn');
-            const status = document.getElementById('sync-status');
-            
-            btn.disabled = true;
-            btn.textContent = "ダウンロード中...";
-            status.textContent = "取得中...";
+    // データの事前ダウンロードは不要になるためボタンの役割を変更、またはそのままでもOK
+    function fetchProductData() {
+        alert("このバージョンでは、スキャン時に自動でスプレッドシートから最新価格を取得します。「最新データに更新」ボタンを押す必要はありません！");
+    }
 
-            fetch(`${GAS_WEB_APP_URL}?t=${new Date().getTime()}`)
-                .then(response => {
-                    if (!response.ok) {
-                        throw new Error(`HTTPエラー: ${response.status}`);
-                    }
-                    return response.json();
-                })
-                .then(data => {
-                    localProductData = data;
-                    localStorage.setItem('localProductData', JSON.stringify(localProductData));
-                    const itemCount = Object.keys(localProductData).length;
-                    status.textContent = `商品データ: 最新 (${itemCount}件)`;
-                    alert(`${itemCount}件のデータをスマホに保存しました！`);
-                })
-                .catch(error => {
-                    status.textContent = "通信失敗";
-                    status.style.color = 'red';
-                    // エラーの本当の理由をポップアップで表示します
-                    alert("【エラー詳細】\n" + error.message + "\n\n・URLのコピペミス\n・スマホがオフライン\nのいずれかの可能性があります。");
-                })
-                .finally(() => {
-                    btn.disabled = false;
-                    btn.textContent = "最新データに更新";
-                });
-        }
+    function populateCameraDropdown(devices) {
+        if (!devices || devices.length === 0) return;
+        cameraSelect.innerHTML = '';
+        const savedCameraId = localStorage.getItem('preferredCameraId');
+        let selectedIndex = 0;
+        let backIndex = -1;
 
-        function populateCameraDropdown(devices) {
-            if (!devices || devices.length === 0) return;
-            cameraSelect.innerHTML = '';
-            const savedCameraId = localStorage.getItem('preferredCameraId');
-            let selectedIndex = 0;
-            let backIndex = -1;
-
-            devices.forEach((device, i) => {
-                const opt = document.createElement('option');
-                opt.value = device.id;
-                opt.text = device.label || `カメラ ${i + 1}`;
-                cameraSelect.appendChild(opt);
-                if (savedCameraId === device.id) selectedIndex = i;
-                if (opt.text.toLowerCase().match(/back|rear|背面|アウト/)) backIndex = i;
-            });
-
-            if (!savedCameraId && backIndex !== -1) selectedIndex = backIndex;
-            cameraSelect.selectedIndex = selectedIndex;
-        }
-
-        cameraSelect.addEventListener('change', () => {
-            localStorage.setItem('preferredCameraId', cameraSelect.value);
-            if (html5QrCode?.isScanning) {
-                stopScanner().then(startScannerWithSelectedId);
-            }
+        devices.forEach((device, i) => {
+            const opt = document.createElement('option');
+            opt.value = device.id;
+            opt.text = device.label || `カメラ ${i + 1}`;
+            cameraSelect.appendChild(opt);
+            if (savedCameraId === device.id) selectedIndex = i;
+            if (opt.text.toLowerCase().match(/back|rear|背面|アウト/)) backIndex = i;
         });
 
-        async function startScannerAction() {
-            if (Object.keys(localProductData).length === 0) {
-                alert("先に「最新データに更新」ボタンを押してください。");
+        if (!savedCameraId && backIndex !== -1) selectedIndex = backIndex;
+        cameraSelect.selectedIndex = selectedIndex;
+    }
+
+    cameraSelect.addEventListener('change', () => {
+        localStorage.setItem('preferredCameraId', cameraSelect.value);
+        if (html5QrCode?.isScanning) {
+            stopScanner().then(startScannerWithSelectedId);
+        }
+    });
+
+    async function startScannerAction() {
+        if (!cameraSelect.value) {
+            try {
+                const devices = await Html5Qrcode.getCameras();
+                populateCameraDropdown(devices);
+            } catch(e) {
+                alert("カメラを許可してください");
                 return;
             }
-            if (!cameraSelect.value) {
-                try {
-                    const devices = await Html5Qrcode.getCameras();
-                    populateCameraDropdown(devices);
-                } catch(e) {
-                    alert("カメラを許可してください");
-                    return;
-                }
-            }
-            startScannerWithSelectedId();
         }
+        startScannerWithSelectedId();
+    }
 
-        function startScannerWithSelectedId() {
-            if (!cameraSelect.value) return;
-            localStorage.setItem('preferredCameraId', cameraSelect.value);
-            document.getElementById('reader').innerHTML = ""; 
+    function startScannerWithSelectedId() {
+        if (!cameraSelect.value) return;
+        localStorage.setItem('preferredCameraId', cameraSelect.value);
+        document.getElementById('reader').innerHTML = ""; 
 
-            html5QrCode.start(cameraSelect.value, scannerConfig, onScanSuccess)
-                .then(() => {
-                    document.getElementById('start-btn').style.display = 'none';
-                    document.getElementById('stop-btn').style.display = 'block';
-                    document.getElementById('result-box').style.display = 'none';
-                }).catch(e => alert("カメラが起動できませんでした"));
+        html5QrCode.start(cameraSelect.value, scannerConfig, onScanSuccess)
+            .then(() => {
+                document.getElementById('start-btn').style.display = 'none';
+                document.getElementById('stop-btn').style.display = 'block';
+                document.getElementById('result-box').style.display = 'none';
+            }).catch(e => alert("カメラが起動できませんでした"));
+    }
+
+    async function stopScanner() {
+        if (html5QrCode?.isScanning) {
+            await html5QrCode.stop();
+            document.getElementById('start-btn').style.display = 'block';
+            document.getElementById('stop-btn').style.display = 'none';
         }
+    }
 
-        async function stopScanner() {
-            if (html5QrCode?.isScanning) {
-                await html5QrCode.stop();
-                document.getElementById('start-btn').style.display = 'block';
-                document.getElementById('stop-btn').style.display = 'none';
-            }
-        }
+    // バーコードを読み取った瞬間、そのJANコードをGASに問い合わせる
+    async function onScanSuccess(decodedText) {
+        stopScanner();
+        document.getElementById('result-box').style.display = 'none';
+        
+        // 読み取り中の表示
+        document.getElementById('res-name').textContent = `検索中... (${decodedText})`;
+        document.getElementById('res-price-normal').textContent = "¥...";
+        document.getElementById('res-price-premium').textContent = "¥...";
+        document.getElementById('result-box').style.display = 'block';
 
-        function onScanSuccess(decodedText) {
-            stopScanner();
-            document.getElementById('result-box').style.display = 'none';
-            const product = localProductData[decodedText];
+        try {
+            const response = await fetch(`${GAS_WEB_APP_URL}?jan=${decodedText}&t=${new Date().getTime()}`);
+            if (!response.ok) throw new Error("サーバーエラー");
+            
+            const product = await response.json();
 
-            if (product) {
+            if (product && product.name) {
                 const normalPrice = parseInt(product.price, 10);
                 const premiumPrice = Math.floor(normalPrice * 0.95);
                 document.getElementById('res-name').textContent = `${product.name} (${decodedText})`;
                 document.getElementById('res-price-normal').textContent = `¥${normalPrice.toLocaleString()}`;
                 document.getElementById('res-price-premium').textContent = `¥${premiumPrice.toLocaleString()}`;
-                document.getElementById('result-box').style.display = 'block';
             } else {
                 alert(`JANコード [${decodedText}] は未登録です。`);
+                document.getElementById('result-box').style.display = 'none';
             }
+        } catch (error) {
+            alert("商品の取得に失敗しました。電波状況を確認してください。");
+            document.getElementById('result-box').style.display = 'none';
         }
-    </script>
+    }
+</script>
 </body>
 </html>
