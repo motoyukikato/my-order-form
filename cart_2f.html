@@ -25,7 +25,6 @@
         .btn-toggle-cam.scanning { background: #ef4444; }
         #reader { width: 100%; border-radius: 12px; overflow: hidden; background-color: #111827; min-height: 200px; display: none; align-items: center; justify-content: center; color: #9ca3af; }
         
-        /* スキャン成功時のフラッシュアニメーション */
         @keyframes flash { 0% { background-color: #86efac; } 100% { background-color: transparent; } }
         .flash-active { animation: flash 0.5s ease; }
 
@@ -38,14 +37,21 @@
         .item-price-info { font-size: 0.85em; color: #4b5563; margin-bottom: 10px; display: flex; gap: 10px; }
         .item-price-info span { background: #f3f4f6; padding: 2px 6px; border-radius: 4px; }
         
-        /* 数量コントロール */
-        .quantity-control { display: flex; align-items: center; justify-content: flex-end; gap: 10px; }
-        .qty-btn { width: 32px; height: 32px; border-radius: 50%; border: 1px solid #d1d5db; background: #fff; font-weight: bold; color: #374151; font-size: 1.2em; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+        /* 数量コントロール（手入力対応デザイン） */
+        .quantity-control { display: flex; align-items: center; justify-content: flex-end; gap: 5px; }
+        .qty-btn { width: 32px; height: 32px; border-radius: 50%; border: 1px solid #d1d5db; background: #f9fafb; font-weight: bold; color: #374151; font-size: 1.2em; cursor: pointer; display: flex; align-items: center; justify-content: center; }
         .qty-btn:active { background: #e5e7eb; }
-        .qty-display { font-size: 1.1em; font-weight: bold; min-width: 30px; text-align: center; }
+        
+        /* 手入力用のテキストボックスのスタイル */
+        .qty-input { width: 50px; height: 32px; font-size: 1.1em; font-weight: bold; text-align: center; border: 1px solid #d1d5db; border-radius: 6px; color: #1f2937; }
+        .qty-input:focus { outline: none; border-color: #3b82f6; box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2); }
+        /* input[type="number"] のスピンボタン（上下矢印）を消す */
+        .qty-input::-webkit-outer-spin-button, .qty-input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+        .qty-input[type=number] { -moz-appearance: textfield; }
+
         .btn-delete { position: absolute; top: 15px; right: 15px; color: #ef4444; background: none; border: none; font-size: 1.2em; cursor: pointer; padding: 0; }
 
-        /* フッター（合計金額固定表示） */
+        /* フッター */
         .total-footer { position: fixed; bottom: 0; left: 0; width: 100%; background: #fff; box-shadow: 0 -4px 10px rgba(0,0,0,0.05); padding: 15px 20px; box-sizing: border-box; z-index: 100; }
         .total-footer-inner { max-width: 600px; margin: 0 auto; }
         .total-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px; }
@@ -79,7 +85,7 @@
         </div>
     </div>
 
-    <!-- 固定フッター（合計金額） -->
+    <!-- 固定フッター -->
     <div class="total-footer">
         <div class="total-footer-inner">
             <div class="total-row">
@@ -94,23 +100,19 @@
     </div>
 
     <script>
-    // ▼ お客様のGAS URL
     const GAS_WEB_APP_URL = "https://script.google.com/macros/s/AKfycbxZCsMear3DtUYc19OAc7iKPVZqsLOfPtqAZSrF00J_ORtZ-rPuVH4kfpirc30tSWLb/exec";
     const SCANNER_CONFIG = { fps: 10, qrbox: { width: 250, height: 120 } };
 
     let html5QrCode = null;
     let localProductData = {}; 
-    let cart = {}; // カートの中身を保存するオブジェクト
+    let cart = {}; 
     let isCameraRunning = false;
-    
-    // 連続読み込み（誤爆）防止用のタイマー変数
     let lastScannedJan = "";
     let lastScannedTime = 0;
 
     window.onload = () => {
         html5QrCode = new Html5Qrcode("reader");
         
-        // ローカルデータの読み込み
         const cachedData = localStorage.getItem('autoCachedProductData');
         if (cachedData) {
             localProductData = JSON.parse(cachedData);
@@ -118,10 +120,8 @@
             document.getElementById('system-status').className = 'system-status status-ready';
         }
 
-        // 裏側で最新データを同期
         fetchLatestDataInBackground();
 
-        // カメラリスト取得
         Html5Qrcode.getCameras().then(devices => {
             const camSelect = document.getElementById('camera-select');
             if (devices && devices.length > 0) {
@@ -162,7 +162,6 @@
         }
     }
 
-    // カメラのON/OFF切り替え
     function toggleCamera() {
         const btn = document.getElementById('toggle-cam-btn');
         const reader = document.getElementById('reader');
@@ -198,64 +197,65 @@
         }
     }
 
-    // スキャン成功時の処理（リストに追加）
     function onScanSuccess(decodedText) {
         const now = Date.now();
-        // 同じ商品を2秒以内に連続で読み込んだ場合は無視する（誤爆防止）
         if (decodedText === lastScannedJan && now - lastScannedTime < 2000) {
             return; 
         }
         lastScannedJan = decodedText;
         lastScannedTime = now;
 
-        // 画面を光らせて読み取り成功を知らせる
         document.body.classList.remove('flash-active');
-        void document.body.offsetWidth; // アニメーションリセット用ハック
+        void document.body.offsetWidth;
         document.body.classList.add('flash-active');
 
         const product = localProductData[decodedText];
-
         if (product) {
             addToCart(decodedText, product);
         } else {
-            // 未登録商品の場合（警告音の代わりにアラート）
             alert(`JAN: ${decodedText} は未登録です。`);
         }
     }
 
-    // カートに商品を追加・更新する
     function addToCart(jan, product) {
         if (cart[jan]) {
-            // 既にカゴにある場合は数量を+1
             cart[jan].qty += 1;
         } else {
-            // 新規追加
-            cart[jan] = {
-                info: product,
-                qty: 1
-            };
+            cart[jan] = { info: product, qty: 1 };
         }
         renderCart();
     }
 
-    // 数量を変更する
+    // 「＋」「－」ボタンで数量を変更
     function changeQty(jan, delta) {
         if (cart[jan]) {
             cart[jan].qty += delta;
             if (cart[jan].qty <= 0) {
-                delete cart[jan]; // 0になったらリストから消す
+                delete cart[jan];
             }
             renderCart();
         }
     }
 
-    // カートから削除する
+    // ★追加：手入力で数量を変更したときの処理
+    function inputQty(jan, value) {
+        if (cart[jan]) {
+            let newQty = parseInt(value, 10);
+            // 空欄にしたり、0やマイナスを入力した場合はリストから削除
+            if (isNaN(newQty) || newQty <= 0) {
+                delete cart[jan];
+            } else {
+                cart[jan].qty = newQty;
+            }
+            renderCart();
+        }
+    }
+
     function removeItem(jan) {
         delete cart[jan];
         renderCart();
     }
 
-    // カート画面と合計金額を描画する
     function renderCart() {
         const cartList = document.getElementById('cart-list');
         const cartEmpty = document.getElementById('cart-empty');
@@ -273,7 +273,6 @@
         } else {
             cartEmpty.style.display = 'none';
             
-            // リストを逆順（新しいものを上に）表示する
             keys.reverse().forEach(jan => {
                 const item = cart[jan];
                 const p = item.info;
@@ -296,7 +295,8 @@
                     </div>
                     <div class="quantity-control">
                         <button class="qty-btn" onclick="changeQty('${jan}', -1)">-</button>
-                        <div class="qty-display">${item.qty}</div>
+                        <!-- ★変更部分：手入力用のinputタグに変更 -->
+                        <input type="number" class="qty-input" value="${item.qty}" min="0" onchange="inputQty('${jan}', this.value)">
                         <button class="qty-btn" onclick="changeQty('${jan}', 1)">+</button>
                     </div>
                 </div>
@@ -305,7 +305,6 @@
             cartList.innerHTML = html;
         }
 
-        // 合計金額の更新
         document.getElementById('total-qty').textContent = `(${totalItems}点)`;
         document.getElementById('total-normal').textContent = `¥${totalNormal.toLocaleString()}`;
         document.getElementById('total-premium').textContent = `¥${totalPremium.toLocaleString()}`;
