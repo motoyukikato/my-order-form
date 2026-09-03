@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>商品スキャン＆価格チェック</title>
+    <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+    <style>
+        body { font-family: sans-serif; padding: 20px; background-color: #f7f9fc; color: #333; }
+        .container { max-width: 500px; margin: 0 auto; background: #fff; padding: 20px; border-radius: 10px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+        h1 { font-size: 1.2em; text-align: center; }
+        .controls { margin-bottom: 15px; display: flex; flex-direction: column; gap: 10px; }
+        select, button { padding: 10px; font-size: 1em; border-radius: 5px; border: 1px solid #ccc; }
+        button { background-color: #3498db; color: white; border: none; cursor: pointer; }
+        button:active { background-color: #2980b9; }
+        #reader { width: 100%; border-radius: 8px; overflow: hidden; margin-bottom: 20px; }
+        
+        /* 結果表示エリア */
+        .result-box { display: none; padding: 15px; background: #e8f6f3; border-radius: 8px; border: 1px solid #16a085; }
+        .product-name { font-size: 1.2em; font-weight: bold; margin-bottom: 10px; }
+        .price-normal { font-size: 1.1em; color: #555; }
+        .price-premium { font-size: 1.4em; color: #e74c3c; font-weight: bold; margin-top: 5px; }
+        .loading { text-align: center; color: #7f8c8d; font-size: 0.9em; display: none; }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h1>商品スキャン</h1>
+        
+        <div class="controls">
+            <select id="camera-select">
+                <option value="">カメラを取得中...</option>
+            </select>
+            <button id="start-btn" onclick="startScanner()">スキャン開始</button>
+            <button id="stop-btn" onclick="stopScanner()" style="display:none; background-color:#95a5a6;">スキャン停止</button>
+        </div>
+
+        <div id="reader"></div>
+
+        <div id="loading" class="loading">データベースに照会中...</div>
+
+        <div id="result-box" class="result-box">
+            <div class="product-name" id="res-name">商品名</div>
+            <div class="price-normal">通常価格: <span id="res-price-normal">¥0</span></div>
+            <div class="price-premium">プレミアム会員 (5%OFF): <span id="res-price-premium">¥0</span></div>
+        </div>
+    </div>
+
+    <script>
+        // ★★★ここにステップ1で取得したウェブアプリのURLを貼り付けてください★★★
+        const GAS_WEB_APP_URL = "https://script.google.com/macros/s/AKfycbwJ28bGZzIM5i1bgWvp39XZdmuNEYg29OYlshy4hQ2E-Us5KDDcJDOdngaIbo66vQrj/exec";
+
+        let html5QrCode;
+        
+        // ページ読み込み時にカメラ一覧を取得
+        window.onload = () => {
+            Html5Qrcode.getCameras().then(devices => {
+                const cameraSelect = document.getElementById('camera-select');
+                cameraSelect.innerHTML = '';
+                
+                if (devices && devices.length) {
+                    devices.forEach(device => {
+                        const option = document.createElement('option');
+                        option.value = device.id;
+                        // 背面カメラ（環境カメラ）があればそれをデフォルトにするための工夫
+                        option.text = device.label || `カメラ ${cameraSelect.length + 1}`;
+                        cameraSelect.appendChild(option);
+                    });
+                } else {
+                    cameraSelect.innerHTML = '<option value="">カメラが見つかりません</option>';
+                }
+            }).catch(err => {
+                console.error("カメラ取得エラー", err);
+                alert("カメラのアクセス許可が必要です。");
+            });
+        };
+
+        function startScanner() {
+            const cameraId = document.getElementById('camera-select').value;
+            if (!cameraId) {
+                alert("カメラを選択してください");
+                return;
+            }
+
+            html5QrCode = new Html5Qrcode("reader");
+            
+            // スキャナーの設定
+            const config = { fps: 10, qrbox: { width: 250, height: 100 } }; // JANコード用に横長に設定
+
+            html5QrCode.start(
+                cameraId, 
+                config, 
+                onScanSuccess
+            ).then(() => {
+                document.getElementById('start-btn').style.display = 'none';
+                document.getElementById('stop-btn').style.display = 'block';
+                document.getElementById('result-box').style.display = 'none';
+            }).catch(err => {
+                console.error("スキャナー開始エラー", err);
+            });
+        }
+
+        function stopScanner() {
+            if (html5QrCode) {
+                html5QrCode.stop().then(() => {
+                    document.getElementById('start-btn').style.display = 'block';
+                    document.getElementById('stop-btn').style.display = 'none';
+                });
+            }
+        }
+
+        // バーコードが読み取れた時の処理
+        function onScanSuccess(decodedText) {
+            // 連続で読み取らないように一旦止める
+            stopScanner();
+            
+            document.getElementById('loading').style.display = 'block';
+            document.getElementById('result-box').style.display = 'none';
+
+            // Googleスプレッドシート（GAS）にJANコードを送信してデータを取得
+            fetch(`${GAS_WEB_APP_URL}?jan=${decodedText}`)
+                .then(response => response.json())
+                .then(data => {
+                    document.getElementById('loading').style.display = 'none';
+                    if (data.found) {
+                        const normalPrice = parseInt(data.price, 10);
+                        // 5%オフを計算（端数切り捨て）
+                        const premiumPrice = Math.floor(normalPrice * 0.95);
+
+                        document.getElementById('res-name').textContent = data.name + " (" + decodedText + ")";
+                        document.getElementById('res-price-normal').textContent = '¥' + normalPrice.toLocaleString();
+                        document.getElementById('res-price-premium').textContent = '¥' + premiumPrice.toLocaleString();
+                        document.getElementById('result-box').style.display = 'block';
+                    } else {
+                        alert(`JANコード [${decodedText}] はスプレッドシートに見つかりませんでした。`);
+                    }
+                })
+                .catch(error => {
+                    document.getElementById('loading').style.display = 'none';
+                    alert("データの取得に失敗しました。URLが正しいか確認してください。");
+                    console.error("Fetchエラー:", error);
+                });
+        }
+    </script>
+</body>
+</html>
