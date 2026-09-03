@@ -2,25 +2,31 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>商品スキャン＆価格チェック</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>商品スキャン＆価格チェック (カメラ修正版)</title>
+    <!-- バーコード読み取り用のライブラリを読み込み -->
     <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
     <style>
-        body { font-family: sans-serif; padding: 20px; background-color: #f7f9fc; color: #333; }
-        .container { max-width: 500px; margin: 0 auto; background: #fff; padding: 20px; border-radius: 10px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
-        h1 { font-size: 1.2em; text-align: center; }
-        .controls { margin-bottom: 15px; display: flex; flex-direction: column; gap: 10px; }
-        select, button { padding: 10px; font-size: 1em; border-radius: 5px; border: 1px solid #ccc; }
-        button { background-color: #3498db; color: white; border: none; cursor: pointer; }
+        /* スタイルは前回とほぼ同じですが、モバイル向けに調整 */
+        body { font-family: sans-serif; padding: 10px; background-color: #f7f9fc; color: #333; margin: 0; }
+        .container { max-width: 500px; margin: 0 auto; background: #fff; padding: 15px; border-radius: 10px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); box-sizing: border-box;}
+        h1 { font-size: 1.1em; text-align: center; margin-top: 0; }
+        .controls { margin-bottom: 15px; display: flex; flex-direction: column; gap: 8px; }
+        
+        /* セレクトボックスとボタンのスタイル調整 */
+        select, button { padding: 12px; font-size: 1em; border-radius: 8px; border: 1px solid #ccc; -webkit-appearance: none; appearance: none; }
+        select { background-color: #fff; background-image: url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%23007CB2%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%2E'); background-repeat: no-repeat; background-position: right 10px top 50%; background-size: 12px auto; }
+        button { background-color: #3498db; color: white; border: none; cursor: pointer; font-weight: bold; }
         button:active { background-color: #2980b9; }
-        #reader { width: 100%; border-radius: 8px; overflow: hidden; margin-bottom: 20px; }
+        
+        #reader { width: 100%; border-radius: 8px; overflow: hidden; margin-bottom: 20px; background-color: #000; /* カメラが起動するまでの色 */ }
         
         /* 結果表示エリア */
         .result-box { display: none; padding: 15px; background: #e8f6f3; border-radius: 8px; border: 1px solid #16a085; }
-        .product-name { font-size: 1.2em; font-weight: bold; margin-bottom: 10px; }
-        .price-normal { font-size: 1.1em; color: #555; }
-        .price-premium { font-size: 1.4em; color: #e74c3c; font-weight: bold; margin-top: 5px; }
-        .loading { text-align: center; color: #7f8c8d; font-size: 0.9em; display: none; }
+        .product-name { font-size: 1.1em; font-weight: bold; margin-bottom: 10px; word-break: break-all; }
+        .price-normal { font-size: 1em; color: #555; }
+        .price-premium { font-size: 1.3em; color: #e74c3c; font-weight: bold; margin-top: 5px; }
+        .loading { text-align: center; color: #7f8c8d; font-size: 0.9em; display: none; margin-top: 10px; }
     </style>
 </head>
 <body>
@@ -29,17 +35,18 @@
         <h1>商品スキャン</h1>
         
         <div class="controls">
-            <select id="camera-select">
-                <option value="">カメラを取得中...</option>
-            </select>
-            <button id="start-btn" onclick="startScanner()">スキャン開始</button>
+            <!-- カメラ選択ドロップダウン（最初は非表示） -->
+            <select id="camera-select" style="display:none;"></select>
+            <button id="start-btn" onclick="initAndStartScanner()">スキャン開始</button>
             <button id="stop-btn" onclick="stopScanner()" style="display:none; background-color:#95a5a6;">スキャン停止</button>
         </div>
 
-        <div id="reader"></div>
+        <!-- カメラ映像が表示されるエリア。JANコード用に高さを少し低く設定 -->
+        <div id="reader" style="min-height: 200px;"></div>
 
         <div id="loading" class="loading">データベースに照会中...</div>
 
+        <!-- 読み取り結果表示エリア -->
         <div id="result-box" class="result-box">
             <div class="product-name" id="res-name">商品名</div>
             <div class="price-normal">通常価格: <span id="res-price-normal">¥0</span></div>
@@ -48,65 +55,121 @@
     </div>
 
     <script>
-        // ★★★ここにステップ1で取得したウェブアプリのURLを貼り付けてください★★★
+        // ★★★ここに「スタンドアロンGAS」で取得したウェブアプリのURLを貼り付けてください★★★
         const GAS_WEB_APP_URL = "https://script.google.com/macros/s/AKfycbwJ28bGZzIM5i1bgWvp39XZdmuNEYg29OYlshy4hQ2E-Us5KDDcJDOdngaIbo66vQrj/exec";
 
         let html5QrCode;
+        const cameraSelect = document.getElementById('camera-select');
         
-        // ページ読み込み時にカメラ一覧を取得
+        // スキャナーの設定（JANコード用に横長に設定）
+        const scannerConfig = { fps: 10, qrbox: { width: 250, height: 150 } };
+
+        // ページ読み込み時にはカメラリストを取得しない（iOS対策：カメラ権限がないとリストが空になるため）
         window.onload = () => {
-            Html5Qrcode.getCameras().then(devices => {
-                const cameraSelect = document.getElementById('camera-select');
-                cameraSelect.innerHTML = '';
-                
-                if (devices && devices.length) {
-                    devices.forEach(device => {
-                        const option = document.createElement('option');
-                        option.value = device.id;
-                        // 背面カメラ（環境カメラ）があればそれをデフォルトにするための工夫
-                        option.text = device.label || `カメラ ${cameraSelect.length + 1}`;
-                        cameraSelect.appendChild(option);
-                    });
-                } else {
-                    cameraSelect.innerHTML = '<option value="">カメラが見つかりません</option>';
-                }
-            }).catch(err => {
-                console.error("カメラ取得エラー", err);
-                alert("カメラのアクセス許可が必要です。");
-            });
+            html5QrCode = new Html5Qrcode("reader");
         };
 
-        function startScanner() {
-            const cameraId = document.getElementById('camera-select').value;
+        // 「スキャン開始」ボタンが押された時の処理
+        async function initAndStartScanner() {
+            // まずはドロップダウンを非表示にしてカメラ起動を試みる
+            cameraSelect.style.display = 'none';
+
+            // 1. まずは「背面カメラ(environment)」を自動選択で起動を試みる
+            // これが最も多くのモダンな端末（iPhone/Android）で背面カメラを起動できる方法
+            try {
+                await html5QrCode.start({ facingMode: "environment" }, scannerConfig, onScanSuccess);
+                // 成功したら、カメラ起動後にデバイスリストを取得してドロップダウンを構築（次回切り替え用）
+                await requestCamerasAndPopulateSelect(true); // true = 背面を優先選択
+                uiStateScanning();
+            } catch (err) {
+                console.error("背面カメラの自動起動に失敗しました。手動選択に切り替えます。", err);
+                // 2. 自動起動に失敗した場合（古い端末やブラウザ）、カメラリストを取得してユーザーに選ばせる
+                await requestCamerasAndPopulateSelect(false);
+                
+                if (cameraSelect.options.length > 0) {
+                    cameraSelect.style.display = 'block'; // ドロップダウンを表示
+                    alert("背面カメラを自動的に起動できませんでした。リストからカメラを選択してもう一度「スキャン開始」を押してください。");
+                    // 次回のクリックでは選択されたカメラIDで起動するようにボタンの関数を変更
+                    document.getElementById('start-btn').onclick = startScannerWithSelectedId;
+                } else {
+                    alert("カメラが見つからないか、アクセスが許可されていません。ブラウザの設定を確認してください。");
+                }
+            }
+        }
+
+        // ドロップダウンで選択されたカメラIDで起動する
+        function startScannerWithSelectedId() {
+            const cameraId = cameraSelect.value;
             if (!cameraId) {
                 alert("カメラを選択してください");
                 return;
             }
-
-            html5QrCode = new Html5Qrcode("reader");
-            
-            // スキャナーの設定
-            const config = { fps: 10, qrbox: { width: 250, height: 100 } }; // JANコード用に横長に設定
-
-            html5QrCode.start(
-                cameraId, 
-                config, 
-                onScanSuccess
-            ).then(() => {
-                document.getElementById('start-btn').style.display = 'none';
-                document.getElementById('stop-btn').style.display = 'block';
-                document.getElementById('result-box').style.display = 'none';
-            }).catch(err => {
-                console.error("スキャナー開始エラー", err);
-            });
+            html5QrCode.start(cameraId, scannerConfig, onScanSuccess)
+                .then(() => uiStateScanning())
+                .catch(err => {
+                    console.error("選択されたカメラの起動に失敗", err);
+                    alert("カメラの起動に失敗しました。");
+                });
         }
 
-        function stopScanner() {
-            if (html5QrCode) {
-                html5QrCode.stop().then(() => {
+        // カメラデバイスをリクエストし、セレクトボックスを構築する
+        async function requestCamerasAndPopulateSelect(preferBackCamera) {
+            try {
+                const devices = await Html5Qrcode.getCameras();
+                cameraSelect.innerHTML = '';
+                
+                if (devices && devices.length) {
+                    let selectedIndex = 0; // デフォルトは最初のカメラ
+
+                    devices.forEach((device, index) => {
+                        const option = document.createElement('option');
+                        option.value = device.id;
+                        option.text = device.label || `カメラ ${index + 1}`;
+                        cameraSelect.appendChild(option);
+
+                        // 背面カメラと思われるキーワードが含まれていれば、それを選択状態にする
+                        if (preferBackCamera) {
+                            const label = option.text.toLowerCase();
+                            const backKeywords = ["back", "rear", "背面", "環境", "アウト"];
+                            if (backKeywords.some(keyword => label.includes(keyword))) {
+                                selectedIndex = index;
+                            }
+                        }
+                    });
+                    
+                    cameraSelect.selectedIndex = selectedIndex;
+                    
+                    // ドロップダウンが変更されたら、スキャンを停止して再起動
+                    cameraSelect.onchange = () => {
+                        if (html5QrCode.isScanning) {
+                            stopScanner().then(() => startScannerWithSelectedId());
+                        }
+                    };
+
+                }
+            } catch (err) {
+                console.error("カメラリストの取得に失敗", err);
+            }
+        }
+
+        // UIの状態を「スキャン中」にする
+        function uiStateScanning() {
+            document.getElementById('start-btn').style.display = 'none';
+            document.getElementById('stop-btn').style.display = 'block';
+            document.getElementById('result-box').style.display = 'none';
+        }
+
+        async function stopScanner() {
+            if (html5QrCode && html5QrCode.isScanning) {
+                try {
+                    await html5QrCode.stop();
                     document.getElementById('start-btn').style.display = 'block';
                     document.getElementById('stop-btn').style.display = 'none';
-                });
+                    // ボタンの関数を初期状態に戻す
+                    document.getElementById('start-btn').onclick = initAndStartScanner;
+                } catch (err) {
+                    console.error("スキャナー停止エラー", err);
+                }
             }
         }
 
@@ -118,8 +181,11 @@
             document.getElementById('loading').style.display = 'block';
             document.getElementById('result-box').style.display = 'none';
 
-            // Googleスプレッドシート（GAS）にJANコードを送信してデータを取得
-            fetch(`${GAS_WEB_APP_URL}?jan=${decodedText}`)
+            // GASにJANコードを送信してデータを取得
+            // iOSの一部でfetchがキャッシュされるのを防ぐためタイムスタンプを追加
+            const url = `${GAS_WEB_APP_URL}?jan=${decodedText}&t=${new Date().getTime()}`;
+
+            fetch(url)
                 .then(response => response.json())
                 .then(data => {
                     document.getElementById('loading').style.display = 'none';
@@ -128,17 +194,17 @@
                         // 5%オフを計算（端数切り捨て）
                         const premiumPrice = Math.floor(normalPrice * 0.95);
 
-                        document.getElementById('res-name').textContent = data.name + " (" + decodedText + ")";
+                        document.getElementById('res-name').textContent = data.name;
                         document.getElementById('res-price-normal').textContent = '¥' + normalPrice.toLocaleString();
                         document.getElementById('res-price-premium').textContent = '¥' + premiumPrice.toLocaleString();
                         document.getElementById('result-box').style.display = 'block';
                     } else {
-                        alert(`JANコード [${decodedText}] はスプレッドシートに見つかりませんでした。`);
+                        alert(`JANコード [${decodedText}] は登録されていません。`);
                     }
                 })
                 .catch(error => {
                     document.getElementById('loading').style.display = 'none';
-                    alert("データの取得に失敗しました。URLが正しいか確認してください。");
+                    alert("データの取得に失敗しました。");
                     console.error("Fetchエラー:", error);
                 });
         }
