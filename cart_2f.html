@@ -8,7 +8,6 @@
     <style>
         body { font-family: 'Helvetica Neue', Arial, sans-serif; padding: 0 0 100px 0; background-color: #f3f4f6; color: #1f2937; margin: 0; }
         
-        /* ヘッダー周り */
         .header { background: #fff; padding: 15px; text-align: center; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
         h1 { font-size: 1.2em; margin: 0 0 10px 0; color: #111827; }
         .system-status { font-size: 0.75em; padding: 4px 8px; border-radius: 4px; display: inline-block; font-weight: bold; }
@@ -18,7 +17,6 @@
 
         .container { padding: 15px; max-width: 600px; margin: 0 auto; }
 
-        /* カメラエリア */
         .camera-controls { display: flex; gap: 10px; margin-bottom: 10px; }
         select { flex: 1; padding: 10px; border-radius: 8px; border: 1px solid #d1d5db; background: #fff; }
         .btn-toggle-cam { padding: 10px 20px; border-radius: 8px; border: none; font-weight: bold; cursor: pointer; background: #3b82f6; color: white; }
@@ -28,7 +26,6 @@
         @keyframes flash { 0% { background-color: #86efac; } 100% { background-color: transparent; } }
         .flash-active { animation: flash 0.5s ease; }
 
-        /* カート（リスト）エリア */
         .cart-area { margin-top: 20px; }
         .cart-empty { text-align: center; color: #6b7280; padding: 30px 0; font-size: 0.9em; }
         .cart-item { background: #fff; border-radius: 12px; padding: 15px; margin-bottom: 10px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); position: relative; }
@@ -37,21 +34,17 @@
         .item-price-info { font-size: 0.85em; color: #4b5563; margin-bottom: 10px; display: flex; gap: 10px; }
         .item-price-info span { background: #f3f4f6; padding: 2px 6px; border-radius: 4px; }
         
-        /* 数量コントロール（手入力対応デザイン） */
         .quantity-control { display: flex; align-items: center; justify-content: flex-end; gap: 5px; }
         .qty-btn { width: 32px; height: 32px; border-radius: 50%; border: 1px solid #d1d5db; background: #f9fafb; font-weight: bold; color: #374151; font-size: 1.2em; cursor: pointer; display: flex; align-items: center; justify-content: center; }
         .qty-btn:active { background: #e5e7eb; }
         
-        /* 手入力用のテキストボックスのスタイル */
         .qty-input { width: 50px; height: 32px; font-size: 1.1em; font-weight: bold; text-align: center; border: 1px solid #d1d5db; border-radius: 6px; color: #1f2937; }
         .qty-input:focus { outline: none; border-color: #3b82f6; box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2); }
-        /* input[type="number"] のスピンボタン（上下矢印）を消す */
         .qty-input::-webkit-outer-spin-button, .qty-input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
         .qty-input[type=number] { -moz-appearance: textfield; }
 
         .btn-delete { position: absolute; top: 15px; right: 15px; color: #ef4444; background: none; border: none; font-size: 1.2em; cursor: pointer; padding: 0; }
 
-        /* フッター */
         .total-footer { position: fixed; bottom: 0; left: 0; width: 100%; background: #fff; box-shadow: 0 -4px 10px rgba(0,0,0,0.05); padding: 15px 20px; box-sizing: border-box; z-index: 100; }
         .total-footer-inner { max-width: 600px; margin: 0 auto; }
         .total-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px; }
@@ -69,14 +62,12 @@
     </div>
 
     <div class="container">
-        <!-- カメラ操作 -->
         <div class="camera-controls">
             <select id="camera-select"><option value="">カメラ準備中...</option></select>
             <button class="btn-toggle-cam" id="toggle-cam-btn" onclick="toggleCamera()">カメラ起動</button>
         </div>
         <div id="reader"></div>
 
-        <!-- カートリスト -->
         <div class="cart-area" id="cart-area">
             <div class="cart-empty" id="cart-empty">
                 カメラを起動して、商品のバーコードをスキャンしてください。<br>自動でリストに追加されます。
@@ -85,7 +76,6 @@
         </div>
     </div>
 
-    <!-- 固定フッター -->
     <div class="total-footer">
         <div class="total-footer-inner">
             <div class="total-row">
@@ -141,6 +131,7 @@
         }).catch(e => console.log(e));
     };
 
+    // ★ エラーの詳細を教えてくれるように強化しました
     async function fetchLatestDataInBackground() {
         const sysStatus = document.getElementById('system-status');
         if (Object.keys(localProductData).length === 0) {
@@ -149,16 +140,24 @@
         }
         try {
             const res = await fetch(`${GAS_WEB_APP_URL}?t=${new Date().getTime()}`);
-            if (!res.ok) throw new Error("Network error");
-            localProductData = await res.json();
+            if (!res.ok) throw new Error(`サーバーエラー: ${res.status}`);
+            
+            // 一度テキストとして受け取ってからデータに変換（エラーを検知しやすくするため）
+            const textData = await res.text();
+            try {
+                localProductData = JSON.parse(textData);
+            } catch (parseError) {
+                throw new Error("GASが正しいデータを返していません。GAS側で「新バージョン」として再デプロイしてください。");
+            }
+            
             localStorage.setItem('autoCachedProductData', JSON.stringify(localProductData));
             sysStatus.textContent = `最新データ同期済（${Object.keys(localProductData).length}件）`;
             sysStatus.className = 'system-status status-ready';
         } catch (error) {
-            if (Object.keys(localProductData).length === 0) {
-                sysStatus.textContent = "通信エラー: リロードしてください";
-                sysStatus.className = 'system-status status-error';
-            }
+            sysStatus.textContent = "通信エラーが発生しました";
+            sysStatus.className = 'system-status status-error';
+            // 画面上にアラートでエラー原因を表示します
+            alert(`【通信エラー】\n${error.message}`);
         }
     }
 
@@ -199,9 +198,7 @@
 
     function onScanSuccess(decodedText) {
         const now = Date.now();
-        if (decodedText === lastScannedJan && now - lastScannedTime < 2000) {
-            return; 
-        }
+        if (decodedText === lastScannedJan && now - lastScannedTime < 2000) return; 
         lastScannedJan = decodedText;
         lastScannedTime = now;
 
@@ -218,35 +215,24 @@
     }
 
     function addToCart(jan, product) {
-        if (cart[jan]) {
-            cart[jan].qty += 1;
-        } else {
-            cart[jan] = { info: product, qty: 1 };
-        }
+        if (cart[jan]) cart[jan].qty += 1;
+        else cart[jan] = { info: product, qty: 1 };
         renderCart();
     }
 
-    // 「＋」「－」ボタンで数量を変更
     function changeQty(jan, delta) {
         if (cart[jan]) {
             cart[jan].qty += delta;
-            if (cart[jan].qty <= 0) {
-                delete cart[jan];
-            }
+            if (cart[jan].qty <= 0) delete cart[jan];
             renderCart();
         }
     }
 
-    // ★追加：手入力で数量を変更したときの処理
     function inputQty(jan, value) {
         if (cart[jan]) {
             let newQty = parseInt(value, 10);
-            // 空欄にしたり、0やマイナスを入力した場合はリストから削除
-            if (isNaN(newQty) || newQty <= 0) {
-                delete cart[jan];
-            } else {
-                cart[jan].qty = newQty;
-            }
+            if (isNaN(newQty) || newQty <= 0) delete cart[jan];
+            else cart[jan].qty = newQty;
             renderCart();
         }
     }
@@ -264,7 +250,6 @@
         let totalPremium = 0;
         let totalItems = 0;
         let html = '';
-
         const keys = Object.keys(cart);
 
         if (keys.length === 0) {
@@ -272,7 +257,6 @@
             cartList.innerHTML = '';
         } else {
             cartEmpty.style.display = 'none';
-            
             keys.reverse().forEach(jan => {
                 const item = cart[jan];
                 const p = item.info;
@@ -295,7 +279,6 @@
                     </div>
                     <div class="quantity-control">
                         <button class="qty-btn" onclick="changeQty('${jan}', -1)">-</button>
-                        <!-- ★変更部分：手入力用のinputタグに変更 -->
                         <input type="number" class="qty-input" value="${item.qty}" min="0" onchange="inputQty('${jan}', this.value)">
                         <button class="qty-btn" onclick="changeQty('${jan}', 1)">+</button>
                     </div>
