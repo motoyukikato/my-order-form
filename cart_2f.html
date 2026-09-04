@@ -8,6 +8,7 @@
     <style>
         body { font-family: 'Helvetica Neue', Arial, sans-serif; padding: 0 0 100px 0; background-color: #f3f4f6; color: #1f2937; margin: 0; }
         
+        /* ヘッダー周り */
         .header { background: #fff; padding: 15px; text-align: center; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
         h1 { font-size: 1.2em; margin: 0 0 10px 0; color: #111827; }
         .system-status { font-size: 0.75em; padding: 4px 8px; border-radius: 4px; display: inline-block; font-weight: bold; }
@@ -17,6 +18,7 @@
 
         .container { padding: 15px; max-width: 600px; margin: 0 auto; }
 
+        /* カメラエリア */
         .camera-controls { display: flex; gap: 10px; margin-bottom: 10px; }
         select { flex: 1; padding: 10px; border-radius: 8px; border: 1px solid #d1d5db; background: #fff; }
         .btn-toggle-cam { padding: 10px 20px; border-radius: 8px; border: none; font-weight: bold; cursor: pointer; background: #3b82f6; color: white; }
@@ -26,14 +28,19 @@
         @keyframes flash { 0% { background-color: #86efac; } 100% { background-color: transparent; } }
         .flash-active { animation: flash 0.5s ease; }
 
+        /* カート（リスト）エリア */
         .cart-area { margin-top: 20px; }
         .cart-empty { text-align: center; color: #6b7280; padding: 30px 0; font-size: 0.9em; }
         .cart-item { background: #fff; border-radius: 12px; padding: 15px; margin-bottom: 10px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); position: relative; }
         .item-hinban { font-size: 0.75em; color: #6b7280; margin-bottom: 2px; }
         .item-name { font-size: 1em; font-weight: bold; margin-bottom: 8px; color: #1f2937; padding-right: 20px;}
-        .item-price-info { font-size: 0.85em; color: #4b5563; margin-bottom: 10px; display: flex; gap: 10px; }
-        .item-price-info span { background: #f3f4f6; padding: 2px 6px; border-radius: 4px; }
         
+        /* 金額表示（取り消し線なし、上代を見やすく） */
+        .item-price-info { font-size: 0.85em; margin-bottom: 10px; display: flex; flex-direction: column; gap: 4px; }
+        .price-joudai { color: #6b7280; }
+        .price-gedai { color: #374151; font-weight: bold; }
+        
+        /* 数量コントロール */
         .quantity-control { display: flex; align-items: center; justify-content: flex-end; gap: 5px; }
         .qty-btn { width: 32px; height: 32px; border-radius: 50%; border: 1px solid #d1d5db; background: #f9fafb; font-weight: bold; color: #374151; font-size: 1.2em; cursor: pointer; display: flex; align-items: center; justify-content: center; }
         .qty-btn:active { background: #e5e7eb; }
@@ -45,11 +52,14 @@
 
         .btn-delete { position: absolute; top: 15px; right: 15px; color: #ef4444; background: none; border: none; font-size: 1.2em; cursor: pointer; padding: 0; }
 
+        /* フッター（合計金額） */
         .total-footer { position: fixed; bottom: 0; left: 0; width: 100%; background: #fff; box-shadow: 0 -4px 10px rgba(0,0,0,0.05); padding: 15px 20px; box-sizing: border-box; z-index: 100; }
         .total-footer-inner { max-width: 600px; margin: 0 auto; }
         .total-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px; }
         .total-label { font-size: 0.9em; color: #4b5563; font-weight: bold; }
-        .total-normal { font-size: 1.2em; color: #1f2937; text-decoration: line-through; }
+        
+        /* ★ 通常下代の取り消し線を削除しました（text-decoration: line-through; を削除） */
+        .total-normal { font-size: 1.2em; color: #1f2937; font-weight: bold; }
         .total-premium { font-size: 1.6em; color: #e11d48; font-weight: 900; }
         .total-qty { font-size: 0.8em; color: #6b7280; }
     </style>
@@ -90,7 +100,7 @@
     </div>
 
     <script>
-    const GAS_WEB_APP_URL = "https://script.google.com/macros/s/AKfycbya6Qpx2PLTaosPZoSrTZgOIXSztFYFID_brHa9MNY9Z9n_Modbavb-ebwJUTi6rPiu/exec";
+    const GAS_WEB_APP_URL = "https://script.google.com/macros/s/AKfycbxZCsMear3DtUYc19OAc7iKPVZqsLOfPtqAZSrF00J_ORtZ-rPuVH4kfpirc30tSWLb/exec";
     const SCANNER_CONFIG = { fps: 10, qrbox: { width: 250, height: 120 } };
 
     let html5QrCode = null;
@@ -100,10 +110,13 @@
     let lastScannedJan = "";
     let lastScannedTime = 0;
 
+    // ★ 古いキャッシュを無視するために保存名（v2）を変更しました
+    const CACHE_KEY = 'autoCachedProductData_v2';
+
     window.onload = () => {
         html5QrCode = new Html5Qrcode("reader");
         
-        const cachedData = localStorage.getItem('autoCachedProductData');
+        const cachedData = localStorage.getItem(CACHE_KEY);
         if (cachedData) {
             localProductData = JSON.parse(cachedData);
             document.getElementById('system-status').textContent = `準備完了（${Object.keys(localProductData).length}件）`;
@@ -131,7 +144,6 @@
         }).catch(e => console.log(e));
     };
 
-    // ★ エラーの詳細を教えてくれるように強化しました
     async function fetchLatestDataInBackground() {
         const sysStatus = document.getElementById('system-status');
         if (Object.keys(localProductData).length === 0) {
@@ -142,22 +154,22 @@
             const res = await fetch(`${GAS_WEB_APP_URL}?t=${new Date().getTime()}`);
             if (!res.ok) throw new Error(`サーバーエラー: ${res.status}`);
             
-            // 一度テキストとして受け取ってからデータに変換（エラーを検知しやすくするため）
             const textData = await res.text();
             try {
                 localProductData = JSON.parse(textData);
             } catch (parseError) {
-                throw new Error("GASが正しいデータを返していません。GAS側で「新バージョン」として再デプロイしてください。");
+                throw new Error("GASのデータが不正です。");
             }
             
-            localStorage.setItem('autoCachedProductData', JSON.stringify(localProductData));
+            localStorage.setItem(CACHE_KEY, JSON.stringify(localProductData));
             sysStatus.textContent = `最新データ同期済（${Object.keys(localProductData).length}件）`;
             sysStatus.className = 'system-status status-ready';
         } catch (error) {
             sysStatus.textContent = "通信エラーが発生しました";
             sysStatus.className = 'system-status status-error';
-            // 画面上にアラートでエラー原因を表示します
-            alert(`【通信エラー】\n${error.message}`);
+            if (Object.keys(localProductData).length === 0) {
+                alert(`【通信エラー】\n${error.message}`);
+            }
         }
     }
 
@@ -260,6 +272,7 @@
             keys.reverse().forEach(jan => {
                 const item = cart[jan];
                 const p = item.info;
+                
                 const normalP = parseInt(p.price, 10) || 0;
                 const premP = Math.floor(normalP * 0.95);
                 const joudai = isNaN(parseInt(p.joudai, 10)) ? "---" : `¥${parseInt(p.joudai, 10).toLocaleString()}`;
@@ -268,14 +281,15 @@
                 totalPremium += premP * item.qty;
                 totalItems += item.qty;
 
+                // ★ リスト内の表示を「上代」と「通常下代」でスッキリ分かりやすくしました
                 html += `
                 <div class="cart-item">
                     <button class="btn-delete" onclick="removeItem('${jan}')">×</button>
                     <div class="item-hinban">品番: ${p.hinban} (JAN: ${jan})</div>
                     <div class="item-name">${p.name}</div>
                     <div class="item-price-info">
-                        <span>上代: ${joudai}</span>
-                        <span>下代: ¥${normalP.toLocaleString()}</span>
+                        <span class="price-joudai">上代: ${joudai}</span>
+                        <span class="price-gedai">通常下代: ¥${normalP.toLocaleString()}</span>
                     </div>
                     <div class="quantity-control">
                         <button class="qty-btn" onclick="changeQty('${jan}', -1)">-</button>
