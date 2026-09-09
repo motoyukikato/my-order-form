@@ -149,20 +149,16 @@
 
   /* 印刷時のスタイル設定 */
     @media print {
-      /* 用紙設定: A4縦・余白8mm */
       @page {
         size: A4 portrait;
         margin: 8mm;
       }
-
-      /* 不要な画面要素を完全に消去 */
       body {
         background: #fff !important;
         margin: 0 !important;
         padding: 0 !important;
         width: 100% !important;
       }
-
       .container {
         max-width: 100% !important;
         width: 100% !important;
@@ -171,15 +167,12 @@
         box-shadow: none !important;
         background: transparent !important;
       }
-
       h1, .filter-section, #orderSection, #loadingStatus, .btn-print, .btn {
         display: none !important;
       }
-
-      /* 伝票エリアの幅を強制固定 */
       .slip-container {
         display: block !important;
-        position: relative !important; /* absoluteをやめてレイアウト崩れを防止 */
+        position: relative !important;
         width: 100% !important;
         max-width: 100% !important;
         box-sizing: border-box !important;
@@ -188,56 +181,44 @@
         margin: 0 !important;
         visibility: visible !important;
       }
-
       .slip-container * {
         visibility: visible !important;
         box-sizing: border-box !important;
       }
-
-      /* テーブル全体の幅を強制固定 */
       table {
         width: 100% !important;
         max-width: 100% !important;
-        table-layout: fixed !important; /* 列幅の固定 */
+        table-layout: fixed !important;
         border-collapse: collapse !important;
       }
-
       th, td {
-        word-break: break-all !important; /* 長いテキストでセルが広がるのを防止 */
-        padding: 4px 4px !important;     /* 余白を削減 */
-        font-size: 11px !important;      /* 文字サイズ調整 */
+        word-break: break-all !important;
+        padding: 4px 4px !important;
+        font-size: 11px !important;
       }
-
-      /* 入荷商品一覧テーブルの各列幅を固定指定（合計100%） */
       #slipContainer table:not(.summary-box table) colgroup,
       #slipTableBody {
         width: 100% !important;
       }
-      
-      /* 商品テーブルの各列の横幅バランスを制御 */
-      #slipContainer table:not(.summary-box table) th:nth-child(1) { width: 15%; } /* 品番 */
-      #slipContainer table:not(.summary-box table) th:nth-child(2) { width: 25%; } /* 品名 */
-      #slipContainer table:not(.summary-box table) th:nth-child(3) { width: 18%; } /* JAN */
-      #slipContainer table:not(.summary-box table) th:nth-child(4) { width: 8%; }  /* 数量 */
-      #slipContainer table:not(.summary-box table) th:nth-child(5) { width: 12%; } /* 単価 */
-      #slipContainer table:not(.summary-box table) th:nth-child(6) { width: 12%; } /* 小計 */
-      #slipContainer table:not(.summary-box table) th:nth-child(7) { width: 10%; } /* QR */
+      #slipContainer table:not(.summary-box table) th:nth-child(1) { width: 15%; }
+      #slipContainer table:not(.summary-box table) th:nth-child(2) { width: 25%; }
+      #slipContainer table:not(.summary-box table) th:nth-child(3) { width: 18%; }
+      #slipContainer table:not(.summary-box table) th:nth-child(4) { width: 8%; }
+      #slipContainer table:not(.summary-box table) th:nth-child(5) { width: 12%; }
+      #slipContainer table:not(.summary-box table) th:nth-child(6) { width: 12%; }
+      #slipContainer table:not(.summary-box table) th:nth-child(7) { width: 10%; }
 
-      /* QRコード画像・Canvasがテーブルからはみ出るのを強力に防止 */
       .qr-box canvas, .qr-box img,
       #slipTableBody canvas, #slipTableBody img {
-        max-width: 50px !important; /* QRコード自体を小さく収める */
+        max-width: 50px !important;
         height: auto !important;
         margin: 0 auto !important;
       }
-
-      /* 合計金額ボックスの調整 */
       .summary-box {
         width: 280px !important;
         float: right !important;
         margin-top: 10px !important;
       }
-
       .summary-box table th, .summary-box table td {
         font-size: 11px !important;
         padding: 4px !important;
@@ -260,12 +241,16 @@
         <option value="">-- データ読み込み中 --</option>
       </select>
     </div>
+    
     <div class="form-group">
-      <label for="customerSelect">② 顧客選択:</label>
-      <select id="customerSelect" onchange="onCustomerChange()" disabled>
-        <option value="">-- 顧客を選択してください --</option>
-      </select>
+      <label for="customerInput">② 顧客選択:</label>
+      <div style="display: flex; gap: 8px;">
+        <input type="text" id="customerInput" list="customerList" onchange="onCustomerChange()" placeholder="名前やIDを入力して検索" disabled style="flex: 1; padding: 8px; font-size: 14px; border: 1px solid #ccc; border-radius: 4px;">
+        <button type="button" onclick="clearCustomerInput()" style="background-color: #6c757d; color: white; border: none; border-radius: 4px; padding: 0 15px; cursor: pointer; font-size: 14px;">クリア</button>
+      </div>
+      <datalist id="customerList"></datalist>
     </div>
+    
     <div class="form-group checkbox-group">
       <input type="checkbox" id="isPremium">
       <label for="isPremium" style="cursor:pointer; margin-bottom:0;">プレミアム会員</label>
@@ -274,6 +259,11 @@
 
   <div id="orderSection" style="display:none;">
     <h2>③ 注文一覧（④ 入荷する商品にチェックを入れてください）</h2>
+    <div style="margin-bottom: 10px;">
+      <button class="btn" style="background-color: #6c757d; padding: 6px 12px; font-size: 13px;" onclick="uncheckAllItems()">☐ すべてチェックを外す</button>
+      <button class="btn" style="background-color: #17a2b8; padding: 6px 12px; font-size: 13px; margin-left: 10px;" onclick="checkAllItems()">☑ すべてチェックを入れる</button>
+    </div>
+
     <table id="orderTable">
       <thead>
         <tr>
@@ -323,7 +313,6 @@
       <tbody id="slipTableBody"></tbody>
     </table>
 
-    <!-- 金額計算・割引額表示エリア -->
     <div class="summary-box">
       <table>
         <tr>
@@ -357,7 +346,6 @@
   let sampleData = [];
   let currentFilteredOrders = [];
 
-  // 初期化：ページ読み込み時にGASからデータを取得
   window.onload = function() {
     fetch(GAS_API_URL, {
       method: 'GET',
@@ -380,10 +368,8 @@
       });
   };
 
-  // メーカー一覧の選択肢を生成
   function initMakerSelect() {
     document.getElementById('loadingStatus').style.display = 'none';
-
     const makerSelect = document.getElementById('makerSelect');
     makerSelect.innerHTML = '<option value="">-- メーカーを選択してください --</option>';
 
@@ -394,25 +380,24 @@
       opt.textContent = maker;
       makerSelect.appendChild(opt);
     });
-
     makerSelect.disabled = false;
   }
 
-  // ❶ メーカー選択時
   function onMakerChange() {
     const selectedMaker = document.getElementById('makerSelect').value;
-    const customerSelect = document.getElementById('customerSelect');
+    const customerInput = document.getElementById('customerInput');
+    const customerList = document.getElementById('customerList');
     
-    customerSelect.innerHTML = '<option value="">-- 顧客を選択してください --</option>';
+    customerInput.value = '';
+    customerList.innerHTML = '';
     document.getElementById('orderSection').style.display = 'none';
     document.getElementById('slipContainer').style.display = 'none';
 
     if (!selectedMaker) {
-      customerSelect.disabled = true;
+      customerInput.disabled = true;
       return;
     }
 
-    // 該当メーカーの顧客を抽出
     const customers = sampleData.filter(item => item.maker === selectedMaker);
     const uniqueCustomers = [];
     const map = new Map();
@@ -426,18 +411,19 @@
 
     uniqueCustomers.forEach(cust => {
       const opt = document.createElement('option');
-      opt.value = cust.id;
-      opt.textContent = `${cust.name} (${cust.id})`;
-      customerSelect.appendChild(opt);
+      opt.value = `${cust.name} (${cust.id})`;
+      customerList.appendChild(opt);
     });
 
-    customerSelect.disabled = false;
+    customerInput.disabled = false;
   }
 
-  // ❷ 顧客選択時 ➡ ❸ 注文一覧の表示
   function onCustomerChange() {
     const selectedMaker = document.getElementById('makerSelect').value;
-    const selectedCustId = document.getElementById('customerSelect').value;
+    const customerInputValue = document.getElementById('customerInput').value;
+    const match = customerInputValue.match(/\(([^)]+)\)$/);
+    const selectedCustId = match ? match[1] : null;
+
     const orderSection = document.getElementById('orderSection');
     const tbody = document.querySelector('#orderTable tbody');
 
@@ -471,7 +457,6 @@
     orderSection.style.display = 'block';
   }
 
-  // ❹ 選択した入荷商品から ❺ 伝票作成 ＆ ❻ QRコード表示
   function generateSlip() {
     const checkboxes = document.querySelectorAll('.item-checkbox:checked');
     if (checkboxes.length === 0) {
@@ -488,13 +473,11 @@
     const firstItem = selectedItems[0];
     const isPremium = document.getElementById('isPremium').checked;
 
-    // 顧客情報の表示
     document.getElementById('slipCustId').textContent = firstItem.custId;
     document.getElementById('slipCustName').textContent = firstItem.custName;
     document.getElementById('slipAddress').textContent = `〒${firstItem.zip} ${firstItem.addr1} ${firstItem.addr2}`.trim();
     document.getElementById('slipTel').textContent = firstItem.tel;
 
-    // プレミアム会員バッジ切り替え
     const premiumBadge = document.getElementById('premiumBadge');
     if (isPremium) {
       premiumBadge.style.display = 'inline';
@@ -502,17 +485,16 @@
       premiumBadge.style.display = 'none';
     }
 
-// 顧客ID QRコードの生成
     document.getElementById('custQr').innerHTML = '';
     new QRCode(document.getElementById('custQr'), {
       text: `${firstItem.custId}\r\n1\r\n`,
       width: 80,
       height: 80
     });
-    // ❺ 入荷商品一覧テーブル作成（スプレッドシートの展示会価格の合計計算）
+    
     const slipTbody = document.getElementById('slipTableBody');
     slipTbody.innerHTML = '';
-    let exhibitionTotal = 0; // 展示会価格（10% OFF）の合計
+    let exhibitionTotal = 0;
 
     selectedItems.forEach((item, i) => {
       exhibitionTotal += item.subtotal;
@@ -531,8 +513,7 @@
       `;
       slipTbody.appendChild(tr);
 
-   // JANコード -> エンター1回 -> 数量 -> エンター8回
-const qrData = `${item.jan}\r\n${item.qty}\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n`;
+      const qrData = `${item.jan}\r\n${item.qty}\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n`;
 
       new QRCode(document.getElementById(qrTdId), {
         text: qrData,
@@ -541,41 +522,49 @@ const qrData = `${item.jan}\r\n${item.qty}\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n`;
       });
     });
 
-    // ★ 1. スプレッドシートの金額（展示会価格 10% OFF）から通常定価を逆算
     const normalTotal = Math.round(exhibitionTotal / 0.90);
-
     let discountAmount = 0;
     const rowPremiumTotal = document.getElementById('rowPremiumTotal');
     const lblDiscount = document.getElementById('lblDiscount');
 
     if (isPremium) {
-      // ★ 2. プレミアム会員の場合（定価の 5% OFF 価格を算出）
       const premiumTotal = Math.round(normalTotal * 0.95);
-
-      // ★ 3. 差額マイナス処理（展示会価格 10% OFF − プレミアム価格 5% OFF）
       discountAmount = exhibitionTotal - premiumTotal;
-
-      // 表示切り替え
       rowPremiumTotal.style.display = 'table-row';
       document.getElementById('slipPremiumTotal').textContent = `${premiumTotal.toLocaleString()}円`;
       lblDiscount.textContent = '展示会特別調整額 (追加5% OFF):';
-
     } else {
-      // ★ 一般会員の場合
-      // 割引額（展示会価格 10% OFF − 通常定価）
       discountAmount = exhibitionTotal - normalTotal;
-
-      // 表示切り替え
       rowPremiumTotal.style.display = 'none';
       lblDiscount.textContent = '展示会特別割引 (10% OFF):';
     }
 
-    // 各サマリーエリアの表示更新
     document.getElementById('slipNormalTotal').textContent = `${normalTotal.toLocaleString()}円`;
     document.getElementById('slipDiscountAmount').textContent = `${discountAmount.toLocaleString()}円`;
     document.getElementById('slipGrandTotal').textContent = `${exhibitionTotal.toLocaleString()}円`;
 
     document.getElementById('slipContainer').style.display = 'block';
+  }
+
+  function uncheckAllItems() {
+    const checkboxes = document.querySelectorAll('.item-checkbox');
+    checkboxes.forEach(cb => {
+      cb.checked = false;
+    });
+  }
+
+  function checkAllItems() {
+    const checkboxes = document.querySelectorAll('.item-checkbox');
+    checkboxes.forEach(cb => {
+      cb.checked = true;
+    });
+  }
+
+  function clearCustomerInput() {
+    const customerInput = document.getElementById('customerInput');
+    customerInput.value = '';
+    onCustomerChange();
+    customerInput.focus();
   }
 </script>
 
