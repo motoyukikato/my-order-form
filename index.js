@@ -2,7 +2,7 @@ export default {
   async fetch(request, env) {
     // 💡 設定したいユーザー名とパスワードをここに直接記述します
     const USERNAME = 'admin';
-    const PASSWORD = 'your_password'; 87010// ← ここをご希望のパスワードに変更してください
+    const PASSWORD = '87010';// ← ここをご希望のパスワードに変更してください
 
     const authHeader = request.headers.get('Authorization');
 
