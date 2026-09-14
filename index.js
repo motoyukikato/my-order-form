@@ -2,6 +2,7 @@ export default {
   async fetch(request, env) {
     const authHeader = request.headers.get('Authorization');
 
+    // ① パスワード入力（認証ヘッダー）がない場合は、401エラーを出してポップアップを表示させる
     if (!authHeader) {
       return new Response('Unauthorized', {
         status: 401,
@@ -13,16 +14,19 @@ export default {
       const auth = authHeader.split(' ')[1];
       const [user, pass] = atob(auth).split(':');
 
-      // 設定した環境変数と照合
+      // ② 環境変数 BASIC_USER / BASIC_PASS と照合
       if (user === env.BASIC_USER && pass === env.BASIC_PASS) {
-        // 認証成功時、そのまま要求されたファイル（hanamado.html等）を表示
-        return env.ASSETS.fetch(request);
+        // ③ 認証成功時：env.ASSETS があればそれを使ってファイルを返し、無ければ直接アクセスを通す
+        if (env.ASSETS) {
+          return env.ASSETS.fetch(request);
+        }
+        return fetch(request);
       }
     } catch (e) {
       // エラー時の処理
     }
 
-    // パスワードが一致しない場合
+    // ④ IDやパスワードが間違っている場合は再度ポップアップを出す
     return new Response('Unauthorized', {
       status: 401,
       headers: { 'WWW-Authenticate': 'Basic realm="Secure Area"' },
