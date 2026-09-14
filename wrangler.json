@@ -2,7 +2,8 @@
   "name": "my-order-form",
   "main": "index.js",
   "assets": {
-    "directory": "./"
+    "directory": "./",
+    "binding": "ASSETS"
   },
   "compatibility_date": "2026-09-11"
 }
