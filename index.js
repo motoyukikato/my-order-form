@@ -1,8 +1,11 @@
 export default {
   async fetch(request, env) {
+    // 💡 設定したいユーザー名とパスワードをここに直接記述します
+    const USERNAME = 'admin';
+    const PASSWORD = 'your_password'; 87010// ← ここをご希望のパスワードに変更してください
+
     const authHeader = request.headers.get('Authorization');
 
-    // ① パスワード入力（認証ヘッダー）がない場合は、401エラーを出してポップアップを表示させる
     if (!authHeader) {
       return new Response('Unauthorized', {
         status: 401,
@@ -14,9 +17,8 @@ export default {
       const auth = authHeader.split(' ')[1];
       const [user, pass] = atob(auth).split(':');
 
-      // ② 環境変数 BASIC_USER / BASIC_PASS と照合
-      if (user === env.BASIC_USER && pass === env.BASIC_PASS) {
-        // ③ 認証成功時：env.ASSETS があればそれを使ってファイルを返し、無ければ直接アクセスを通す
+      // 直書きしたユーザー名・パスワードと照合
+      if (user === USERNAME && pass === PASSWORD) {
         if (env.ASSETS) {
           return env.ASSETS.fetch(request);
         }
@@ -26,7 +28,6 @@ export default {
       // エラー時の処理
     }
 
-    // ④ IDやパスワードが間違っている場合は再度ポップアップを出す
     return new Response('Unauthorized', {
       status: 401,
       headers: { 'WWW-Authenticate': 'Basic realm="Secure Area"' },
