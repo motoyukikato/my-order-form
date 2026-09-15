@@ -1,5 +1,8 @@
 {
   "name": "my-order-form",
   "main": "index.js",
+  "assets": {
+    "binding": "ASSETS"
+  },
   "compatibility_date": "2026-09-11"
 }
