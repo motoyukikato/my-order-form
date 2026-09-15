@@ -2,7 +2,7 @@ export default {
   async fetch(request, env) {
     const USERNAME = 'admin';
     const PASSWORD = '87010'; // ← 設定したパスワード
-
+　
     const authHeader = request.headers.get('Authorization');
 
     if (!authHeader) {
