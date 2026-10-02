@@ -9,7 +9,7 @@
     :root { --primary: #2c3e50; --accent: #27ae60; --bg: #f4f7f6; --card: #fff; --border: #cbd5e1; }
     * { box-sizing: border-box; }
     body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; margin: 0; padding: 12px; background: var(--bg); color: #1e293b; font-size: 13px; }
-    .container { max-width: 1200px; margin: 0 auto; }
+    .container { max-width: 1400px; margin: 0 auto; }
     header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; border-bottom: 2px solid var(--primary); padding-bottom: 8px; }
     h1 { margin: 0; font-size: 16px; color: var(--primary); }
     .badge { font-size: 11px; padding: 3px 8px; border-radius: 12px; font-weight: bold; }
@@ -25,16 +25,18 @@
     .range { display: flex; gap: 4px; align-items: center; }
     .range input { width: 100%; }
     .btn-reset { grid-column: 1 / -1; justify-self: end; background: #f1f5f9; border: 1px solid var(--border); padding: 6px 12px; border-radius: 4px; cursor: pointer; font-weight: bold; }
-    
+    .btn-reset:hover { background: #e2e8f0; }
+
     .table-container { background: var(--card); border-radius: 8px; overflow-x: auto; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
     table { width: 100%; border-collapse: collapse; white-space: nowrap; }
     th { background: var(--primary); color: #fff; padding: 8px; text-align: left; }
     td { padding: 8px; border-bottom: 1px solid #f1f5f9; }
     tr:nth-child(even) { background: #f8fafc; }
-    .mfr { background: #e2e8f0; padding: 2px 5px; border-radius: 3px; font-size: 10px; font-weight: bold; }
+    .mfr { background: #e2e8f0; padding: 2px 5px; border-radius: 3px; font-size: 11px; font-weight: bold; }
     .hole-yes { color: #0d9488; font-weight: bold; }
     .hole-no { color: #e11d48; font-weight: bold; }
-    .stock-val { font-weight: bold; color: #0284c7; }
+    .link-btn { display: inline-block; padding: 2px 8px; background: #0284c7; color: #fff; text-decoration: none; border-radius: 3px; font-size: 11px; font-weight: bold; }
+    .link-btn:hover { background: #0369a1; }
   </style>
 </head>
 <body>
@@ -71,11 +73,22 @@
     <table>
       <thead>
         <tr>
-          <th>メーカー</th><th>型番</th><th>商品名</th><th>号数</th><th>外寸 (cm)</th><th>内径 (cm)</th><th>素材</th><th>カラー</th><th>底穴</th><th>在庫数</th><th style="text-align:right;">上代 (税抜)</th>
+          <th>メーカー</th>
+          <th>型番</th>
+          <th>商品名</th>
+          <th>号数</th>
+          <th>外寸</th>
+          <th>内径 (cm)</th>
+          <th>深さ (cm)</th>
+          <th>素材</th>
+          <th>カラー</th>
+          <th>底穴</th>
+          <th style="text-align:right;">上代 (税抜)</th>
+          <th style="text-align:center;">WEBカタログ</th>
         </tr>
       </thead>
       <tbody id="tb">
-        <tr><td colspan="11" style="text-align:center; padding:20px; color:#888;">最新データを取得しています...</td></tr>
+        <tr><td colspan="12" style="text-align:center; padding:20px; color:#888;">最新データを取得しています...</td></tr>
       </tbody>
     </table>
   </div>
@@ -84,13 +97,13 @@
 <script>
   let vaseData = [];
 
-  // 画面が開いた瞬間に GitHub 上の data.csv を自動取得
   window.addEventListener('DOMContentLoaded', () => {
-    // キャッシュ対策としてタイムスタンプを付与
+    // Shift-JIS (CP932) の文字化けを防ぐため encoding を明示
     Papa.parse('data.csv?t=' + new Date().getTime(), {
       download: true,
       header: true,
       skipEmptyLines: true,
+      encoding: 'Shift-JIS',
       complete: function(res) {
         if (res.data && res.data.length > 0) {
           vaseData = processData(res.data);
@@ -102,11 +115,11 @@
           }
         }
         setStatus('データ未登録', 'badge-err');
-        document.getElementById('tb').innerHTML = `<tr><td colspan="11" style="text-align:center; padding:20px; color:#e11d48;">data.csv の読み込みに失敗したか、空データです。</td></tr>`;
+        document.getElementById('tb').innerHTML = `<tr><td colspan="12" style="text-align:center; padding:20px; color:#e11d48;">data.csv のデータが空か、読み込みに失敗しました。</td></tr>`;
       },
       error: function(err) {
         setStatus('読み込みエラー', 'badge-err');
-        document.getElementById('tb').innerHTML = `<tr><td colspan="11" style="text-align:center; padding:20px; color:#e11d48;">data.csv が見つかりません。GitHub上に配置されているか確認してください。</td></tr>`;
+        document.getElementById('tb').innerHTML = `<tr><td colspan="12" style="text-align:center; padding:20px; color:#e11d48;">data.csv が見つかりません。同一フォルダに配置されているか確認してください。</td></tr>`;
       }
     });
   });
@@ -117,7 +130,6 @@
     el.className = 'badge ' + cls;
   }
 
-  // データ整形（BOM除去・在庫数対応）
   function processData(data) {
     return data.map(rawRow => {
       const row = {};
@@ -136,11 +148,12 @@
         out: row['外寸'] || '',
         h: parseFloat(row['高さ_cm']) || 0,
         in: parseFloat(row['内径_cm']) || 0,
+        depth: parseFloat(row['深さ_cm']) || 0,
         mat: row['素材'] || '',
         col: row['カラー'] || '',
         hole: row['底穴'] || '',
-        stock: row['在庫数'] || row['数量'] || '-',  // 在庫数または数量列に対応
-        price: parseInt((row['上代_税抜'] || '').replace(/[^0-9]/g, '')) || 0
+        price: parseInt((row['上代_税抜'] || '').replace(/[^0-9]/g, '')) || 0,
+        url: row['WEBカタログURL'] || ''
       };
     }).filter(item => item.mfr || item.model || item.name);
   }
@@ -161,7 +174,12 @@
     const s = document.getElementById(id);
     const opts = [...new Set(vaseData.map(x => x[key]))].filter(Boolean);
     s.innerHTML = '<option value="">すべて</option>';
-    opts.forEach(o => { const e = document.createElement('option'); e.value = o; e.textContent = o; s.appendChild(e); });
+    opts.forEach(o => {
+      const e = document.createElement('option');
+      e.value = o;
+      e.textContent = o;
+      s.appendChild(e);
+    });
   }
 
   function render() {
@@ -195,25 +213,28 @@
     document.getElementById('count').textContent = res.length;
 
     if (res.length === 0) {
-      tb.innerHTML = `<tr><td colspan="11" style="text-align:center; padding:20px; color:#888;">該当するデータがありません。</td></tr>`;
+      tb.innerHTML = `<tr><td colspan="12" style="text-align:center; padding:20px; color:#888;">該当するデータがありません。</td></tr>`;
       return;
     }
 
     res.forEach(x => {
       const tr = document.createElement('tr');
-      const hCls = x.hole === 'あり' ? 'hole-yes' : 'hole-no';
+      const hCls = x.hole === 'あり' ? 'hole-yes' : (x.hole === 'なし' ? 'hole-no' : '');
+      const linkHtml = x.url ? `<a href="${x.url}" target="_blank" rel="noopener noreferrer" class="link-btn">開く</a>` : '-';
+      
       tr.innerHTML = `
         <td><span class="mfr">${x.mfr}</span></td>
         <td><code>${x.model}</code></td>
         <td><strong>${x.name}</strong></td>
-        <td>${x.pot}</td>
-        <td>${x.out}</td>
-        <td>${x.in ? 'Φ'+x.in : '-'}</td>
-        <td>${x.mat}</td>
-        <td>${x.col}</td>
-        <td><span class="${hCls}">${x.hole}</span></td>
-        <td><span class="stock-val">${x.stock}</span></td>
-        <td style="text-align:right; font-weight:bold;">${x.price ? '¥'+x.price.toLocaleString() : '-'}</td>
+        <td>${x.pot || '-'}</td>
+        <td>${x.out || '-'}</td>
+        <td>${x.in ? 'Φ' + x.in : '-'}</td>
+        <td>${x.depth ? x.depth : '-'}</td>
+        <td>${x.mat || '-'}</td>
+        <td>${x.col || '-'}</td>
+        <td><span class="${hCls}">${x.hole || '-'}</span></td>
+        <td style="text-align:right; font-weight:bold;">${x.price ? '¥' + x.price.toLocaleString() : '-'}</td>
+        <td style="text-align:center;">${linkHtml}</td>
       `;
       tb.appendChild(tr);
     });
