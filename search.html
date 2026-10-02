@@ -97,31 +97,43 @@
 <script>
   let vaseData = [];
 
-  window.addEventListener('DOMContentLoaded', () => {
-    // Shift-JIS (CP932) の文字化けを防ぐため encoding を明示
-    Papa.parse('data.csv?t=' + new Date().getTime(), {
-      download: true,
-      header: true,
-      skipEmptyLines: true,
-      encoding: 'Shift-JIS',
-      complete: function(res) {
-        if (res.data && res.data.length > 0) {
-          vaseData = processData(res.data);
-          
-          if (vaseData.length > 0) {
-            setStatus('最新データ連携中 (' + vaseData.length + '件)', 'badge-ok');
-            init();
-            return;
+  window.addEventListener('DOMContentLoaded', async () => {
+    try {
+      // 1. キャッシュを防ぎつつ、Shift-JISバイナリとして取得
+      const res = await fetch('data.csv?t=' + new Date().getTime());
+      if (!res.ok) throw new Error('data.csvの取得に失敗しました (HTTP ' + res.status + ')');
+      
+      const buffer = await res.arrayBuffer();
+      // 2. Shift-JIS を正しい日本語テキストにデコード
+      const decoder = new TextDecoder('shift-jis');
+      const csvText = decoder.decode(buffer);
+
+      // 3. PapaParse でパース
+      Papa.parse(csvText, {
+        header: true,
+        skipEmptyLines: true,
+        complete: function(results) {
+          if (results.data && results.data.length > 0) {
+            vaseData = processData(results.data);
+            
+            if (vaseData.length > 0) {
+              setStatus('最新データ連携中 (' + vaseData.length + '件)', 'badge-ok');
+              init();
+              return;
+            }
           }
+          setStatus('データ未登録', 'badge-err');
+          document.getElementById('tb').innerHTML = `<tr><td colspan="12" style="text-align:center; padding:20px; color:#e11d48;">data.csv のデータが空か、読み込みに失敗しました。</td></tr>`;
+        },
+        error: function(err) {
+          throw err;
         }
-        setStatus('データ未登録', 'badge-err');
-        document.getElementById('tb').innerHTML = `<tr><td colspan="12" style="text-align:center; padding:20px; color:#e11d48;">data.csv のデータが空か、読み込みに失敗しました。</td></tr>`;
-      },
-      error: function(err) {
-        setStatus('読み込みエラー', 'badge-err');
-        document.getElementById('tb').innerHTML = `<tr><td colspan="12" style="text-align:center; padding:20px; color:#e11d48;">data.csv が見つかりません。同一フォルダに配置されているか確認してください。</td></tr>`;
-      }
-    });
+      });
+    } catch (err) {
+      console.error(err);
+      setStatus('読み込みエラー', 'badge-err');
+      document.getElementById('tb').innerHTML = `<tr><td colspan="12" style="text-align:center; padding:20px; color:#e11d48;">data.csv が見つからないか、ローカルファイル制限(CORS)の可能性があります。</td></tr>`;
+    }
   });
 
   function setStatus(txt, cls) {
@@ -136,7 +148,7 @@
       Object.keys(rawRow).forEach(key => {
         if (key) {
           const cleanKey = key.replace(/^\ufeff/, '').trim();
-          row[cleanKey] = rawRow[key] ? rawRow[key].trim() : '';
+          row[cleanKey] = rawRow[key] ? String(rawRow[key]).trim() : '';
         }
       });
 
