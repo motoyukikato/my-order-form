@@ -1,198 +1,338 @@
 <!DOCTYPE html>
-<html>
+<html lang="ja">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>商品価格チェッカー（iPhoneピント完全対策版）</title>
-  <style>
-    body { font-family: sans-serif; margin: 0; overflow: hidden; background: #000; }
-    
-    /* カメラ映像の親コンテナ（はみ出たビデオを隠す） */
-    #preview { 
-      width: 100vw; 
-      height: 60vh; 
-      position: relative; 
-      overflow: hidden; 
-    }
-    
-    /* 【iPhone対策①】ビデオ要素自体をCSSで1.5倍に拡大して表示（疑似デジタルズーム）
-       これにより、ユーザーが「近づけなくても大きく映る」状態を作ります */
-    #preview video { 
-      width: 100%; 
-      height: 100%; 
-      object-fit: cover; 
-      transform: scale(1.5); /* 1.5倍にズームアップ */
-      transform-origin: center center;
-    }
-    
-    /* 【iPhone対策②】スキャンエリアをさらに極細に（ユーザーを強制的に遠ざける） */
-    .viewport { 
-      position: absolute; 
-      top: 50%; 
-      left: 50%; 
-      transform: translate(-50%, -50%);
-      width: 80%;       /* 横幅は広く */
-      height: 8%;       /* 縦幅を限界まで細く（20% → 8%） */
-      border: 3px solid #0f0; 
-      box-shadow: 0 0 0 2000px rgba(0,0,0,0.65); /* 周囲をかなり暗くして枠を際立たせる */
-      z-index: 10; 
-    }
-    
-    /* ユーザーへの明確な物理的指示 */
-    .guide-text {
-      position: absolute;
-      bottom: -40px;
-      left: 50%;
-      transform: translateX(-50%);
-      color: #0f0;
-      font-size: 0.85rem;
-      font-weight: bold;
-      white-space: nowrap;
-      text-shadow: 2px 2px 3px #000;
-      background: rgba(0,0,0,0.6);
-      padding: 4px 12px;
-      border-radius: 10px;
-    }
-    
-    .info-panel { 
-      height: 40vh; 
-      background: white; 
-      padding: 20px; 
-      text-align: center; 
-      border-top-left-radius: 20px; 
-      border-top-right-radius: 20px; 
-      position: relative; 
-      z-index: 20; 
-      box-sizing: border-box; 
-    }
-    #result { font-size: 1.2rem; font-weight: bold; color: #333; margin-top: 10px; }
-    .loading-text { color: #f39c12; font-weight: bold; }
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<meta name="theme-color" content="#000000">
+<title>商品価格チェッカー</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/quagga/0.12.1/quagga.min.js"></script>
+<style>
+*{box-sizing:border-box}html,body,button,a,input{touch-action:manipulation}body{margin:0;background:#000;color:#fff;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;-webkit-text-size-adjust:100%}.app{min-height:100vh;background:#000}.preview{position:relative;width:100%;height:58vh;min-height:360px;overflow:hidden;background:#000}.preview video,.preview canvas{position:absolute;inset:0;width:100%!important;height:100%!important;object-fit:cover;transform:scale(1.35);transform-origin:center}.viewport{position:absolute;left:50%;top:50%;width:88%;height:15%;transform:translate(-50%,-50%);border:3px solid #22c55e;border-radius:6px;box-shadow:0 0 0 2000px rgba(0,0,0,.6);z-index:20;pointer-events:none}.guide{position:absolute;left:50%;top:calc(50% + 55px);width:92%;transform:translateX(-50%);z-index:21;text-align:center;color:#bbf7d0;font-size:13px;font-weight:700;text-shadow:0 1px 3px #000;pointer-events:none}.panel{position:relative;z-index:30;min-height:42vh;margin-top:-18px;padding:20px 16px 32px;border-radius:20px 20px 0 0;background:#fff;color:#111827;text-align:center}.status{font-size:14px;font-weight:700;color:#d97706}.status.ok{color:#059669}.status.error{color:#dc2626}.result{margin-top:10px;font-size:18px;font-weight:700;line-height:1.6}.productName{color:#1d4ed8}.price{font-size:32px;color:#111827}.jan{font-size:13px;color:#64748b}.button{width:100%;max-width:440px;margin-top:14px;padding:15px;border:0;border-radius:12px;background:#2563eb;color:#fff;font-size:16px;font-weight:700}.button.secondary{background:#0f766e}.zoomBox{display:none;max-width:440px;margin:14px auto 0;padding:12px;border:1px solid #cbd5e1;border-radius:12px;background:#f8fafc}.zoomGrid{display:grid;grid-template-columns:1fr 90px 1fr;gap:8px}.zoomButton{padding:12px;border:0;border-radius:9px;background:#334155;color:#fff;font-size:20px;font-weight:700}.zoomValue{display:flex;align-items:center;justify-content:center;font-weight:700}.help{margin-top:10px;color:#64748b;font-size:12px;line-height:1.6}.manualRow{display:flex;gap:8px;max-width:440px;margin:14px auto 0}.manualInput{min-width:0;flex:1;padding:13px;border:1px solid #cbd5e1;border-radius:10px;font-size:16px}.manualButton{padding:13px 17px;border:0;border-radius:10px;background:#10b981;color:#052e25;font-weight:700}.cameraSettings{display:none;max-width:440px;margin:12px auto 0;padding:12px;border:1px solid #cbd5e1;border-radius:12px;background:#f8fafc}.cameraSelect{width:100%;padding:12px;border:1px solid #cbd5e1;border-radius:9px;background:#fff;color:#111827;font-size:16px}.cameraSetButton{width:100%;margin-top:8px;padding:12px;border:0;border-radius:9px;background:#0f766e;color:#fff;font-weight:700}
+@media(max-width:380px){.preview{height:55vh}.panel{min-height:45vh}.manualRow{display:block}.manualButton{width:100%;margin-top:8px}}
+</style>
 </head>
 <body>
-  <div id="preview">
-    <div class="viewport">
-      <div class="guide-text">【ピント対策】20cmほど離して並行に合わせてください</div>
+<main class="app">
+  <section id="preview" class="preview">
+    <div class="viewport"></div>
+    <div class="guide">25〜35cm離し、バーコード全体を枠内へ水平に合わせてください</div>
+  </section>
+
+  <section class="panel">
+    <div id="status" class="status">商品データを読み込んでいます...</div>
+    <div id="result" class="result">準備しています</div>
+
+    <button id="scanButton" class="button" type="button" onclick="startScanner()" disabled>
+      カメラを準備しています...
+    </button>
+
+    <button id="cameraSettingsButton" class="button secondary" type="button" onclick="toggleCameraSettings()" disabled>
+      カメラを変更
+    </button>
+
+    <div id="cameraSettings" class="cameraSettings">
+      <select id="cameraSelect" class="cameraSelect">
+        <option value="">利用可能なカメラを確認中</option>
+      </select>
+      <button class="cameraSetButton" type="button" onclick="applySelectedCamera()">選択したカメラを使用</button>
+      <button class="cameraSetButton" type="button" onclick="resetPreferredCamera()">おすすめ設定に戻す</button>
+      <div class="help">複数カメラのAndroidでは、ピントが合いやすい標準カメラを選んでください。選択したカメラはこの端末に記憶します。</div>
     </div>
-  </div>
-  <div class="info-panel">
-    <div id="status" class="loading-text">データを読み込み中...</div>
-    <div id="result">準備しています</div>
-  </div>
 
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/quagga/0.12.1/quagga.min.js"></script>
-  <script>
-    const resultDiv = document.getElementById('result');
-    const statusDiv = document.getElementById('status');
-    const GAS_URL = "https://script.google.com/macros/s/AKfycbzWjmJZDeCqYzqLjVMTEvbVC9jpLLJHCtBr0_I7lP5J0PyDLXyq02Ht3kPmqV1NifV9/exec";
-    
-    let productDatabase = []; 
-    let isLocked = false;
+    <div id="zoomBox" class="zoomBox">
+      <div class="help" style="margin-top:0;margin-bottom:9px">対応端末のみズーム調整を表示します。近づけず、離して拡大してください。</div>
+      <div class="zoomGrid">
+        <button class="zoomButton" type="button" onclick="changeZoom(-1)">−</button>
+        <div id="zoomValue" class="zoomValue">1.0×</div>
+        <button class="zoomButton" type="button" onclick="changeZoom(1)">＋</button>
+      </div>
+    </div>
 
-    async function loadDatabase() {
-      try {
-        const response = await fetch(GAS_URL);
-        if (!response.ok) throw new Error("Network error");
-        productDatabase = await response.json();
-        
-        statusDiv.innerText = "同期完了";
-        statusDiv.className = "";
-        resultDiv.innerText = "スキャン待機中";
-        
-        initScanner(); 
-      } catch (err) {
-        console.error(err);
-        alert("データの取得に失敗しました。電波の良い場所で再試行してください。");
-      }
+    <div class="manualRow">
+      <input id="janInput" class="manualInput" type="text" inputmode="numeric" autocomplete="off" placeholder="JANコードを入力">
+      <button class="manualButton" type="button" onclick="searchByJanInput()">検索</button>
+    </div>
+
+    <div class="help">1回読み取るとカメラは自動停止します。同じ商品を連続して追加・表示しません。</div>
+  </section>
+</main>
+
+<script>
+const GAS_URL="https://script.google.com/macros/s/AKfycbzWjmJZDeCqYzqLjVMTEvbVC9jpLLJHCtBr0_I7lP5J0PyDLXyq02Ht3kPmqV1NifV9/exec";
+const CAMERA_STORAGE_KEY="priceCheckerPreferredCamera";
+
+let productDatabase=[];
+let databaseReady=false;
+let scannerRunning=false;
+let scanLocked=false;
+let lastCandidate="";
+let candidateCount=0;
+let videoTrack=null;
+let zoomMin=1;
+let zoomMax=1;
+let zoomStep=.1;
+let currentZoom=1;
+let availableCameras=[];
+let activeCameraId="";
+
+const el=id=>document.getElementById(id);
+
+window.addEventListener("load",loadDatabase);
+document.addEventListener("visibilitychange",()=>{if(document.hidden)stopScanner(false)});
+el("janInput").addEventListener("keydown",event=>{if(event.key==="Enter")searchByJanInput()});
+
+async function loadDatabase(){
+  setStatus("商品データを読み込んでいます...");
+  try{
+    const response=await fetch(GAS_URL,{cache:"no-store"});
+    if(!response.ok)throw new Error("HTTP "+response.status);
+    const data=await response.json();
+    productDatabase=Array.isArray(data)?data:(Array.isArray(data.products)?data.products:Object.values(data.products||{}));
+    productDatabase=productDatabase.map(item=>({
+      ...item,
+      jan:normalizeJan(item.jan||item.JAN||item.janCode||""),
+      name:item.name||item.productName||item.商品名||"商品名未設定",
+      price:item.price??item.normalPrice??item.売価1??""
+    }));
+    databaseReady=true;
+    setStatus("商品データ同期完了","ok");
+    el("result").textContent="カメラを起動してください";
+    el("scanButton").disabled=false;
+    el("scanButton").textContent="カメラを起動";
+    await refreshCameraList();
+    el("cameraSettingsButton").disabled=false;
+  }catch(error){
+    console.error(error);
+    databaseReady=false;
+    setStatus("商品データの取得に失敗しました","error");
+    el("result").textContent="通信状態を確認して再読み込みしてください";
+    el("scanButton").disabled=true;
+  }
+}
+
+function startScanner(requestedCameraId=""){
+  if(!databaseReady){alert("商品データの読み込み完了後にお試しください。");return}
+  if(scannerRunning){stopScanner(true);return}
+
+  scanLocked=false;
+  lastCandidate="";
+  candidateCount=0;
+  el("scanButton").disabled=true;
+  el("scanButton").textContent="カメラを準備しています...";
+  setStatus("カメラを準備しています...");
+
+  Quagga.init({
+    inputStream:{
+      type:"LiveStream",
+      target:el("preview"),
+      constraints: buildCameraConstraints(requestedCameraId),
+      area:{top:"38%",right:"5%",left:"5%",bottom:"38%"}
+    },
+    locate:true,
+    locator:{patchSize:"medium",halfSample:true},
+    numOfWorkers:Math.max(1,Math.min(4,navigator.hardwareConcurrency||2)),
+    frequency:10,
+    decoder:{readers:["ean_reader","ean_8_reader","upc_reader","upc_e_reader"],multiple:false}
+  },error=>{
+    if(error){
+      console.error(error);
+      setStatus("カメラを開始できませんでした","error");
+      el("result").textContent=error.message||String(error);
+      el("scanButton").disabled=false;
+      el("scanButton").textContent="カメラを起動";
+      return;
     }
 
-    function initScanner() {
-      Quagga.init({
-        inputStream: { 
-          type: "LiveStream", 
-          target: document.querySelector('#preview'),
-          constraints: { 
-            // iPhoneでの誤認識を防ぐためにHD解像度を指定
-            width: { min: 640, ideal: 1280, max: 1920 },
-            height: { min: 480, ideal: 720, max: 1080 },
-            facingMode: "environment"
-          }
-        },
-        // 映像を拡大しているため、検知エリア（locator）もやや狭めて計算不可を減らす
-        locator: {
-          patchSize: "medium",
-          halfSample: true
-        },
-        decoder: { 
-          readers: ["ean_reader"],
-          multiple: false // 1度のスキャンで1つだけ読む
-        }
-      }, function(err) {
-        if (err) { alert("カメラエラー: " + err.name); return; }
-        
-        const video = document.querySelector('#preview video');
-        if (video) {
-          video.setAttribute('playsinline', 'true');
-          video.muted = true;
-          video.play().catch(e => console.log("Play error:", e));
-        }
-        
-        Quagga.start();
-      });
+    scannerRunning=true;
+    Quagga.start();
+    el("scanButton").disabled=false;
+    el("scanButton").textContent="カメラを停止";
+    setStatus("JANを枠内へ合わせてください");
+
+    const video=document.querySelector("#preview video");
+    if(video){
+      video.setAttribute("playsinline","true");
+      video.muted=true;
+      video.play().catch(()=>{});
     }
-
-    Quagga.onDetected(function(data) {
-      if (isLocked) return;
-      
-      const code = data.codeResult.code;
-      if (code.length !== 13 && code.length !== 8) return;
-
-      // 簡易的なチェックディジット（バーコードの整合性）簡易検証
-      // Quaggaの誤読（ピントがボケている時のデタラメな数字の読み取り）をフィルタリング
-      if (!isValidJAN(code)) return;
-
-      const product = productDatabase.find(item => item.jan === code);
-
-      isLocked = true;
-      if (navigator.vibrate) navigator.vibrate(100);
-
-      if (product) {
-        resultDiv.innerHTML = `<span style="color:blue;">${product.name}</span><br><span style="font-size:2rem;">¥${product.price}</span>`;
-        statusDiv.innerText = "読み取り成功";
-      } else {
-        resultDiv.innerHTML = `未登録<br><span style="color:red; font-size:1rem;">${code}</span>`;
-        statusDiv.innerText = "データがありません";
-      }
-
-      setTimeout(() => {
-        isLocked = false;
-        statusDiv.innerText = "スキャンしてください";
-      }, 2000);
-    });
-
-    // JANコードの簡易チェックディジット検証（誤読防止）
-    function isValidJAN(code) {
-      if (code.length !== 13 && code.length !== 8) return false;
-      const digits = code.split('').map(Number);
-      const checkDigit = digits.pop();
-      
-      let sum = 0;
-      if (code.length === 13) {
-        // 13桁の検証
-        for (let i = 0; i < digits.length; i++) {
-          sum += (i % 2 === 0) ? digits[i] * 1 : digits[i] * 3;
-        }
-      } else {
-        // 8桁の検証
-        for (let i = 0; i < digits.length; i++) {
-          sum += (i % 2 === 0) ? digits[i] * 3 : digits[i] * 1;
-        }
-      }
-      const calculated = (10 - (sum % 10)) % 10;
-      return checkDigit === calculated;
+    setupZoomCapability();
+    const activeVideo=document.querySelector("#preview video");
+    const track=activeVideo&&activeVideo.srcObject?activeVideo.srcObject.getVideoTracks()[0]:null;
+    const settings=track&&track.getSettings?track.getSettings():{};
+    activeCameraId=settings.deviceId||requestedCameraId||"";
+    if(activeCameraId){
+      localStorage.setItem(CAMERA_STORAGE_KEY,activeCameraId);
+      if(el("cameraSelect"))el("cameraSelect").value=activeCameraId;
     }
+  });
+}
 
-    window.onload = loadDatabase;
-  </script>
+async function refreshCameraList(){
+  try{
+    /* labels are often available only after camera permission; temporary stream unlocks them */
+    let tempStream=null;
+    try{tempStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:"environment"}},audio:false})}catch(error){}
+    const devices=await navigator.mediaDevices.enumerateDevices();
+    availableCameras=devices.filter(device=>device.kind==="videoinput");
+    if(tempStream)tempStream.getTracks().forEach(track=>track.stop());
+    const select=el("cameraSelect");
+    if(!availableCameras.length){
+      select.innerHTML='<option value="">カメラが見つかりません</option>';
+      return;
+    }
+    select.innerHTML=availableCameras.map((camera,index)=>{
+      const label=camera.label?camera.label:`カメラ ${index+1}`;
+      return `<option value="${escapeHtml(camera.deviceId)}">${escapeHtml(label)}</option>`;
+    }).join("");
+    const saved=localStorage.getItem(CAMERA_STORAGE_KEY);
+    if(saved&&availableCameras.some(camera=>camera.deviceId===saved))select.value=saved;
+  }catch(error){
+    console.error("Camera list error",error);
+    el("cameraSelect").innerHTML='<option value="">カメラ一覧を取得できません</option>';
+  }
+}
+
+function buildCameraConstraints(requestedCameraId=""){
+  const saved=localStorage.getItem(CAMERA_STORAGE_KEY);
+  const selected=requestedCameraId||saved;
+  const base={
+    width:{min:640,ideal:1280,max:1920},
+    height:{min:480,ideal:720,max:1080},
+    aspectRatio:{ideal:1.7777778}
+  };
+  if(selected&&availableCameras.some(camera=>camera.deviceId===selected)){
+    base.deviceId={exact:selected};
+  }else{
+    base.facingMode={ideal:"environment"};
+  }
+  return base;
+}
+
+function toggleCameraSettings(){
+  const box=el("cameraSettings");
+  box.style.display=box.style.display==="block"?"none":"block";
+  if(box.style.display==="block")refreshCameraList();
+}
+
+async function applySelectedCamera(){
+  const cameraId=el("cameraSelect").value;
+  if(!cameraId)return;
+  localStorage.setItem(CAMERA_STORAGE_KEY,cameraId);
+  if(scannerRunning)stopScanner(false);
+  setTimeout(()=>startScanner(cameraId),150);
+}
+
+async function resetPreferredCamera(){
+  localStorage.removeItem(CAMERA_STORAGE_KEY);
+  activeCameraId="";
+  if(scannerRunning)stopScanner(false);
+  await refreshCameraList();
+  setTimeout(()=>startScanner(""),150);
+}
+
+Quagga.onDetected(data=>{
+  if(!scannerRunning||scanLocked||!data||!data.codeResult)return;
+  const code=normalizeJan(data.codeResult.code);
+  if(!isValidJAN(code))return;
+
+  /* 同じJANを2回連続で認識した場合だけ確定し、ピンぼけ誤読を減らす */
+  if(code===lastCandidate)candidateCount+=1;
+  else{lastCandidate=code;candidateCount=1}
+  if(candidateCount<2)return;
+
+  scanLocked=true;
+  navigator.vibrate?.(120);
+  stopScanner(false);
+  showProduct(code);
+});
+
+function showProduct(code){
+  const product=productDatabase.find(item=>normalizeJan(item.jan)===code);
+  el("janInput").value=code;
+  if(product){
+    const price=formatPrice(product.price);
+    el("result").innerHTML=`<span class="productName">${escapeHtml(product.name)}</span><br><span class="price">${price}</span><br><span class="jan">JAN：${escapeHtml(code)}</span>`;
+    setStatus("読み取り成功","ok");
+  }else{
+    el("result").innerHTML=`未登録<br><span class="jan">JAN：${escapeHtml(code)}</span>`;
+    setStatus("商品データがありません","error");
+  }
+  el("scanButton").disabled=false;
+  el("scanButton").textContent="次の商品を読み取る";
+}
+
+function searchByJanInput(){
+  const jan=normalizeJan(el("janInput").value);
+  if(!isValidJAN(jan)){alert("正しいJANコードを入力してください。");return}
+  if(scannerRunning)stopScanner(false);
+  showProduct(jan);
+}
+
+function stopScanner(showMessage=true){
+  if(scannerRunning){
+    try{Quagga.stop()}catch(error){console.error(error)}
+  }
+  scannerRunning=false;
+  videoTrack=null;
+  activeCameraId="";
+  el("zoomBox").style.display="none";
+  el("scanButton").disabled=false;
+  el("scanButton").textContent="カメラを起動";
+  if(showMessage)setStatus("カメラを停止しました");
+}
+
+function setupZoomCapability(){
+  videoTrack=null;
+  el("zoomBox").style.display="none";
+  try{
+    const video=document.querySelector("#preview video");
+    if(!video||!video.srcObject)return;
+    const tracks=video.srcObject.getVideoTracks();
+    if(!tracks.length)return;
+    videoTrack=tracks[0];
+    const capabilities=videoTrack.getCapabilities?videoTrack.getCapabilities():{};
+    if(!capabilities.zoom)return;
+    zoomMin=Number(capabilities.zoom.min||1);
+    zoomMax=Number(capabilities.zoom.max||zoomMin);
+    zoomStep=Number(capabilities.zoom.step||.1);
+    const settings=videoTrack.getSettings?videoTrack.getSettings():{};
+    currentZoom=Number(settings.zoom||zoomMin);
+    updateZoomDisplay();
+    el("zoomBox").style.display="block";
+  }catch(error){
+    console.log("Zoom not supported",error);
+    videoTrack=null;
+  }
+}
+
+async function changeZoom(direction){
+  if(!videoTrack)return;
+  const next=Math.max(zoomMin,Math.min(zoomMax,currentZoom+zoomStep*direction));
+  try{
+    await videoTrack.applyConstraints({advanced:[{zoom:next}]});
+    currentZoom=next;
+    updateZoomDisplay();
+  }catch(error){console.log("Zoom change failed",error)}
+}
+
+function updateZoomDisplay(){el("zoomValue").textContent=Number(currentZoom).toFixed(1)+"×"}
+function normalizeJan(value){return String(value||"").replace(/\D/g,"").trim()}
+function formatPrice(value){const n=Number(String(value??"").replace(/,/g,"").replace(/[¥円]/g,""));return Number.isFinite(n)?"¥"+Math.round(n).toLocaleString("ja-JP"):escapeHtml(value||"価格未設定")}
+function setStatus(text,type=""){el("status").textContent=text;el("status").className="status"+(type?" "+type:"")}
+function escapeHtml(value){return String(value??"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#039;")}
+
+function isValidJAN(code){
+  if(!/^\d{8}$|^\d{13}$/.test(code))return false;
+  const digits=code.split("").map(Number);
+  const checkDigit=digits.pop();
+  let sum=0;
+  if(code.length===13){
+    for(let i=0;i<digits.length;i++)sum+=digits[i]*(i%2===0?1:3);
+  }else{
+    for(let i=0;i<digits.length;i++)sum+=digits[i]*(i%2===0?3:1);
+  }
+  return checkDigit===(10-(sum%10))%10;
+}
+</script>
 </body>
 </html>
